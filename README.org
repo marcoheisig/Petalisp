@@ -1,0 +1,4 @@
+#+TITLE: Petalisp
+
+Petalisp is an attempt to generate high performance code for parallel
+computers from a pure data flow specification.
