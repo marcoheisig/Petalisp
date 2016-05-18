@@ -1,80 +1,70 @@
 ;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Petalisp operations
+;;; Petalisp objects
 
 (in-package :petalisp)
 
-(defgeneric constant (shape value))
+(defclass petalisp-array (petalisp-object)
+  ((%index-space :initarg :index-space :accessor index-space)
+   (%type :initarg :type :accessor type)))
 
-(defgeneric unary-operation (operator object))
+(defmethod shape ((instance petalisp-array))
+  (shape (index-space instance)))
 
-(defgeneric binary-operation (operator object-1 object-2))
+(defmacro define-petalisp-operation (name gf-lambda-list)
+  (let* ((args (remove-if
+                (lambda (x) (char-equal #\& (aref (symbol-name x) 0)))
+                gf-lambda-list))
+         (table
+           (loop for arg in args
+                 collect
+                 `(,arg
+                   ,(intern (concatenate 'string "%" (symbol-name arg)))
+                   ,(intern (symbol-name arg) :keyword)))))
+    `(progn
+       (defclass ,name (petalisp-array)
+         ,(loop for (reader slot-name initarg) in table
+                collect
+                `(,slot-name :initarg ,initarg :reader ,reader)))
+       (defgeneric ,name ,gf-lambda-list)
+       (defmethod ,name ,gf-lambda-list
+         (let ((args (list ',name ,@(loop for (value _ key) in table
+                                         append `(,key ,value)))))
+           (or (apply #'find-instance args)
+               (apply #'make-instance args)))))))
 
-(defgeneric reduction (function dimension object))
+(define-petalisp-operation constant (index-space value))
 
-(defgeneric selection (shape object))
+(define-petalisp-operation reduction (op dim arg))
 
-(defgeneric fusion (&rest objects))
+(define-petalisp-operation selection (subspace arg))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Petalisp objects
+(define-petalisp-operation fusion (&rest args))
 
-(defclass index-space ()
-  ((%shape :initarg :shape :reader shape)))
+(define-petalisp-operation unary-application (op arg))
 
-(defclass petalisp-object (graph-node)
-  ((%shape :initarg :shape :reader shape)
-   (%type :initarg :type :reader type)))
-
-(defclass constant (petalisp-object)
-  ((%value :initarg :value :reader value)))
-
-(defclass reduction (petalisp-object)
-  ((%value :initarg :value :reader value)))
-
-(defclass selection (petalisp-object)
-  ((%value :initarg :value :reader value)))
-
-(defclass fusion (petalisp-object) ())
-
-(defclass unary-operation ()
-  ((%arg :initarg :arg :reader arg)))
-
-(defclass binary-operation ()
-  ((%arg1 :initarg :arg1 :reader arg1)
-   (%arg2 :initarg :arg2 :reader arg2)))
-
-(defclass + (binary-operation) ())
-(defclass - (binary-operation) ())
-(defclass * (binary-operation) ())
-(defclass / (binary-operation) ())
+(define-petalisp-operation binary-application (op arg1 arg2))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; The petalisp implementation
+;;; Constant folding
+;;;
+;;; Constant folding in Petalisp means that identical operations on
+;;; identical objects should be EQ.
 
-(defmethod constant (shape value)
-  (make-instance 'constant :shape shape
-                           :value value
-                           :type (type-of value)))
+;; TODO
 
-(defmethod unary-operation ((operator symbol) object)
-  (apply #'make-instance
-         (find-symbol (symbol-name operator) :petalisp)
-         :arg object))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Normalization - ensure that petalisp objects are well formed
 
-(defmethod binary-operation ((operator symbol) object-1 object-2)
-  (apply #'make-instance
-         (find-symbol (symbol-name operator) :petalisp)
-         :arg1 object-1 :arg2 object-2))
+(defmethod normalize ((instance constant))
+  (with-accessors ((type type) (value value)) instance
+    (setf type (type-of value))))
 
-(defmethod reduction ((function binary-operation) dimension object)
-  nil)
-
-(defmethod selection (shape object)
-  nil)
-
-(defmethod fusion (&rest objects)
-  nil)
+(defmethod normalize ((instance reduction))
+  (with-accessors ((type type) (dim dim) (arg arg)
+                   (index-space index-space)) instance
+    (setf type (type-of arg))
+    (setf index-space (index-space-reduction dim index-space))))

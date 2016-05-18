@@ -35,3 +35,19 @@
    float-precision  numerator
    )
   (:export petalisp))
+
+(in-package :petalisp)
+
+(defclass petalisp-object () ())
+
+(defgeneric find-instance (instance))
+
+(defmethod find-instance (instance) (declare (ignore instance)) nil)
+
+(defgeneric normalize (object))
+
+(defmethod normalize (instance) (declare (ignore instance)) nil)
+
+(defmethod initialize-instance :after ((instance petalisp-object) &rest args)
+  (declare (ignore args))
+  (normalize instance))

@@ -5,8 +5,6 @@
 
 (in-package :petalisp)
 
-(defclass graph-node () ())
-
 (defgeneric children (node))
 
 (defgeneric stream-draw-graph (node stream))

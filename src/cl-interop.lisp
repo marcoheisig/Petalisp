@@ -6,7 +6,7 @@
 (in-package :petalisp)
 
 (defmacro x (&rest ranges)
-  "Each range is expanded to (INCLUSIVE-MIN STEP EXCLUSIVE-MAX)"
+  "Each range is expanded to (START STEP END)"
   (let ((dimensions `(,(length ranges) 3))
         (initial-contents
           (loop for range in ranges
@@ -16,9 +16,10 @@
                   ((list min max) `(,min 1 ,max))
                   ((list max) `(0 1 ,max))
                   ( max  `(0 1 ,max))))))
-    `(make-array ',dimensions
-                 :element-type 'fixnum
-                 :initial-contents ',initial-contents)))
+    `(make-instance 'index-space
+                    :shape
+                    (make-array ',dimensions
+                                :initial-contents ',initial-contents))))
 
 (defparameter *petalisp-operators*
   '(* + - /
@@ -39,7 +40,7 @@
     ceiling          float-radix           rational
     complex          float-sign            rationalize
     decode-float
-    floor                 realpart
+    floor            realpart
     denominator      fround                rem
     fceiling         ftruncate             round
     ffloor           imagpart              scale-float
