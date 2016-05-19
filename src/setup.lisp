@@ -4,8 +4,11 @@
 
 (defpackage :petalisp
   (:use #:cl :optima)
+  (:export petalisp))
+
+(defpackage :petalisp-operators
+  (:use #:cl)
   (:shadow
-   type
    * + - /
    conjugate lcm gcd
 
@@ -32,9 +35,7 @@
    ffloor           imagpart              scale-float
    float            integer-decode-float  truncate
    float-digits     mod
-   float-precision  numerator
-   )
-  (:export petalisp))
+   float-precision  numerator))
 
 (in-package :petalisp)
 

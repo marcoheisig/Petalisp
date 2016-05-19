@@ -7,7 +7,7 @@
 
 (defclass petalisp-array (petalisp-object)
   ((%index-space :initarg :index-space :accessor index-space)
-   (%type :initarg :type :accessor type)))
+   (%element-type :initarg :element-type :accessor element-type)))
 
 (defmethod shape ((instance petalisp-array))
   (shape (index-space instance)))
@@ -60,11 +60,11 @@
 ;;; Normalization - ensure that petalisp objects are well formed
 
 (defmethod normalize ((instance constant))
-  (with-accessors ((type type) (value value)) instance
-    (setf type (type-of value))))
+  (with-accessors ((element-type element-type) (value value)) instance
+    (setf element-type (type-of value))))
 
 (defmethod normalize ((instance reduction))
-  (with-accessors ((type type) (dim dim) (arg arg)
+  (with-accessors ((element-type element-type) (dim dim) (arg arg)
                    (index-space index-space)) instance
-    (setf type (type-of arg))
+    (setf element-type (type-of arg))
     (setf index-space (index-space-reduction dim index-space))))

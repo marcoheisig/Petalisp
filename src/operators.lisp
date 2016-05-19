@@ -3,7 +3,7 @@
 ;;;
 ;;; Petalisp operators
 
-(in-package :petalisp)
+(in-package :petalisp-operators)
 
 (defclass petalisp-object () ())
 

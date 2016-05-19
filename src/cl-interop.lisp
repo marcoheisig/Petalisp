@@ -5,22 +5,6 @@
 
 (in-package :petalisp)
 
-(defmacro x (&rest ranges)
-  "Each range is expanded to (START STEP END)"
-  (let ((dimensions `(,(length ranges) 3))
-        (initial-contents
-          (loop for range in ranges
-                collect
-                (ematch range
-                  ((list min step max) `(,min ,step ,max))
-                  ((list min max) `(,min 1 ,max))
-                  ((list max) `(0 1 ,max))
-                  ( max  `(0 1 ,max))))))
-    `(make-instance 'index-space
-                    :shape
-                    (make-array ',dimensions
-                                :initial-contents ',initial-contents))))
-
 (defparameter *petalisp-operators*
   '(* + - /
     conjugate lcm gcd
