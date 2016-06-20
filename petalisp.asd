@@ -12,8 +12,7 @@
     ((:file "setup")
      (:file "index-spaces" :depends-on ("setup"))
      (:file "petalisp" :depends-on ("index-spaces"))
-     (:file "operators" :depends-on ("petalisp"))
      (:file "io" :depends-on ("petalisp"))
-     (:file "cl-interop" :depends-on ("petalisp"))
-     (:file "graphs" :depends-on ("petalisp"))))))
+     (:file "cl-integration" :depends-on ("petalisp"))
+     (:file "graphviz" :depends-on ("petalisp"))))))
 

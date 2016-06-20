@@ -5,12 +5,43 @@
 
 (in-package :petalisp)
 
-(defclass petalisp-array (petalisp-object)
+(defclass petalisp-object () ())
+
+(defclass petalisp-operation (petalisp-object)
   ((%index-space :initarg :index-space :accessor index-space)
    (%element-type :initarg :element-type :accessor element-type)))
 
-(defmethod shape ((instance petalisp-array))
-  (shape (index-space instance)))
+(defclass unary-operation (petalisp-operation) ())
+
+(defclass binary-operation (petalisp-operation) ())
+
+(defmacro define-operator (name args)
+  (let ((fsym (intern
+               (concatenate 'string "*" (symbol-name name))
+               :petalisp))
+        (superclass (ecase (length args)
+                      (1 `unary-operation)
+                      (2 `binary-operation)))
+        (initargs (ecase (length args)
+                    (1 `(:arg ,(first args)))
+                    (2 `(:arg1 ,(first args) :arg2 ,(second args))))))
+    `(progn
+       (defclass ,name (,superclass) ())
+       (defun ,fsym ,args
+         (make-instance ,`',name ,@initargs)))))
+
+;; *constant
+;; *reduce
+;; *scan
+;; *apply
+;; *broadcast
+;; *select
+;; *fuse
+;; *permute
+;; *index
+;; *member
+
+(define-operation + (a b))
 
 (defmacro define-petalisp-operation (name gf-lambda-list)
   (let* ((args (remove-if
