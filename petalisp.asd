@@ -9,10 +9,9 @@
   :components
   ((:module "src"
     :components
-    ((:file "setup")
-     (:file "index-spaces" :depends-on ("setup"))
+    ((:file "package")
+     (:file "index-spaces" :depends-on ("package"))
      (:file "petalisp" :depends-on ("index-spaces"))
-     (:file "io" :depends-on ("petalisp"))
      (:file "cl-integration" :depends-on ("petalisp"))
      (:file "graphviz" :depends-on ("petalisp"))))))
 
