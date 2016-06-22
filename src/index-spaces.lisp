@@ -1,5 +1,4 @@
-;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Working with index spaces
 

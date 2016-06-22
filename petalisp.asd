@@ -10,8 +10,8 @@
   ((:module "src"
     :components
     ((:file "package")
+     (:file "error-handling")
      (:file "index-spaces" :depends-on ("package"))
      (:file "petalisp" :depends-on ("index-spaces"))
-     (:file "cl-integration" :depends-on ("petalisp"))
      (:file "graphviz" :depends-on ("petalisp"))))))
 
