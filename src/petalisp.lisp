@@ -39,7 +39,7 @@
   that contains exactly this one element."))
 
 (defun make-lisp-input (lisp-object)
-  "Use LISP-OBJECT to create a Petalisp object. Behaves like IDENTITY when
+  "Use LISP-OBJECT to create a Petalisp object. Behaves like IDENTITY if
 LISP-OBJECT is already a Petalisp object."
   (multiple-value-bind (index-space element-type)
       (cond
@@ -47,8 +47,9 @@ LISP-OBJECT is already a Petalisp object."
          (return-from make-lisp-input lisp-object))
         ((arrayp lisp-object)
          (values
-          (mapcar (lambda (dim) (range 1 1 dim))
-                  (array-dimensions lisp-object))
+          (apply #'make-index-space
+                 (mapcar (lambda (dim) (range 0 1 (- dim 1)))
+                         (array-dimensions lisp-object)))
           (petalispify-type
            (array-element-type lisp-object))))
         (t
@@ -71,53 +72,45 @@ LISP-OBJECT is already a Petalisp object."
 
 (defun α (operator &rest arguments)
   (let* ((arguments
-           (apply #'extend-dimensions
-                  (mapcar #'make-lisp-input arguments)))
+           (mapcar #'make-lisp-input arguments))
+         (index-space
+           (apply #'index-space-broadcast
+                  (mapcar #'index-space arguments)))
+         (arguments
+           (mapcar
+            (lambda (argument)
+              (replicate argument index-space))
+            arguments))
          (element-type
            (apply #'result-type operator
-                  (mapcar #'element-type arguments)))
-         (index-space
-           (index-space (first arguments))))
+                  (mapcar #'element-type arguments))))
     (make-instance
      'α
      :operator operator
+     :arguments arguments
      :index-space index-space
      :element-type element-type)))
-
-(defun extend-dimensions (&rest petalisp-objects)
-  "Broadcasting operations in Petalisp require that all arguments have the
-  same underlying index space. This function attempts to extend the
-  dimensions of each argument similarly to the broadcasting rules found in
-  other programming toolkits like NumPy."
-  (let* ((index-spaces (mapcar #'index-space petalisp-objects))
-         (result-space (apply #'mapcar #'extend-dimensions-1D index-spaces)))
-    ;; upgrade arguments where necessary
-    (mapcar
-     (lambda (x) (replicate x result-space))
-     petalisp-objects)))
-
-(defun extend-dimensions-1D (&rest ranges)
-  (let ((big-ranges
-          (if (every #'unary-range-p ranges)
-              ranges
-              (remove-if #'unary-range-p ranges))))
-    (unless (apply #'range= big-ranges)
-      (error 'dimensions-not-compatible :ranges ranges))
-    (first big-ranges)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; β - reduction of the trailing dimension
 
-(defun β (operator object)
-  (let ((result-space (nreverse (cdr (reverse (index-space object)))))
-        (element-type (element-type object)))
+(defclass β (petalisp-object)
+  ((%operator :initarg :operator :reader operator)
+   (%argument :initarg :argument :reader argument)))
+
+(defun β (operator argument)
+  (let ((result-space
+          (index-space-drop-last-dimension
+           (index-space argument)))
+        (element-type (element-type argument)))
     (assert (petalisp-subtypep
              (result-type operator element-type element-type)
              element-type))
     (make-instance
      'β
      :operator operator
+     :argument argument
      :index-space result-space
      :element-type element-type)))
 
@@ -125,16 +118,31 @@ LISP-OBJECT is already a Petalisp object."
 ;;;
 ;;; replicate - fill a certain shape with copies of an object
 
-(defun replicate (object result-space)
+(defclass replicate (petalisp-object)
+  ((%argument :initarg :argument :reader argument)))
+
+(defun replicate (argument result-space)
   "Returns a Petalisp object with the shape RESULT-SPACE that is obtained
-by replicating the content of object enough times. An error is thrown if
+by replicating the content of object enough times. An error is signaled if
 there is a dimension where the number of elements in RESULT-SPACE is not
 divisible by the number of elements in OBJECT."
-  (cond
-    ((index-space= result-space (index-space object))
-     (return-from replicate object))
-    ;; TODO
-    ))
+  (when (index-space= result-space (index-space argument))
+    (return-from replicate argument))
+  (unless (every #'integerp
+                 (mapcar
+                  (lambda (src-range dst-range)
+                    (/ (range-elements dst-range)
+                       (range-elements src-range)))
+                  (index-space argument)
+                  result-space))
+    (error 'unable-to-replicate
+           :object argument
+           :index-space result-space))
+  (make-instance
+   'replicate
+   :argument argument
+   :index-space result-space
+   :element-type (element-type argument)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

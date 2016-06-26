@@ -1,4 +1,5 @@
-;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Working with index spaces
 
@@ -6,8 +7,28 @@
 
 ;;; Mathematically, a Petalisp index space is the Cartesian product of sets
 ;;; of the form { X | START <= X <= END | ∃ n ∈ N, X = START + n * STEP },
-;;; where START, STEP and END are integers. For implementation purposes, an
-;;; index space is a list of instances of the structure RANGE.
+;;; where START, STEP and END are integers.
+
+(defclass index-space ()
+  ;; list of ranges in each dimension in reverse order, as most operations
+  ;; modify the last dimension
+  ((%reverse-ranges :initarg :reverse-ranges :reader reverse-ranges)
+   (%dimension :initarg :dimension :reader dimension)))
+
+(defmethod print-object ((object index-space) stream)
+  (format stream "#i(~{~a~^ ~})"
+          (mapcar
+           (lambda (range)
+             (list (range-start range)
+                   (range-step range)
+                   (range-end range)))
+           (reverse (reverse-ranges object)))))
+
+(defun make-index-space (&rest ranges)
+  (make-instance
+   'index-space
+   :reverse-ranges (reverse ranges)
+   :dimension (length ranges)))
 
 (defstruct (range (:constructor %make-range (start step end)))
   (start 0 :type fixnum :read-only t)
@@ -20,11 +41,7 @@
         ((list start step end) (values start step end))
         ((list start end) (values start 1 end))
         ((list end) (values 1 1 end)))
-    ;; TODO error handling:
-    ;; - STEP not towards END
-    ;; - empty range
-    ;; - start /= end but STEP is zero
-
+    (assert (not (and (zerop step) (/= start end))))
     ;; ensure that STEP is positive
     (when (minusp step) (setf step (- step)))
     (when (zerop step) (setf step 1))
@@ -34,18 +51,73 @@
     (when (> start end) (rotatef start end))
     (%make-range start step end)))
 
-(defmacro x (&rest specs)
-  `(list ,@(loop for spec in specs
-                 collect (if (atom spec) `(range ,spec) `(range ,@spec)))))
+(defun range-elements (range)
+  (1+ (the integer (/ (- (range-end range)
+                         (range-start range))
+                      (range-step range)))))
 
 (defun unary-range-p (range)
   (= (range-start range) (range-end range)))
 
-(defun index-space= (index-space &rest more-index-spaces)
-  (every (lambda (x) (every #'range= index-space x)) more-index-spaces))
-
 (defun range= (range &rest more-ranges)
   (every (lambda (x) (equalp range x)) more-ranges))
+
+(defun index-space= (index-space &rest more-index-spaces)
+  (let ((dim (dimension index-space)))
+    (every
+     (lambda (x)
+       (and (= dim (dimension x)))
+       (every #'range=
+              (reverse-ranges index-space)
+              (reverse-ranges x)))
+     more-index-spaces)))
+
+(defmacro x (&rest specs)
+  `(make-index-space
+    ,@(loop for spec in specs
+            collect
+            (if (atom spec)
+                `(range ,spec)
+                `(range ,@spec)))))
+
+(defun index-space-drop-last-dimension (index-space)
+  (apply #'make-index-space
+         (reverse (cdr (reverse-ranges index-space)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; broadcasting of index spaces
+
+(defun index-space-broadcast (index-space &rest index-spaces)
+  (reduce #'index-space-binary-broadcast index-spaces
+          :initial-value index-space))
+
+(defun index-space-binary-broadcast (index-space-1 index-space-2)
+  ;; ensure index-space-1 has higher or equal dimension than index-space-2
+  (when (< (dimension index-space-1)
+           (dimension index-space-2))
+    (rotatef index-space-1 index-space-2))
+  (let ((ranges-1 (reverse-ranges index-space-1))
+        (ranges-2 (reverse-ranges index-space-2))
+        (dim-1 (dimension index-space-1))
+        (dim-2 (dimension index-space-2)))
+    (apply #'make-index-space
+           (loop for dim from dim-1 downto 1
+                 collect
+                 (if (> dim dim-2)
+                     (pop ranges-1)
+                     (range-broadcast
+                      (pop ranges-1)
+                      (pop ranges-2)))))))
+
+(defun range-broadcast (range-1 range-2)
+  (let ((u1 (unary-range-p range-1))
+        (u2 (unary-range-p range-2)))
+    (cond ((and u1 u2 (range= range-1 range-2)) range-1)
+          ((and u1 (not u2)) range-2)
+          ((and (not u1) u2) range-1)
+          (t (error 'broadcast-error
+                    :ranges (list range-1 range-2))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -63,8 +135,12 @@ Examples:
 Note: The intersection of two valid Petalisp index spaces is either empty
 or again a valid Petalisp index space, so this function never signals an
 error."
-  (catch 'no-intersection
-    (mapcar #'index-space-intersection-1D index-space-1 index-space-2)))
+  (when (= (dimension index-space-1)
+           (dimension index-space-2))
+    (catch 'no-intersection
+      (mapcar #'index-space-intersection-1D
+              (reverse-ranges index-space-1)
+              (reverse-ranges index-space-2)))))
 
 (defun index-space-intersection-1D (range-1 range-2)
   (let ((start-1 (range-start range-1))
@@ -117,7 +193,7 @@ if no solution exists."
 ;;;
 ;;; unions of index spaces
 
-(defun index-space-union (&rest index-spaces)
+(defun index-space-union (index-spacec &rest more-index-spaces)
   "If the union of the given index spaces is again a valid Petalisp index
 space, returns the resulting space. Otherwise signals an error.
 
