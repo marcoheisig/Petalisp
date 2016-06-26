@@ -19,7 +19,7 @@
       (ematch spec
         ((list start step end) (values start step end))
         ((list start end) (values start 1 end))
-        ((list end) (values 0 1 end)))
+        ((list end) (values 1 1 end)))
     ;; TODO error handling:
     ;; - STEP not towards END
     ;; - empty range
@@ -38,31 +38,18 @@
   `(list ,@(loop for spec in specs
                  collect (if (atom spec) `(range ,spec) `(range ,@spec)))))
 
-(defun kuṭṭaka (d1 d2 c)
-  "Returns A, B and GCD(d1,d2) such that A * d1 - B * d2 = c. Returns NIL
-if no solution exists."
-  (declare (integer d1 d2 c))
-  ;; The first part is just Euclids algorithm to determine the GCD, where
-  ;; we additionally keep track of all the quotients
-  (let* ((quotients ())
-         (gcd
-           (loop with u of-type integer = (abs d1)
-                 and  v of-type integer = (abs d2) do
-             (when (= v 0) (return u))
-             (multiple-value-bind (quot rem) (floor u v)
-               (push quot quotients)
-               (psetf v rem u v)))))
-    ;; If C cannot be divided by GCD, there is no solution
-    (let ((c (/ c gcd)))
-      (unless (integerp c) (return-from kuṭṭaka nil))
-      ;; now comes the algorithm of Aryabhata
-      (let* ((a 0)
-             (b (if (evenp (length quotients)) c (- c))))
-        (mapc
-         (lambda (x)
-           (psetf a b b (the integer (+ (* x b) a))))
-         (cdr quotients))
-        (values a b gcd)))))
+(defun unary-range-p (range)
+  (= (range-start range) (range-end range)))
+
+(defun index-space= (index-space &rest more-index-spaces)
+  (every (lambda (x) (every #'range= index-space x)) more-index-spaces))
+
+(defun range= (range &rest more-ranges)
+  (every (lambda (x) (equalp range x)) more-ranges))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; intersections of index spaces
 
 (defun index-space-intersection (index-space-1 index-space-2)
   "Return the new index space containing the common elements the two given
@@ -99,6 +86,36 @@ error."
           (unless (<= lb smallest biggest ub)
             (throw 'no-intersection nil))
           (range smallest lcm biggest))))))
+
+(defun kuṭṭaka (d1 d2 c)
+  "Returns A, B and GCD(d1,d2) such that A * d1 - B * d2 = c. Returns NIL
+if no solution exists."
+  (declare (integer d1 d2 c))
+  ;; The first part is just Euclids algorithm to determine the GCD, where
+  ;; we additionally keep track of all the quotients
+  (let* ((quotients ())
+         (gcd
+           (loop with u of-type integer = (abs d1)
+                 and  v of-type integer = (abs d2) do
+             (when (= v 0) (return u))
+             (multiple-value-bind (quot rem) (floor u v)
+               (push quot quotients)
+               (psetf v rem u v)))))
+    ;; If C cannot be divided by GCD, there is no solution
+    (let ((c (/ c gcd)))
+      (unless (integerp c) (return-from kuṭṭaka nil))
+      ;; now comes the algorithm of Aryabhata
+      (let* ((a 0)
+             (b (if (evenp (length quotients)) c (- c))))
+        (mapc
+         (lambda (x)
+           (psetf a b b (the integer (+ (* x b) a))))
+         (cdr quotients))
+        (values a b gcd)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; unions of index spaces
 
 (defun index-space-union (&rest index-spaces)
   "If the union of the given index spaces is again a valid Petalisp index

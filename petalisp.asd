@@ -11,7 +11,8 @@
     :components
     ((:file "package")
      (:file "error-handling")
-     (:file "index-spaces" :depends-on ("package"))
-     (:file "petalisp" :depends-on ("index-spaces"))
+     (:file "index-spaces" :depends-on ("error-handling"))
+     (:file "operator-database" :depends-on ("error-handling"))
+     (:file "petalisp" :depends-on ("index-spaces" "operator-database"))
      (:file "graphviz" :depends-on ("petalisp"))))))
 

@@ -3,5 +3,5 @@
 (in-package :cl-user)
 
 (defpackage :petalisp
-  (:use #:cl :optima)
+  (:use #:cl :optima :alexandria)
   (:export petalisp))
