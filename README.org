@@ -3,7 +3,7 @@
 Petalisp is an attempt to generate high performance code for parallel
 computers from a pure data flow specification.
 
-Petalisp aims to be simple, also when it comes to lines of code. If you are curious, the following snippet counts the number of non-whitespace source lines of code:
+Petalisp aims to be small and simple. If you are curious, the following snippet tells you the current size of Petalisp in non-whitespace source lines of code:
 
 #+BEGIN_SRC sh
 find . -path './.git' -prune -o -print | egrep '\.asd|\.lisp' | xargs cat | sed '/^\s*$/d' | wc -l
