@@ -3,26 +3,18 @@
 ;;;
 ;;; Petalisp error handling
 
+(in-package :petalisp)
+
 (define-condition petalisp-error
     (error)
   ())
 
-(define-condition broadcast-error
+(define-condition generic-petalisp-error
     (petalisp-error)
-  ((%ranges :initarg :ranges :reader ranges))
+  ((%stuff :initarg :stuff :reader stuff))
   (:report
    (lambda (condition stream)
      (format stream
-             "Incompatible ranges:~%~s"
-             (ranges condition)))))
-
-(define-condition unable-to-replicate
-    (petalisp-error)
-  ((%object :initarg :object :reader object)
-   (%index-space :initarg :index-space :reader index-space))
-  (:report
-   (lambda (condition stream)
-     (format stream
-             "Cannot replicate ~s to shape ~s."
-             (object condition)
-             (index-space condition)))))
+             "Something went wrong, but the author has not yet documented
+this error condition. The offending objects are: ~s"
+             (stuff condition)))))

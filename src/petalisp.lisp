@@ -19,6 +19,8 @@
 
 (defgeneric generic-fuse (object &rest more-objects))
 
+(defgeneric generic-index-space (object))
+
 (defgeneric generic-input (object-or-symbol &rest arguments))
 
 (defgeneric generic-intersect (object-1 object-2))
@@ -70,6 +72,10 @@
       key-value pairs of all given objects. Signals an error if multiple
       objects contain the same key, or if the union can not be suitably
       represented by any Petalisp datastructure.")
+
+(setf (documentation #'generic-index-space 'function)
+      "Returns an instance of INPUT with the same shape as OBJECT, where
+      each key maps to itself.")
 
 (setf (documentation #'generic-input 'function)
       "Returns an instance of INPUT by dispatching on OBJECT-OR-SYMBOL,
@@ -147,11 +153,20 @@
   (declare (ignore arguments))
   object)
 
+(defun index-space (object)
+  (generic-input 'index-space object))
+
 (defun α (operator object &rest more-objects)
-  (let ((arguments (list* object more-objects)))
-    (once-only (operator arguments)
-      `(apply #'generic-apply ,operator
-              (mapcar #'make-input ,arguments)))))
+  (let* ((objects
+           (mapcar #'generic-input (list* object more-objects)))
+         (index-space
+           (reduce #'generic-broadcast objects))
+         (objects
+           (mapcar
+            (lambda (object)
+              (generic-repeat object index-space))
+            objects)))
+    (apply #'generic-apply operator objects)))
 
 (defun β (operator object)
   (generic-reduce operator object))
