@@ -16,11 +16,6 @@
 
 (defvar *operator-database* (make-hash-table :test #'eq))
 
-(defstruct operator
-  (names nil :type list)
-  (arity 0 :type integer)
-  (signatures nil :type list))
-
 (defun result-type (operator &rest types)
   "Returns the type of the result of applying OPERATOR to any arguments of
   types TYPES."
