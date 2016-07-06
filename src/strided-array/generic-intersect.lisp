@@ -11,8 +11,8 @@
        'strided-array-index-space
        :ranges
        (mapcar #'generic-intersect
-               (ranges index-space-1)
-               (ranges index-space-2))))))
+               (ranges space-1)
+               (ranges space-2))))))
 
 (defmethod generic-intersect ((range-1 range)
                               (range-2 range))

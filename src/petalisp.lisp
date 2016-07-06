@@ -132,7 +132,8 @@
   ((%key-type :initarg :key-type :reader key-type)
    (%value-type :initarg :value-type :reader value-type)))
 
-(defclass operator () ())
+(defclass operator ()
+  ((%arity :initarg :arity :reader arity)))
 
 (defclass input (mapping) ())
 
@@ -165,7 +166,8 @@
            (mapcar
             (lambda (object)
               (generic-repeat object index-space))
-            objects)))
+            objects))
+         (operator (find-operator operator)))
     (apply #'generic-apply operator objects)))
 
 (defun β (operator object)

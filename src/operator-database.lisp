@@ -23,3 +23,5 @@
   (let ((op (gethash operator *operator-database*)))
     ;; TODO
     op))
+
+(defun find-operator (operator) 'foo)

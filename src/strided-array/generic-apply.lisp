@@ -4,17 +4,16 @@
 
 (defclass strided-array-application (strided-array application) ())
 
-(defmethod generic-apply ((operator function) (object strided-array)
+(defmethod generic-apply ((operator operator) (object strided-array)
                           &rest more-objects)
   (let ((objects (list* object more-objects)))
     (let ((element-type
             (apply #'result-type operator
                    (mapcar #'value-type objects)))
-          (index-space
-            (generic-index-space (first objects))))
+          (ranges (ranges (first objects))))
       (make-instance
        'strided-array-application
        :operator operator
        :objects objects
-       :index-space index-space
+       :ranges ranges
        :element-type element-type))))

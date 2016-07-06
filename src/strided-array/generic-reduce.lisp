@@ -4,11 +4,8 @@
 
 (defclass strided-array-reduction (strided-array reduction) ())
 
-(defmethod generic-reduce ((operator function)
-                           (object strided-array))
-  (let ((result-space
-          (index-space-drop-last-dimension
-           (index-space argument)))
+(defmethod generic-reduce ((operator operator) (object strided-array))
+  (let ((ranges (nreverse (cdr (reverse (ranges object)))))
         (element-type (element-type argument)))
     (assert (petalisp-subtypep
              (result-type operator element-type element-type)
@@ -16,6 +13,6 @@
     (make-instance
      'strided-array-reduction
      :operator operator
-     :argument argument
-     :index-space result-space
+     :object object
+     :ranges ranges
      :element-type element-type)))

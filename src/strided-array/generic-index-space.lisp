@@ -8,5 +8,4 @@
 (defmethod generic-index-space ((object strided-array))
   (make-instance
    'strided-array-index-space
-   :ranges (ranges object)
-   :value-type 'list))
+   :ranges (ranges object)))

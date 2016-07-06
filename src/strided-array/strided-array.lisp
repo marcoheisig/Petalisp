@@ -5,12 +5,15 @@
 
 (in-package :petalisp)
 
+(deftype strided-array-ranges () 'list)
+
 (defclass strided-array (mapping)
-  ((%ranges :initarg :ranges :reader ranges)))
+  ((%ranges :initarg :ranges :reader ranges)
+   (%key-type :initform 'strided-array-index :allocation :class)))
 
 (defclass strided-array-index-space
     (strided-array index-space)
-  ())
+  ((%value-type :initform 'strided-array-index :allocation :class)))
 
 (defclass strided-array-constant
     (strided-array constant)
@@ -45,20 +48,8 @@
     (when (> start end) (rotatef start end))
     (%make-range start step end)))
 
-(defun range-elements (range)
-  (1+ (the integer (/ (- (range-end range)
-                         (range-start range))
-                      (range-step range)))))
-
 (defun unary-range-p (range)
   (= (range-start range) (range-end range)))
-
-(defmethod generic-equalp ((object-1 strided-array-index-space)
-                           (object-2 strided-array-index-space))
-  (and (= (dimension object-1) (dimension object-2))
-       (every #'equalp
-              (ranges object-1)
-              (ranges object-2))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -74,17 +65,3 @@
             (if (atom spec)
                 `(range ,spec)
                 `(range ,@spec)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; strided array input objects
-
-(defclass strided-array-constant (lisp-input) ()
-  (:documentation
-   "A Petalisp object that returns the same value for all indices."))
-
-(defmethod generic-input ((object t) &rest arguments)
-  (declare (ignore arguments))
-  (make-instance
-   'strided-array-constant
-   :lisp-object object))

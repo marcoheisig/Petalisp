@@ -10,11 +10,11 @@
   ((:module "src"
     :components
     ((:file "package")
-     (:file "error-handling")
      (:file "petalisp")
+     (:file "error-handling" :depends-on ("petalisp"))
      (:file "operator-database" :depends-on ("error-handling"))
      (:file "graphviz" :depends-on ("petalisp"))
-     (:module "strided-array" :depends-on ("petalisp" "error-handling")
+     (:module "strided-array" :depends-on ("petalisp")
       :components
       ((:file "strided-array")
        (:file "generic-apply" :depends-on ("strided-array"))
