@@ -9,4 +9,4 @@
              (list (range-start range)
                    (range-step range)
                    (range-end range)))
-           (reverse (reverse-ranges object)))))
+           (ranges object))))

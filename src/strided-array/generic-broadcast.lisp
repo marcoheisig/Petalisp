@@ -15,16 +15,19 @@
      'strided-array-index-space
      :ranges
      (append
-      (mapcar #'range-broadcast ranges-1 ranges-2)
+      (mapcar #'generic-broadcast ranges-1 ranges-2)
       (nthcdr
        (min dim-1 dim-2)
        (if (< dim-1 dim-2) ranges-2 ranges-1))))))
 
 (defmethod generic-broadcast ((range-1 range) (range-2 range))
-  (let ((u1 (unary-range-p range-1))
-        (u2 (unary-range-p range-2)))
-    (cond ((and u1 u2 (range= range-1 range-2)) range-1)
-          ((and u1 (not u2)) range-2)
-          ((and (not u1) u2) range-1)
-          (t (error 'broadcast-error
-                    :ranges (list range-1 range-2))))))
+  (flet ((unary-range-p (range)
+           (= (range-start range)
+              (range-end range))))
+    (let ((u1 (unary-range-p range-1))
+          (u2 (unary-range-p range-2)))
+      (cond ((and u1 u2 (equalp range-1 range-2)) range-1)
+            ((and u1 (not u2)) range-2)
+            ((and (not u1) u2) range-1)
+            (t (error 'broadcast-error
+                      :ranges (list range-1 range-2)))))))

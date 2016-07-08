@@ -3,9 +3,9 @@
 (in-package :petalisp)
 
 (defmethod generic-size ((object strided-array))
-  (apply #'* (mapcar #'generic-size (ranges object))))
+  (reduce #'* (mapcar #'generic-size (ranges object))))
 
-(defmethod generic-size ((object range))
+(defmethod generic-size ((range range))
   (1+ (the integer (/ (- (range-end range)
                          (range-start range))
                       (range-step range)))))

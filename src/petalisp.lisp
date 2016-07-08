@@ -82,7 +82,9 @@
       with further customization according to ARGUMENTS.")
 
 (setf (documentation #'generic-intersect 'function)
-      "TODO")
+      "Returns an instance of INDEX-SPACE containing all keys that are both
+      in OBJECT-1 and OBJECT-2. Returns false if OBJECT-1 and OBJECT-2 have
+      no common keys.")
 
 (setf (documentation #'generic-invert 'function)
       "Returns the inverse function of TRANSFORMATION, such that the
@@ -141,10 +143,30 @@
   (:documentation
    "A Petalisp object that where each value equals its key."))
 
-(defclass lisp-input (input)
-  ((%lisp-object :initarg :lisp-object :reader lisp-object))
+(defclass constant (input)
+  ((%object :initarg :object :reader object))
   (:documentation
    "A Petalisp object that is constructed from a given lisp constant."))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; basic error checking for the core functions
+
+;;; TODO typechecking of operators and transformations
+
+(defmethod generic-apply :before ((operator operator) (object mapping)
+                                  &rest more-objects)
+  (assert (= (arity operator) (1+ (length more-objects))))
+  (assert (not (find (generic-index-space object)
+                     (mapcar #'generic-index-space more-objects)
+                     :test (complement #'generic-equalp)))))
+
+(defmethod generic-reduce :before ((operator operator) (object mapping))
+  (assert (< 1 (generic-dimension object))))
+
+(defmethod generic-select ((object mapping) (space mapping))
+  (assert (generic-equalp (generic-index-space space)
+                          (generic-intersect object space))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -192,5 +214,5 @@
   (generic-dimension object))
 
 (defun broadcast (object &rest more-objects)
-  (reduce #'generic-broadcast objects
+  (reduce #'generic-broadcast more-objects
           :initial-value object))
