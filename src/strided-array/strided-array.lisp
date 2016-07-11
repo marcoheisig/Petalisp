@@ -1,27 +1,24 @@
 ;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; The class of strided arrays
 
 (in-package :petalisp)
 
-(deftype strided-array-ranges () 'list)
+(deftype strided-array-index () 'list)
 
-(defclass strided-array (mapping)
+(defclass strided-array (total-function)
   ((%ranges :initarg :ranges :reader ranges)
-   (%key-type :initform 'strided-array-index :allocation :class)))
+   (%domain-type :initform 'strided-array-index :allocation :class)))
 
 (defclass strided-array-index-space
     (strided-array index-space)
-  ((%value-type :initform 'strided-array-index :allocation :class)))
+  ((%codomain-type :initform 'strided-array-index :allocation :class)))
 
 (defclass strided-array-constant
     (strided-array constant)
   ())
 
-(defclass strided-array-lisp-input
-    (strided-array lisp-input)
-  ())
+(defclass strided-array-index-space-transformation
+    (strided-array affine-index-space-transformation)
+  ((%codomain-type :initform 'strided-array-index :allocation :class)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

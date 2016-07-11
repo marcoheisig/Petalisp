@@ -8,4 +8,3 @@ Petalisp aims to be small and simple. If you are curious, the following snippet 
 #+BEGIN_SRC sh
 find . -path './.git' -prune -o -print | egrep '\.asd|\.lisp' | xargs cat | sed '/^\s*$/d' | wc -l
 #+END_SRC
-

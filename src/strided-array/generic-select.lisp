@@ -10,4 +10,4 @@
    'strided-array-selection
    :object object
    :ranges (ranges space)
-   :element-type (value-type object)))
+   :element-type (codomain-type object)))

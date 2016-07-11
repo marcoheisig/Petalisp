@@ -6,15 +6,18 @@
 
 (defmethod generic-fuse ((object strided-array) &rest more-objects)
   (let ((objects (list* object more-objects))
-        (value-type (value-type object)))
+        (codomain-type (codomain-type object))
+        (dimension (generic-dimension object)))
+    ;; two objects qualify for fusion in one dimension if they have shared
+    ;; elements in all but this dimension
+    (map-combinations #'compute-coincidences objects :length 2 :copy nil)
     ;; compute overlaps
     ;; compute coinciding ranges per dimension
-    ;; merge
-    ;; repeat
+    (loop for d below dimension do
+      (apply #'generic-fuse (aref coinciding-ranges d)))
     (make-instance
      'strided-array-fusion
      :objects objects
-     :value-type value-type
      :ranges ranges)))
 
 (defmethod generic-fuse ((range range) &rest more-ranges)
@@ -30,8 +33,8 @@
                                          number-of-elements)))
                       (return (range start step end))))))
     (assert (every
-               (lambda (range)
-                 (equalp range
-                         (generic-intersect range fusion)))
-               ranges))
+             (lambda (range)
+               (equalp range
+                       (generic-intersect range fusion)))
+             ranges))
     fusion))

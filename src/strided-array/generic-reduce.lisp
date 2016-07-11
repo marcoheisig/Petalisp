@@ -4,9 +4,9 @@
 
 (defclass strided-array-reduction (strided-array reduction) ())
 
-(defmethod generic-reduce ((operator operator) (object strided-array))
+(defmethod generic-reduce ((operator total-function) (object strided-array))
   (let ((ranges (nreverse (cdr (reverse (ranges object)))))
-        (element-type (element-type argument)))
+        (codomain-type (codomain-type argument)))
     (assert (petalisp-subtypep
              (result-type operator element-type element-type)
              element-type))
@@ -15,4 +15,4 @@
      :operator operator
      :object object
      :ranges ranges
-     :element-type element-type)))
+     :codomain-type element-type)))

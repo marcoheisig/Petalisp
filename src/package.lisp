@@ -3,5 +3,6 @@
 (in-package :cl-user)
 
 (defpackage :petalisp
-  (:use #:cl :optima :alexandria)
-  (:export petalisp))
+  (:use :cl :optima :alexandria)
+  (:export
+   α β repeat select transform fuse size dimension index-space))

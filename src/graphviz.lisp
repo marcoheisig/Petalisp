@@ -1,7 +1,4 @@
 ;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Serialize a graph in the graphviz dot format
 
 (in-package :petalisp)
 

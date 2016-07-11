@@ -14,8 +14,7 @@
                (ranges space-1)
                (ranges space-2))))))
 
-(defmethod generic-intersect ((range-1 range)
-                              (range-2 range))
+(defmethod generic-intersect ((range-1 range) (range-2 range))
   (let ((start-1 (range-start range-1))
         (start-2 (range-start range-2))
         (step-1 (range-step range-1))
@@ -37,7 +36,7 @@
           (range smallest lcm biggest))))))
 
 (defun kuṭṭaka (d1 d2 c)
-  "Returns A, B and GCD(d1,d2) such that A * d1 - B * d2 = c. Returns NIL
+  "Returns A, B and GCD(d1,d2) such that A * d1 - B * d2 = c. Returns false
 if no solution exists."
   (declare (integer d1 d2 c))
   ;; The first part is just Euclids algorithm to determine the GCD, where

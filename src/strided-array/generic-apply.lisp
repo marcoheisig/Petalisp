@@ -4,12 +4,12 @@
 
 (defclass strided-array-application (strided-array application) ())
 
-(defmethod generic-apply ((operator operator) (object strided-array)
+(defmethod generic-apply ((operator total-function) (object strided-array)
                           &rest more-objects)
   (let ((objects (list* object more-objects)))
     (let ((element-type
             (apply #'result-type operator
-                   (mapcar #'value-type objects)))
+                   (mapcar #'codomain-type objects)))
           (ranges (ranges (first objects))))
       (make-instance
        'strided-array-application

@@ -1,7 +1,4 @@
 ;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Store and retrieve information on operators
 
 (in-package :petalisp)
 
@@ -25,3 +22,7 @@
     op))
 
 (defun find-operator (operator) 'foo)
+
+;; (define-operator + u64 u64 u64)
+
+
