@@ -31,10 +31,19 @@
 (defun select (object space)
   (generic-select object space))
 
+(defun %+ (transformation &rest numbers))
+
+;;; Example:
+;;;    (reshape A (m n) (n (* (+ m b) 8)))
+;;; -> (let ((t (make-instance 'affine-index-space-transformation
+;;;               :scaling '(1 1) :translation '(0 0) :permutation '(1 0))))
+;;;       (%* 1 (%+ 1 t b) 8))
+
 (defmacro reshape (object indices transformation)
+  (assert (every #'symbolp indices))
   ;; determine permutation
   ;; determine affine transformation
-  `(generic-transform object transformation))
+  `(generic-transform ,object ,transformation))
 
 (defun transform (object transformation)
   (generic-transform object transformation))

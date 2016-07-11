@@ -2,7 +2,7 @@
 
 (in-package :petalisp)
 
-(defmethod generic-invert ((mapping strided-array-index-space-transformation))
+(defmethod generic-invert ((mapping affine-index-space-transformation))
   ;; reverse permutation
   ;; reverse ranges
   ;; reverse scaling

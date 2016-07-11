@@ -16,12 +16,20 @@
 (defun result-type (operator &rest types)
   "Returns the type of the result of applying OPERATOR to any arguments of
   types TYPES."
-  (assert (functionp operator))
-  (let ((op (gethash operator *operator-database*)))
     ;; TODO
-    op))
+  nil)
 
-(defun find-operator (operator) 'foo)
+(defclass unary-function (total-function) ())
+
+(defclass binary-function (total-function) ())
+
+(defmethod generic-dimension ((object unary-function)) 1)
+
+(defmethod generic-dimension ((object binary-function)) 2)
+
+(defun find-operator (operator)
+  (make-instance
+   'binary-function))
 
 ;; (define-operator + u64 u64 u64)
 

@@ -7,7 +7,7 @@
   :license "GPLv3"
   :depends-on (:optima)
   :components
-  ((:module "src"
+  ((:module "code"
     :components
     ((:file "package")
      (:file "functions" :depends-on ("package"))
@@ -23,6 +23,7 @@
        (:file "generic-broadcast" :depends-on ("strided-array"))
        (:file "generic-dimension" :depends-on ("strided-array"))
        (:file "generic-equalp" :depends-on ("strided-array"))
+       (:file "generic-index-space" :depends-on ("strided-array"))
        (:file "generic-fuse" :depends-on ("strided-array"))
        (:file "generic-intersect" :depends-on ("strided-array"))
        (:file "generic-invert" :depends-on ("strided-array"))

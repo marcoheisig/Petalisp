@@ -16,10 +16,6 @@
     (strided-array constant)
   ())
 
-(defclass strided-array-index-space-transformation
-    (strided-array affine-index-space-transformation)
-  ((%codomain-type :initform 'strided-array-index :allocation :class)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Working with ranges
