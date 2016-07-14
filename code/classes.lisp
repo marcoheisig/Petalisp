@@ -24,8 +24,7 @@
   ((%object :initarg :object :reader object)))
 
 (defclass transformation (total-function)
-  ((%object :initarg :object :reader object)
-   (%transformation :initarg :transformation :reader transformation)))
+  ((%object :initarg :object :reader object)))
 
 (defclass source (total-function) ()
   (:documentation
@@ -40,11 +39,8 @@
    "A total function that maps every element of the domain of another total
    function to itself."))
 
-(defclass index-space-transformation (total-function) ()
-  (:documentation
-   "A total function that represents an isomorphism between two index spaces."))
+(defclass affine-transformation (transformation) ())
 
-(defclass affine-index-space-transformation (index-space-transformation)
-  ((%scaling :initarg :scaling :reader scaling)
-   (%translation :initarg :translation :reader scaling)
-   (%permutation :initarg :permutation :reader permutation)))
+(defclass permutation (transformation) ())
+
+(defclass affine-permutation (affine-transformation permutation) ())

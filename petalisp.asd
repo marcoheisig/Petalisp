@@ -5,17 +5,16 @@
   :author "Marco Heisig <marco.heisig@fau.de>"
   :version "0.1"
   :license "GPLv3"
-  :depends-on (:optima)
+  :depends-on (:alexandria :optima)
   :components
   ((:module "code"
     :components
     ((:file "package")
-     (:file "functions" :depends-on ("package"))
-     (:file "types" :depends-on ("package"))
      (:file "classes" :depends-on ("package"))
+     (:file "types" :depends-on ("package"))
+     (:file "functions" :depends-on ("classes"))
      (:file "petalisp" :depends-on ("functions"))
      (:file "graphviz" :depends-on ("classes"))
-     (:file "errors" :depends-on ("functions" "classes"))
      (:module "strided-array" :depends-on ("classes" "functions")
       :components
       ((:file "strided-array")

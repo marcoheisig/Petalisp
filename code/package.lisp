@@ -5,4 +5,11 @@
 (defpackage :petalisp
   (:use :cl :optima :alexandria)
   (:export
-   α β repeat select transform fuse size dimension index-space))
+   #:α
+   #:β
+   #:repeat
+   #:select
+   #:transform
+   #:fuse
+   #:size
+   #:dimension))

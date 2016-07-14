@@ -30,7 +30,10 @@
 
 (defgeneric generic-target (object target-or-symbol &rest arguments))
 
-(defgeneric generic-transform (object transformation))
+(defgeneric generic-transform (object &key scaling translation permutation
+                               &allow-other-keys))
+
+(defgeneric magic-symbol-value (symbol space dimension))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -106,3 +109,29 @@
 (setf (documentation #'generic-transform 'function)
       "Returns an instance of TOTAL-FUNCTION that maps each X to the value
       of OBJECT of TRANSFORMATION of X.")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; default behavior
+
+(defmethod generic-apply :before ((operator total-function) (object total-function)
+                                  &rest more-objects)
+  (assert (= (generic-dimension operator) (1+ (length more-objects))))
+  (assert (not (find (generic-index-space object)
+                     (mapcar #'generic-index-space more-objects)
+                     :test (complement #'generic-equalp)))))
+
+(defmethod generic-reduce :before ((operator total-function) (object total-function))
+  (assert (< 1 (generic-dimension object))))
+
+(defmethod generic-select ((object total-function) (space total-function))
+  (assert (generic-equalp (generic-index-space space)
+                          (generic-intersect object space))))
+
+(defmethod generic-source ((object source) &rest arguments)
+  (declare (ignore arguments))
+  object)
+
+(defmethod generic-fuse ((object total-function) &rest more-objects)
+  (assert (apply #'= (mapcar #'generic-dimension
+                             (list* object more-objects)))))

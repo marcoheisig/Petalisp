@@ -6,24 +6,21 @@
 
 (defclass strided-array (total-function)
   ((%ranges :initarg :ranges :reader ranges)
-   (%domain-type :initform 'strided-array-index :allocation :class)))
+   (%domain-type :initform 'strided-array-index :allocation :class)
+   (%index-space :initarg :index-space)))
 
 (defclass strided-array-index-space
     (strided-array index-space)
   ((%codomain-type :initform 'strided-array-index :allocation :class)))
-
-(defclass strided-array-constant
-    (strided-array constant)
-  ())
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Working with ranges
 
 (defstruct (range (:constructor %make-range (start step end)))
-  (start 0 :type fixnum :read-only t)
-  (step 1 :type fixnum :read-only t)
-  (end 0 :type fixnum :read-only t))
+  (start 0 :type integer :read-only t)
+  (step 1 :type integer :read-only t)
+  (end 0 :type integer :read-only t))
 
 (defun range (&rest spec)
   (multiple-value-bind (start step end)
@@ -41,3 +38,20 @@
     ;; ensure START is bigger than END
     (when (> start end) (rotatef start end))
     (%make-range start step end)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Add magic keywords to the Lisp API
+
+(dolist (sym '(start step end)) (pushnew sym *magic-symbols*))
+
+(defmethod magic-symbol-value ((symbol symbol)
+                               (space strided-array)
+                               (dimension integer))
+  (cond
+    ((string= symbol 'start)
+     (range-start (nth dimension (ranges space))))
+    ((string= symbol 'step)
+     (range-step (nth dimension (ranges space))))
+    ((string= symbol 'end)
+     (range-end (nth dimension (ranges space))))))
