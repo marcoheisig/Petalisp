@@ -4,12 +4,10 @@
 
 (defpackage :petalisp
   (:use :cl :optima :alexandria)
+  (:shadow #:intersection)
   (:export
    #:α
    #:β
    #:repeat
    #:select
-   #:transform
-   #:fuse
-   #:size
-   #:dimension))
+   #:fuse))

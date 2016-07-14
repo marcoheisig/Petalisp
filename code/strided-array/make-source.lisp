@@ -14,29 +14,16 @@
     (strided-array-source)
   ((%object :initarg :object :reader object)))
 
-(defmethod generic-source ((object t) &rest arguments)
+(defmethod make-source ((object t) &rest arguments)
   (let ((ranges (when arguments (ranges (first arguments)))))
     (make-instance
      'strided-array-from-lisp-scalar
      :object object
      :ranges ranges)))
 
-(defmethod generic-source ((object array) &rest arguments)
+(defmethod make-source ((object array) &rest arguments)
   (assert (null arguments))
   (make-instance
    'strided-array-from-lisp-array
    :object object
    :ranges ())) ;; TODO
-
-(defun |#i-reader| (stream subchar arg)
-  (declare (ignore subchar arg))
-  `(make-instance
-    'strided-array-index-space
-    :ranges
-    (list ,@(loop for spec in (read stream t nil t)
-                  collect
-                  (if (atom spec)
-                      `(range ,spec)
-                      `(range ,@spec))))))
-
- (set-dispatch-macro-character #\# #\i #'|#i-reader|)

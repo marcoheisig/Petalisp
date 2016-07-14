@@ -4,7 +4,7 @@
 
 (defclass strided-array-fusion (strided-array fusion) ())
 
-(defmethod generic-fuse ((object strided-array) &rest more-objects)
+(defmethod make-fusion ((object strided-array) &rest more-objects)
   (let ((objects (list* object more-objects))
         (codomain-type (codomain-type object))
         (dimension (generic-dimension object)))
@@ -14,13 +14,13 @@
     ;; compute overlaps
     ;; compute coinciding ranges per dimension
     (loop for d below dimension do
-      (apply #'generic-fuse (aref coinciding-ranges d)))
+      (apply #'make-fusion (aref coinciding-ranges d)))
     (make-instance
      'strided-array-fusion
      :objects objects
      :ranges ranges)))
 
-(defmethod generic-fuse ((range range) &rest more-ranges)
+(defmethod make-fusion ((range range) &rest more-ranges)
   ;; note that this method assumes that the ranges are disjoint
   (let* ((ranges (list* range more-ranges))
          (fusion

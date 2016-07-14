@@ -39,8 +39,10 @@
    "A total function that maps every element of the domain of another total
    function to itself."))
 
-(defclass affine-transformation (transformation) ())
+(defclass affine-transformation (transformation)
+  ((%coefficients :initarg :coefficients :reader coefficients)))
 
-(defclass permutation (transformation) ())
+(defclass permutation (transformation)
+  ((%permutation :initarg :permutation :reader permutation)))
 
 (defclass affine-permutation (affine-transformation permutation) ())

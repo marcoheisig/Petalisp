@@ -4,8 +4,8 @@
 
 (defclass strided-array-application (strided-array application) ())
 
-(defmethod generic-apply ((operator total-function) (object strided-array)
-                          &rest more-objects)
+(defmethod make-application ((operator total-function) (object strided-array)
+                             &rest more-objects)
   (let ((objects (list* object more-objects)))
     (let ((ranges (ranges (first objects))))
       (make-instance

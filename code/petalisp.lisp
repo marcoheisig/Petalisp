@@ -4,25 +4,22 @@
 
 (defun α (operator object &rest more-objects)
   (let* ((objects
-           (mapcar #'generic-source (list* object more-objects)))
+           (mapcar #'make-source (list* object more-objects)))
          (index-space
-           (reduce #'generic-broadcast objects))
+           (reduce #'broadcast objects))
          (objects
            (mapcar
             (lambda (object)
-              (generic-repeat object index-space))
+              (make-repetition object index-space))
             objects))
          (operator (find-operator operator)))
-    (apply #'generic-apply operator objects)))
+    (apply #'make-application operator objects)))
 
 (defun β (operator object)
-  (generic-reduce operator object))
-
-(defun repeat (object space)
-  (generic-repeat object space))
+  (make-reduction operator object))
 
 (defun select (object space)
-  (generic-select object space))
+  (make-selection object space))
 
 (defmacro reshape (object from to)
   (assert (every #'symbolp symbols))
@@ -31,20 +28,11 @@
   ;; determine affine transformation
   (once-only (object)
     `(with-space ,object
-       (generic-transform ,object (expand-transformation ,from ,to)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; fuse
+       (make-transformation
+        ,object (expand-transformation ,from ,to)))))
 
 (defun fuse (object &rest more-objects)
-  (apply #'generic-fuse object more-objects))
-
-(defun size (object)
-  (generic-size object))
-
-(defun dimension (object)
-  (generic-dimension object))
+  (apply #'make-fusion object more-objects))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

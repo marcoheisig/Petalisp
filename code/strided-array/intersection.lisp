@@ -2,19 +2,19 @@
 
 (in-package :petalisp)
 
-(defmethod generic-intersect ((space-1 strided-array-index-space)
-                              (space-2 strided-array-index-space))
+(defmethod intersection ((space-1 strided-array-index-space)
+                         (space-2 strided-array-index-space))
   (when (= (dimension space-1)
            (dimension space-2))
     (catch 'no-intersection
       (make-instance
        'strided-array-index-space
        :ranges
-       (mapcar #'generic-intersect
+       (mapcar #'intersection
                (ranges space-1)
                (ranges space-2))))))
 
-(defmethod generic-intersect ((range-1 range) (range-2 range))
+(defmethod intersection ((range-1 range) (range-2 range))
   (let ((start-1 (range-start range-1))
         (start-2 (range-start range-2))
         (step-1 (range-step range-1))
@@ -45,10 +45,10 @@ if no solution exists."
          (gcd
            (loop with u of-type integer = (abs d1)
                  and  v of-type integer = (abs d2) do
-             (when (= v 0) (return u))
-             (multiple-value-bind (quot rem) (floor u v)
-               (push quot quotients)
-               (psetf v rem u v)))))
+                   (when (= v 0) (return u))
+                   (multiple-value-bind (quot rem) (floor u v)
+                     (push quot quotients)
+                     (psetf v rem u v)))))
     ;; If C cannot be divided by GCD, there is no solution
     (let ((c (/ c gcd)))
       (unless (integerp c) (return-from kuṭṭaka nil))
