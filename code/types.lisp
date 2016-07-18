@@ -16,7 +16,7 @@
 (defun result-type (operator &rest types)
   "Returns the type of the result of applying OPERATOR to any arguments of
   types TYPES."
-    ;; TODO
+  ;; TODO
   nil)
 
 (defclass unary-function (total-function) ())

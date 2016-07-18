@@ -2,14 +2,14 @@
 
 (in-package :petalisp)
 
-(defclass strided-array-repetition (strided-array repetition) ())
+(define-class strided-array-repetition (strided-array repetition) ())
 
 (defmethod repetition ((object strided-array)
-                            (space strided-array))
+                       (space strided-array))
   (repetition object (index-space space)))
 
 (defmethod repetition ((object strided-array)
-                            (space strided-array-index-space))
+                       (space strided-array-index-space))
   (unless (every #'zerop (mapcar #'rem (ranges object) (ranges space)))
     (error "Unable to repeat ~s to ~s." object space))
   (make-instance

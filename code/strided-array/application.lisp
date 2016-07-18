@@ -2,10 +2,10 @@
 
 (in-package :petalisp)
 
-(defclass strided-array-application (strided-array application) ())
+(define-class strided-array-application (strided-array application) ())
 
 (defmethod application ((operator total-function) (object strided-array)
-                             &rest more-objects)
+                        &rest more-objects)
   (let ((objects (list* object more-objects)))
     (let ((ranges (ranges (first objects))))
       (make-instance

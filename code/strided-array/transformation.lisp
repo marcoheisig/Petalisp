@@ -2,12 +2,10 @@
 
 (in-package :petalisp)
 
-(defclass strided-array-affine-permutation (strided-array affine-permutation)
-  ((%coefficients :initarg :coefficients :reader coefficients)))
+(define-class strided-array-affine-permutation (strided-array affine-permutation) ())
 
 (defmethod transformation ((object strided-array)
-                                &key scale translate permute)
+                           &key scale translate permute)
   (make-instance
    'strided-array-transformation
-   :object object
-   :coefficients ()))
+   :object object))

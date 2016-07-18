@@ -3,7 +3,7 @@
 (in-package :petalisp)
 
 (defmethod broadcast-space ((space-1 strided-array)
-                      (space-2 strided-array))
+                            (space-2 strided-array))
   (when (< (dimension space-1)
            (dimension space-2))
     (rotatef space-1 space-2))

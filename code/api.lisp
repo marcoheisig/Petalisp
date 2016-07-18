@@ -64,9 +64,9 @@
                (magic-symbol-value ',symbol ,spacesym ,dimsym)))
            *magic-symbols*)))
     `(symbol-macrolet ,macrobindings
-      ,@(loop for form in forms
-              and i from 0 collect
-              `(with-dimension ,i ,form)))))
+       ,@(loop for form in forms
+               and i from 0 collect
+               `(with-dimension ,i ,form)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

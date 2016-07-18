@@ -2,10 +2,10 @@
 
 (in-package :petalisp)
 
-(defclass strided-array-selection (strided-array selection) ())
+(define-class strided-array-selection (strided-array selection) ())
 
 (defmethod selection ((object strided-array)
-                           (space strided-array-index-space))
+                      (space strided-array-index-space))
   (make-instance
    'strided-array-selection
    :object object

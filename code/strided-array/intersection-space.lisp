@@ -3,7 +3,7 @@
 (in-package :petalisp)
 
 (defmethod intersection-space ((space-1 strided-array-index-space)
-                         (space-2 strided-array-index-space))
+                               (space-2 strided-array-index-space))
   (when (= (dimension space-1)
            (dimension space-2))
     (catch 'no-intersection

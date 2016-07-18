@@ -2,17 +2,11 @@
 
 (in-package :petalisp)
 
-(defclass strided-array-source (strided-array source) ()
-  (:documentation
-   "A Petalisp object that returns the same value for all indices."))
+(define-class strided-array-source (strided-array source) ())
 
-(defclass strided-array-from-lisp-array
-    (strided-array-source)
-  ((%lisp-array :initarg :lisp-array :reader lisp-array)))
+(define-class strided-array-from-lisp-array (strided-array-source) (lisp-array))
 
-(defclass strided-array-from-lisp-scalar
-    (strided-array-source)
-  ((%object :initarg :object :reader object)))
+(define-class strided-array-from-lisp-scalar (strided-array-source) (object))
 
 (defmethod source ((object t) &rest arguments)
   (let ((ranges (when arguments (ranges (first arguments)))))

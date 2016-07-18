@@ -4,14 +4,9 @@
 
 (deftype strided-array-index () 'list)
 
-(defclass strided-array (total-function)
-  ((%ranges :initarg :ranges :reader ranges)
-   (%domain-type :initform 'strided-array-index :allocation :class)
-   (%index-space :initarg :index-space :reader index-space)))
+(define-class strided-array (total-function) (ranges index-space))
 
-(defclass strided-array-index-space
-    (strided-array index-space)
-  ((%codomain-type :initform 'strided-array-index :allocation :class)))
+(define-class strided-array-index-space (strided-array index-space) ())
 
 (defmethod dimension ((object strided-array))
   (length (ranges object)))
@@ -28,14 +23,12 @@
 
 (defmethod initialize-instance :after ((object strided-array)
                                        &key &allow-other-keys)
-  (setf (slot-value object 'index-space)
-        (make-instance
-         'strided-array-index-space
-         :ranges (ranges object))))
-
-(defmethod initialize-instance :after ((object strided-array-index-space)
-                                       &key &allow-other-keys)
-  (setf (slot-value object 'index-space) object))
+  (if (typep object 'strided-array-index-space)
+      (setf (slot-value object 'index-space) object)
+      (setf (slot-value object 'index-space)
+            (make-instance
+             'strided-array-index-space
+             :ranges (ranges object)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -63,6 +56,11 @@
     (when (> start end) (rotatef start end))
     (%make-range start step end)))
 
+(defmethod size ((range range))
+  (1+ (the integer (/ (- (range-end range)
+                         (range-start range))
+                      (range-step range)))))
+
 (defun |#i-reader| (stream subchar arg)
   (declare (ignore subchar arg))
   `(make-instance
@@ -76,22 +74,6 @@
 
 (set-dispatch-macro-character #\# #\i #'|#i-reader|)
 
-(defmethod size ((range range))
-  (1+ (the integer (/ (- (range-end range)
-                         (range-start range))
-                      (range-step range)))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Add magic keywords to the Lisp API
-
-(dolist (sym '(start step end)) (pushnew sym *magic-symbols*))
-
-(defmethod query ((symbol symbol) &key space dimension)
-  (cond
-    ((string= symbol 'start)
-     (range-start (nth dimension (ranges space))))
-    ((string= symbol 'step)
-     (range-step (nth dimension (ranges space))))
-    ((string= symbol 'end)
-     (range-end (nth dimension (ranges space))))))

@@ -2,7 +2,7 @@
 
 (in-package :petalisp)
 
-(defclass strided-array-fusion (strided-array fusion) ())
+(define-class strided-array-fusion (strided-array fusion) ())
 
 (defmethod fusion ((object strided-array) &rest more-objects)
   (let ((objects (list* object more-objects))

@@ -7,7 +7,7 @@
 (define-class node (total-function) ())
 
 (defmacro define-node (name lambda-list &optional (slots () slots-p))
-  (let ((slots (or (and slots-p slots)
+  (let ((slots (if slots-p slots
                    (remove-if
                     (lambda (x) (member x lambda-list-keywords))
                     lambda-list))))
