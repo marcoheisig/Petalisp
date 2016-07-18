@@ -23,9 +23,9 @@
 
 (defclass binary-function (total-function) ())
 
-(defmethod generic-dimension ((object unary-function)) 1)
+(defmethod dimension ((object unary-function)) 1)
 
-(defmethod generic-dimension ((object binary-function)) 2)
+(defmethod dimension ((object binary-function)) 2)
 
 (defun find-operator (operator)
   (make-instance

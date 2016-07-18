@@ -4,11 +4,11 @@
 
 (defclass strided-array-repetition (strided-array repetition) ())
 
-(defmethod make-repetition ((object strided-array)
+(defmethod repetition ((object strided-array)
                             (space strided-array))
-  (make-repetition object (generic-index-space space)))
+  (repetition object (index-space space)))
 
-(defmethod make-repetition ((object strided-array)
+(defmethod repetition ((object strided-array)
                             (space strided-array-index-space))
   (unless (every #'zerop (mapcar #'rem (ranges object) (ranges space)))
     (error "Unable to repeat ~s to ~s." object space))

@@ -19,7 +19,7 @@
 (defmethod size ((object strided-array))
   (reduce #'* (mapcar #'size (ranges object))))
 
-(defmethod equal? ((object-1 strided-array-index-space)
+(defmethod equalp ((object-1 strided-array-index-space)
                    (object-2 strided-array-index-space))
   (and (= (dimension object-1) (dimension object-2))
        (every #'equalp
@@ -28,14 +28,14 @@
 
 (defmethod initialize-instance :after ((object strided-array)
                                        &key &allow-other-keys)
-  (setf (slot-value object '%index-space)
+  (setf (slot-value object 'index-space)
         (make-instance
          'strided-array-index-space
          :ranges (ranges object))))
 
 (defmethod initialize-instance :after ((object strided-array-index-space)
                                        &key &allow-other-keys)
-  (setf (slot-value object '%index-space) object))
+  (setf (slot-value object 'index-space) object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -87,9 +87,7 @@
 
 (dolist (sym '(start step end)) (pushnew sym *magic-symbols*))
 
-(defmethod magic-symbol-value ((symbol symbol)
-                               (space strided-array)
-                               (dimension integer))
+(defmethod query ((symbol symbol) &key space dimension)
   (cond
     ((string= symbol 'start)
      (range-start (nth dimension (ranges space))))

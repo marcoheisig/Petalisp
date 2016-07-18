@@ -2,100 +2,89 @@
 
 (in-package :petalisp)
 
-(defun α (operator object &rest more-objects)
-  (let* ((objects
-           (mapcar #'make-source (list* object more-objects)))
-         (index-space
-           (reduce #'broadcast objects))
-         (objects
-           (mapcar
-            (lambda (object)
-              (make-repetition object index-space))
-            objects))
-         (operator (find-operator operator)))
-    (apply #'make-application operator objects)))
+(define-class total-function () (codomain-type domain-type))
 
-(defun β (operator object)
-  (make-reduction operator object))
+(define-class node (total-function) ())
 
-(defun select (object space)
-  (make-selection object space))
+(defmacro define-node (name lambda-list &optional (slots () slots-p))
+  (let ((slots (or (and slots-p slots)
+                   (remove-if
+                    (lambda (x) (member x lambda-list-keywords))
+                    lambda-list))))
+    `(progn
+       (define-class ,name (node) ,slots)
+       (defgeneric ,name ,lambda-list))))
 
-(defmacro reshape (object from to)
-  (assert (every #'symbolp symbols))
-  (let ((dimension (length symbols))))
-  ;; determine permutation
-  ;; determine affine transformation
-  (once-only (object)
-    `(with-space ,object
-       (make-transformation
-        ,object (expand-transformation ,from ,to)))))
+(define-node application (operator object &rest more-objects) (operator objects))
 
-(defun fuse (object &rest more-objects)
-  (apply #'make-fusion object more-objects))
+(define-node reduction (operator object))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Octave style index expression keywords
+(define-node repetition (object space) (object))
 
-(defvar *magic-symbols* nil
-  "A list of symbols that have special meaning in the body of petalisp macros.")
+(define-node fusion (object &rest more-objects) (objects))
 
-(defvar dimsym (gensym "DIMENSION")
-  "A symbol that is lexically bound to the current dimension.")
+(define-node selection (object space) (object))
 
-(defvar spacesym (gensym "INDEX-SPACE")
-  "A symbol that is lexically bound to the current index space.")
+(define-node transformation (object &key &allow-other-keys) (object))
 
-;;; if you think the following macros are ugly, remember they just try to
-;;; formalize the semantic of Octave-style implicit keywords like `end'
+(define-node source (object-or-symbol &rest arguments) ())
 
-(defmacro with-space (object &body body)
-  `(let ((,spacesym ,object))
-     (declare (ignorable ,spacesym))
-     ,@body))
+(define-node target (object target-or-symbol &rest arguments) ())
 
-(defmacro with-dimension (dim &body body)
-  `(let ((,dimsym ,dim))
-     (declare (ignorable ,dimsym))
-     ,@body))
+(define-class index-space (source) ())
 
-(defmacro with-dimensions (index-space &rest forms)
-  (let ((macrobindings
-          (mapcar
-           (lambda (symbol)
-             `(,(intern (symbol-name symbol))
-               (magic-symbol-value ',symbol ,spacesym ,dimsym)))
-           *magic-symbols*)))
-    `(symbol-macrolet ,macrobindings
-      ,@(loop for form in forms
-              and i from 0 collect
-              `(with-dimension ,i ,form)))))
+(define-class affine-transformation (transformation) ())
+
+(define-class permutation (transformation) ())
+
+(define-class affine-permutation (transformation) ())
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Quick notation of affine index space transformations
+;;; miscellaneous petalisp functions
+
+(defgeneric dimension (object))
+
+(defgeneric size (object))
+
+(defgeneric equalp (object-1 object-2))
+
+(defgeneric index-space (object))
+
+(defgeneric broadcast-space (object-1 object-2))
+
+(defgeneric intersection-space (object-1 object-2))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Example:
-;;;    (expand-transformation (m n) (n (* (+ m b) 8)))
-;;; -> (let ((#:t (identity-transformation 2)))
-;;;       (with-dimensions
-;;;          (%* (%+ t b) 8)
-;;;          ())
+;;; default behavior
 
-(defun %+ (dimension transformation &rest numbers))
+(defmethod application :before ((operator total-function)
+                                (object total-function)
+                                &rest more-objects)
+  (assert (= (dimension operator) (1+ (length more-objects))))
+  (assert (not (find (index-space object)
+                     (mapcar #'index-space more-objects)
+                     :test (complement #'equalp)))))
 
-(defun identity-transformation (dimension)
-  (let ((coefficients (make-array `(dimension 2)
-                                  :element-type 'integer)))
-    (make-instance
-     'affine-index-space-transformation
-     :coefficients coefficients)))
+(defmethod fusion ((object total-function) &rest more-objects)
+  (assert (apply #'= (mapcar #'dimension (list* object more-objects)))))
 
-(defmacro expand-transformation (from to)
-  (with-gensyms (transformation)
-    `(let ((,transformation (identity-transformation)))
-       (with-dimensions
-         ,body)
-       ,transformation)))
+(defmethod reduction :before ((operator total-function)
+                              (object total-function))
+  (assert (< 1 (dimension object))))
+
+(defmethod selection ((object total-function)
+                      (space total-function))
+  (assert (equalp (index-space space)
+                  (intersection object space))))
+
+(defmethod source ((object source) &rest arguments)
+  (assert (null arguments))
+  object)
+
+(defmethod equalp ((object-1 t) (object-2 t))
+  (cl:equalp object-1 object-2))
+
+(defmethod index-space ((object index-space)) object)
 

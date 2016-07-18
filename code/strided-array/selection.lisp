@@ -4,7 +4,7 @@
 
 (defclass strided-array-selection (strided-array selection) ())
 
-(defmethod make-selection ((object strided-array)
+(defmethod selection ((object strided-array)
                            (space strided-array-index-space))
   (make-instance
    'strided-array-selection

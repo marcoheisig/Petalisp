@@ -4,7 +4,7 @@
 
 (defpackage :petalisp
   (:use :cl :optima :alexandria)
-  (:shadow #:intersection)
+  (:shadow #:equalp)
   (:export
    #:α
    #:β

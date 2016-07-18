@@ -14,14 +14,14 @@
     (strided-array-source)
   ((%object :initarg :object :reader object)))
 
-(defmethod make-source ((object t) &rest arguments)
+(defmethod source ((object t) &rest arguments)
   (let ((ranges (when arguments (ranges (first arguments)))))
     (make-instance
      'strided-array-from-lisp-scalar
      :object object
      :ranges ranges)))
 
-(defmethod make-source ((object array) &rest arguments)
+(defmethod source ((object array) &rest arguments)
   (assert (null arguments))
   (make-instance
    'strided-array-from-lisp-array

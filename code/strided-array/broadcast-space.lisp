@@ -2,7 +2,7 @@
 
 (in-package :petalisp)
 
-(defmethod broadcast ((space-1 strided-array)
+(defmethod broadcast-space ((space-1 strided-array)
                       (space-2 strided-array))
   (when (< (dimension space-1)
            (dimension space-2))
@@ -15,12 +15,12 @@
      'strided-array-index-space
      :ranges
      (append
-      (mapcar #'broadcast ranges-1 ranges-2)
+      (mapcar #'broadcast-space ranges-1 ranges-2)
       (nthcdr
        (min dim-1 dim-2)
        (if (< dim-1 dim-2) ranges-2 ranges-1))))))
 
-(defmethod broadcast ((range-1 range) (range-2 range))
+(defmethod broadcast-space ((range-1 range) (range-2 range))
   (flet ((unary-range-p (range)
            (= (range-start range)
               (range-end range))))
@@ -29,5 +29,4 @@
       (cond ((and u1 u2 (equalp range-1 range-2)) range-1)
             ((and u1 (not u2)) range-2)
             ((and (not u1) u2) range-1)
-            (t (error 'broadcast-error
-                      :ranges (list range-1 range-2)))))))
+            (t (error "No upgradeable ranges."))))))

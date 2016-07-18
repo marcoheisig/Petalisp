@@ -5,7 +5,7 @@
 (defclass strided-array-affine-permutation (strided-array affine-permutation)
   ((%coefficients :initarg :coefficients :reader coefficients)))
 
-(defmethod make-transformation ((object strided-array)
+(defmethod transformation ((object strided-array)
                                 &key scale translate permute)
   (make-instance
    'strided-array-transformation
