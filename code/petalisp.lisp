@@ -31,13 +31,19 @@
 
 (define-node target (object target-or-symbol &rest arguments) ())
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; operations on index spaces
+
 (define-class index-space (source) ())
 
-(define-class affine-transformation (transformation) ())
+(defgeneric index-space (object))
 
-(define-class permutation (transformation) ())
+(defgeneric broadcast (space-1 space-2))
 
-(define-class affine-permutation (transformation) ())
+(defgeneric intersection (space-1 space-2))
+
+(defgeneric difference (space-1 space-2))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -48,12 +54,6 @@
 (defgeneric size (object))
 
 (defgeneric equalp (object-1 object-2))
-
-(defgeneric index-space (object))
-
-(defgeneric broadcast-space (object-1 object-2))
-
-(defgeneric intersection-space (object-1 object-2))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -87,4 +87,3 @@
   (cl:equalp object-1 object-2))
 
 (defmethod index-space ((object index-space)) object)
-

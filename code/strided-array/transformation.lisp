@@ -2,7 +2,7 @@
 
 (in-package :petalisp)
 
-(define-class strided-array-affine-permutation (strided-array affine-permutation) ())
+(define-class strided-array-affine-permutation (strided-array transformation) ())
 
 (defmethod transformation ((object strided-array)
                            &key scale translate permute)

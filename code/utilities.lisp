@@ -3,10 +3,19 @@
 (in-package :petalisp)
 
 (defmacro define-class (name direct-superclasses slots &rest options)
-  `(defclass ,name ,direct-superclasses
-     ,(loop for slot in slots collect
-            `(,slot :initarg ,(make-keyword slot) :reader ,slot))
-     ,@options))
+  "Defines a class using DEFCLASS, where all slot-specifiers that consist
+only of a single symbol are expanded to define a :initarg keyword and a
+reader of the same name. Additionally defines a <NAME>-P predicate."
+  `(progn
+     (defclass ,name ,direct-superclasses
+       ,(loop for slot in slots
+              collect
+              (if (symbolp slot)
+                  `(,slot :initarg ,(make-keyword slot) :reader ,slot)
+                  slot))
+       ,@options)
+     (defun ,(intern (concatenate 'string (symbol-name name) "-P")) (x)
+       (typep x ',name))))
 
 (defun kuṭṭaka (d1 d2 c)
   "Returns A, B and GCD(d1,d2) such that A * d1 - B * d2 = c. Returns false

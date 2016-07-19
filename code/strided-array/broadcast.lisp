@@ -2,8 +2,8 @@
 
 (in-package :petalisp)
 
-(defmethod broadcast-space ((space-1 strided-array)
-                            (space-2 strided-array))
+(defmethod broadcast ((space-1 strided-array)
+                      (space-2 strided-array))
   (when (< (dimension space-1)
            (dimension space-2))
     (rotatef space-1 space-2))
@@ -20,7 +20,7 @@
        (min dim-1 dim-2)
        (if (< dim-1 dim-2) ranges-2 ranges-1))))))
 
-(defmethod broadcast-space ((range-1 range) (range-2 range))
+(defmethod broadcast ((range-1 range) (range-2 range))
   (flet ((unary-range-p (range)
            (= (range-start range)
               (range-end range))))
