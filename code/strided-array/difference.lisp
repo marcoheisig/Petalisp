@@ -4,19 +4,21 @@
 
 ;;; (difference #i((1 1 5) (1 1 5)) #i((2 2 4) (2 2 4)))
 ;;; (difference #i((1 1 5) (1 1 5)) #i((1 2 5) (1 2 5)))
+;;; (difference #i((1 1 9) (1 1 9) (1 1 9)) #i((1 8 9) (1 8 9) (1 8 9)))
 (defmethod difference ((space-1 strided-array-index-space)
                        (space-2 strided-array-index-space))
   (labels ((rec (s1 s2)
              (when s1
-               (append
-                (let ((head (intersection (car s1) (car s2))))
-                  (mapcar
-                   (lambda (tail) (cons head tail))
-                   (rec (cdr s1) (cdr s2))))
+               (nconc
                 (let ((tail (cdr s1)))
                   (mapcar
                    (lambda (head) (cons head tail))
-                   (difference (car s1) (car s2))))))))
+                   (difference (car s1) (car s2))))
+                (let ((head (intersection (car s1) (car s2))))
+                  (when head
+                    (mapcar
+                     (lambda (tail) (cons head tail))
+                     (rec (cdr s1) (cdr s2)))))))))
     (mapcar
      (lambda (ranges)
        (make-instance
