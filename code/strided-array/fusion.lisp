@@ -33,11 +33,7 @@
                     (let ((step (ceiling (1+ (- end start))
                                          number-of-elements)))
                       (return (range start step end))))))
-    (assert (every
-             (lambda (range)
-               (equalp range
-                       (intersection range fusion)))
-             ranges))
+    (assert (every (lambda (x) (equalp x (intersection x fusion))) ranges))
     fusion))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

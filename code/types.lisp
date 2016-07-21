@@ -2,7 +2,7 @@
 
 (in-package :petalisp)
 
-(defun petalispify-type (type)
+(defun petalisp-type (type)
   "Given a Lisp type, return its corresponding petalisp type."
   (upgraded-array-element-type type))
 
