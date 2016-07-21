@@ -12,3 +12,57 @@ If you are curious, the following snippet tells you the current size of Petalisp
 #+BEGIN_SRC sh
 find . -path './.git' -prune -o -print | egrep '\.asd|\.lisp' | xargs cat | sed '/^\s*$/d' | wc -l
 #+END_SRC
+
+** Showcases
+Petalisp is still under development, so the following examples may still change slightly. Nontheless they give a good glimpse on what programming with Petalisp will be like.
+
+Example 1: transposing a matrix
+#+BEGIN_SRC lisp
+(defun transpose (A)
+  (reshape A (m n) (n m)))
+#+END_SRC
+
+Example 2: a simple matrix multiplication
+#+BEGIN_SRC lisp
+(defun matrix-multiplication (A B)
+  (β+ (α* (reshape A (m n) (m 1 n))
+          (reshape B (n k) (1 k n)))))
+#+END_SRC
+
+Example 3: the numerical Jacobi scheme in two dimensions for a simple discretization
+#+BEGIN_SRC lisp
+(defun take (array x y)
+  (let ((center
+          (select array
+           ((+ start step) step (- end step))
+           ((+ start step) step (- end step)))))
+    (select (reshape array (a b) ((+ a x) (+ b y)))
+            center)))
+
+(defun jacobi-2d (x iterations)
+  (if (zerop iterations) x
+      (jacobi-2d
+       (substitute
+        (α * 0.25
+           (α +
+              (take x  1  0)
+              (take x -1  0)
+              (take x  0  1)
+              (take x  0 -1)))
+        x)
+       (- iterations 1))))
+#+END_SRC
+
+Example 4: A full Petalisp program to multiply a matrix from a file with a
+lisp constant and store it again.
+#+BEGIN_SRC lisp
+(defun matmult (A B)
+  (β + (α * (reshape A (m n) (m 1 n))
+            (reshape B (n k) (1 k n)))))
+
+(defvar C (matmult
+           (hdf5-file "A.h5" "matrix")
+           #2((1 2) (3 4))))
+
+(wait (store C (ascii-file "C.ascii")))
+#+END_SRC
