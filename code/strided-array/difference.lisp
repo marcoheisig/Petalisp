@@ -2,6 +2,7 @@
 
 (in-package :petalisp)
 
+;;; (difference  #i ((1 2 5)) #i ((1 1 4)))
 ;;; (difference #i((1 1 5) (1 1 5)) #i((2 2 4) (2 2 4)))
 ;;; (difference #i((1 1 5) (1 1 5)) #i((1 2 5) (1 2 5)))
 ;;; (difference #i((1 1 9) (1 1 9) (1 1 9)) #i((1 8 9) (1 8 9) (1 8 9)))
@@ -69,6 +70,7 @@
              #'valid
              `(,(range start step (- i-start step))
                ,(range (+ i-end step) step end)))
-            (loop for x from i-start below i-end by i-step
-                  collect
-                  (range (+ x step) step (- (+ x i-step) step))))))))))
+            (when (> i-step step)
+              (loop for x from i-start below i-end by i-step
+                    collect
+                    (range (+ x step) step (- (+ x i-step) step)))))))))))

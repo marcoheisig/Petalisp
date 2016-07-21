@@ -27,10 +27,6 @@
 
 (defmethod dimension ((object binary-function)) 2)
 
-(defun find-operator (operator)
-  (make-instance
-   'binary-function))
-
 ;; (define-operator + u64 u64 u64)
 
 
