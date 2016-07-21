@@ -14,7 +14,7 @@ find . -path './.git' -prune -o -print | egrep '\.asd|\.lisp' | xargs cat | sed 
 #+END_SRC
 
 ** Showcases
-Petalisp is still under development, so the following examples may still change slightly. Nontheless they give a good glimpse on what programming with Petalisp will be like.
+Petalisp is still under development, so the following examples may still change slightly. Nevertheless they give a good glimpse on what programming with Petalisp will be like.
 
 Example 1: transposing a matrix
 #+BEGIN_SRC lisp

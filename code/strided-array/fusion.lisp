@@ -8,21 +8,15 @@
 (defmethod fusion ((object strided-array) &rest more-objects)
   (let ((objects (list* object more-objects))
         (dimension (dimension object)))
-    (assert (apply #'= (mapcar #'dimension objects)))
+    (assert (identical objects :key #'dimension))
     (make-instance
      'strided-array-fusion
      :objects objects
      :ranges
      (loop for d from 1 upto dimension
-          collect
-          (let ((islands (apply #'subdivide (apply #'islandize d objects))))
-            (loop for island in (cdr islands)
-                  with range = (apply #'fuse (ranges-to-fuse (car islands))) do
-                    (assert (equalp range (apply #'fuse (ranges-to-fuse island))))
-                  finally (return range)))))))
+           collect (apply #'fuse-dimension dimension objects)))))
 
 (defmethod fusion ((range range) &rest more-ranges)
-  ;; note that this method assumes that the ranges are disjoint
   (let* ((ranges (list* range more-ranges))
          (fusion
            (loop for range in (list* range more-ranges)
@@ -41,17 +35,30 @@
 ;;; fusion islands - index spaces that keep track of the ranges that must
 ;;; be fused in the next higher dimension
 
-;;; (islandize 1 #i((1 2 3) (1 2 3)) #i((2 2 4) (1 2 3)) #i((1 2 3) (2 2 4)) #i((2 2 4) (2 2 4)))
-(defun islandize (dimension &rest objects)
-  (mapcar
-   (lambda (x)
-     (destructuring-bind (range . ranges)
-         (nthcdr (1- dimension) (ranges x))
-       (make-instance
-        'fusion-island
-        :ranges ranges
-        :ranges-to-fuse (list range))))
-   objects))
+(define-class fusion-island (strided-array-index-space)
+  (ranges-to-fuse))
+
+;;; (fuse-dimension 1 #i((1 2 3) (1 2 3)) #i((2 2 4) (1 2 3)) #i((1 2 3) (2 2 4)) #i((2 2 4) (2 2 4)))
+(defun fuse-dimension (dimension &rest objects)
+  (let* ((islands
+           (apply
+            #'subdivide
+            (mapcar
+             (lambda (x)
+               (destructuring-bind (range . ranges)
+                   (nthcdr (1- dimension) (ranges x))
+                 (make-instance
+                  'fusion-island
+                  :ranges ranges
+                  :ranges-to-fuse (list range))))
+             objects)))
+         (fusions
+           (mapcar
+            (lambda (fusion-island)
+              (apply #'fuse (ranges-to-fuse fusion-island)))
+            islands)))
+    (assert (identical fusions :test #'equalp))
+    (first fusions)))
 
 ;;; (subdivide #i((1 1 4)) #i((1 2 5)))
 (defun subdivide (&rest fusion-islands)
@@ -70,9 +77,6 @@
             (t (push b dst)))))
       (unless intersectionp (push a dst))
       (psetf intersectionp nil dst () src dst))))
-
-(define-class fusion-island (strided-array-index-space)
-  (ranges-to-fuse))
 
 (defmethod intersection :around ((space-1 fusion-island)
                                  (space-2 fusion-island))

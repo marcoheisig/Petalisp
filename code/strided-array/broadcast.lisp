@@ -15,7 +15,7 @@
      'strided-array-index-space
      :ranges
      (append
-      (mapcar #'broadcast-space ranges-1 ranges-2)
+      (mapcar #'broadcast ranges-1 ranges-2)
       (nthcdr
        (min dim-1 dim-2)
        (if (< dim-1 dim-2) ranges-2 ranges-1))))))

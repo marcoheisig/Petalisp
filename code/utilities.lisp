@@ -42,3 +42,10 @@ if no solution exists."
            (psetf a b b (the integer (+ (* x b) a))))
          (cdr quotients))
         (values a b gcd)))))
+
+(defun identical (list &key (test #'eql) (key #'identity))
+  (let ((reference-element (funcall key (first list))))
+    (every
+     (lambda (item)
+       (funcall test reference-element (funcall key item)))
+     (cdr list))))

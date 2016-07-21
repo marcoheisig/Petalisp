@@ -6,7 +6,7 @@
   (let* ((objects
            (mapcar #'source (list* object more-objects)))
          (index-space
-           (reduce #'broadcast-space objects))
+           (reduce #'broadcast objects))
          (objects
            (mapcar
             (lambda (object)
