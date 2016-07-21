@@ -1,7 +1,7 @@
 #+TITLE: Petalisp
 
 Petalisp is an attempt to generate high performance code for parallel
-computers from a pure data flow specification.
+computers from a pure data flow specification. It is not a full blown programming language, but rather a carefully crafted extension of Common Lisp that allows for extreme optimization and parallelization.
 
 
 ** Keeping it small and simple
