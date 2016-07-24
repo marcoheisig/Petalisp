@@ -1,1 +1,8 @@
-*.fasl
+*
+!/COPYING
+!/.gitignore
+!*.lisp
+!*.asd
+!*.org
+!/*/
+!/*/*/
