@@ -15,6 +15,10 @@
        (define-class ,name (node) ,slots)
        (defgeneric ,name ,lambda-list))))
 
+(define-node source (object-or-symbol &rest arguments) ())
+
+(define-node target (object target-or-symbol &rest arguments) ())
+
 (define-node application (operator object &rest more-objects) (operator objects))
 
 (define-node reduction (operator object))
@@ -23,13 +27,7 @@
 
 (define-node fusion (object &rest more-objects) (objects))
 
-(define-node selection (object space) (object))
-
-(define-node transformation (object &key &allow-other-keys) (object))
-
-(define-node source (object-or-symbol &rest arguments) ())
-
-(define-node target (object target-or-symbol &rest arguments) ())
+(define-node reference (object &key source-space target-space &allow-other-keys) (object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -44,6 +42,10 @@
 (defgeneric intersection (space-1 space-2))
 
 (defgeneric difference (space-1 space-2))
+
+(defgeneric transform (space &key scaling translation permutation))
+
+(defgeneric inverse-transform (space &key scaling translation permutation))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -74,11 +76,6 @@
                               (object total-function))
   (assert (< 1 (dimension object))))
 
-(defmethod selection ((object total-function)
-                      (space total-function))
-  (assert (equalp (index-space space)
-                  (intersection object space))))
-
 (defmethod source ((object source) &rest arguments)
   (assert (null arguments))
   object)
@@ -87,3 +84,28 @@
   (cl:equalp object-1 object-2))
 
 (defmethod index-space ((object index-space)) object)
+
+(defun canonicalize-transformation (space scaling translation permutation)
+  (let ((dimension (dimension space)))
+    (let ((scaling
+            (or scaling (make-list dimension :initial-element 1)))
+          (translation
+            (or translation (make-list dimension :initial-element 0)))
+          (permutation
+            (or permutation (iota dimension :start 1))))
+      (assert (= dimension
+                 (length scaling)
+                 (length translation)
+                 (length permutation)))
+      (values space
+              :scaling scaling
+              :translation translation
+              :permutation permutation))))
+
+(defmethod transform :around ((space t) &key scaling translation permutation)
+  (multiple-value-call #'call-next-method
+    (canonicalize-transformation space scaling translation permutation)))
+
+(defmethod inverse-transform :around ((space t) &key scaling translation permutation)
+ (multiple-value-call #'call-next-method
+   (canonicalize-transformation space scaling translation permutation)))

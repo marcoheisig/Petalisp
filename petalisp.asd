@@ -25,9 +25,8 @@
        (:file "intersection" :depends-on ("strided-array"))
        (:file "print-object" :depends-on ("strided-array"))
        (:file "reduction" :depends-on ("strided-array"))
+       (:file "reference" :depends-on ("strided-array"))
        (:file "repetition" :depends-on ("strided-array"))
-       (:file "selection" :depends-on ("strided-array"))
        (:file "source" :depends-on ("strided-array"))
-       (:file "target" :depends-on ("strided-array"))
-       (:file "transformation" :depends-on ("strided-array"))))))))
+       (:file "target" :depends-on ("strided-array"))))))))
 

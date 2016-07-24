@@ -44,8 +44,9 @@ if no solution exists."
         (values a b gcd)))))
 
 (defun identical (list &key (test #'eql) (key #'identity))
-  (let ((reference-element (funcall key (first list))))
-    (every
-     (lambda (item)
-       (funcall test reference-element (funcall key item)))
-     (cdr list))))
+  (or (null list)
+      (let ((reference-element (funcall key (car list))))
+        (every
+         (lambda (item)
+           (funcall test reference-element (funcall key item)))
+         (cdr list)))))
