@@ -19,13 +19,9 @@
   ;; TODO
   nil)
 
-(defclass unary-function (total-function) ())
+(defclass unary-operator (operator) ())
 
-(defclass binary-function (total-function) ())
-
-(defmethod dimension ((object unary-function)) 1)
-
-(defmethod dimension ((object binary-function)) 2)
+(defclass binary-operator (operator) ())
 
 ;; (define-operator + u64 u64 u64)
 

@@ -40,14 +40,8 @@
   (let* ((args `(:scaling ,scaling
                  :translation ,translation
                  :permutation ,permutation))
-         (source-space
-           (or source-space
-               (and target-space
-                    (apply #'inverse-transform target-space args))
-                           (index-space object)))
-         (target-space
-           (or target-space
-               (apply #'transform source-space args))))
+         
+         )
     (assert (equalp target-space (apply #'transform source-space args)))
     (make-instance
      'strided-array-reference

@@ -12,6 +12,7 @@
     ((:file "package")
      (:file "utilities" :depends-on ("package"))
      (:file "petalisp" :depends-on ("utilities"))
+     (:file "transformation" :depends-on ("petalisp"))
      (:file "types" :depends-on ("petalisp"))
      (:file "graphviz" :depends-on ("petalisp"))
      (:file "api" :depends-on ("petalisp"))
@@ -27,6 +28,5 @@
        (:file "reduction" :depends-on ("strided-array"))
        (:file "reference" :depends-on ("strided-array"))
        (:file "repetition" :depends-on ("strided-array"))
-       (:file "source" :depends-on ("strided-array"))
-       (:file "target" :depends-on ("strided-array"))))))))
+       (:file "source" :depends-on ("strided-array"))))))))
 

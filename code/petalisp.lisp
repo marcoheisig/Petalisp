@@ -2,32 +2,33 @@
 
 (in-package :petalisp)
 
-(define-class total-function () (codomain-type domain-type))
+(define-class operator () (domain-type codomain-type))
 
-(define-class node (total-function) ())
+(define-class structured-operand () (element-type))
 
-(defmacro define-node (name lambda-list &optional (slots () slots-p))
-  (let ((slots (if slots-p slots
-                   (remove-if
-                    (lambda (x) (member x lambda-list-keywords))
-                    lambda-list))))
-    `(progn
-       (define-class ,name (node) ,slots)
-       (defgeneric ,name ,lambda-list))))
+(defmacro define-node (name lambda-list slots)
+  `(progn
+     (define-class ,name (structured-operand) ,slots)
+     (defgeneric ,name ,lambda-list)))
 
-(define-node source (object-or-symbol &rest arguments) ())
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; the building blocks of Petalisp
 
-(define-node target (object target-or-symbol &rest arguments) ())
+(define-node source (object-or-symbol &key &allow-other-keys) ())
 
 (define-node application (operator object &rest more-objects) (operator objects))
 
-(define-node reduction (operator object))
+(define-node reduction (operator object) (operator object))
 
 (define-node repetition (object space) (object))
 
 (define-node fusion (object &rest more-objects) (objects))
 
-(define-node reference (object &key source-space target-space &allow-other-keys) (object))
+(define-node reference (object &rest subspaces-and-transformations)
+  (object source-space target-space))
+
+(defgeneric compute (&rest objects))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -43,9 +44,9 @@
 
 (defgeneric difference (space-1 space-2))
 
-(defgeneric transform (space &key scaling translation permutation))
+(defgeneric transform (space &key translation scaling permutation))
 
-(defgeneric inverse-transform (space &key scaling translation permutation))
+(defgeneric inverse-transform (space &key translation scaling permutation))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -57,55 +58,66 @@
 
 (defgeneric equalp (object-1 object-2))
 
+(defgeneric compose (object-1 object-2))
+
+(defgeneric invert (object))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; default behavior
 
-(defmethod application :before ((operator total-function)
-                                (object total-function)
+(defmethod application :before ((operator operator)
+                                (object structured-operand)
                                 &rest more-objects)
   (assert (= (dimension operator) (1+ (length more-objects))))
-  (assert (not (find (index-space object)
-                     (mapcar #'index-space more-objects)
-                     :test (complement #'equalp)))))
+  (assert (identical (list* object more-objects)
+                     :test #'equalp :key #'index-space)))
 
-(defmethod fusion ((object total-function) &rest more-objects)
-  (assert (apply #'= (mapcar #'dimension (list* object more-objects)))))
+(defmethod fusion ((object structured-operand) &rest more-objects)
+  (assert (identical (list* object more-objects)
+                     :test #'= :key #'dimension)))
 
-(defmethod reduction :before ((operator total-function)
-                              (object total-function))
-  (assert (< 1 (dimension object))))
+(defmethod reduction :before ((operator operator)
+                              (object structured-operand))
+  (assert (< 0 (dimension object))))
 
-(defmethod source ((object source) &rest arguments)
-  (assert (null arguments))
-  object)
+(defmethod reference :before (object &rest subspaces-and-transformations)
+  ;; 1. compute target space
+  ;; 2. compose all transformations
+  ;; 3. apply the inverse to the target-space -> source-space
+  (let ((target-space (index-space object)))
+    (dolist (x subspaces-and-transformations)
+      (etypecase x
+        (transformation
+         (zapf target-space (transform % x)))
+        (index-space
+         (assert (subspace-p x target-space))
+         (setf target-space x))))
+    target-space))
 
 (defmethod equalp ((object-1 t) (object-2 t))
   (cl:equalp object-1 object-2))
 
+(defmethod compose ((object-1 function) (object-2 function))
+  (alexandria:compose object-1 object-2))
+
 (defmethod index-space ((object index-space)) object)
 
-(defun canonicalize-transformation (space scaling translation permutation)
-  (let ((dimension (dimension space)))
-    (let ((scaling
-            (or scaling (make-list dimension :initial-element 1)))
-          (translation
-            (or translation (make-list dimension :initial-element 0)))
-          (permutation
-            (or permutation (iota dimension :start 1))))
-      (assert (= dimension
-                 (length scaling)
-                 (length translation)
-                 (length permutation)))
-      (values space
-              :scaling scaling
-              :translation translation
-              :permutation permutation))))
-
-(defmethod transform :around ((space t) &key scaling translation permutation)
-  (multiple-value-call #'call-next-method
-    (canonicalize-transformation space scaling translation permutation)))
-
-(defmethod inverse-transform :around ((space t) &key scaling translation permutation)
- (multiple-value-call #'call-next-method
-   (canonicalize-transformation space scaling translation permutation)))
+(defmethod reference ((object t) &key source-space target-space
+                                   translation scaling permutation)
+  (let ((class
+          (cond ((and translation scaling permutation) 'tsp-reference)
+                ((and translation scaling) 'ts-reference)
+                ((and translation permutation) 'tp-reference)
+                ((and scaling permutation) 'sp-reference)
+                (translation 'translation)
+                (scaling 'scaling)
+                (permutation 'permutation)))
+        (source-space
+          (or source-space
+              (and target-space
+                   (apply #'inverse-transform target-space args))
+              (index-space object)))
+        (target-space
+          (or target-space
+              (apply #'transform source-space args))))))

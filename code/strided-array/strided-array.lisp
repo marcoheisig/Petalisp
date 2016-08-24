@@ -2,8 +2,6 @@
 
 (in-package :petalisp)
 
-(deftype strided-array-index () 'list)
-
 (define-class strided-array (total-function) (ranges index-space))
 
 (define-class strided-array-index-space (strided-array index-space) ())
@@ -73,7 +71,3 @@
                       `(range ,@spec))))))
 
 (set-dispatch-macro-character #\# #\i #'|#i-reader|)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Add magic keywords to the Lisp API

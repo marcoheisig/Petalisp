@@ -50,3 +50,31 @@ if no solution exists."
          (lambda (item)
            (funcall test reference-element (funcall key item)))
          (cdr list)))))
+
+(defmacro zapf (place expr)
+  (multiple-value-bind
+        (temps exprs stores store-expr access-expr)
+      (get-setf-expansion place)
+    `(let* (,@(mapcar #'list temps exprs)
+            (,(car stores)
+              (let ((% ,access-expr))
+                ,expr)))
+       ,store-expr)))
+
+(defun mapt (function tree)
+  (cond
+    ((atom tree)
+     (funcall function tree)
+     nil)
+    ((consp tree)
+     (mapt function (car tree))
+     (and (consp (cdr tree))
+          (mapt function (cdr tree))))))
+
+(defun tree-find-if (function tree)
+  (mapt (lambda (x)
+          (when (funcall function x)
+            (return-from tree-find-if x)))
+        tree))
+
+(defconstant TODO 'TODO) ; make TODO a valid piece of lisp code

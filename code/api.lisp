@@ -18,80 +18,48 @@
 (defun β (operator object)
   (reduction operator object))
 
-(defun select (object space)
-  (selection object space))
+;;; fusion
 
-(defmacro reshape (object from to)
-  (once-only (object)
-    `(with-space ,object
-       (transformation
-        ,object (expand-transformation ,from ,to)))))
+;;; repetition
 
-(defun fuse (object &rest more-objects)
-  (apply #'fusion object more-objects))
+;;; source operations
+
+(defmacro <- (object &rest subspaces-and-transformations)
+  (apply #'reference object subspaces-and-transformations))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Octave style index expression keywords
-
-(defvar *magic-symbols* nil
-  "A list of symbols that have special meaning in the body of petalisp macros.")
-
-(defvar dimsym (gensym "DIMENSION")
-  "A symbol that is lexically bound to the current dimension.")
-
-(defvar spacesym (gensym "INDEX-SPACE")
-  "A symbol that is lexically bound to the current index space.")
-
-;;; if you think the following macros are ugly, remember they just try to
-;;; formalize the semantic of Octave-style implicit keywords like `end'
-
-(defmacro with-space (object &body body)
-  `(let ((,spacesym ,object))
-     (declare (ignorable ,spacesym))
-     ,@body))
-
-(defmacro with-dimension (dim &body body)
-  `(let ((,dimsym ,dim))
-     (declare (ignorable ,dimsym))
-     ,@body))
-
-(defmacro with-dimensions (index-space &rest forms)
-  (let ((macrobindings
-          (mapcar
-           (lambda (symbol)
-             `(,(intern (symbol-name symbol))
-               (magic-symbol-value ',symbol ,spacesym ,dimsym)))
-           *magic-symbols*)))
-    `(symbol-macrolet ,macrobindings
-       ,@(loop for form in forms
-               and i from 0 collect
-               `(with-dimension ,i ,form)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Quick notation of index space transformations
 ;;;
-;;; Quick notation of affine index space transformations
-;;;
-;;; Example:
-;;;    (expand-transformation (m n) (n (* (+ m b) 8)))
-;;; -> (let ((#:t (identity-transformation 2)))
-;;;       (with-dimensions
-;;;          (%* (%+ t b) 8)
-;;;          ())
+;;; Example: #t((m n) ((+ 2 n) (* 9 m)))
 
-(defun %+ (dimension transformation &rest numbers))
+(defmacro expand-transformation (symbols mappings)
+  (let* ((permuted-symbols
+           (loop for mapping in mappings
+                 collect
+                 (tree-find-if
+                  (lambda (x)
+                    (member x symbols :test #'eq))
+                  mapping)))
+         (permutation
+           (mapcar
+            (lambda (symbol)
+              (position symbol permuted-symbols :test #'eq))
+            symbols))
+         (affine-mappings
+           `(list
+             ,@(loop for p in permutation
+                     and dimension from 0
+                     collect
+                     `(lambda (,(nth p permuted-symbols))
+                        ,(nth p mappings))))))
+    `(make-instance
+      'transformation
+      :affine-mappings ,affine-mappings
+      :permutation ',permutation)))
 
-(defun identity-transformation (dimension)
-  (let ((coefficients (make-array `(dimension 2)
-                                  :element-type 'integer)))
-    (make-instance
-     'affine-index-space-transformation
-     :coefficients coefficients)))
+(defun |#t-reader| (stream subchar arg)
+  (declare (ignore subchar arg))
+  `(expand-transformation ,@(read stream t nil t)))
 
-(defmacro expand-transformation (from to)
-  (with-gensyms (transformation)
-    `(let ((,transformation (identity-transformation)))
-       (with-dimensions
-         ,body)
-       ,transformation)))
-
+(set-dispatch-macro-character #\# #\t #'|#t-reader|)
