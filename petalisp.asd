@@ -5,7 +5,7 @@
   :author "Marco Heisig <marco.heisig@fau.de>"
   :version "0.1"
   :license "GPLv3"
-  :depends-on (:alexandria :optima)
+  :depends-on (:alexandria :optima :fare-memoization)
   :components
   ((:module "code"
     :components
@@ -28,5 +28,6 @@
        (:file "reduction" :depends-on ("strided-array"))
        (:file "reference" :depends-on ("strided-array"))
        (:file "repetition" :depends-on ("strided-array"))
-       (:file "source" :depends-on ("strided-array"))))))))
+       (:file "source" :depends-on ("strided-array"))
+       (:file "transform" :depends-on ("strided-array"))))))))
 

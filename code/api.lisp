@@ -18,11 +18,22 @@
 (defun β (operator object)
   (reduction operator object))
 
-;;; fusion
+(defun fuse (object &rest more-objects)
+  (apply #'fusion object more-objects))
 
-;;; repetition
+(defun repeat (object space)
+  (repetition object space))
 
-;;; source operations
-
-(defmacro <- (object &rest subspaces-and-transformations)
-  (apply #'reference object subspaces-and-transformations))
+(defun <- (object &rest subspaces-and-transformations)
+  (let ((target-space (index-space object))
+        (transformation (identity-transformation (dimension object))))
+    (dolist (x subspaces-and-transformations)
+      (etypecase x
+        (transformation
+         (zapf target-space (transform % x))
+         (zapf transformation (compose x %)))
+        (index-space
+         (assert (subspace-p x target-space))
+         (setf target-space x))))
+    (let ((source-space (transform target-space (invert transformation))))
+      (reference object source-space transformation))))

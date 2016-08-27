@@ -2,7 +2,7 @@
 
 (in-package :petalisp)
 
-(define-class strided-array (total-function) (ranges index-space))
+(define-class strided-array (structured-operand) (ranges index-space))
 
 (define-class strided-array-index-space (strided-array index-space) ())
 

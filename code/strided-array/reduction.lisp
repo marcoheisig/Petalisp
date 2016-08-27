@@ -4,7 +4,7 @@
 
 (define-class strided-array-reduction (strided-array reduction) ())
 
-(defmethod reduction ((operator total-function) (object strided-array))
+(defmethod reduction ((operator operator) (object strided-array))
   (let ((ranges (nreverse (cdr (reverse (ranges object)))))
         (codomain-type (codomain-type object)))
     (assert (petalisp-subtypep

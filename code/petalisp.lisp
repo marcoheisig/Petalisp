@@ -25,8 +25,7 @@
 
 (define-node fusion (object &rest more-objects) (objects))
 
-(define-node reference (object &rest subspaces-and-transformations)
-  (object source-space target-space))
+(define-node reference (object space &optional transformation) (object))
 
 (defgeneric compute (&rest objects))
 
@@ -44,9 +43,7 @@
 
 (defgeneric difference (space-1 space-2))
 
-(defgeneric transform (space &key translation scaling permutation))
-
-(defgeneric inverse-transform (space &key translation scaling permutation))
+(defgeneric subspace-p (space-1 space-2))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -62,9 +59,11 @@
 
 (defgeneric invert (object))
 
+(defgeneric transform (object transformation))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; default behavior
+;;; argument checking
 
 (defmethod application :before ((operator operator)
                                 (object structured-operand)
@@ -73,27 +72,26 @@
   (assert (identical (list* object more-objects)
                      :test #'equalp :key #'index-space)))
 
-(defmethod fusion ((object structured-operand) &rest more-objects)
-  (assert (identical (list* object more-objects)
-                     :test #'= :key #'dimension)))
-
 (defmethod reduction :before ((operator operator)
                               (object structured-operand))
   (assert (< 0 (dimension object))))
 
-(defmethod reference :before (object &rest subspaces-and-transformations)
-  ;; 1. compute target space
-  ;; 2. compose all transformations
-  ;; 3. apply the inverse to the target-space -> source-space
-  (let ((target-space (index-space object)))
-    (dolist (x subspaces-and-transformations)
-      (etypecase x
-        (transformation
-         (zapf target-space (transform % x)))
-        (index-space
-         (assert (subspace-p x target-space))
-         (setf target-space x))))
-    target-space))
+(defmethod repetition :before (object space)
+  (assert (subspace-p (index-space object) space)))
+
+(defmethod fusion :before ((object structured-operand) &rest more-objects)
+  (assert (identical (list* object more-objects)
+                     :test #'= :key #'dimension)))
+
+(defmethod intersection :before ((space-1 index-space) (space-2 index-space))
+  (assert (= (dimension space-1) (dimension space-2))))
+
+(defmethod difference :before ((space-1 index-space) (space-2 index-space))
+  (assert (= (dimension space-1) (dimension space-2))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; default behavior
 
 (defmethod equalp ((object-1 t) (object-2 t))
   (cl:equalp object-1 object-2))
@@ -103,21 +101,5 @@
 
 (defmethod index-space ((object index-space)) object)
 
-(defmethod reference ((object t) &key source-space target-space
-                                   translation scaling permutation)
-  (let ((class
-          (cond ((and translation scaling permutation) 'tsp-reference)
-                ((and translation scaling) 'ts-reference)
-                ((and translation permutation) 'tp-reference)
-                ((and scaling permutation) 'sp-reference)
-                (translation 'translation)
-                (scaling 'scaling)
-                (permutation 'permutation)))
-        (source-space
-          (or source-space
-              (and target-space
-                   (apply #'inverse-transform target-space args))
-              (index-space object)))
-        (target-space
-          (or target-space
-              (apply #'transform source-space args))))))
+(defmethod subspace-p (space-1 space-2)
+  (equalp space-1 (intersection space-1 space-2)))

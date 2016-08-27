@@ -3,10 +3,11 @@
 (in-package :cl-user)
 
 (defpackage :petalisp
-  (:use :cl :optima :alexandria)
+  (:use :cl :optima :alexandria :fare-memoization)
   (:shadow #:equalp #:intersection #:step #:compose)
   (:export
    #:α
    #:β
+   #:fuse
    #:repeat
-   #:fuse))
+   #:<-))

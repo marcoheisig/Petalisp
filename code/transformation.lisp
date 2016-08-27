@@ -2,24 +2,25 @@
 
 (in-package :petalisp)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; transformations on structured operands
 ;;;
 ;;; the concept of transformations deserves special explanation. All
-;;; transformations in Petalisp are deriveable from the following five
-;;; elementary transformations:
+;;; transformations on structured operands are deriveable from the
+;;; following five elementary transformations:
 ;;;
-;;; (1) shifting the indices by a constant
+;;; (1) translating the indices by a constant
 ;;; (2) multiplying the indices by a constant
-;;; (3) permuting the indices
-;;; (4) introducing indices with only one element
-;;; (5) removing indices with only one element
+;;; (3) permuting the dimensions
+;;; (4) introducing dimensions with only one element
+;;; (5) removing dimensions with only one element
 ;;;
 ;;; The class TRANSFORMATION contains all objects that are formed by
 ;;; functional composition of the five elementary operations. A beautiful
-;;; property is that each of these transformations is an isomorphism. In
-;;; particular this means they can be inverted with INVERT.
+;;; property is that each of these transformations is an automorhism. In
+;;; particular this means they can always be inverted with INVERT and the
+;;; inverse is again such a transformation.
 
 (define-class transformation ()
   ((domain-dimension
@@ -47,6 +48,7 @@
 
 (defmethod initialize-instance
     :around ((instance transformation)
+             &rest rest
              &key affine-coefficients affine-mappings permutation domain-dimension)
   (assert (or (xor affine-coefficients affine-mappings) permutation))
   (assert (non-negative-integer-p domain-dimension))
@@ -75,11 +77,13 @@
                  (= 2 (array-dimension affine-coefficients 1))
                  (= (array-dimension permutation 0)
                     (array-dimension affine-coefficients 0))))
-    (call-next-method
+    (apply
+     #'call-next-method
      instance
      :affine-coefficients affine-coefficients
      :permutation permutation
-     :domain-dimension domain-dimension)))
+     :domain-dimension domain-dimension
+     rest)))
 
 (defmethod dimension ((object transformation))
   (length (permutation object)))
@@ -129,6 +133,25 @@
        :affine-coefficients affine-coefficients
        :permutation permutation
        :domain-dimension domain-dimension))))
+
+(define-memo-function identity-transformation (dimension)
+  (make-instance
+   'transformation
+   :affine-coefficients
+   (make-array
+    `(,dimension 2)
+    :initial-contents (make-list dimension :initial-element '(1 0)))
+   :permutation (make-array dimension :initial-contents (iota dimension))
+   :domain-dimension dimension))
+
+(defmethod reference :around ((object structured-operand) (space index-space)
+                              &optional transformation)
+  (call-next-method
+   object space
+   (or transformation (identity-transformation (dimension object)))))
+
+(defmethod transform :before ((object t) (transformation transformation))
+  (assert (= (dimension object) (domain-dimension transformation))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

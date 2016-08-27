@@ -4,7 +4,7 @@
 
 (define-class strided-array-application (strided-array application) ())
 
-(defmethod application ((operator total-function) (object strided-array)
+(defmethod application ((operator operator) (object strided-array)
                         &rest more-objects)
   (let ((objects (list* object more-objects)))
     (let ((ranges (ranges (first objects))))

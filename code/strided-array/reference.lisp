@@ -2,48 +2,18 @@
 
 (in-package :petalisp)
 
-(define-class strided-array-reference (strided-array reference) ())
-
-(defmethod transform ((space strided-array-index-space)
-                      &key scaling translation permutation)
-  (make-instance
-   'strided-array-index-space
-   :ranges
-   (let ((ranges (ranges space)))
-     (mapcar
-      (lambda (scaling translation permutation)
-        (let ((range (nth (1- permutation) ranges)))
-          (range (+ (* (range-start range) scaling) translation)
-                 (* (range-step range) scaling)
-                 (+ (* (range-end range) scaling) translation))))
-      scaling translation permutation))))
-
-(defmethod inverse-transform ((space strided-array-index-space)
-                              &key scaling translation permutation)
-  (make-instance
-   'strided-array-index-space
-   :ranges
-   (let ((ranges (ranges space))
-         (permutation (loop for i from 1 to (dimension space)
-                            collect (1+ (position i permutation)))))
-     (mapcar
-      (lambda (scaling translation permutation)
-        (let ((range (nth (1- permutation) ranges)))
-          (range (/ (- (range-start range) translation) scaling)
-                 (/ (range-step range) scaling)
-                 (* (- (range-end range) translation) scaling))))
-      scaling translation permutation))))
+(define-class strided-array-reference (strided-array reference transformation)
+  (source-space))
 
 (defmethod reference ((object strided-array)
-                      &key source-space target-space
-                        scaling translation permutation)
-  (let* ((args `(:scaling ,scaling
-                 :translation ,translation
-                 :permutation ,permutation))
-         
-         )
-    (assert (equalp target-space (apply #'transform source-space args)))
+                      (source-space strided-array-index-space)
+                      &optional transformation)
+  (let ((ranges (ranges (transform source-space transformation))))
     (make-instance
      'strided-array-reference
      :object object
-     :ranges (ranges target-space))))
+     :ranges ranges
+     :source-space source-space
+     :affine-coefficients (affine-coefficients transformation)
+     :domain-dimension (domain-dimension transformation)
+     :permutation (permutation transformation))))
