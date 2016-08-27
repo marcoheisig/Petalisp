@@ -5,7 +5,7 @@
 (defmacro define-class (name direct-superclasses slots &rest options)
   "Defines a class using DEFCLASS, where all slot-specifiers that consist
 only of a single symbol are expanded to define a :initarg keyword and a
-reader of the same name. Additionally defines a <NAME>-P predicate."
+reader of the same name. Additionally, defines a <NAME>-P predicate."
   `(progn
      (defclass ,name ,direct-superclasses
        ,(loop for slot in slots

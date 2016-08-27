@@ -2,14 +2,16 @@
 
 (in-package :petalisp)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; The Petalisp type system
+;;;
+;;; As of now, Petalisp only distinguishes the types DOUBLE-FLOAT,
+;;; SINGLE-FLOAT, (COMPLEX DOUBLE-FLOAT), (COMPLEX SINGLE-FLOAT) and T.
+
 (defun petalisp-type (type)
   "Given a Lisp type, return its corresponding petalisp type."
   (upgraded-array-element-type type))
-
-(defun petalisp-subtypep (type-1 type-2)
-  "If TYPE-1 is a subtype of TYPE-2 (in the petalisp type system), returns
-  true. Otherwise returns false."
-  (subtypep type-1 type-2))
 
 (defvar *operator-database* (make-hash-table :test #'eq))
 

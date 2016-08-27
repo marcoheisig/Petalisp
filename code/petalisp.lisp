@@ -98,8 +98,8 @@
 (defmethod equalp ((object-1 t) (object-2 t))
   (cl:equalp object-1 object-2))
 
-(defmethod compose ((object-1 function) (object-2 function))
-  (alexandria:compose object-1 object-2))
+(defmethod compose ((g function) (f function))
+  (alexandria:compose g f))
 
 (defmethod index-space ((object index-space)) object)
 

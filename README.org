@@ -36,9 +36,9 @@ Example 3: the numerical Jacobi scheme in two dimensions for a simple discretiza
       ;; translate the array
       #t((a b) ((+ a x) (+ b y)))
       ;; now take the center
-      (<- (index-space array)
-          #i(((+ :start :step) :step (- :end :step))
-             ((+ :start :step) :step (- :end :step))))))
+      (with-keywords array
+         #i(((+ :start :step) :step (- :end :step))
+            ((+ :start :step) :step (- :end :step))))))
 
 (defun jacobi-2d (x iterations)
   (if (zerop iterations) x
