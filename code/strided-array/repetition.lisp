@@ -11,8 +11,6 @@
 (defmethod repetition ((object strided-array)
                        (space strided-array-index-space))
   TODO
-  (unless (every #'zerop (mapcar #'rem (ranges object) (ranges space)))
-    (error "Unable to repeat ~s to ~s." object space))
   (make-instance
    'strided-array-repetition
    :object object

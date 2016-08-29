@@ -13,8 +13,11 @@
      'strided-array-fusion
      :objects objects
      :ranges
-     (loop for d from 1 upto dimension
-           collect (apply #'fuse-dimension dimension objects)))))
+     (let ((array (make-array dimension)))
+       (loop for i below dimension do
+         (setf (aref array i)
+               (apply #'fuse-dimension i objects)))
+       array))))
 
 (defmethod fusion ((range range) &rest more-ranges)
   (let* ((ranges (list* range more-ranges))
@@ -27,7 +30,7 @@
                     (let ((step (ceiling (1+ (- end start))
                                          number-of-elements)))
                       (return (range start step end))))))
-    (assert (every (lambda (x) (equalp x (intersection x fusion))) ranges))
+    (assert (every (lambda (x) (subspace-p x fusion)) ranges))
     fusion))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -38,19 +41,18 @@
 (define-class fusion-island (strided-array-index-space)
   (ranges-to-fuse))
 
-;;; (fuse-dimension 1 #i((1 2 3) (1 2 3)) #i((2 2 4) (1 2 3)) #i((1 2 3) (2 2 4)) #i((2 2 4) (2 2 4)))
+;;; (fuse-dimension 0 #i((1 2 3) (1 2 3)) #i((2 2 4) (1 2 3)) #i((1 2 3) (2 2 4)) #i((2 2 4) (2 2 4)))
 (defun fuse-dimension (dimension &rest objects)
   (let* ((islands
            (apply
             #'subdivide
             (mapcar
-             (lambda (x)
-               (destructuring-bind (range . ranges)
-                   (nthcdr (1- dimension) (ranges x))
+             (lambda (object)
+               (let ((ranges (ranges object)))
                  (make-instance
                   'fusion-island
-                  :ranges ranges
-                  :ranges-to-fuse (list range))))
+                  :ranges (subseq ranges (1+ dimension))
+                  :ranges-to-fuse (list (aref ranges dimension)))))
              objects)))
          (fusions
            (mapcar

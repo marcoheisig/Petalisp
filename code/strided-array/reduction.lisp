@@ -5,14 +5,10 @@
 (define-class strided-array-reduction (strided-array reduction) ())
 
 (defmethod reduction ((operator operator) (object strided-array))
-  (let ((ranges (nreverse (cdr (reverse (ranges object)))))
-        (codomain-type (codomain-type object)))
-    (assert (petalisp-subtypep
-             (result-type operator codomain-type codomain-type)
-             codomain-type))
-    (make-instance
-     'strided-array-reduction
-     :operator operator
-     :object object
-     :ranges ranges
-     :codomain-type codomain-type)))
+  (let ((input-ranges (ranges object)))
+    (let ((ranges (subseq input-ranges (- (length input-ranges) 2))))
+      (make-instance
+       'strided-array-reduction
+       :operator operator
+       :object object
+       :ranges ranges))))

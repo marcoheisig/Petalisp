@@ -8,24 +8,27 @@
 ;;; (difference #i((1 1 9) (1 1 9) (1 1 9)) #i((1 8 9) (1 8 9) (1 8 9)))
 (defmethod difference ((space-1 strided-array-index-space)
                        (space-2 strided-array-index-space))
-  (labels ((rec (s1 s2)
-             (when s1
-               (nconc
-                (let ((tail (cdr s1)))
-                  (mapcar
-                   (lambda (head) (cons head tail))
-                   (difference (car s1) (car s2))))
-                (let ((head (intersection (car s1) (car s2))))
-                  (when head
-                    (mapcar
-                     (lambda (tail) (cons head tail))
-                     (rec (cdr s1) (cdr s2)))))))))
+  (let* ((ranges-1 (ranges space-1))
+         (ranges-2 (ranges space-2))
+         (intersection (intersection space-1 space-2))
+         (dimension (length ranges-1))
+         differences)
+    (unless intersection (return-from difference space-1))
+    (loop for i below dimension do
+      (loop for difference in (difference (aref ranges-1 i)
+                                          (aref ranges-2 i))
+            do (let ((array (copy-array ranges-1)))
+                 (replace array
+                  (ranges intersection)
+                  :end1 i)
+                 (setf (aref array i) difference)
+                 (push array differences))))
     (mapcar
      (lambda (ranges)
        (make-instance
         'strided-array-index-space
         :ranges ranges))
-     (rec (ranges space-1) (ranges space-2)))))
+     differences)))
 
 (defmethod difference ((space-1 range) (space-2 range))
   (let ((intersection

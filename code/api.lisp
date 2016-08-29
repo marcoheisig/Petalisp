@@ -37,3 +37,13 @@
          (setf target-space x))))
     (let ((source-space (transform target-space (invert transformation))))
       (reference object source-space transformation))))
+
+(defmacro subspace (space &rest dimensions)
+  (with-gensyms (dim)
+    (once-only (space)
+      `(symbol-macrolet
+           ((,(intern "START") (range-start (nth ,dim (ranges ,space))))
+            (,(intern "STEP") (range-step (nth ,dim (ranges ,space))))
+            (,(intern "END") (range-end (nth ,dim (ranges ,space)))))
+         ,@(loop for form in dimensions and d from 0
+                 collect `(let ((,dim ,d)) ,@form))))))

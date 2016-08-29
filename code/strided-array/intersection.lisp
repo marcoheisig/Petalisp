@@ -4,15 +4,15 @@
 
 (defmethod intersection ((space-1 strided-array-index-space)
                          (space-2 strided-array-index-space))
-  (when (= (dimension space-1) (dimension space-2))
-    (make-instance
-     'strided-array-index-space
-     :ranges (mapcar
-              (lambda (a b)
-                (or (intersection a b)
-                    (return-from intersection nil)))
-              (ranges space-1)
-              (ranges space-2)))))
+  (assert (= (dimension space-1) (dimension space-2)))
+  (make-instance
+   'strided-array-index-space
+   :ranges (map 'vector
+                (lambda (a b)
+                  (or (intersection a b)
+                      (return-from intersection nil)))
+                (ranges space-1)
+                (ranges space-2))))
 
 (defmethod intersection ((range-1 range) (range-2 range))
   (let ((start-1 (range-start range-1))

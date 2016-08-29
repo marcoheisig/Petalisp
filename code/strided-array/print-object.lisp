@@ -4,12 +4,12 @@
 
 (defmethod print-object ((object strided-array-index-space) stream)
   (format stream "#i(~{~a~^ ~})"
-          (mapcar
-           (lambda (range)
-             (list (range-start range)
-                   (range-step range)
-                   (range-end range)))
-           (ranges object))))
+          (map 'list
+               (lambda (range)
+                 (list (range-start range)
+                       (range-step range)
+                       (range-end range)))
+               (ranges object))))
 
 (defmethod print-object ((object strided-array) stream)
   (print-unreadable-object (object stream :type t)

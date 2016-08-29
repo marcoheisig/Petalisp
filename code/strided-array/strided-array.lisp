@@ -10,7 +10,7 @@
   (length (ranges object)))
 
 (defmethod size ((object strided-array))
-  (reduce #'* (mapcar #'size (ranges object))))
+  (reduce #'* (ranges object) :key #'size))
 
 (defmethod equalp ((object-1 strided-array-index-space)
                    (object-2 strided-array-index-space))
@@ -41,8 +41,7 @@
   (multiple-value-bind (start step end)
       (ematch spec
         ((list start step end) (values start step end))
-        ((list start end) (values start 1 end))
-        ((list end) (values 1 1 end)))
+        ((list start end) (values start 1 end)))
     (assert (not (and (zerop step) (/= start end))))
     ;; ensure that STEP is positive
     (when (minusp step) (setf step (- step)))
@@ -59,15 +58,19 @@
                          (range-start range))
                       (range-step range)))))
 
-(defun |#i-reader| (stream subchar arg)
-  (declare (ignore subchar arg))
+(defun unary-range-p (range)
+  (= (range-start range)
+     (range-end range)))
+
+(defmacro expand-index-space-specification (&rest range-specs)
   `(make-instance
     'strided-array-index-space
     :ranges
-    (list ,@(loop for spec in (read stream t nil t)
-                  collect
-                  (if (atom spec)
-                      `(range ,spec)
-                      `(range ,@spec))))))
+    `#(,,@(loop for range in range-specs
+                collect `(range ,@range)))))
+
+(defun |#i-reader| (stream subchar arg)
+  (declare (ignore subchar arg))
+  `(expand-index-space-specification ,@(read stream t nil t)))
 
 (set-dispatch-macro-character #\# #\i #'|#i-reader|)

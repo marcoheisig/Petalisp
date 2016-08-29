@@ -4,10 +4,11 @@
 
 (defpackage :petalisp
   (:use :cl :optima :alexandria :fare-memoization)
-  (:shadow #:equalp #:intersection #:step #:compose)
+  (:shadow #:equalp #:intersection #:compose)
   (:export
    #:α
    #:β
    #:fuse
    #:repeat
-   #:<-))
+   #:<-
+   #:subspace))
