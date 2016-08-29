@@ -62,7 +62,7 @@
   (= (range-start range)
      (range-end range)))
 
-(defmacro expand-index-space-specification (&rest range-specs)
+(defmacro expand-index-space (&rest range-specs)
   `(make-instance
     'strided-array-index-space
     :ranges
@@ -71,6 +71,6 @@
 
 (defun |#i-reader| (stream subchar arg)
   (declare (ignore subchar arg))
-  `(expand-index-space-specification ,@(read stream t nil t)))
+  `(expand-index-space ,@(read stream t nil t)))
 
 (set-dispatch-macro-character #\# #\i #'|#i-reader|)

@@ -157,9 +157,11 @@
 ;;;
 ;;; Quick notation of index space transformations
 ;;;
-;;; Example: #t((m n) ((+ 2 n) (* 9 m)))
+;;; Examples:
+;;; #2t((+ 2 i0) (* 9 (+ 3 i1)))
+;;; #t((m n) (n m))
 
-(defmacro expand-transformation (symbols mappings)
+(defmacro expand-transformation (symbols &rest mappings)
   (let* ((domain-dimension (length symbols))
          (dim-counter (1- domain-dimension))
          (permuted-symbols
@@ -192,7 +194,12 @@
       :domain-dimension ,domain-dimension)))
 
 (defun |#t-reader| (stream subchar arg)
-  (declare (ignore subchar arg))
-  `(expand-transformation ,@(read stream t nil t)))
+  (declare (ignore subchar))
+  (let ((rest (read stream t nil t)))
+    (if arg
+        `(expand-transformation
+          ,(loop for i below arg collect (intern (format nil "I~d" i)))
+          ,@rest)
+        `(expand-transformation ,@rest))))
 
 (set-dispatch-macro-character #\# #\t #'|#t-reader|)
