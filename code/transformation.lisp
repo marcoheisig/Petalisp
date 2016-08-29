@@ -124,10 +124,10 @@
               (position i (permutation object))))
       (loop for p across permutation
             and i from 0 do
-        (let ((a (aref old-coefficients p 0))
-              (b (aref old-coefficients p 1)))
-          (setf (aref affine-coefficients i 0) (/ a))
-          (setf (aref affine-coefficients i 1) (/ (- b) a))))
+              (let ((a (aref old-coefficients p 0))
+                    (b (aref old-coefficients p 1)))
+                (setf (aref affine-coefficients i 0) (/ a))
+                (setf (aref affine-coefficients i 1) (/ (- b) a))))
       (make-instance
        'transformation
        :affine-coefficients affine-coefficients
@@ -203,3 +203,23 @@
         `(expand-transformation ,@rest))))
 
 (set-dispatch-macro-character #\# #\t #'|#t-reader|)
+
+(defmethod print-object ((object transformation) stream)
+  (let ((coefficients (affine-coefficients object))
+        (dim-counter (1- (dimension object))))
+    (format
+     stream "#~dt(~{~a~^ ~})"
+     (domain-dimension object)
+     (loop for d below (dimension object)
+           collect
+           (let* ((p (or (position d (permutation object))
+                         (incf dim-counter)))
+                  (a (aref coefficients d 0))
+                  (b (aref coefficients d 1))
+                  (var (intern (format nil "i~d" p)))
+                  (mul-form (cond ((zerop a) nil)
+                                 ((= a 1) var)
+                                 (t `(* ,a ,var)))))
+             (cond ((zerop b) mul-form)
+                   ((not mul-form) b)
+                   (t `(+ ,b ,mul-form))))))))
