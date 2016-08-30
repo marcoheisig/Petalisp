@@ -19,7 +19,20 @@
   (reduction operator object))
 
 (defun fuse (object &rest more-objects)
-  (apply #'fusion object more-objects))
+  (let (non-overlapping-spaces)
+    (dolist (b (list* object more-objects))
+      (dolist (a non-overlapping-spaces)
+        (let ((a∩b (intersection a b)))
+          (cond
+            ((not a∩b)
+             (push b non-overlapping-spaces))
+            (t
+             (push (<- b a∩b) non-overlapping-spaces)
+             (dolist (difference (difference a b))
+               (push difference non-overlapping-spaces))
+             (dolist (difference (difference b a))
+               (push difference non-overlapping-spaces)))))))
+    (apply #'fusion non-overlapping-spaces)))
 
 (defun repeat (object space)
   (repetition object space))
@@ -42,8 +55,9 @@
   (with-gensyms (dim)
     (once-only (space)
       `(symbol-macrolet
-           ((,(intern "START") (range-start (nth ,dim (ranges ,space))))
-            (,(intern "STEP") (range-step (nth ,dim (ranges ,space))))
-            (,(intern "END") (range-end (nth ,dim (ranges ,space)))))
-         ,@(loop for form in dimensions and d from 0
-                 collect `(let ((,dim ,d)) ,@form))))))
+           ((,(intern "START") (range-start (aref (ranges ,space) ,dim)))
+            (,(intern "STEP") (range-step (aref (ranges ,space) ,dim)))
+            (,(intern "END") (range-end (aref (ranges ,space) ,dim))))
+         (make-index-space
+          ,@(loop for form in dimensions and d from 0
+                  collect `(let ((,dim ,d)) (range ,@form))))))))

@@ -9,9 +9,16 @@
 ;;; As of now, Petalisp only distinguishes the types DOUBLE-FLOAT,
 ;;; SINGLE-FLOAT, (COMPLEX DOUBLE-FLOAT), (COMPLEX SINGLE-FLOAT) and T.
 
+(defparameter petalisp-types
+  '(single-float
+    double-float
+    (complex single-float)
+    (complex double-float)
+    t))
+
 (defun petalisp-type (type)
   "Given a Lisp type, return its corresponding petalisp type."
-  (upgraded-array-element-type type))
+   (find type petalisp-types :test #'subtypep))
 
 (defvar *operator-database* (make-hash-table :test #'eq))
 

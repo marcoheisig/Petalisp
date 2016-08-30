@@ -62,15 +62,15 @@
   (= (range-start range)
      (range-end range)))
 
-(defmacro expand-index-space (&rest range-specs)
-  `(make-instance
-    'strided-array-index-space
-    :ranges
-    `#(,,@(loop for range in range-specs
-                collect `(range ,@range)))))
+(defun make-index-space (&rest ranges)
+  (make-instance
+   'strided-array-index-space
+   :ranges (make-array (length ranges) :initial-contents ranges)))
 
 (defun |#i-reader| (stream subchar arg)
   (declare (ignore subchar arg))
-  `(expand-index-space ,@(read stream t nil t)))
+  `(make-index-space
+    ,@(loop for form in (read stream t nil t) collect
+            `(range ,@form))))
 
 (set-dispatch-macro-character #\# #\i #'|#i-reader|)

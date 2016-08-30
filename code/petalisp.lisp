@@ -103,3 +103,6 @@
 
 (defmethod subspace-p (space-1 space-2)
   (equalp space-1 (intersection space-1 space-2)))
+
+(defmethod source ((object structured-operand) &key &allow-other-keys)
+  object)

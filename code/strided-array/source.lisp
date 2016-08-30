@@ -11,10 +11,10 @@
   (path))
 
 (defun array-ranges (array)
-  (mapcar
-   (lambda (end)
-     (range 0 1 (1- end)))
-   (array-dimensions array)))
+  (map 'vector
+       (lambda (end)
+         (range 0 1 (1- end)))
+       (array-dimensions array)))
 
 (defmethod source ((object t) &rest arguments)
   (assert (null arguments))
