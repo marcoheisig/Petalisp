@@ -2,7 +2,7 @@
 
 (in-package :petalisp)
 
-(defgeneric children (node))
+(defgeneric predecessors (node))
 
 (defgeneric stream-draw-graph (node stream))
 
@@ -13,21 +13,70 @@
 (defun id (node)
   (symbol-name (gethash node *graphviz-node-table*)))
 
-(defun draw-graph (graph filename)
+(defun draw-graph (start-nodes filename)
   (with-open-file (stream filename :direction :output :if-exists :supersede)
     (format stream "digraph G {~%")
     (let ((*graphviz-node-table* (make-hash-table :test #'eq)))
-      (stream-draw-graph graph stream))
+      (dolist (start-node start-nodes)
+        (stream-draw-graph start-node stream)))
     (format stream "}~%")))
 
 (defmethod stream-draw-graph :around (node stream)
   (when (null (gethash node *graphviz-node-table*))
-    (setf (gethash node *graphviz-node-table*) (gensym)))
-  (format stream "  ~a [shape = box];~%"
-          (id node))
-  (call-next-method)
-  (loop for child in (children node)
-        for i from 1
-        do (stream-draw-graph child stream)
-           (format stream "  ~a -> ~a [label = \"~d\"];~%"
-                   (id node) (id child) i)))
+    (setf (gethash node *graphviz-node-table*) (gensym "NODE"))
+    (call-next-method)
+    (loop for predecessor in (predecessors node)
+          do (stream-draw-graph predecessor stream)
+             (format stream "  ~a -> ~a;~%"
+                     (id predecessor) (id node)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Predecessors of Petalisp nodes
+
+(defmethod predecessors ((node source)) nil)
+
+(defmethod predecessors ((node application)) (objects node))
+
+(defmethod predecessors ((node reduction)) (list (object node)))
+
+(defmethod predecessors ((node repetition)) (list (object node)))
+
+(defmethod predecessors ((node fusion)) (objects node))
+
+(defmethod predecessors ((node reference)) (list (object node)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Methods for drawing individual nodes
+
+(defmethod stream-draw-graph ((node application) stream)
+  (format stream "    ~a [style = filled, fillcolor = red];~%" (id node))
+  (format stream "    ~a [label = \"~a ~a\"];~%"
+          (id node) (name (operator node)) (index-space node)))
+
+(defmethod stream-draw-graph ((node reduction) stream)
+  (format stream "    ~a [style = filled, fillcolor = blue];~%" (id node))
+  (format stream "    ~a [label = \"~a ~a\"];~%"
+          (id node) (name (operator node)) (index-space node)))
+
+(defmethod stream-draw-graph ((node fusion) stream)
+  (format stream "    ~a [style = filled, fillcolor = grey];~%" (id node))
+  (format stream "    ~a [label = \"fuse ~a\"];~%" (id node) (index-space node)))
+
+(defmethod stream-draw-graph ((node reference) stream)
+  (format stream "    ~a [style = filled, fillcolor = lightblue2];~%" (id node))
+  (format stream "    ~a [label = \"~a ~a\"];~%"
+          (id node) (transformation node) (index-space node)))
+
+(defmethod stream-draw-graph ((node source) stream)
+  (format stream "    ~a [style = filled, fillcolor = green];~%" (id node))
+  (format stream "    ~a [label = \"~a\"];~%" (id node) (index-space node)))
+
+(defmethod stream-draw-graph ((node strided-array-from-lisp-array) stream)
+  (format stream "    ~a [style = filled, fillcolor = green];~%" (id node))
+  (format stream "    ~a [label = \"~a\"];~%" (id node) (lisp-array node)))
+
+(defmethod stream-draw-graph ((node repetition) stream)
+  (format stream "    ~a [style = filled, fillcolor = forestgreen];~%" (id node))
+  (format stream "    ~a [label = \"~a\"];~%" (id node) (index-space node)))

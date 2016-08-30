@@ -16,16 +16,19 @@
          (range 0 1 (1- end)))
        (array-dimensions array)))
 
-(defmethod source ((object t) &rest arguments)
-  (assert (null arguments))
+(define-memo-function source-from-lisp-object (lisp-object)
   (let ((array (or
-                (and (typep object 'simple-array) object)
-                (make-array () :initial-element object
-                               :element-type (type-of object)))))
+                (and (typep lisp-object 'simple-array) lisp-object)
+                (make-array () :initial-element lisp-object
+                               :element-type (type-of lisp-object)))))
     (make-instance
      'strided-array-from-lisp-array
      :lisp-array array
      :ranges (array-ranges array))))
+
+(defmethod source ((object t) &rest arguments)
+  (assert (null arguments))
+  (source-from-lisp-object object))
 
 (defmethod source ((object (eql 'hdf5)) &key pathname)
   (make-instance

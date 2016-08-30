@@ -2,7 +2,7 @@
 
 (in-package :petalisp)
 
-(define-class strided-array-reference (strided-array reference transformation)
+(define-class strided-array-reference (strided-array reference)
   (source-space))
 
 (defmethod reference ((object strided-array)
@@ -14,6 +14,4 @@
      :object object
      :ranges ranges
      :source-space source-space
-     :affine-coefficients (affine-coefficients transformation)
-     :domain-dimension (domain-dimension transformation)
-     :permutation (permutation transformation))))
+     :transformation transformation)))

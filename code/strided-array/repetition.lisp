@@ -14,7 +14,9 @@
                    (zerop (rem (size range-2) (size range-1))))
                  (ranges object)
                  (ranges space)))
-  (make-instance
-   'strided-array-repetition
-   :object object
-   :ranges (ranges space)))
+  (if (equalp (index-space object) space)
+      object
+      (make-instance
+       'strided-array-repetition
+       :object object
+       :ranges (ranges space))))

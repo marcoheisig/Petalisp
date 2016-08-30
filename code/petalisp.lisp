@@ -26,7 +26,7 @@
 
 (define-node fusion (object &rest more-objects) (objects))
 
-(define-node reference (object space &optional transformation) (object))
+(define-node reference (object space &optional transformation) (object transformation))
 
 (defgeneric compute (&rest objects))
 
