@@ -10,7 +10,10 @@
 
 (defmethod repetition ((object strided-array)
                        (space strided-array-index-space))
-  TODO
+  (assert (every (lambda (range-1 range-2)
+                   (zerop (rem (size range-2) (size range-1))))
+                 (ranges object)
+                 (ranges space)))
   (make-instance
    'strided-array-repetition
    :object object

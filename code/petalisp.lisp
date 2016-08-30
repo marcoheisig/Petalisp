@@ -2,7 +2,8 @@
 
 (in-package :petalisp)
 
-(define-class operator () (domain-type codomain-type))
+(define-class operator ()
+  (name domain-type codomain-type cycles loads stores))
 
 (define-class structured-operand () (element-type))
 
@@ -77,7 +78,10 @@
   (assert (< 0 (dimension object))))
 
 (defmethod repetition :before (object space)
-  (assert (subspace-p (index-space object) space)))
+  (assert
+   (or
+    (< (dimension object) (dimension space))
+    (subspace-p (index-space object) space))))
 
 (defmethod fusion :before ((object structured-operand) &rest more-objects)
   (assert (identical (list* object more-objects)
@@ -106,3 +110,15 @@
 
 (defmethod source ((object structured-operand) &key &allow-other-keys)
   object)
+
+(defmethod intersection ((object-1 structured-operand)
+                         (object-2 structured-operand))
+  (assert (not (and (index-space-p object-1)
+                    (index-space-p object-2))))
+  (intersection (index-space object-1) (index-space object-2)))
+
+(defmethod difference ((object-1 structured-operand)
+                       (object-2 structured-operand))
+  (assert (not (and (index-space-p object-1)
+                    (index-space-p object-2))))
+  (difference (index-space object-1) (index-space object-2)))

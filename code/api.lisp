@@ -12,27 +12,32 @@
             (lambda (object)
               (repetition object index-space))
             objects))
-         (operator (find-operator operator)))
+         (operator (find-operator operator 'double-float 'double-float))) ;; TODO
     (apply #'application operator objects)))
 
 (defun β (operator object)
   (reduction operator object))
 
 (defun fuse (object &rest more-objects)
-  (let (non-overlapping-spaces)
-    (dolist (b (list* object more-objects))
-      (dolist (a non-overlapping-spaces)
-        (let ((a∩b (intersection a b)))
-          (cond
-            ((not a∩b)
-             (push b non-overlapping-spaces))
-            (t
-             (push (<- b a∩b) non-overlapping-spaces)
-             (dolist (difference (difference a b))
-               (push difference non-overlapping-spaces))
-             (dolist (difference (difference b a))
-               (push difference non-overlapping-spaces)))))))
-    (apply #'fusion non-overlapping-spaces)))
+  (let* ((objects (list* object more-objects))
+         (current ())
+         (new ()))
+    (dolist (b objects)
+      (let ((b-intersects nil))
+        (dolist (a current)
+          (let ((a∩b (intersection a b)))
+            (cond
+              ((not a∩b) (push a new))
+              (t
+               (setf b-intersects t)
+               (push (reference b a∩b) new)
+               (dolist (difference (difference a b))
+                 (push (reference a difference) new))
+               (dolist (difference (difference b a))
+                 (push (reference b difference) new))))))
+        (unless b-intersects (push b new)))
+      (psetf current new new ()))
+    (apply #'fusion current)))
 
 (defun repeat (object space)
   (repetition object space))

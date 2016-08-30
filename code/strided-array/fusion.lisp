@@ -57,7 +57,7 @@
          (fusions
            (mapcar
             (lambda (fusion-island)
-              (apply #'fuse (ranges-to-fuse fusion-island)))
+              (apply #'fusion (ranges-to-fuse fusion-island)))
             islands)))
     (assert (identical fusions :test #'equalp))
     (first fusions)))

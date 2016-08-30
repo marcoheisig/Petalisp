@@ -13,7 +13,7 @@
      (:file "utilities" :depends-on ("package"))
      (:file "petalisp" :depends-on ("utilities"))
      (:file "transformation" :depends-on ("petalisp"))
-     (:file "types" :depends-on ("petalisp"))
+     (:file "operator-database" :depends-on ("petalisp"))
      (:file "graphviz" :depends-on ("petalisp"))
      (:module "strided-array" :depends-on ("petalisp")
       :components

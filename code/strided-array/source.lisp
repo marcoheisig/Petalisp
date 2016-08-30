@@ -19,13 +19,13 @@
 (defmethod source ((object t) &rest arguments)
   (assert (null arguments))
   (let ((array (or
-                (and (typep object 'simple-array) array)
+                (and (typep object 'simple-array) object)
                 (make-array () :initial-element object
                                :element-type (type-of object)))))
     (make-instance
      'strided-array-from-lisp-array
      :lisp-array array
-     :ranges (array-ranges object))))
+     :ranges (array-ranges array))))
 
 (defmethod source ((object (eql 'hdf5)) &key pathname)
   (make-instance
