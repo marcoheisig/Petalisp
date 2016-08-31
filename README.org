@@ -25,42 +25,40 @@ Example 1: transposing a matrix
 Example 2: a simple matrix multiplication
 #+BEGIN_SRC lisp
 (defun matrix-multiplication (A B)
-  (β+ (α* (<- A #t((m n) (m 1 n)))
-          (<- B #t((n k) (1 k n))))))
+  (β #'+
+     (α #'*
+        (<- A #t((m n) (m 1 n)))
+        (<- B #t((n k) (1 k n))))))
 #+END_SRC
 
 Example 3: the numerical Jacobi scheme in two dimensions for a simple discretization
 #+BEGIN_SRC lisp
-(defun take (array x y)
-  (<- array
-      ;; translate the array
-      #t((a b) ((+ a x) (+ b y)))
-      ;; now take the center
-      (with-keywords array
-         #i(((+ :start :step) :step (- :end :step))
-            ((+ :start :step) :step (- :end :step))))))
-
-(defun jacobi-2d (x iterations)
-  (if (zerop iterations) x
-      (jacobi-2d
-       (substitute x
-        (α* 0.25
-           (α+ (take x  1  0)
-               (take x -1  0)
-               (take x  0  1)
-               (take x  0 -1))))
-       (- iterations 1))))
+(defun jacobi-2d (grid iterations)
+  (let ((interior (subspace grid #i(((+ start 1) step (- end 1))
+                                    ((+ start 1) step (- end 1))))))
+    (if (zerop iterations) grid
+        (jacobi-2d
+         (fuse x
+               (α #'* 0.25
+                  (α #'+
+                     (<- x #2t((+ i0 1) i1) interior)
+                     (<- x #2t((- i0 1) i1) interior)
+                     (<- x #2t(i0 (+ i1 1)) interior)
+                     (<- x #2t(i0 (- i1 1)) interior))))
+         (- iterations 1)))))
 #+END_SRC
 
 Example 4: A full Petalisp program to multiply a matrix from a file with a
 lisp constant and store it again.
 #+BEGIN_SRC lisp
 (defun matrix-multiplication (A B)
-  (β+ (α* (<- A #t((m n) (m 1 n)))
-          (<- B #t((n k) (1 k n))))))
+  (β #'+
+     (α #'*
+        (<- A #t((m n) (m 1 n)))
+        (<- B #t((n k) (1 k n))))))
 
-(store (ascii-file "C.ascii")
-       (matrix-multiplication (hdf5-file "A.h5" "matrix")
-                              #2((1 2) (3 4))))
+(setf (ascii-file "scaled-matrix.ascii")
+      (matrix-multiplication (hdf5-file "A.h5" "matrix")
+                             #2a((1 2) (3 4))))
 #+END_SRC
 
