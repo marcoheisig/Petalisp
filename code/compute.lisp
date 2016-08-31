@@ -2,3 +2,7 @@
 
 (in-package :petalisp)
 
+(defmethod compute (&rest objects)
+  ;; CSE
+  ;; scheduling
+  )

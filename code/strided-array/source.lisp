@@ -16,7 +16,9 @@
          (range 0 1 (1- end)))
        (array-dimensions array)))
 
-(define-memo-function source-from-lisp-object (lisp-object)
+(define-memo-function (source-from-lisp-object
+                       :table (make-hash-table :test #'equal :weakness :value))
+    (lisp-object)
   (let ((array (or
                 (and (typep lisp-object 'simple-array) lisp-object)
                 (make-array () :initial-element lisp-object

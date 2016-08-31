@@ -6,7 +6,7 @@
 ;;;
 ;;; transformations on structured operands
 ;;;
-;;; the concept of transformations deserves special explanation. All
+;;; The concept of transformations deserves special explanation. All
 ;;; transformations on structured operands are deriveable from the
 ;;; following five elementary transformations:
 ;;;
@@ -134,7 +134,9 @@
        :permutation permutation
        :domain-dimension domain-dimension))))
 
-(define-memo-function identity-transformation (dimension)
+(define-memo-function (identity-transformation
+                       :table (make-hash-table :test #'equal :weakness :value))
+    (dimension)
   (make-instance
    'transformation
    :affine-coefficients

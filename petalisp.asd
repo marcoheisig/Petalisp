@@ -5,7 +5,7 @@
   :author "Marco Heisig <marco.heisig@fau.de>"
   :version "0.1"
   :license "GPLv3"
-  :depends-on (:alexandria :optima :fare-memoization)
+  :depends-on (:alexandria :optima :fare-memoization :trivial-garbage)
   :components
   ((:module "code"
     :components

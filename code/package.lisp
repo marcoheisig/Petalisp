@@ -4,6 +4,7 @@
 
 (defpackage :petalisp
   (:use :cl :optima :alexandria :fare-memoization)
+  (:shadowing-import-from :trivial-garbage #:make-hash-table)
   (:shadow #:equalp #:intersection #:compose)
   (:export
    #:α
