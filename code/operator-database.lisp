@@ -28,12 +28,13 @@
 (defun find-operator (function &rest types)
   (gethash (list* function types) *operator-database*))
 
-(defun make-operator (name &rest args &key domain-type &allow-other-keys)
+(defun make-operator (name &rest args &key domain-type lisp-function &allow-other-keys)
   (setf (gethash (list* (symbol-function name)
                         domain-type)
                  *operator-database*)
         (apply #'make-instance 'operator
                :name name
+               :lisp-function (or lisp-function (symbol-function name))
                args)))
 
 (defmacro define-operator (name domain-type codomain-type &rest args)
@@ -41,12 +42,6 @@
                   :domain-type ',domain-type
                   :codomain-type ',codomain-type ,@args))
 
-(define-operator + (double-float double-float) (double-float)
-  :cycles 1
-  :loads 2
-  :stores 1)
+(define-operator + (double-float double-float) (double-float))
 
-(define-operator * (double-float double-float) (double-float)
-  :cycles 1
-  :loads 2
-  :stores 1)
+(define-operator * (double-float double-float) (double-float))

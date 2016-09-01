@@ -78,3 +78,13 @@ if no solution exists."
         tree))
 
 (defconstant TODO 'TODO) ; make TODO a valid piece of lisp code
+
+(defun array-map (function array &rest more-arrays)
+  (let ((n-elements (reduce #'* (array-dimensions array)))
+        (result (copy-array array)))
+    (loop for i below n-elements do
+      (setf (row-major-aref result i)
+            (apply function
+                   (row-major-aref array i)
+                   (mapcar #'(lambda (x) (row-major-aref x i)) more-arrays))))
+    result))

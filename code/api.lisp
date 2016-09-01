@@ -4,7 +4,7 @@
 
 (defun α (operator object &rest more-objects)
   (let* ((objects
-           (mapcar #'source (list* object more-objects)))
+           (mapcar #'lisp (list* object more-objects)))
          (index-space
            (reduce #'broadcast objects))
          (objects

@@ -134,9 +134,7 @@
        :permutation permutation
        :domain-dimension domain-dimension))))
 
-(define-memo-function (identity-transformation
-                       :table (make-hash-table :test #'equal :weakness :value))
-    (dimension)
+(define-memo-function identity-transformation (dimension)
   (make-instance
    'transformation
    :affine-coefficients

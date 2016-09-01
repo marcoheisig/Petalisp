@@ -3,7 +3,7 @@
 (in-package :petalisp)
 
 (define-class operator ()
-  (name domain-type codomain-type cycles loads stores))
+  (name domain-type codomain-type lisp-function))
 
 (define-class structured-operand () (element-type))
 
@@ -15,8 +15,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; the building blocks of Petalisp
-
-(define-node source (object-or-symbol &key &allow-other-keys) ())
 
 (define-node application (operator object &rest more-objects) (operator objects))
 
@@ -34,7 +32,7 @@
 ;;;
 ;;; operations on index spaces
 
-(define-class index-space (source) ())
+(define-class index-space (structured-operand) ())
 
 (defgeneric index-space (object))
 
@@ -62,6 +60,24 @@
 
 (defgeneric transform (object transformation))
 
+(defgeneric predecessors (object))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; input and output
+
+(defgeneric hdf5 (&rest arguments))
+
+(defgeneric (setf hdf5) (&rest arguments))
+
+(defgeneric plaintext (file-name))
+
+(defgeneric (setf plaintext) (file-name))
+
+(defgeneric lisp (object))
+
+(defgeneric (setf lisp) (object))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; argument checking
@@ -69,7 +85,6 @@
 (defmethod application :before ((operator operator)
                                 (object structured-operand)
                                 &rest more-objects)
-  (assert (= (dimension operator) (1+ (length more-objects))))
   (assert (identical (list* object more-objects)
                      :test #'equalp :key #'index-space)))
 
@@ -108,9 +123,6 @@
 (defmethod subspace-p (space-1 space-2)
   (equalp space-1 (intersection space-1 space-2)))
 
-(defmethod source ((object structured-operand) &key &allow-other-keys)
-  object)
-
 (defmethod intersection ((object-1 structured-operand)
                          (object-2 structured-operand))
   (assert (not (and (index-space-p object-1)
@@ -122,3 +134,25 @@
   (assert (not (and (index-space-p object-1)
                     (index-space-p object-2))))
   (difference (index-space object-1) (index-space object-2)))
+
+(defmethod lisp ((object structured-operand)) object)
+
+(defmethod plaintext (file-name)
+  (with-input-from-file (stream file-name)
+    (lisp (read stream))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; predecessors of Petalisp nodes
+
+(defmethod predecessors ((node t)) (declare (ignore node)) nil)
+
+(defmethod predecessors ((node application)) (objects node))
+
+(defmethod predecessors ((node reduction)) (list (object node)))
+
+(defmethod predecessors ((node repetition)) (list (object node)))
+
+(defmethod predecessors ((node fusion)) (objects node))
+
+(defmethod predecessors ((node reference)) (list (object node)))
