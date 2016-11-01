@@ -2,37 +2,38 @@
 
 (in-package :petalisp)
 
-(define-class operator ()
-  (name domain-type codomain-type lisp-function))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; the building blocks of Petalisp
 
-(define-class structured-operand () (element-type))
+(define-class operator () (name lisp-function))
+
+(define-class structured-operand () (element-type predecessors))
+
+(define-class index-space (structured-operand) ())
+
+(define-class transformation () (input-dimension output-dimension))
+
+(define-class identity-transformation (transformation) ())
 
 (defmacro define-node (name lambda-list slots)
   `(progn
      (define-class ,name (structured-operand) ,slots)
      (defgeneric ,name ,lambda-list)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; the building blocks of Petalisp
+(define-node application (operator object &rest more-objects) (operator))
 
-(define-node application (operator object &rest more-objects) (operator objects))
+(define-node reduction (operator object) (operator))
 
-(define-node reduction (operator object) (operator object))
+(define-node repetition (object space) ())
 
-(define-node repetition (object space) (object))
+(define-node fusion (object &rest more-objects) ())
 
-(define-node fusion (object &rest more-objects) (objects))
-
-(define-node reference (object space &optional transformation) (object transformation))
-
-(defgeneric compute (&rest objects))
+(define-node reference (object space transformation) (transformation))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; operations on index spaces
-
-(define-class index-space (structured-operand) ())
 
 (defgeneric index-space (object))
 
@@ -42,7 +43,17 @@
 
 (defgeneric difference (space-1 space-2))
 
-(defgeneric subspace-p (space-1 space-2))
+(defgeneric subspace? (space-1 space-2))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; operations on transformations
+
+(defgeneric compose (transformation-1 transformation-2))
+
+(defgeneric invert (transformation))
+
+(defgeneric transform (object transformation))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -52,31 +63,21 @@
 
 (defgeneric size (object))
 
-(defgeneric equalp (object-1 object-2))
+(defgeneric equal? (object-1 object-2))
 
-(defgeneric compose (object-1 object-2))
-
-(defgeneric invert (object))
-
-(defgeneric transform (object transformation))
-
-(defgeneric predecessors (object))
+(defgeneric compute (&rest objects))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; input and output
 
-(defgeneric hdf5 (&rest arguments))
+(defgeneric lisp->petalisp (object))
 
-(defgeneric (setf hdf5) (&rest arguments))
+(defgeneric petalisp->lisp (object &optional storage))
 
-(defgeneric plaintext (file-name))
+(defgeneric hdf5->petalisp (&rest arguments))
 
-(defgeneric (setf plaintext) (file-name))
-
-(defgeneric lisp (object))
-
-(defgeneric (setf lisp) (object))
+(defgeneric petalisp->hdf5 (&rest arguments))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -90,17 +91,21 @@
 
 (defmethod reduction :before ((operator operator)
                               (object structured-operand))
-  (assert (< 0 (dimension object))))
+  (assert (plusp (dimension object))))
 
 (defmethod repetition :before (object space)
   (assert
    (or
     (< (dimension object) (dimension space))
-    (subspace-p (index-space object) space))))
+    (subspace? (index-space object) space))))
 
 (defmethod fusion :before ((object structured-operand) &rest more-objects)
   (assert (identical (list* object more-objects)
                      :test #'= :key #'dimension)))
+
+(defmethod reference :before (object space transformation)
+  (assert (and (subspace? space object)
+               (= (dimension space) (input-dimension transformation)))))
 
 (defmethod intersection :before ((space-1 index-space) (space-2 index-space))
   (assert (= (dimension space-1) (dimension space-2))))
@@ -108,51 +113,40 @@
 (defmethod difference :before ((space-1 index-space) (space-2 index-space))
   (assert (= (dimension space-1) (dimension space-2))))
 
+(defmethod compose :before ((t1 transformation) (t2 transformation))
+  (assert (= (input-dimension t1) (output-dimension t2))))
+
+(defmethod transform :before ((object structured-operand) (t transformation))
+  (assert (= (dimension object) (input-dimension transformation))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; default behavior
 
-(defmethod equalp ((object-1 t) (object-2 t))
-  (cl:equalp object-1 object-2))
+(defmethod predecessors ((node t)) (declare (ignore node)) nil)
+
+(defmethod equal? ((object-1 t) (object-2 t))
+  (equalp object-1 object-2))
 
 (defmethod compose ((g function) (f function))
   (alexandria:compose g f))
 
 (defmethod index-space ((object index-space)) object)
 
-(defmethod subspace-p (space-1 space-2)
-  (equalp space-1 (intersection space-1 space-2)))
+(defmethod subspace? (space-1 space-2)
+  (equal? space-1 (intersection space-1 space-2)))
 
 (defmethod intersection ((object-1 structured-operand)
                          (object-2 structured-operand))
-  (assert (not (and (index-space-p object-1)
-                    (index-space-p object-2))))
   (intersection (index-space object-1) (index-space object-2)))
 
 (defmethod difference ((object-1 structured-operand)
                        (object-2 structured-operand))
-  (assert (not (and (index-space-p object-1)
-                    (index-space-p object-2))))
   (difference (index-space object-1) (index-space object-2)))
 
-(defmethod lisp ((object structured-operand)) object)
+(defmethod compose ((g transformation) (f identity-transformation)) g)
 
-(defmethod plaintext (file-name)
-  (with-input-from-file (stream file-name)
-    (lisp (read stream))))
+(defmethod compose ((g identity-transformation) (f transformation)) f)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; predecessors of Petalisp nodes
+(defmethod lisp->petalisp ((object structured-operand)) object)
 
-(defmethod predecessors ((node t)) (declare (ignore node)) nil)
-
-(defmethod predecessors ((node application)) (objects node))
-
-(defmethod predecessors ((node reduction)) (list (object node)))
-
-(defmethod predecessors ((node repetition)) (list (object node)))
-
-(defmethod predecessors ((node fusion)) (objects node))
-
-(defmethod predecessors ((node reference)) (list (object node)))

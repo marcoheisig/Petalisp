@@ -4,7 +4,7 @@
 
 (defun α (operator object &rest more-objects)
   (let* ((objects
-           (mapcar #'lisp (list* object more-objects)))
+           (mapcar #'lisp->petalisp (list* object more-objects)))
          (index-space
            (reduce #'broadcast objects))
          (objects
@@ -12,7 +12,7 @@
             (lambda (object)
               (repetition object index-space))
             objects))
-         (operator (find-operator operator 'double-float 'double-float))) ;; TODO
+         (operator (find-operator operator)))
     (apply #'application operator objects)))
 
 (defun β (operator object)
@@ -30,11 +30,11 @@
               ((not a∩b) (push a new))
               (t
                (setf b-intersects t)
-               (push (reference b a∩b) new)
+               (push (reference b a∩b TODO) new)
                (dolist (difference (difference a b))
-                 (push (reference a difference) new))
+                 (push (reference a difference TODO) new))
                (dolist (difference (difference b a))
-                 (push (reference b difference) new))))))
+                 (push (reference b difference TODO) new))))))
         (unless b-intersects (push b new)))
       (psetf current new new ()))
     (apply #'fusion current)))
@@ -42,7 +42,7 @@
 (defun repeat (object space)
   (repetition object space))
 
-(defun <- (object &rest subspaces-and-transformations)
+(defun ← (object &rest subspaces-and-transformations)
   (let ((target-space (index-space object))
         (transformation (identity-transformation (dimension object))))
     (dolist (x subspaces-and-transformations)
@@ -51,7 +51,7 @@
          (zapf target-space (transform % x))
          (zapf transformation (compose x %)))
         (index-space
-         (assert (subspace-p x target-space))
+         (assert (subspace? x target-space))
          (setf target-space x))))
     (let ((source-space (transform target-space (invert transformation))))
       (reference object source-space transformation))))

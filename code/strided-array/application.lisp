@@ -6,10 +6,8 @@
 
 (defmethod application ((operator operator) (object strided-array)
                         &rest more-objects)
-  (let ((objects (list* object more-objects)))
-    (let ((ranges (ranges (first objects))))
-      (make-instance
-       'strided-array-application
-       :operator operator
-       :objects objects
-       :ranges ranges))))
+  (make-instance
+   'strided-array-application
+   :operator operator
+   :predecessors (list* object more-objects)
+   :ranges (ranges object)))

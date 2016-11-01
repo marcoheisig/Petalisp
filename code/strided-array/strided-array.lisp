@@ -12,7 +12,7 @@
 (defmethod size ((object strided-array))
   (reduce #'* (ranges object) :key #'size))
 
-(defmethod equalp ((object-1 strided-array-index-space)
+(defmethod equal? ((object-1 strided-array-index-space)
                    (object-2 strided-array-index-space))
   (and (= (dimension object-1) (dimension object-2))
        (every #'equalp
@@ -34,7 +34,7 @@
 
 (defstruct (range (:constructor %make-range (start step end)))
   (start 0 :type integer :read-only t)
-  (step 1 :type integer :read-only t)
+  (step 1 :type unsigned-byte :read-only t)
   (end 0 :type integer :read-only t))
 
 (defun range (&rest spec)
@@ -53,12 +53,14 @@
     (when (> start end) (rotatef start end))
     (%make-range start step end)))
 
+(defun range? (x) (typep x 'range))
+
 (defmethod size ((range range))
   (1+ (the integer (/ (- (range-end range)
                          (range-start range))
                       (range-step range)))))
 
-(defun unary-range-p (range)
+(defun unary-range? (range)
   (= (range-start range)
      (range-end range)))
 

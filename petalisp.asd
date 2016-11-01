@@ -4,8 +4,19 @@
   :description "Elegant code generation for high-performance computing."
   :author "Marco Heisig <marco.heisig@fau.de>"
   :version "0.1"
-  :license "GPLv3"
-  :depends-on (:alexandria :optima :fare-memoization :trivial-garbage)
+  :license "AGPLv3"
+
+  :depends-on
+  (:alexandria
+   :optima
+   :fare-memoization
+   :trivial-garbage
+   :fiveam)
+
+  :perform
+  (test-op (o s)
+           (uiop:symbol-call '#:petalisp '#:run-test-suite))
+
   :components
   ((:module "code"
     :components
@@ -29,5 +40,6 @@
        (:file "repetition" :depends-on ("strided-array"))
        (:file "strided-array-from-lisp-array" :depends-on ("strided-array"))
        (:file "transform" :depends-on ("strided-array"))))
-     (:file "api" :depends-on ("strided-array" "operator-database"))))))
+     (:file "api" :depends-on ("strided-array" "operator-database"))
+     (:file "test-suite" :depends-on ("api"))))))
 

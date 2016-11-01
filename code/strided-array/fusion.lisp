@@ -30,7 +30,7 @@
                     (let ((step (ceiling (1+ (- end start))
                                          number-of-elements)))
                       (return (range start step end))))))
-    (assert (every (lambda (x) (subspace-p x fusion)) ranges))
+    (assert (every (lambda (x) (subspace? x fusion)) ranges))
     fusion))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -59,7 +59,7 @@
             (lambda (fusion-island)
               (apply #'fusion (ranges-to-fuse fusion-island)))
             islands)))
-    (assert (identical fusions :test #'equalp))
+    (assert (identical fusions :test #'equal?))
     (first fusions)))
 
 ;;; (subdivide #i((1 1 4)) #i((1 2 5)))

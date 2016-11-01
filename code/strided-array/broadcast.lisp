@@ -2,7 +2,6 @@
 
 (in-package :petalisp)
 
-;;; (broadcast #i((1 1 2) (2 3 100)) #i((0 1 0)))
 (defmethod broadcast ((space-1 strided-array)
                       (space-2 strided-array))
   (when (< (dimension space-1) (dimension space-2))
@@ -22,8 +21,8 @@
        (min dim-1 dim-2))))))
 
 (defmethod broadcast ((range-1 range) (range-2 range))
-  (let ((u1 (unary-range-p range-1))
-        (u2 (unary-range-p range-2)))
+  (let ((u1 (unary-range? range-1))
+        (u2 (unary-range? range-2)))
     (cond
       ((equalp range-1 range-2) range-1)
       ((and u1 (not u2)) range-2)

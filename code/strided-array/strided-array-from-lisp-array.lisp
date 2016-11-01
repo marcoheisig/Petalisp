@@ -34,10 +34,10 @@
 (defmethod application ((operator operator) (object strided-array-from-lisp-array)
                         &rest more-objects)
   (unless (and (< (size object) 42) ; constant fold only small arrays
-               (every #'strided-array-from-lisp-array-p more-objects))
+               (every #'strided-array-from-lisp-array? more-objects))
     (return-from application (call-next-method)))
   (let ((objects (list* object more-objects)))
-    (assert (identical objects :test #'equalp :key #'index-space))
+    (assert (identical objects :test #'equal? :key #'index-space))
     (make-instance
      'strided-array-from-lisp-array
      :lisp-array

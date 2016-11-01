@@ -14,8 +14,8 @@
                    (zerop (rem (size range-2) (size range-1))))
                  (ranges object)
                  (ranges space)))
-  (cond ((equalp (index-space object) space) object)
+  (cond ((equal? (index-space object) space) object)
         (t (make-instance
             'strided-array-repetition
-            :object object
+            :predecessors (list object)
             :ranges (ranges space)))))

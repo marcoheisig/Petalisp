@@ -4,7 +4,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; transformations on structured operands
+;;; affine transformations
 ;;;
 ;;; The concept of transformations deserves special explanation. All
 ;;; transformations on structured operands are deriveable from the
@@ -22,19 +22,13 @@
 ;;; particular this means they can always be inverted with INVERT and the
 ;;; inverse is again such a transformation.
 
-(define-class transformation ()
-  ((domain-dimension
-    :initarg :domain-dimension :reader domain-dimension
-    :type integer
-    :documentation
-    "An integer denoting the necessary dimension of the spaces to which
-   the transformation can be applied.")
-   (permutation
+(define-class affine-transformation (transformation)
+  ((permutation
     :initarg :permutation :reader permutation
     :type '(simple-array integer (*))
     :documentation
     "A vector of integers denoting the position of the Nth input index in
- the output index. It may be longer or shorter tha DOMAIN-DIMENSION in which
+ the output index. It may be longer or shorter tha INPUT-DIMENSION in which
  case the superfluous or missing indices are dropped, or introduced with a
  sole index of zero.")
    (affine-coefficients
@@ -47,19 +41,19 @@
     function that is applied to the Xth output index.")))
 
 (defmethod initialize-instance
-    :around ((instance transformation)
+    :around ((instance affine-transformation)
              &rest rest
-             &key affine-coefficients affine-mappings permutation domain-dimension)
+             &key affine-coefficients affine-mappings permutation input-dimension)
   (assert (or (xor affine-coefficients affine-mappings) permutation))
-  (assert (non-negative-integer-p domain-dimension))
-  (let ((dimension
+  (assert (non-negative-integer-p input-dimension))
+  (let ((output-dimension
           (or (and permutation (length permutation))
               (and affine-mappings (length affine-mappings))
               (and affine-coefficients (array-dimension affine-coefficients 0)))))
     (unless affine-coefficients
       (setf affine-coefficients
             (make-array
-             `(,dimension 2)
+             `(,output-dimension 2)
              :initial-contents
              (loop for mapping in affine-mappings
                    collect
@@ -71,7 +65,7 @@
                        (list a b)))))))
     (unless permutation
       (setf permutation
-            (make-array dimension :initial-contents (iota dimension))))
+            (make-array output-dimension :initial-contents (iota output-dimension))))
     (assert (and (= 1 (array-rank permutation))
                  (= 2 (array-rank affine-coefficients))
                  (= 2 (array-dimension affine-coefficients 1))
@@ -82,23 +76,25 @@
      instance
      :affine-coefficients affine-coefficients
      :permutation permutation
-     :domain-dimension domain-dimension
+     :input-dimension input-dimension
+     :output-dimension output-dimension
      rest)))
 
-(defmethod dimension ((object transformation))
-  (length (permutation object)))
+(defmethod equal? ((object-1 affine-transformation)
+                   (object-2 affine-transformation))
+  (and (= (input-dimension object-1)
+          (input-dimension object-2))
+       (equalp (permutation object-1)
+               (permutation object-2))
+       (equalp (affine-coefficients object-1)
+               (affine-coefficients object-2))))
 
-(defmethod equalp ((object-1 transformation) (object-2 transformation))
-  (and (= (domain-dimension object-1) (domain-dimension object-2))
-       (equalp (permutation object-1) (permutation object-2))
-       (equalp (affine-coefficients object-1) (affine-coefficients object-2))))
-
-(defmethod compose ((g transformation) (f transformation))
-  (let ((domain-dimension (domain-dimension f))
-        (dimension (dimension g)))
+(defmethod compose ((g affine-transformation) (f affine-transformation))
+  (let ((input-dimension (input-dimension f))
+        (dimension (output-dimension g)))
     (let ((permutation (make-array dimension))
           (affine-coefficients (make-array `(,dimension 2))))
-      (assert (= (dimension f) (domain-dimension g)))
+      (assert (= (output-dimension f) (input-dimension g)))
       (loop for gp across (permutation g) and i from 0 do
         (setf (aref permutation i) (aref (permutation f) gp))
         (let ((fa (aref (affine-coefficients f) gp 0))
@@ -108,18 +104,18 @@
           (setf (aref affine-coefficients i 0) (* fa ga))
           (setf (aref affine-coefficients i 1) (+ (* ga fb) gb))))
       (make-instance
-       'transformation
+       'affine-transformation
        :affine-coefficients affine-coefficients
        :permutation permutation
-       :domain-dimension domain-dimension))))
+       :input-dimension input-dimension))))
 
-(defmethod invert ((object transformation))
-  (let ((domain-dimension (dimension object))
-        (dimension (domain-dimension object))
+(defmethod invert ((object affine-transformation))
+  (let ((input-dimension (output-dimension object))
+        (output-dimension (input-dimension object))
         (old-coefficients (affine-coefficients object)))
-    (let ((permutation (make-array dimension))
-          (affine-coefficients (make-array `(,dimension 2))))
-      (loop for i below dimension do
+    (let ((permutation (make-array output-dimension))
+          (affine-coefficients (make-array `(,output-dimension 2))))
+      (loop for i below output-dimension do
         (setf (aref permutation i)
               (position i (permutation object))))
       (loop for p across permutation
@@ -129,29 +125,25 @@
                 (setf (aref affine-coefficients i 0) (/ a))
                 (setf (aref affine-coefficients i 1) (/ (- b) a))))
       (make-instance
-       'transformation
+       'affine-transformation
        :affine-coefficients affine-coefficients
        :permutation permutation
-       :domain-dimension domain-dimension))))
+       :input-dimension input-dimension))))
 
-(define-memo-function identity-transformation (dimension)
+(define-memo-function identity-transformation (input-dimension)
   (make-instance
    'transformation
    :affine-coefficients
    (make-array
-    `(,dimension 2)
-    :initial-contents (make-list dimension :initial-element '(1 0)))
-   :permutation (make-array dimension :initial-contents (iota dimension))
-   :domain-dimension dimension))
-
-(defmethod reference :around ((object structured-operand) (space index-space)
-                              &optional transformation)
-  (call-next-method
-   object space
-   (or transformation (identity-transformation (dimension object)))))
+    `(,input-dimension 2)
+    :initial-contents
+    (make-list input-dimension :initial-element '(1 0)))
+   :permutation
+   (make-array input-dimension :initial-contents (iota input-dimension))
+   :input-dimension input-dimension))
 
 (defmethod transform :before ((object t) (transformation transformation))
-  (assert (= (dimension object) (domain-dimension transformation))))
+  (assert (= (dimension object) (input-dimension transformation))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -162,8 +154,8 @@
 ;;; #t((m n) (n m))
 
 (defmacro expand-transformation (symbols &rest mappings)
-  (let* ((domain-dimension (length symbols))
-         (dim-counter (1- domain-dimension))
+  (let* ((input-dimension (length symbols))
+         (dim-counter (1- input-dimension))
          (permuted-symbols
            (loop for mapping in mappings
                  collect
@@ -191,7 +183,7 @@
       'transformation
       :affine-mappings (list ,@affine-mappings)
       :permutation ',permutation
-      :domain-dimension ,domain-dimension)))
+      :input-dimension ,input-dimension)))
 
 (defun |#t-reader| (stream subchar arg)
   (declare (ignore subchar))
@@ -206,10 +198,10 @@
 
 (defmethod print-object ((object transformation) stream)
   (let ((coefficients (affine-coefficients object))
-        (dim-counter (1- (dimension object))))
+        (dim-counter (1- (output-dimension object))))
     (format
      stream "#~dt(~{~a~^ ~})"
-     (domain-dimension object)
+     (input-dimension object)
      (loop for d below (dimension object)
            collect
            (let* ((p (or (position d (permutation object))

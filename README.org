@@ -27,8 +27,8 @@ Example 2: a simple matrix multiplication
 (defun matrix-multiplication (A B)
   (β #'+
      (α #'*
-        (<- A #t((m n) (m 1 n)))
-        (<- B #t((n k) (1 k n))))))
+        (← A #t((m n) (m 1 n)))
+        (← B #t((n k) (1 k n))))))
 #+END_SRC
 
 Example 3: the numerical Jacobi scheme in two dimensions for a simple discretization

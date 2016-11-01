@@ -10,5 +10,5 @@
       (make-instance
        'strided-array-reduction
        :operator operator
-       :object object
+       :predecessors (list object)
        :ranges ranges))))
