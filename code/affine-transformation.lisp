@@ -6,18 +6,14 @@
 ;;;
 ;;; affine transformations
 ;;;
-;;; The concept of transformations deserves special explanation. All
-;;; transformations on structured operands are deriveable from the
-;;; following five elementary transformations:
-;;;
 ;;; (1) translating the indices by a constant
 ;;; (2) multiplying the indices by a constant
 ;;; (3) permuting the dimensions
 ;;; (4) introducing dimensions with only one element
 ;;; (5) removing dimensions with only one element
 ;;;
-;;; The class TRANSFORMATION contains all objects that are formed by
-;;; functional composition of the five elementary operations. A beautiful
+;;; The class AFFINE-TRANSFORMATION contains all objects that are formed by
+;;; functional composition of these five elementary operations. A beautiful
 ;;; property is that each of these transformations is an automorhism. In
 ;;; particular this means they can always be inverted with INVERT and the
 ;;; inverse is again such a transformation.
@@ -130,21 +126,6 @@
        :permutation permutation
        :input-dimension input-dimension))))
 
-(define-memo-function identity-transformation (input-dimension)
-  (make-instance
-   'transformation
-   :affine-coefficients
-   (make-array
-    `(,input-dimension 2)
-    :initial-contents
-    (make-list input-dimension :initial-element '(1 0)))
-   :permutation
-   (make-array input-dimension :initial-contents (iota input-dimension))
-   :input-dimension input-dimension))
-
-(defmethod transform :before ((object t) (transformation transformation))
-  (assert (= (dimension object) (input-dimension transformation))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Quick notation of index space transformations
@@ -196,13 +177,13 @@
 
 (set-dispatch-macro-character #\# #\t #'|#t-reader|)
 
-(defmethod print-object ((object transformation) stream)
+(defmethod print-object ((object affine-transformation) stream)
   (let ((coefficients (affine-coefficients object))
         (dim-counter (1- (output-dimension object))))
     (format
      stream "#~dt(~{~a~^ ~})"
      (input-dimension object)
-     (loop for d below (dimension object)
+     (loop for d below (input-dimension object)
            collect
            (let* ((p (or (position d (permutation object))
                          (incf dim-counter)))

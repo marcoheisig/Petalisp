@@ -3,7 +3,7 @@
 (in-package :petalisp)
 
 (defmethod print-object ((object strided-array-index-space) stream)
-  (format stream "~<#i(~@{~w~^ ~})~:>"
+  (format stream "~<(σ~@{ ~w~})~:>"
           (map 'list
                (lambda (range)
                  (list (range-start range)

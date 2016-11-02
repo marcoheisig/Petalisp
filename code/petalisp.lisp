@@ -116,7 +116,8 @@
 (defmethod compose :before ((t1 transformation) (t2 transformation))
   (assert (= (input-dimension t1) (output-dimension t2))))
 
-(defmethod transform :before ((object structured-operand) (t transformation))
+(defmethod transform :before ((object structured-operand)
+                              (transformation transformation))
   (assert (= (dimension object) (input-dimension transformation))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -144,9 +145,21 @@
                        (object-2 structured-operand))
   (difference (index-space object-1) (index-space object-2)))
 
+(defmethod invert ((tr identity-transformation)) tr)
+
 (defmethod compose ((g transformation) (f identity-transformation)) g)
 
 (defmethod compose ((g identity-transformation) (f transformation)) f)
+
+(defmethod transform ((object structured-operand) (_ identity-transformation))
+  (declare (ignore _))
+  object)
+
+(define-memo-function identity-transformation (dimension)
+  (make-instance
+   'identity-transformation
+   :input-dimension dimension
+   :output-dimension dimension))
 
 (defmethod lisp->petalisp ((object structured-operand)) object)
 

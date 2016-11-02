@@ -43,18 +43,18 @@
   (repetition object space))
 
 (defun ← (object &rest subspaces-and-transformations)
-  (let ((target-space (index-space object))
-        (transformation (identity-transformation (dimension object))))
-    (dolist (x subspaces-and-transformations)
-      (etypecase x
-        (transformation
-         (zapf target-space (transform % x))
-         (zapf transformation (compose x %)))
-        (index-space
-         (assert (subspace? x target-space))
-         (setf target-space x))))
-    (let ((source-space (transform target-space (invert transformation))))
-      (reference object source-space transformation))))
+    (let ((target-space (index-space object))
+          (transformation (identity-transformation (dimension object))))
+      (dolist (x subspaces-and-transformations)
+        (etypecase x
+          (transformation
+           (zapf target-space (transform % x))
+           (zapf transformation (compose x %)))
+          (index-space
+           (assert (subspace? x target-space))
+           (setf target-space x))))
+      (let ((source-space (transform target-space (invert transformation))))
+        (reference object source-space transformation))))
 
 (defmacro subspace (space &rest dimensions)
   (with-gensyms (dim)
@@ -66,3 +66,42 @@
          (make-index-space
           ,@(loop for form in dimensions and d from 0
                   collect `(let ((,dim ,d)) (range ,@form))))))))
+
+(defmacro σ (&rest ranges)
+  `(make-index-space
+    ,@(loop for range in ranges
+            collect `(range ,@range))))
+
+(defmacro τ (symbols mappings)
+  `(classify-transformation
+    (lambda ,symbols (values ,@mappings))
+    ,(length symbols)
+    ,(length mappings)))
+
+(defun classify-transformation (f nargin nargout)
+  (or
+   (function->affine-transformation f nargin nargout)
+   (function->identity-transformation f nargin nargout)
+   (error "Invalid transformation.")))
+
+(defun function->identity-transformation (f input-dimension output-dimension)
+  (declare (ignore output-dimension))
+  (let ((args
+          (list
+           (make-list input-dimension :initial-element 0)
+           (make-list input-dimension :initial-element 1)
+           (iota input-dimension))))
+    (loop for x in args
+          always (equal (multiple-value-list (apply f x)) x)
+          finally (identity-transformation input-dimension))))
+
+(defun function->affine-transformation (f input-dimension output-dimension)
+  (let ((args
+          (list
+           (make-list input-dimension :initial-element 0)
+           (make-list input-dimension :initial-element 1)
+           (iota input-dimension))))
+    (loop for x in args
+          always (equal x (multiple-value-list (apply f x)))
+          finally (return
+                    (identity-transformation input-dimension)))))

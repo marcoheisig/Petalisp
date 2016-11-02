@@ -3,7 +3,7 @@
 (in-package :petalisp)
 
 (defmethod transform ((object strided-array-index-space)
-                      (transformation transformation))
+                      (transformation affine-transformation))
   (let ((ranges (make-array (dimension object))))
     (loop for p across (permutation transformation)
           and i from 0 do

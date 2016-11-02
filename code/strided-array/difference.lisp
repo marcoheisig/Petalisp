@@ -2,7 +2,7 @@
 
 (in-package :petalisp)
 
-;;; (difference  #i ((1 2 5)) #i ((1 1 4)))
+;;; (difference #i ((1 2 5)) #i((1 1 4)))
 ;;; (difference #i((1 1 5) (1 1 5)) #i((2 2 4) (2 2 4)))
 ;;; (difference #i((1 1 5) (1 1 5)) #i((1 2 5) (1 2 5)))
 ;;; (difference #i((1 1 9) (1 1 9) (1 1 9)) #i((1 8 9) (1 8 9) (1 8 9)))
@@ -33,7 +33,6 @@
 (defmethod difference ((space-1 range) (space-2 range))
   (let ((intersection
           (or (intersection space-1 space-2)
-              ;; (difference (range 1 3 7) (range 8 1 22))
               (return-from difference `(,space-1)))))
     (let ((start (range-start space-1))
           (step (range-step space-1))
@@ -44,7 +43,6 @@
       (flet ((valid (range)
                (<= start (range-start range) (range-end range) end)))
         (cond
-          ;; (difference (range 1 3 7) (range 1 3 10))
           ((equalp intersection space-1)
            `())
           ((= 1 i-step)
@@ -52,8 +50,6 @@
             #'valid
             `(,(range start step (- i-start step))
               ,(range (+ i-end step) step end))))
-          ;; (difference (range 1 3 13) (range 4 2 10))
-          ;; (difference (range 0 1 9) (range 2 2 4))
           ((and (evenp i-step) (= step (/ i-step 2)))
            (let ((lower (if (= start i-start)
                             (+ i-start step)
@@ -66,7 +62,6 @@
               `(,(range start step (- i-start step step))
                 ,(range lower i-step upper)
                 ,(range (+ i-end step step) step end)))))
-          ;; (difference (range 1 2 23) (range 3 10 23))
           (t
            (nconc
             (remove-if-not
