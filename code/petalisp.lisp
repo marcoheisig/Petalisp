@@ -43,6 +43,12 @@
 
 (defgeneric difference (space-1 space-2))
 
+(defgeneric subdivision (object &rest more-objects)
+  (:documentation
+   "Return a list of disjoint objects. Each resulting objects is a proper
+subspace of one or more of the arguments and their fusion covers all
+arguments."))
+
 (defgeneric subspace? (space-1 space-2))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -163,3 +169,16 @@
 
 (defmethod lisp->petalisp ((object structured-operand)) object)
 
+;;; (subdivide #i((1 1 4)) #i((1 2 5)))
+(defmethod subdivision ((object structured-operand) &rest more-objects)
+  (flet ((shatter (dust object)
+           (let ((object-w/o-dust (list object)))
+             (nconc
+              (loop for particle in dust do
+                (setf object-w/o-dust
+                      (loop for object in object-w/o-dust
+                            append (difference object particle)))
+                    append (difference particle object)
+                    when (intersection particle object) collect it)
+              object-w/o-dust))))
+    (reduce #'shatter more-objects :initial-value (list object))))

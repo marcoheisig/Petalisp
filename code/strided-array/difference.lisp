@@ -2,10 +2,6 @@
 
 (in-package :petalisp)
 
-;;; (difference #i ((1 2 5)) #i((1 1 4)))
-;;; (difference #i((1 1 5) (1 1 5)) #i((2 2 4) (2 2 4)))
-;;; (difference #i((1 1 5) (1 1 5)) #i((1 2 5) (1 2 5)))
-;;; (difference #i((1 1 9) (1 1 9) (1 1 9)) #i((1 8 9) (1 8 9) (1 8 9)))
 (defmethod difference ((space-1 strided-array-index-space)
                        (space-2 strided-array-index-space))
   (let* ((ranges-1 (ranges space-1))
@@ -13,7 +9,9 @@
          (intersection (intersection space-1 space-2))
          (dimension (length ranges-1))
          differences)
-    (unless intersection (return-from difference space-1))
+    (unless intersection
+      (return-from difference
+        (list space-1)))
     (loop for i below dimension do
       (loop for difference in (difference (aref ranges-1 i)
                                           (aref ranges-2 i))

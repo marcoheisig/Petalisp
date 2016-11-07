@@ -30,7 +30,6 @@
                     (let ((step (ceiling (1+ (- end start))
                                          number-of-elements)))
                       (return (range start step end))))))
-    (assert (every (lambda (x) (subspace? x fusion)) ranges))
     fusion))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -45,7 +44,7 @@
 (defun fuse-dimension (dimension &rest objects)
   (let* ((islands
            (apply
-            #'subdivide
+            #'subdivision
             (mapcar
              (lambda (object)
                (let ((ranges (ranges object)))
@@ -59,26 +58,8 @@
             (lambda (fusion-island)
               (apply #'fusion (ranges-to-fuse fusion-island)))
             islands)))
-    ;(assert (identical fusions :test #'equal?))
+    (assert (identical fusions :test #'equal?))
     (first fusions)))
-
-;;; (subdivide #i((1 1 4)) #i((1 2 5)))
-(defun subdivide (&rest fusion-islands)
-  (let (src dst intersectionp)
-    (dolist (a fusion-islands src)
-      (dolist (b src)
-        (let ((i (intersection a b)))
-          (cond
-            (i (setf intersectionp t)
-               (mapc
-                (lambda (x) (push x dst))
-                (let ((tmp
-                        `(,i ,@(difference b a)
-                             ,@(difference a b))))
-                  tmp)))
-            (t (push b dst)))))
-      (unless intersectionp (push a dst))
-      (psetf intersectionp nil dst () src dst))))
 
 (defmethod intersection :around ((space-1 fusion-island)
                                  (space-2 fusion-island))
@@ -90,8 +71,9 @@
 
 (defmethod difference :around ((space-1 fusion-island)
                                (space-2 fusion-island))
-  (mapcar
-   (lambda (result)
-     (change-class result 'fusion-island
-                   :ranges-to-fuse (ranges-to-fuse space-1)))
-   (call-next-method)))
+  (let ((result (call-next-method)))
+    (mapcar
+     (lambda (x)
+       (change-class x 'fusion-island
+                     :ranges-to-fuse (ranges-to-fuse space-1)))
+     result)))

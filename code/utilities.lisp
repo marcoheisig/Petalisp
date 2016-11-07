@@ -94,3 +94,8 @@ reader of the same name. Additionally, defines a <NAME>-P predicate."
                    (row-major-aref array i)
                    (mapcar #'(lambda (x) (row-major-aref x i)) more-arrays))))
     result))
+
+(defun forever (value)
+  "Make a one element circular list with a CAR of VALUE."
+  (let ((x (list value)))
+    (setf (cdr x) x)))

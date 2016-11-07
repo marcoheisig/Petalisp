@@ -31,7 +31,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Methods for drawing individual nodes
+;;; methods to draw individual nodes
 
 (defmethod stream-draw-graph ((node application) stream)
   (format stream "    ~w [fillcolor = tomato, label = \"~w\\n~w\"];~%"
