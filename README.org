@@ -19,7 +19,7 @@ Petalisp is still under development, so the following examples may still change 
 Example 1: transposing a matrix
 #+BEGIN_SRC lisp
 (defun transpose (A)
-  (<- A #t((m n) (n m))))
+  (-> A (τ (m n) (n m))))
 #+END_SRC
 
 Example 2: a simple matrix multiplication
@@ -27,24 +27,24 @@ Example 2: a simple matrix multiplication
 (defun matrix-multiplication (A B)
   (β #'+
      (α #'*
-        (← A #t((m n) (m 1 n)))
-        (← B #t((n k) (1 k n))))))
+        (-> A (τ (m n) (m 1 n)))
+        (-> B (τ (n k) (1 k n))))))
 #+END_SRC
 
 Example 3: the numerical Jacobi scheme in two dimensions for a simple discretization
 #+BEGIN_SRC lisp
 (defun jacobi-2d (grid iterations)
-  (let ((interior (subspace grid #i(((+ start 1) step (- end 1))
+  (let ((interior (subspace grid (σ ((+ start 1) step (- end 1))
                                     ((+ start 1) step (- end 1))))))
     (if (zerop iterations) grid
         (jacobi-2d
          (fuse x
                (α #'* 0.25
                   (α #'+
-                     (<- x #2t((+ i0 1) i1) interior)
-                     (<- x #2t((- i0 1) i1) interior)
-                     (<- x #2t(i0 (+ i1 1)) interior)
-                     (<- x #2t(i0 (- i1 1)) interior))))
+                     (-> x (τ (i0 i1) ((+ i0 1) i1)) interior)
+                     (-> x (τ (i0 i1) ((- i0 1) i1)) interior)
+                     (-> x (τ (i0 i1) (i0 (+ i1 1))) interior)
+                     (-> x (τ (i0 i1) (i0 (- i1 1))) interior))))
          (- iterations 1)))))
 #+END_SRC
 
@@ -54,11 +54,14 @@ lisp constant and store it again.
 (defun matrix-multiplication (A B)
   (β #'+
      (α #'*
-        (<- A #t((m n) (m 1 n)))
-        (<- B #t((n k) (1 k n))))))
+        (-> A (τ (m n) (m 1 n)))
+        (-> B (τ (n k) (1 k n))))))
 
-(setf (ascii-file "scaled-matrix.ascii")
-      (matrix-multiplication (hdf5-file "A.h5" "matrix")
-                             #2a((1 2) (3 4))))
+(petalisp->hdf5
+ (matrix-multiplication
+  (hdf5->petalisp "A.h5" "matrix")
+  #2a((1 2) (3 4)))
+ "scaled-matrix.h5"
+ "output")
 #+END_SRC
 

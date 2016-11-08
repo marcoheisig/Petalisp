@@ -68,11 +68,3 @@
   (make-instance
    'strided-array-index-space
    :ranges (make-array (length ranges) :initial-contents ranges)))
-
-(defun |#i-reader| (stream subchar arg)
-  (declare (ignore subchar arg))
-  `(make-index-space
-    ,@(loop for form in (read stream t nil t) collect
-            `(range ,@form))))
-
-(set-dispatch-macro-character #\# #\i #'|#i-reader|)

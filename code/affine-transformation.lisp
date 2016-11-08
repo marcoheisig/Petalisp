@@ -18,63 +18,18 @@
 ;;; particular this means they can always be inverted with INVERT and the
 ;;; inverse is again such a transformation.
 
-(define-class affine-transformation (transformation)
-  ((permutation
-    :initarg :permutation :reader permutation
-    :type '(simple-array integer (*))
-    :documentation
-    "A vector of integers denoting the position of the Nth input index in
- the output index. It may be longer or shorter tha INPUT-DIMENSION in which
- case the superfluous or missing indices are dropped, or introduced with a
- sole index of zero.")
-   (affine-coefficients
-    :initarg :affine-coefficients :reader affine-coefficients
-    :type '(simple-array integer (* 2))
-    :documentation
-    "An array with the same zeroth dimension as PERMUTATION and a first
-    dimension of two. The (X 0) column contains the scaling factors and
-    the (X 1) column contains the offsets that specify the affine linear
-    function that is applied to the Xth output index.")))
-
-(defmethod initialize-instance
-    :around ((instance affine-transformation)
-             &rest rest
-             &key affine-coefficients affine-mappings permutation input-dimension)
-  (assert (or (xor affine-coefficients affine-mappings) permutation))
-  (assert (non-negative-integer-p input-dimension))
-  (let ((output-dimension
-          (or (and permutation (length permutation))
-              (and affine-mappings (length affine-mappings))
-              (and affine-coefficients (array-dimension affine-coefficients 0)))))
-    (unless affine-coefficients
-      (setf affine-coefficients
-            (make-array
-             `(,output-dimension 2)
-             :initial-contents
-             (loop for mapping in affine-mappings
-                   collect
-                   (let ((b (funcall mapping 0))
-                         (a+b (funcall mapping 1))
-                         (2a+b (funcall mapping 2)))
-                     (let ((a (- a+b b)))
-                       (assert (= 2a+b (+ (* 2 a) b)))
-                       (list a b)))))))
-    (unless permutation
-      (setf permutation
-            (make-array output-dimension :initial-contents (iota output-dimension))))
-    (assert (and (= 1 (array-rank permutation))
-                 (= 2 (array-rank affine-coefficients))
-                 (= 2 (array-dimension affine-coefficients 1))
-                 (= (array-dimension permutation 0)
-                    (array-dimension affine-coefficients 0))))
-    (apply
-     #'call-next-method
-     instance
-     :affine-coefficients affine-coefficients
-     :permutation permutation
-     :input-dimension input-dimension
-     :output-dimension output-dimension
-     rest)))
+(defmethod initialize-instance :after ((instance affine-transformation)
+                                       &key input-dimension output-dimension
+                                         permutation affine-coefficients)
+  (when (and
+         (not (identity-transformation? instance))
+         (= input-dimension output-dimension)
+         (loop for p across permutation and i from 0
+               always
+               (and (= (aref affine-coefficients i 0) 1)
+                    (= (aref affine-coefficients i 1) 0)
+                    (= p i))))
+    (change-class instance 'identity-transformation)))
 
 (defmethod equal? ((object-1 affine-transformation)
                    (object-2 affine-transformation))
@@ -103,7 +58,8 @@
        'affine-transformation
        :affine-coefficients affine-coefficients
        :permutation permutation
-       :input-dimension input-dimension))))
+       :input-dimension input-dimension
+       :output-dimension dimension))))
 
 (defmethod invert ((object affine-transformation))
   (let ((input-dimension (output-dimension object))
@@ -124,75 +80,25 @@
        'affine-transformation
        :affine-coefficients affine-coefficients
        :permutation permutation
-       :input-dimension input-dimension))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Quick notation of index space transformations
-;;;
-;;; Examples:
-;;; #2t((+ 2 i0) (* 9 (+ 3 i1)))
-;;; #t((m n) (n m))
-
-(defmacro expand-transformation (symbols &rest mappings)
-  (let* ((input-dimension (length symbols))
-         (dim-counter (1- input-dimension))
-         (permuted-symbols
-           (loop for mapping in mappings
-                 collect
-                 (tree-find-if
-                  (lambda (x)
-                    (member x symbols :test #'eq))
-                  mapping)))
-         (permutation
-           (map 'vector
-                (lambda (psym)
-                  (or (position psym symbols)
-                      (incf dim-counter)))
-                permuted-symbols))
-         (affine-mappings
-           (loop for sym in permuted-symbols
-                 and body in mappings
-                 collect
-                 (if sym
-                     `(lambda (,sym) ,body)
-                     (with-gensyms (x)
-                       `(lambda (,x)
-                          (declare (ignore ,x))
-                          ,body))))))
-    `(make-instance
-      'transformation
-      :affine-mappings (list ,@affine-mappings)
-      :permutation ',permutation
-      :input-dimension ,input-dimension)))
-
-(defun |#t-reader| (stream subchar arg)
-  (declare (ignore subchar))
-  (let ((rest (read stream t nil t)))
-    (if arg
-        `(expand-transformation
-          ,(loop for i below arg collect (intern (format nil "I~d" i)))
-          ,@rest)
-        `(expand-transformation ,@rest))))
-
-(set-dispatch-macro-character #\# #\t #'|#t-reader|)
+       :input-dimension input-dimension
+       :output-dimension output-dimension))))
 
 (defmethod print-object ((object affine-transformation) stream)
-  (let ((coefficients (affine-coefficients object))
-        (dim-counter (1- (output-dimension object))))
-    (format
-     stream "#~dt(~{~a~^ ~})"
-     (input-dimension object)
-     (loop for d below (input-dimension object)
-           collect
-           (let* ((p (or (position d (permutation object))
-                         (incf dim-counter)))
-                  (a (aref coefficients d 0))
-                  (b (aref coefficients d 1))
-                  (var (intern (format nil "i~d" p)))
-                  (mul-form (cond ((zerop a) 0)
-                                  ((= a 1) var)
-                                  (t `(* ,a ,var)))))
-             (cond ((zerop b) mul-form)
-                   ((eql mul-form 0) b)
-                   (t `(+ ,b ,mul-form))))))))
+  (loop for i below (output-dimension object)
+        with coefficients = (affine-coefficients object)
+        collect
+        (let* ((p (position i (permutation object)))
+               (a (aref coefficients i 0))
+               (b (aref coefficients i 1))
+               (var (intern (format nil "i~a" p)))
+               (mul-form (cond ((zerop a) 0)
+                               ((= a 1) var)
+                               (t `(* ,a ,var)))))
+          (cond ((zerop b) mul-form)
+                ((eql mul-form 0) b)
+                (t `(+ ,b ,mul-form))))
+          into expressions
+        finally
+           (format stream "(τ (~{i~d~^ ~}) ~a)"
+                   (iota (input-dimension object))
+                   expressions)))

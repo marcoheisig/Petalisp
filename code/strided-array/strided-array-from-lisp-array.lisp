@@ -9,7 +9,7 @@
   (format stream "    ~a [fillcolor = cyan, label = \"~a\"];~%"
           (id node) (lisp-array node)))
 
-(defmethod lisp ((object t))
+(defmethod lisp->petalisp ((object t))
   (strided-array-from-lisp-object object))
 
 (define-memo-function (strided-array-from-lisp-object
@@ -41,7 +41,7 @@
     (make-instance
      'strided-array-from-lisp-array
      :lisp-array
-     (array-map (lisp-function operator)
-                (mapcar #'lisp-array objects))
+     (apply #'array-map (lisp-function operator)
+            (mapcar #'lisp-array objects))
      :ranges (ranges object))))
 

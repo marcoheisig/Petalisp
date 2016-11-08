@@ -12,10 +12,6 @@
 
 (define-class index-space (structured-operand) ())
 
-(define-class transformation () (input-dimension output-dimension))
-
-(define-class identity-transformation (transformation) ())
-
 (defmacro define-node (name lambda-list slots)
   `(progn
      (define-class ,name (structured-operand) ,slots)
@@ -33,7 +29,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; operations on index spaces
+;;; classes and methods concerning index spaces
 
 (defgeneric index-space (object))
 
@@ -53,7 +49,13 @@ arguments."))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; operations on transformations
+;;; classes and methods concerning transformations
+
+(define-class transformation () (input-dimension output-dimension))
+
+(define-class affine-transformation (transformation) (permutation affine-coefficients))
+
+(define-class identity-transformation (affine-transformation) ())
 
 (defgeneric compose (transformation-1 transformation-2))
 
@@ -70,6 +72,8 @@ arguments."))
 (defgeneric size (object))
 
 (defgeneric equal? (object-1 object-2))
+
+(defgeneric result-type (function &rest arguments))
 
 (defgeneric compute (&rest objects))
 
@@ -89,13 +93,13 @@ arguments."))
 ;;;
 ;;; argument checking
 
-(defmethod application :before ((operator operator)
+(defmethod application :before ((operator function)
                                 (object structured-operand)
                                 &rest more-objects)
   (assert (identical (list* object more-objects)
-                     :test #'equalp :key #'index-space)))
+                     :test #'equal? :key #'index-space)))
 
-(defmethod reduction :before ((operator operator)
+(defmethod reduction :before ((operator function)
                               (object structured-operand))
   (assert (plusp (dimension object))))
 
@@ -157,19 +161,34 @@ arguments."))
 
 (defmethod compose ((g identity-transformation) (f transformation)) f)
 
+(defmethod equal? ((a identity-transformation) (b identity-transformation))
+  (= (input-dimension a) (input-dimension b)))
+
 (defmethod transform ((object structured-operand) (_ identity-transformation))
-  (declare (ignore _))
   object)
 
 (define-memo-function identity-transformation (dimension)
   (make-instance
    'identity-transformation
+   :permutation (apply #'vector (iota dimension))
+   :affine-coefficients
+   (make-array
+    `(,dimension 2)
+    :initial-contents
+    (loop for i below dimension collect '(1 0)))
    :input-dimension dimension
    :output-dimension dimension))
 
 (defmethod lisp->petalisp ((object structured-operand)) object)
 
-;;; (subdivide #i((1 1 4)) #i((1 2 5)))
+(defmethod result-type ((f t) &rest arguments)
+  (declare (ignore f arguments))
+  t)
+
+(defmethod print-object ((object identity-transformation) stream)
+  (format stream "(τ (~{i~d~^ ~}) ~:*(~{i~d~^ ~}))"
+          (iota (input-dimension object))))
+
 (defmethod subdivision ((object structured-operand) &rest more-objects)
   (flet ((shatter (dust object)
            (let ((object-w/o-dust (list object)))

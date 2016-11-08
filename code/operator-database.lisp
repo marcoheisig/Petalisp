@@ -17,23 +17,18 @@
   "Given a Lisp type, return its corresponding petalisp type."
   (find type petalisp-types :test #'subtypep))
 
-(defvar *operator-database* (make-hash-table :test #'equal))
-
-(defun find-operator (function &rest types)
-  (gethash (list* function types) *operator-database*))
+#+nil
+(defun numeric-supertype (a b)
+  (let ((complex?
+          (or
+           (subtypep a 'complex)
+           (subtypep b 'complex)))))
+  ;; f32 f32 -> f32
+  ;; c32 f64 -> c64
+  ;; f32 f64 -> f64
+  )
 
 #+nil
-(defun make-operator (name &rest args &key domain-type lisp-function &allow-other-keys)
-  (setf (gethash (list* (symbol-function name)
-                        domain-type)
-                 *operator-database*)
-        (apply #'make-instance 'operator
-               :name name
-               :lisp-function (or lisp-function (symbol-function name))
-               args)))
-
-#+nil
-(defmacro define-operator (name domain-type codomain-type &rest args)
-  `(make-operator ',name
-                  :domain-type ',domain-type
-                  :codomain-type ',codomain-type ,@args))
+(defmethod result-type ((f (eql #'+)) &rest arguments)
+  (reduce #'numeric-supertype )
+  'double-float)

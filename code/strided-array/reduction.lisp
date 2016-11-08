@@ -4,7 +4,7 @@
 
 (define-class strided-array-reduction (strided-array reduction) ())
 
-(defmethod reduction ((operator operator) (object strided-array))
+(defmethod reduction ((operator function) (object strided-array))
   (let ((input-ranges (ranges object)))
     (let ((ranges (subseq input-ranges (- (length input-ranges) 2))))
       (make-instance

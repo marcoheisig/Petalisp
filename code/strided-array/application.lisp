@@ -4,7 +4,7 @@
 
 (define-class strided-array-application (strided-array application) ())
 
-(defmethod application ((operator operator) (object strided-array)
+(defmethod application ((operator function) (object strided-array)
                         &rest more-objects)
   (make-instance
    'strided-array-application

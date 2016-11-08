@@ -11,8 +11,7 @@
            (mapcar
             (lambda (object)
               (repetition object index-space))
-            objects))
-         (operator (find-operator operator)))
+            objects)))
     (apply #'application operator objects)))
 
 (defun β (operator object)
@@ -42,19 +41,19 @@
 (defun repeat (object space)
   (repetition object space))
 
-(defun ← (object &rest subspaces-and-transformations)
-    (let ((target-space (index-space object))
-          (transformation (identity-transformation (dimension object))))
-      (dolist (x subspaces-and-transformations)
-        (etypecase x
-          (transformation
-           (zapf target-space (transform % x))
-           (zapf transformation (compose x %)))
-          (index-space
-           (assert (subspace? x target-space))
-           (setf target-space x))))
-      (let ((source-space (transform target-space (invert transformation))))
-        (reference object source-space transformation))))
+(defun -> (object &rest subspaces-and-transformations)
+  (let ((target-space (index-space object))
+        (transformation (identity-transformation (dimension object))))
+    (dolist (x subspaces-and-transformations)
+      (etypecase x
+        (transformation
+         (zapf target-space (transform % x))
+         (zapf transformation (compose x %)))
+        (index-space
+         (assert (subspace? x target-space))
+         (setf target-space x))))
+    (let ((source-space (transform target-space (invert transformation))))
+      (reference object source-space transformation))))
 
 (defmacro subspace (space &rest dimensions)
   (with-gensyms (dim)
@@ -74,34 +73,71 @@
 
 (defmacro τ (symbols mappings)
   `(classify-transformation
-    (lambda ,symbols (values ,@mappings))
+    (lambda ,symbols
+      (declare (ignorable ,@symbols))
+      (values ,@mappings))
     ,(length symbols)
     ,(length mappings)))
 
+(defun classify-affine-transformation (f input-dimension output-dimension)
+  (let* ((zeroes (make-list input-dimension :initial-element 0))
+         (ones (make-list input-dimension :initial-element 1))
+         (twos (make-list input-dimension :initial-element 2))
+         (permuted-translation
+           (multiple-value-list
+            (apply f zeroes)))
+         (permuted-scaling
+           (mapcar #'-
+                   (multiple-value-list (apply f ones))
+                   permuted-translation))
+         (another-scaling
+           (mapcar #'-
+                   (multiple-value-list (apply f twos))
+                   permuted-translation))
+         (constants
+           (loop for a in permuted-scaling
+                 and b in another-scaling
+                 and i from 0
+                 when (= a b) collect i))
+         (args zeroes)) ;; shamelessly reusing memory here
+    (flet ((p (n)
+             (when (>= n input-dimension)
+               (return-from p
+                 (nth (- n input-dimension) constants)))
+             (setf (nth n args) 2)
+             (let ((result (multiple-value-list (apply f args)))
+                   (counter 0)
+                   (position nil))
+               (loop for i below output-dimension
+                     and new in result
+                     and translation in permuted-translation
+                     and scaling in permuted-scaling
+                     do
+                        (when (and (not (zerop scaling))
+                                   (= new (+ (* 2 scaling) translation)))
+                          (incf counter)
+                          (setf position i)))
+               (setf (nth n args) 0)
+               (cond
+                 ((= counter 1) position)
+                 ((= counter 0) nil)
+                 (t (error "Not an affine transformation."))))))
+      (let ((permutation (make-array output-dimension))
+            (affine-coefficients (make-array `(,output-dimension 2))))
+        (loop for i below output-dimension do
+          (setf (aref permutation i) (p i))
+          (setf (aref affine-coefficients i 0)
+                (nth i permuted-scaling))
+          (setf (aref affine-coefficients i 1)
+                (nth i permuted-translation)))
+        (make-instance
+         'affine-transformation
+         :affine-coefficients affine-coefficients
+         :permutation permutation
+         :input-dimension input-dimension
+         :output-dimension output-dimension)))))
+
 (defun classify-transformation (f nargin nargout)
   (or
-   (function->affine-transformation f nargin nargout)
-   (function->identity-transformation f nargin nargout)
-   (error "Invalid transformation.")))
-
-(defun function->identity-transformation (f input-dimension output-dimension)
-  (declare (ignore output-dimension))
-  (let ((args
-          (list
-           (make-list input-dimension :initial-element 0)
-           (make-list input-dimension :initial-element 1)
-           (iota input-dimension))))
-    (loop for x in args
-          always (equal (multiple-value-list (apply f x)) x)
-          finally (identity-transformation input-dimension))))
-
-(defun function->affine-transformation (f input-dimension output-dimension)
-  (let ((args
-          (list
-           (make-list input-dimension :initial-element 0)
-           (make-list input-dimension :initial-element 1)
-           (iota input-dimension))))
-    (loop for x in args
-          always (equal x (multiple-value-list (apply f x)))
-          finally (return
-                    (identity-transformation input-dimension)))))
+   (classify-affine-transformation f nargin nargout)
+   (error "Unknown transformation.")))
