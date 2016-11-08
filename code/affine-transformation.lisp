@@ -87,7 +87,7 @@
   (loop for i below (output-dimension object)
         with coefficients = (affine-coefficients object)
         collect
-        (let* ((p (position i (permutation object)))
+        (let* ((p (aref (permutation object) i))
                (a (aref coefficients i 0))
                (b (aref coefficients i 1))
                (var (intern (format nil "i~a" p)))

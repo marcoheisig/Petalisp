@@ -2,16 +2,22 @@
 
 (in-package :petalisp)
 
-(defun print-test-suite-banner (destination)
-  (format destination "== Testing Petalisp ==~%")
-  (format destination "Implementation: ~:[Something weird~;~:*~a~]"
+(defun print-test-suite-banner (stream)
+  (format stream "== Testing Petalisp ==~%")
+  (format stream "Implementation: ~:[Something weird~;~:*~a~]"
           (lisp-implementation-type))
-  (format destination "~@[ ~a~]~%"
+  (format stream "~@[ ~a~]~%"
           (lisp-implementation-version))
-  (format destination "Machine: ~:[a strange system~;~:*~a~]"
+  (format stream "Machine: ~:[a strange system~;~:*~a~]"
           (machine-type))
-  (format destination "~@[ ~a~]~%"
-          (machine-version)))
+  (format stream "~@[ ~a~]~%"
+          (machine-version))
+  (loop for sym being the present-symbols of :petalisp
+        count (fboundp sym) into functions
+        count (find-class sym nil) into classes
+        finally
+           (format stream "Petalisp size: ~d functions and ~d classes.~%"
+                   functions classes)))
 
 (defun run-test-suite ()
   (print-test-suite-banner *test-dribble*)
@@ -53,6 +59,7 @@
     (? (τ (m) ((/ (+ (* 90 (+ 2 m)) 15) 2))))
     (? (τ (m) (m 1 2 3)))
     (? (τ (m) (5 9 m 2)))
+    (? (τ (m n o) (n)))
     (? (τ (i j k) (i j)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

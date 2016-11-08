@@ -86,56 +86,50 @@
          (permuted-translation
            (multiple-value-list
             (apply f zeroes)))
+         (args zeroes) ; shamelessly reusing memory here
          (permuted-scaling
            (mapcar #'-
                    (multiple-value-list (apply f ones))
                    permuted-translation))
          (another-scaling
-           (mapcar #'-
+           (mapcar (lambda (a b) (/ (- a b) 2))
                    (multiple-value-list (apply f twos))
                    permuted-translation))
-         (constants
-           (loop for a in permuted-scaling
-                 and b in another-scaling
-                 and i from 0
-                 when (= a b) collect i))
-         (args zeroes)) ;; shamelessly reusing memory here
-    (flet ((p (n)
-             (when (>= n input-dimension)
-               (return-from p
-                 (nth (- n input-dimension) constants)))
-             (setf (nth n args) 2)
-             (let ((result (multiple-value-list (apply f args)))
-                   (counter 0)
-                   (position nil))
-               (loop for i below output-dimension
-                     and new in result
-                     and translation in permuted-translation
-                     and scaling in permuted-scaling
-                     do
-                        (when (and (not (zerop scaling))
-                                   (= new (+ (* 2 scaling) translation)))
-                          (incf counter)
-                          (setf position i)))
-               (setf (nth n args) 0)
+         (permutation (make-array output-dimension :initial-element -1))
+         (affine-coefficients (make-array `(,output-dimension 2))))
+    (unless (every #'= permuted-scaling another-scaling)
+      (error "The transformation is not linear."))
+    ;; determine the permutation
+    (flet ((outpos (inpos) ; the output corresponding to the nth input
+             (setf (nth inpos args) 1)
+             (let ((occurences
+                     (loop for i below output-dimension
+                           and a in (multiple-value-list (apply f args))
+                           and b in permuted-translation
+                           when (/= a b) collect i)))
+               (setf (nth inpos args) 0)
                (cond
-                 ((= counter 1) position)
-                 ((= counter 0) nil)
-                 (t (error "Not an affine transformation."))))))
-      (let ((permutation (make-array output-dimension))
-            (affine-coefficients (make-array `(,output-dimension 2))))
-        (loop for i below output-dimension do
-          (setf (aref permutation i) (p i))
-          (setf (aref affine-coefficients i 0)
-                (nth i permuted-scaling))
-          (setf (aref affine-coefficients i 1)
-                (nth i permuted-translation)))
-        (make-instance
-         'affine-transformation
-         :affine-coefficients affine-coefficients
-         :permutation permutation
-         :input-dimension input-dimension
-         :output-dimension output-dimension)))))
+                 ((null occurences) nil)
+                 ((= 1 (length occurences)) (car occurences))
+                 (t (error "Input ~d affects more than one output." inpos))))))
+      (loop for inpos below input-dimension do
+        (let ((outpos (outpos inpos)))
+          (when outpos
+            (unless (= -1 (aref permutation outpos))
+              (error "Output argument ~d depends on more than one variable." outpos))
+            (setf (aref permutation outpos) inpos)))))
+    ;; determine the affine coefficients
+    (loop for outpos below output-dimension do
+      (setf (aref affine-coefficients outpos 0)
+            (nth outpos permuted-scaling))
+      (setf (aref affine-coefficients outpos 1)
+            (nth outpos permuted-translation)))
+    (make-instance
+     'affine-transformation
+     :affine-coefficients affine-coefficients
+     :permutation permutation
+     :input-dimension input-dimension
+     :output-dimension output-dimension)))
 
 (defun classify-transformation (f nargin nargout)
   (or
