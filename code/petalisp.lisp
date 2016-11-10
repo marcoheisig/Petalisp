@@ -1,6 +1,6 @@
 ;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;; the building blocks of Petalisp
+;;; the fundamental building blocks of Petalisp
 
 (in-package :petalisp)
 
@@ -22,7 +22,7 @@
 (define-node reference (object space transformation) (transformation))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;; classes and methods concerning index spaces
+;;;  classes and methods concerning index spaces
 ;;; _________________________________________________________________
 
 (define-class index-space (structured-operand) ())
@@ -44,7 +44,7 @@ arguments."))
 (defgeneric subspace? (space-1 space-2))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;; classes and methods concerning transformations
+;;;  classes and methods concerning transformations
 ;;; _________________________________________________________________
 
 (define-class transformation () ())
@@ -62,7 +62,7 @@ arguments."))
 (defgeneric output-dimension (transformation))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;; miscellaneous petalisp functions
+;;;  miscellaneous petalisp functions
 ;;; _________________________________________________________________
 
 (defgeneric name (object))
@@ -78,7 +78,7 @@ arguments."))
 (defgeneric compute (&rest objects))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;; input and output
+;;;  input and output
 ;;; _________________________________________________________________
 
 (defgeneric lisp->petalisp (object))
@@ -90,7 +90,7 @@ arguments."))
 (defgeneric petalisp->hdf5 (&rest arguments))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;; argument checking
+;;;  argument checking
 ;;; _________________________________________________________________
 
 (defmethod application :before ((operator function)
@@ -131,7 +131,7 @@ arguments."))
   (assert (= (dimension object) (input-dimension transformation))))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;; default behavior
+;;;  default behavior
 ;;; _________________________________________________________________
 
 (defmethod predecessors ((node t)) (declare (ignore node)) nil)

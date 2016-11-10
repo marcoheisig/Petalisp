@@ -29,7 +29,7 @@
              :ranges (ranges object)))))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;; Working with ranges
+;;;  Working with ranges
 ;;; _________________________________________________________________
 
 (defstruct (range (:constructor %make-range (start step end)))

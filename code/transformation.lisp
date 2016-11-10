@@ -5,7 +5,7 @@
 (in-package :petalisp)
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;; affine transformations
+;;;  affine transformations
 ;;; _________________________________________________________________
 ;;;
 ;;; (1) translating the indices by a constant
@@ -207,7 +207,7 @@
     (format stream "(τ ~a ~a)" input-forms output-forms)))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;; the special case of identity transformations
+;;;  the special case of identity transformations
 ;;; _________________________________________________________________
 
 (define-class identity-transformation (affine-transformation) ())

@@ -33,8 +33,7 @@
     fusion))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;; fusion islands - index spaces that keep track of the ranges that must
-;;; be fused in the next higher dimension
+;;;  fusion islands - specially annotated index spaces
 ;;; _________________________________________________________________
 
 (define-class fusion-island (strided-array-index-space)
