@@ -1,10 +1,8 @@
 ;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;; the building blocks of Petalisp
 
 (in-package :petalisp)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; the building blocks of Petalisp
 
 (define-class structured-operand () (element-type predecessors))
 
@@ -23,9 +21,9 @@
 
 (define-node reference (object space transformation) (transformation))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;; classes and methods concerning index spaces
+;;; _________________________________________________________________
 
 (define-class index-space (structured-operand) ())
 
@@ -45,11 +43,13 @@ arguments."))
 
 (defgeneric subspace? (space-1 space-2))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;; classes and methods concerning transformations
+;;; _________________________________________________________________
 
 (define-class transformation () ())
+
+(defgeneric classify-transformation (function input-constraints nargout))
 
 (defgeneric compose (transformation-1 transformation-2))
 
@@ -61,9 +61,9 @@ arguments."))
 
 (defgeneric output-dimension (transformation))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;; miscellaneous petalisp functions
+;;; _________________________________________________________________
 
 (defgeneric name (object))
 
@@ -77,9 +77,9 @@ arguments."))
 
 (defgeneric compute (&rest objects))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;; input and output
+;;; _________________________________________________________________
 
 (defgeneric lisp->petalisp (object))
 
@@ -89,9 +89,9 @@ arguments."))
 
 (defgeneric petalisp->hdf5 (&rest arguments))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;; argument checking
+;;; _________________________________________________________________
 
 (defmethod application :before ((operator function)
                                 (object structured-operand)
@@ -130,9 +130,9 @@ arguments."))
                               (transformation transformation))
   (assert (= (dimension object) (input-dimension transformation))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;; default behavior
+;;; _________________________________________________________________
 
 (defmethod predecessors ((node t)) (declare (ignore node)) nil)
 

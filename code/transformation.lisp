@@ -1,10 +1,12 @@
 ;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;; the valid index space transformations in Petalisp
 
 (in-package :petalisp)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;; affine transformations
+;;; _________________________________________________________________
 ;;;
 ;;; (1) translating the indices by a constant
 ;;; (2) multiplying the indices by a constant
@@ -43,7 +45,9 @@
       (assert (= (- input-dimension dropped-inargs)
                  (- output-dimension constant-outargs))))))
 
-(defun classify-affine-transformation (f input-constraints output-dimension)
+(defmethod classify-transformation ((f function)
+                                    (input-constraints vector)
+                                    (output-dimension integer))
   (multiple-value-bind (zeroes ones twos)
       (loop for input-constraint across input-constraints
             collect (or input-constraint 0) into zeroes
@@ -202,9 +206,9 @@
                         (t `(+ ,b ,mul-form)))))))
     (format stream "(τ ~a ~a)" input-forms output-forms)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;; the special case of identity transformations
+;;; _________________________________________________________________
 
 (define-class identity-transformation (affine-transformation) ())
 

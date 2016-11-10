@@ -1,4 +1,6 @@
 ;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;; export Petalisp data flow problems as graphviz files
 
 (in-package :petalisp)
 
@@ -29,9 +31,9 @@
              (format stream "    ~w -> ~w;~%"
                      (id predecessor) (id node)))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;; methods to draw individual nodes
+;;; _________________________________________________________________
 
 (defmethod stream-draw-graph ((node application) stream)
   (format stream "    ~w [fillcolor = tomato, label = \"~w\\n~w\"];~%"

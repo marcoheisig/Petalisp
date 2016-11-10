@@ -1,4 +1,6 @@
 ;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;; miscellaneous utilities that would not fit elsewhere
 
 (in-package :petalisp)
 

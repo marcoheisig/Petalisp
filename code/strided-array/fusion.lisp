@@ -32,10 +32,10 @@
                       (return (range start step end))))))
     fusion))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;; fusion islands - index spaces that keep track of the ranges that must
 ;;; be fused in the next higher dimension
+;;; _________________________________________________________________
 
 (define-class fusion-island (strided-array-index-space)
   (ranges-to-fuse))

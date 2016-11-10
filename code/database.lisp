@@ -1,10 +1,11 @@
 ;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;; special knowledge on Lisp functions, e.g. for type inference
 
 (in-package :petalisp)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; The Petalisp type system
+;;; Inform
 
 (defparameter petalisp-types
   '(single-float

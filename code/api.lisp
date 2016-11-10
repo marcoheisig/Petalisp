@@ -1,4 +1,6 @@
 ;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;; definitions of externally visible functions
 
 (in-package :petalisp)
 
@@ -83,8 +85,3 @@
                  (values ,@output-forms))
                ,(apply #'vector input-constraints)
                ,(length output-forms)))))
-
-(defun classify-transformation (f input-constraints nargout)
-  (or
-   (classify-affine-transformation f input-constraints nargout)
-   (error "Unknown transformation.")))

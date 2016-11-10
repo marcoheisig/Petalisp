@@ -28,9 +28,9 @@
              'strided-array-index-space
              :ranges (ranges object)))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;; Working with ranges
+;;; _________________________________________________________________
 
 (defstruct (range (:constructor %make-range (start step end)))
   (start 0 :type integer :read-only t)
