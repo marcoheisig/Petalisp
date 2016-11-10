@@ -71,67 +71,20 @@
     ,@(loop for range in ranges
             collect `(range ,@range))))
 
-(defmacro τ (symbols mappings)
-  `(classify-transformation
-    (lambda ,symbols
-      (declare (ignorable ,@symbols))
-      (values ,@mappings))
-    ,(length symbols)
-    ,(length mappings)))
+(defmacro τ (input-forms output-forms)
+  (loop for form in input-forms
+        collect (when (integerp form) form) into input-constraints
+        collect (if (symbolp form) form (gensym)) into symbols
+        finally
+           (return
+             `(classify-transformation
+               (lambda ,symbols
+                 (declare (ignorable ,@symbols))
+                 (values ,@output-forms))
+               ,(apply #'vector input-constraints)
+               ,(length output-forms)))))
 
-(defun classify-affine-transformation (f input-dimension output-dimension)
-  (let* ((zeroes (make-list input-dimension :initial-element 0))
-         (ones (make-list input-dimension :initial-element 1))
-         (twos (make-list input-dimension :initial-element 2))
-         (permuted-translation
-           (multiple-value-list
-            (apply f zeroes)))
-         (args zeroes) ; shamelessly reusing memory here
-         (permuted-scaling
-           (mapcar #'-
-                   (multiple-value-list (apply f ones))
-                   permuted-translation))
-         (another-scaling
-           (mapcar (lambda (a b) (/ (- a b) 2))
-                   (multiple-value-list (apply f twos))
-                   permuted-translation))
-         (permutation (make-array output-dimension :initial-element -1))
-         (affine-coefficients (make-array `(,output-dimension 2))))
-    (unless (every #'= permuted-scaling another-scaling)
-      (error "The transformation is not linear."))
-    ;; determine the permutation
-    (flet ((outpos (inpos) ; the output corresponding to the nth input
-             (setf (nth inpos args) 1)
-             (let ((occurences
-                     (loop for i below output-dimension
-                           and a in (multiple-value-list (apply f args))
-                           and b in permuted-translation
-                           when (/= a b) collect i)))
-               (setf (nth inpos args) 0)
-               (cond
-                 ((null occurences) nil)
-                 ((= 1 (length occurences)) (car occurences))
-                 (t (error "Input ~d affects more than one output." inpos))))))
-      (loop for inpos below input-dimension do
-        (let ((outpos (outpos inpos)))
-          (when outpos
-            (unless (= -1 (aref permutation outpos))
-              (error "Output argument ~d depends on more than one variable." outpos))
-            (setf (aref permutation outpos) inpos)))))
-    ;; determine the affine coefficients
-    (loop for outpos below output-dimension do
-      (setf (aref affine-coefficients outpos 0)
-            (nth outpos permuted-scaling))
-      (setf (aref affine-coefficients outpos 1)
-            (nth outpos permuted-translation)))
-    (make-instance
-     'affine-transformation
-     :affine-coefficients affine-coefficients
-     :permutation permutation
-     :input-dimension input-dimension
-     :output-dimension output-dimension)))
-
-(defun classify-transformation (f nargin nargout)
+(defun classify-transformation (f input-constraints nargout)
   (or
-   (classify-affine-transformation f nargin nargout)
+   (classify-affine-transformation f input-constraints nargout)
    (error "Unknown transformation.")))

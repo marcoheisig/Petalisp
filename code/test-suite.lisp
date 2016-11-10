@@ -52,15 +52,18 @@
   (flet ((? (x)
            (is (affine-transformation? x))
            (is (equal? x (invert (invert x))))
-           (is (equal? (identity-transformation (input-dimension x))
-                       (compose x (invert x))))))
+           (unless (or (input-constraints x)
+                       (input-constraints (invert x)))
+             (is (equal? (compose (invert x) x)
+                         (identity-transformation
+                          (input-dimension x)))))))
     (? (τ (m n) (n m)))
     (? (τ (m) ((* 2 m))))
     (? (τ (m) ((/ (+ (* 90 (+ 2 m)) 15) 2))))
     (? (τ (m) (m 1 2 3)))
     (? (τ (m) (5 9 m 2)))
-    (? (τ (m n o) (n)))
-    (? (τ (i j k) (i j)))))
+    (? (τ (0 n 0) (n)))
+    (? (τ (i j 5) (i j)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

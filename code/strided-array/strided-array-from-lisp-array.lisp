@@ -31,7 +31,7 @@
        (array-dimensions array)))
 
 ;;; constant folding
-(defmethod application ((operator operator) (object strided-array-from-lisp-array)
+(defmethod application ((operator function) (object strided-array-from-lisp-array)
                         &rest more-objects)
   (unless (and (< (size object) 42) ; constant fold only small arrays
                (every #'strided-array-from-lisp-array? more-objects))
@@ -41,7 +41,7 @@
     (make-instance
      'strided-array-from-lisp-array
      :lisp-array
-     (apply #'array-map (lisp-function operator)
+     (apply #'array-map operator
             (mapcar #'lisp-array objects))
      :ranges (ranges object))))
 

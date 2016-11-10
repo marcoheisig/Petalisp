@@ -6,11 +6,7 @@
 ;;;
 ;;; the building blocks of Petalisp
 
-(define-class operator () (name lisp-function))
-
 (define-class structured-operand () (element-type predecessors))
-
-(define-class index-space (structured-operand) ())
 
 (defmacro define-node (name lambda-list slots)
   `(progn
@@ -30,6 +26,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; classes and methods concerning index spaces
+
+(define-class index-space (structured-operand) ())
 
 (defgeneric index-space (object))
 
@@ -51,11 +49,7 @@ arguments."))
 ;;;
 ;;; classes and methods concerning transformations
 
-(define-class transformation () (input-dimension output-dimension))
-
-(define-class affine-transformation (transformation) (permutation affine-coefficients))
-
-(define-class identity-transformation (affine-transformation) ())
+(define-class transformation () ())
 
 (defgeneric compose (transformation-1 transformation-2))
 
@@ -63,9 +57,15 @@ arguments."))
 
 (defgeneric transform (object transformation))
 
+(defgeneric input-dimension (transformation))
+
+(defgeneric output-dimension (transformation))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; miscellaneous petalisp functions
+
+(defgeneric name (object))
 
 (defgeneric dimension (object))
 
@@ -155,39 +155,11 @@ arguments."))
                        (object-2 structured-operand))
   (difference (index-space object-1) (index-space object-2)))
 
-(defmethod invert ((tr identity-transformation)) tr)
-
-(defmethod compose ((g transformation) (f identity-transformation)) g)
-
-(defmethod compose ((g identity-transformation) (f transformation)) f)
-
-(defmethod equal? ((a identity-transformation) (b identity-transformation))
-  (= (input-dimension a) (input-dimension b)))
-
-(defmethod transform ((object structured-operand) (_ identity-transformation))
-  object)
-
-(define-memo-function identity-transformation (dimension)
-  (make-instance
-   'identity-transformation
-   :permutation (apply #'vector (iota dimension))
-   :affine-coefficients
-   (make-array
-    `(,dimension 2)
-    :initial-contents
-    (loop for i below dimension collect '(1 0)))
-   :input-dimension dimension
-   :output-dimension dimension))
-
 (defmethod lisp->petalisp ((object structured-operand)) object)
 
 (defmethod result-type ((f t) &rest arguments)
-  (declare (ignore f arguments))
+  (declare (ignore arguments))
   t)
-
-(defmethod print-object ((object identity-transformation) stream)
-  (format stream "(τ (~{i~d~^ ~}) ~:*(~{i~d~^ ~}))"
-          (iota (input-dimension object))))
 
 (defmethod subdivision ((object structured-operand) &rest more-objects)
   (flet ((shatter (dust object)
