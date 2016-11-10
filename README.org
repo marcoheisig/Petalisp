@@ -1,20 +1,29 @@
 #+TITLE: Petalisp
 
 Petalisp is an attempt to generate high performance code for parallel
-computers from a pure data flow specification. It is not a full blown programming language, but rather a carefully crafted extension of Common Lisp that allows for extreme optimization and parallelization.
+computers from a pure data flow specification. It is not a full blown
+programming language, but rather a carefully crafted extension of Common
+Lisp that allows for extreme optimization and parallelization.
 
 
 ** Keeping it small and simple
-Petalisp aims to be small and simple. It is an universal truth that (given similar indentation) one thousand lines of code are easier to read and maintain than one million lines of code. But please do NOT obtain this brevity by using short names and few comments and line breaks. Write short code by using abstraction and generic methods.
+Petalisp aims to be small and simple. It is an universal truth that (given
+similar indentation) one thousand lines of code are easier to read and
+maintain than one million lines of code. But please do NOT obtain this
+brevity by using short names and few comments and line breaks. Write short
+code by using abstraction and generic methods.
 
-If you are curious, the following snippet tells you the current size of Petalisp in non-whitespace source lines of code:
+If you are curious, the following snippet tells you the current size of
+Petalisp in source lines of code (including white space and comments):
 
 #+BEGIN_SRC sh
-find . -path './.git' -prune -o -print | egrep '\.asd|\.lisp' | xargs cat | sed '/^\s*$/d' | wc -l
+find . -path './.git' -prune -o -print | egrep '\.asd|\.lisp' | xargs cat | wc -l
 #+END_SRC
 
 ** Showcases
-Petalisp is still under development, so the following examples may still change slightly. Nevertheless they give a good glimpse on what programming with Petalisp will be like.
+Petalisp is still under development, so the following examples may still
+change slightly. Nevertheless they give a good glimpse on what programming
+with Petalisp will be like.
 
 Example 1: transposing a matrix
 #+BEGIN_SRC lisp
@@ -31,7 +40,7 @@ Example 2: a simple matrix multiplication
         (-> B (τ (n k) (1 k n))))))
 #+END_SRC
 
-Example 3: the numerical Jacobi scheme in two dimensions for a simple discretization
+Example 3: the numerical Jacobi scheme in two dimensions
 #+BEGIN_SRC lisp
 (defun jacobi-2d (grid iterations)
   (let ((interior (subspace grid (σ ((+ start 1) step (- end 1))
@@ -48,8 +57,9 @@ Example 3: the numerical Jacobi scheme in two dimensions for a simple discretiza
          (- iterations 1)))))
 #+END_SRC
 
-Example 4: A full Petalisp program to multiply a matrix from a file with a
-lisp constant and store it again.
+Example 4: A full Petalisp program to multiply two matrices and store the
+result. The first matrix is read from a file, while the second one is
+passed as a lisp array.
 #+BEGIN_SRC lisp
 (defun matrix-multiplication (A B)
   (β #'+
@@ -57,11 +67,13 @@ lisp constant and store it again.
         (-> A (τ (m n) (m 1 n)))
         (-> B (τ (n k) (1 k n))))))
 
-(petalisp->hdf5
- (matrix-multiplication
-  (hdf5->petalisp "A.h5" "matrix")
-  #2a((1 2) (3 4)))
- "scaled-matrix.h5"
- "output")
+(let ((result
+        (matrix-multiplication
+         (hdf5->petalisp "A.h5" "matrix")
+         #2a((1 2) (3 4)))))
+  (petalisp->hdf5
+   result
+   "scaled-matrix.h5"
+   "output"))
 #+END_SRC
 
