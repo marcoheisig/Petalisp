@@ -1,35 +1,50 @@
 ;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;; special knowledge on Lisp functions, e.g. for type inference
+;;; knowledge on Lisp functions for type inference and optimization
 
 (in-package :petalisp)
 
-;;;
-;;; Inform
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;;  type inference
+;;; _________________________________________________________________
 
-(defparameter petalisp-types
-  '(single-float
-    double-float
-    (complex single-float)
-    (complex double-float)
-    t))
+(defmethod result-type ((f t) &rest types)
+  (declare (ignore arguments))
+  t)
 
-(defun petalisp-type (type)
-  "Given a Lisp type, return its corresponding petalisp type."
-  (find type petalisp-types :test #'subtypep))
+(defmethod element-type ((array array))
+  (array-element-type array))
 
-#+nil
-(defun numeric-supertype (a b)
-  (let ((complex?
-          (or
-           (subtypep a 'complex)
-           (subtypep b 'complex)))))
-  ;; f32 f32 -> f32
-  ;; c32 f64 -> c64
-  ;; f32 f64 -> f64
-  )
+(defmethod initialize-instance :after ((instance application) &key &allow-other-keys)
+  (setf (slot-value instance 'element-type)
+        (apply #'result-type (operator instance)
+               (mapcar #'element-type (predecessors instance)))))
 
-#+nil
-(defmethod result-type ((f (eql #'+)) &rest arguments)
-  (reduce #'numeric-supertype )
-  'double-float)
+(defmethod initialize-instance :after ((instance reduction) &key &allow-other-keys)
+  (setf (slot-value instance 'element-type)
+        (element-type (car (predecessors instance)))))
+
+(defun numeric-supertype (&rest types)
+  (let ((complex? nil)
+        (base-type nil))
+    (flet ((upgrade (&rest args)
+             (declare (dynamic-extent args))
+             (match args
+               ((list 'nil x) x)
+               ((list x 'nil) x)
+               ((list 'single-float 'single-float) 'single-float)
+               ((list 'single-float 'double-float) 'double-float)
+               ((list 'double-float 'single-float) 'double-float)
+               ((list 'double-float 'double-float) 'double-float)
+               (otherwise t))))
+      (loop for type in types do
+        (cond
+          ((subtypep type 'complex)
+           (setf complex? t)
+           (setf base-type (upgrade base-type (cadr type))))
+          (t
+           (setf base-type (upgrade base-type type))))))
+    (if complex? `(complex ,base-type) base-type)))
+
+(defmethod result-type ((f (eql #'+)) &rest types)
+  (apply #'numeric-supertype types))

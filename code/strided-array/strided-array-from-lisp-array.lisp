@@ -22,6 +22,7 @@
     (make-instance
      'strided-array-from-lisp-array
      :lisp-array array
+     :element-type (element-type array)
      :ranges (array-ranges array))))
 
 (defun array-ranges (array)
@@ -33,15 +34,17 @@
 ;;; constant folding
 (defmethod application ((operator function) (object strided-array-from-lisp-array)
                         &rest more-objects)
-  (unless (and (< (size object) 42) ; constant fold only small arrays
+  (unless (and  nil (< (size object) 42) ; constant fold only small arrays
                (every #'strided-array-from-lisp-array? more-objects))
     (return-from application (call-next-method)))
   (let ((objects (list* object more-objects)))
     (assert (identical objects :test #'equal? :key #'index-space))
-    (make-instance
-     'strided-array-from-lisp-array
-     :lisp-array
-     (apply #'array-map operator
-            (mapcar #'lisp-array objects))
-     :ranges (ranges object))))
+    (let ((array (apply #'array-map operator
+                        (mapcar #'lisp-array objects))))
+      (make-instance
+       'strided-array-from-lisp-array
+       :element-type (element-type array)
+       :lisp-array array
+       :predecessors ()
+       :ranges (ranges object)))))
 

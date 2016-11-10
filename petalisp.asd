@@ -24,7 +24,7 @@
      (:file "utilities" :depends-on ("package"))
      (:file "petalisp" :depends-on ("utilities"))
      (:file "transformation"    :depends-on ("petalisp"))
-     (:file "operator-database" :depends-on ("petalisp"))
+     (:file "database" :depends-on ("petalisp"))
      (:file "graphviz"          :depends-on ("petalisp"))
      (:module "strided-array"   :depends-on ("petalisp")
       :components
@@ -40,6 +40,6 @@
        (:file "repetition"   :depends-on ("strided-array"))
        (:file "strided-array-from-lisp-array" :depends-on ("strided-array"))
        (:file "transform"    :depends-on ("strided-array"))))
-     (:file "api" :depends-on ("strided-array" "operator-database"))
+     (:file "api" :depends-on ("strided-array"))
      (:file "test-suite" :depends-on ("api"))))))
 

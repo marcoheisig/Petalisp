@@ -157,10 +157,6 @@ arguments."))
 
 (defmethod lisp->petalisp ((object structured-operand)) object)
 
-(defmethod result-type ((f t) &rest arguments)
-  (declare (ignore arguments))
-  t)
-
 (defmethod subdivision ((object structured-operand) &rest more-objects)
   (flet ((shatter (dust object)
            (let ((object-w/o-dust (list object)))
