@@ -25,11 +25,19 @@
         (element-type (car (predecessors instance)))))
 
 (defun numeric-supertype (&rest types)
-  (let ((complex? nil)
-        (base-type nil))
-    (flet ((upgrade (&rest args)
+  (declare (dynamic-extent types))
+  (labels ((upgrade (&rest args)
              (declare (dynamic-extent args))
              (match args
+               ((list (or (and t1 (list 'complex x)) x)
+                      (or (and t2 (list 'complex y)) y))
+                (unless (or t1 t2) (fail))
+                (let ((base-type (upgrade x y)))
+                  (cond
+                    ;; the first two cases avoid consing
+                    ((and t1 (eq base-type x)) t1)
+                    ((and t2 (eq base-type y)) t2)
+                    (t `(complex ,base-type)))))
                ((list 'nil x) x)
                ((list x 'nil) x)
                ((list 'single-float 'single-float) 'single-float)
@@ -37,14 +45,8 @@
                ((list 'double-float 'single-float) 'double-float)
                ((list 'double-float 'double-float) 'double-float)
                (otherwise t))))
-      (loop for type in types do
-        (cond
-          ((subtypep type 'complex)
-           (setf complex? t)
-           (setf base-type (upgrade base-type (cadr type))))
-          (t
-           (setf base-type (upgrade base-type type))))))
-    (if complex? `(complex ,base-type) base-type)))
+    (reduce #'upgrade types)))
 
 (defmethod result-type ((f (eql #'+)) &rest types)
+  (declare (dynamic-extent types))
   (apply #'numeric-supertype types))
