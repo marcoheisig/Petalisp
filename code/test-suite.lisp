@@ -14,6 +14,7 @@
           (machine-type))
   (format stream "~@[ ~a~]~%"
           (machine-version))
+  ;; TODO compute lines and macroexpanded lines
   (loop for sym being the present-symbols of :petalisp
         count (fboundp sym) into functions
         count (find-class sym nil) into classes
@@ -168,3 +169,17 @@
   (is (subspace? (range 0 4 8) (range 0 2 10)))
   (is (subspace? (σ (0 6 120) (1 1 100))
                  (σ (0 2 130) (0 1 101)))))
+
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;;  type inference
+;;; _________________________________________________________________
+
+(test (type-inference)
+  (flet ((? (result fun &rest types)
+           (is (equal (apply #'result-type fun types)
+                      result))))
+    (? 'double-float #'+ 'double-float 'double-float)
+    (? 't #'- 'double-float 'character)
+    (? '(complex double-float) #'* 'double-float '(complex single-float))
+    (? '(complex double-float) #'* '(complex double-float) 'single-float)
+    (? 'double-float #'+ 'single-float 'double-float 'single-float)))

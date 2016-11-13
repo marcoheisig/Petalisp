@@ -96,7 +96,7 @@ arguments."))
 (defmethod application :before ((operator function)
                                 (object structured-operand)
                                 &rest more-objects)
-  (assert (identical (list* object more-objects)
+  (assert (identical (cons object more-objects)
                      :test #'equal? :key #'index-space)))
 
 (defmethod reduction :before ((operator function)
@@ -110,7 +110,7 @@ arguments."))
     (subspace? (index-space object) space))))
 
 (defmethod fusion :before ((object structured-operand) &rest more-objects)
-  (assert (identical (list* object more-objects)
+  (assert (identical (cons object more-objects)
                      :test #'= :key #'dimension)))
 
 (defmethod reference :before (object space transformation)
@@ -163,8 +163,8 @@ arguments."))
              (nconc
               (loop for particle in dust do
                 (setf object-w/o-dust
-                      (loop for object in object-w/o-dust
-                            append (difference object particle)))
+                      (loop for x in object-w/o-dust
+                            append (difference x particle)))
                     append (difference particle object)
                     when (intersection particle object) collect it)
               object-w/o-dust))))

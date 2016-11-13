@@ -6,7 +6,7 @@
 
 (defun α (operator object &rest more-objects)
   (let* ((objects
-           (mapcar #'lisp->petalisp (list* object more-objects)))
+           (mapcar #'lisp->petalisp (cons object more-objects)))
          (index-space
            (reduce #'broadcast objects))
          (objects
