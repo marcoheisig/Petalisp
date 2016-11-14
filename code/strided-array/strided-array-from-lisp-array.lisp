@@ -34,7 +34,7 @@
 ;;; constant folding
 (defmethod application ((operator function) (object strided-array-from-lisp-array)
                         &rest more-objects)
-  (unless (and  nil (< (size object) 42) ; constant fold only small arrays
+  (unless (and (< (size object) 42) ; constant fold only small arrays
                (every #'strided-array-from-lisp-array? more-objects))
     (return-from application (call-next-method)))
   (let ((objects (list* object more-objects)))

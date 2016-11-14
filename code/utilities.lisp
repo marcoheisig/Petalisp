@@ -88,13 +88,15 @@ reader of the same name. Additionally, defines a <NAME>-P predicate."
 (defconstant TODO 'TODO)
 
 (defun array-map (function array &rest more-arrays)
-  (let ((n-elements (reduce #'* (array-dimensions array)))
+  (let ((n-elements (array-total-size array))
+        (arrays (cons array more-arrays))
         (result (copy-array array)))
     (loop for i below n-elements do
       (setf (row-major-aref result i)
             (apply function
-                   (row-major-aref array i)
-                   (mapcar #'(lambda (x) (row-major-aref x i)) more-arrays))))
+                   (mapcar
+                    #'(lambda (x) (row-major-aref x i))
+                    arrays))))
     result))
 
 (defun forever (value)

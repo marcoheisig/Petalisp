@@ -38,8 +38,7 @@
     (let ((constant-outargs
             (loop for p across permutation and i from 0
                   with c = affine-coefficients
-                  count (and (= p -1)
-                             (= (aref c i 0) 0))))
+                  count (and (not p) (= (aref c i 0) 0))))
           (dropped-inargs
             (count-if #'integerp input-constraints)))
       (assert (= (- input-dimension dropped-inargs)
@@ -66,7 +65,7 @@
              (mapcar (lambda (a b) (/ (- a b) 2))
                      (multiple-value-list (apply f twos))
                      permuted-translation))
-           (permutation (make-array output-dimension :initial-element -1))
+           (permutation (make-array output-dimension :initial-element nil))
            (affine-coefficients (make-array `(,output-dimension 2))))
       (unless (every #'= permuted-scaling-1 permuted-scaling-2)
         (error "The transformation is not linear."))
@@ -87,7 +86,7 @@
               and inpos from 0 do
           (let ((outpos (if input-constraint nil (outpos inpos))))
             (when outpos
-              (unless (= -1 (aref permutation outpos))
+              (when (aref permutation outpos)
                 (error "Output argument ~d depends on more than one variable." outpos))
               (setf (aref permutation outpos) inpos)))))
       ;; determine the affine coefficients
@@ -124,8 +123,8 @@
           and g-pos from 0
           with g-coeffs = (affine-coefficients g)
           and  f-coeffs = (affine-coefficients f)
-          when (= f-pos -1) do
-            (setf (aref compose-permutation g-pos) -1)
+          when (not f-pos) do
+            (setf (aref compose-permutation g-pos) nil)
             (setf (aref compose-affine-coefficients g-pos 0)
                   (aref g-coeffs g-pos 0))
             (setf (aref compose-affine-coefficients g-pos 1)
@@ -158,13 +157,13 @@
           and i from 0
           with c = (affine-coefficients object) do
       (setf (aref inverse-input-constraints i)
-            (when (= p -1) (aref c i 1))))
+            (unless p (aref c i 1))))
     ;; determine the permutation
     (loop for input-constraint across (input-constraints object)
           and i from 0
           with p = (permutation object) do
             (cond (input-constraint
-                   (setf (aref inverse-permutation i) -1)
+                   (setf (aref inverse-permutation i) nil)
                    (setf (aref inverse-affine-coefficients i 0) 0)
                    (setf (aref inverse-affine-coefficients i 1) input-constraint))
                   (t
@@ -173,7 +172,7 @@
     (loop for p across inverse-permutation
           and i from 0
           with c = (affine-coefficients object)
-          unless (= p -1) do
+          when p do
             (let ((a (aref c p 0))
                   (b (aref c p 1)))
               (setf (aref inverse-affine-coefficients i 0) (/ a))
