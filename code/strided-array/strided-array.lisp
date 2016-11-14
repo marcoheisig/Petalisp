@@ -2,7 +2,8 @@
 
 (in-package :petalisp)
 
-(define-class strided-array (structured-operand) (ranges index-space))
+(define-class strided-array (structured-operand)
+  (ranges index-space))
 
 (define-class strided-array-index-space (strided-array index-space) ())
 
@@ -29,7 +30,38 @@
              :ranges (ranges object)))))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;;  Working with ranges
+;;;  convert lisp arrays to strided arrays
+;;; _________________________________________________________________
+
+(define-class strided-array-constant (strided-array)
+  (data
+   (predecessors :initform () :allocation :static)))
+
+(defmethod lisp->petalisp ((array array))
+  (array->strided-array array))
+
+(defmethod lisp->petalisp ((object t))
+  (lisp->petalisp
+   (make-array () :initial-element object
+                  :element-type (type-of object))))
+
+(defun array-ranges (array)
+  (map 'vector
+       (lambda (end)
+         (range 0 1 (1- end)))
+       (array-dimensions array)))
+
+(define-memo-function
+    (array->strided-array
+     :table (make-hash-table :test #'equal :weakness :value)) (array)
+  (make-instance
+   'strided-array-constant
+   :data array
+   :element-type (element-type array)
+   :ranges (array-ranges array)))
+
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;;  working with ranges
 ;;; _________________________________________________________________
 
 (defstruct (range (:constructor %make-range (start step end)))

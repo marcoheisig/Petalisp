@@ -38,7 +38,6 @@
        (:file "reduction"    :depends-on ("strided-array"))
        (:file "reference"    :depends-on ("strided-array"))
        (:file "repetition"   :depends-on ("strided-array"))
-       (:file "strided-array-from-lisp-array" :depends-on ("strided-array"))
        (:file "transform"    :depends-on ("strided-array"))))
      (:file "api" :depends-on ("strided-array"))
      (:file "test-suite" :depends-on ("api"))))))
