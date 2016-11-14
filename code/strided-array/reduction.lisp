@@ -10,5 +10,6 @@
       (make-instance
        'strided-array-reduction
        :operator operator
+       :element-type (element-type object)
        :predecessors (list object)
        :ranges ranges))))

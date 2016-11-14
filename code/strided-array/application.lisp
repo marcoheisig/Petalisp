@@ -6,13 +6,16 @@
 
 (defmethod application ((operator function) (object strided-array)
                         &rest more-objects)
-  (make-instance
-   'strided-array-application
-   :operator operator
-   :predecessors (list* object more-objects)
-   :ranges (ranges object)))
+  (let ((objects (cons object more-objects)))
+    (make-instance
+     'strided-array-application
+     :operator operator
+     :element-type (apply #'result-type operator
+                          (mapcar #'element-type objects))
+     :predecessors objects
+     :ranges (ranges object))))
 
-(defmethod application :around ((operator function) (object strided-array-constant)
+(defmethod application ((operator function) (object strided-array-constant)
                                 &rest more-objects)
   (flet ((foldable (object)
            (and (< (size object) 42) ; constant fold only small arrays

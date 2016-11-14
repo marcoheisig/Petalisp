@@ -44,8 +44,9 @@
   (repetition object space))
 
 (defun -> (object &rest subspaces-and-transformations)
-  (let ((target-space (index-space object))
-        (transformation (identity-transformation (dimension object))))
+  (let* ((object (lisp->petalisp object))
+         (target-space (index-space object))
+         (transformation (identity-transformation (dimension object))))
     (dolist (x subspaces-and-transformations)
       (etypecase x
         (transformation

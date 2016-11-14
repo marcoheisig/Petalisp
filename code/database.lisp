@@ -5,6 +5,20 @@
 (in-package :petalisp)
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;;  function names
+;;; _________________________________________________________________
+
+(defparameter *function-names* (make-hash-table :test #'eq))
+
+(loop for sym being the symbols of :cl
+      when (fboundp sym) do
+        (setf (gethash (symbol-function sym) *function-names*)
+              sym))
+
+(defmethod name ((object function))
+  (gethash object *function-names* 'unknown-function))
+
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;;  type inference
 ;;; _________________________________________________________________
 

@@ -5,21 +5,6 @@ computers from a pure data flow specification. It is not a full blown
 programming language, but rather a carefully crafted extension of Common
 Lisp that allows for extreme optimization and parallelization.
 
-
-** Keeping it small and simple
-Petalisp aims to be small and simple. It is an universal truth that (given
-similar indentation) one thousand lines of code are easier to read and
-maintain than one million lines of code. But please do NOT obtain this
-brevity by using short names and few comments and line breaks. Write short
-code by using abstraction and generic methods.
-
-If you are curious, the following snippet tells you the current size of
-Petalisp in source lines of code (including white space and comments):
-
-#+BEGIN_SRC sh
-find . -path './.git' -prune -o -print | egrep '\.asd|\.lisp' | xargs cat | wc -l
-#+END_SRC
-
 ** Showcases
 Petalisp is still under development, so the following examples may still
 change slightly. Nevertheless they give a good glimpse on what programming

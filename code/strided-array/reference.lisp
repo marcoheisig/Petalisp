@@ -6,12 +6,15 @@
   (source-space))
 
 (defmethod reference ((object strided-array)
-                      (source-space strided-array-index-space)
+                      (space strided-array-index-space)
                       transformation)
-  (let ((ranges (ranges (transform source-space transformation))))
-    (make-instance
-     'strided-array-reference
-     :predecessors (list object)
-     :ranges ranges
-     :source-space source-space
-     :transformation transformation)))
+  (let ((target-space (transform space transformation)))
+    (if (equal? (index-space object) target-space)
+        object
+        (make-instance
+         'strided-array-reference
+         :predecessors (list object)
+         :ranges (ranges target-space)
+         :element-type (element-type object)
+         :source-space space
+         :transformation transformation))))

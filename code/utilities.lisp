@@ -103,13 +103,21 @@ reader of the same name. Additionally, defines a <NAME>-P predicate."
           into lines-of-code
         counting pathname into files
         finally
-           (format stream "The system ~a consists of ~d lines of code in ~d file~:P.~%"
-                   (asdf:primary-system-name system) lines-of-code files)))
+           (format
+            stream
+            "The system ~a consists of ~d lines of code in ~d file~:P.~%"
+            (asdf:primary-system-name system) lines-of-code files)))
 
-(defun print-package-statisitics (package &optional (stream t))
+(defun print-package-statistics (package &optional (stream t))
   (loop for sym being the present-symbols of package
-        counting (fboundp sym) into functions
         counting (find-class sym nil) into classes
+        when (macro-function sym)
+          count it into macros
+        else
+          count (fboundp sym) into functions
+        end
         finally
-           (format stream "The package ~a defines ~d functions and ~d classes.~%"
-                   (package-name (find-package package)) functions classes)))
+           (format
+            stream
+            "The package ~a defines ~d functions, ~d macros and ~d classes.~%"
+            (package-name (find-package package)) functions macros classes)))

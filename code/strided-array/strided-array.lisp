@@ -3,7 +3,8 @@
 (in-package :petalisp)
 
 (define-class strided-array (structured-operand)
-  (ranges index-space))
+  ((element-type :initform t)
+   ranges index-space))
 
 (define-class strided-array-index-space (strided-array index-space) ())
 
@@ -35,7 +36,7 @@
 
 (define-class strided-array-constant (strided-array)
   (data
-   (predecessors :initform () :allocation :static)))
+   (predecessors :initform () :allocation :class)))
 
 (defmethod lisp->petalisp ((array array))
   (array->strided-array array))

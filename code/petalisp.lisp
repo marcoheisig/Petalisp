@@ -105,9 +105,7 @@ arguments."))
 
 (defmethod repetition :before (object space)
   (assert
-   (or
-    (< (dimension object) (dimension space))
-    (subspace? (index-space object) space))))
+   (<= (dimension object) (dimension space))))
 
 (defmethod fusion :before ((object structured-operand) &rest more-objects)
   (assert (identical (cons object more-objects)

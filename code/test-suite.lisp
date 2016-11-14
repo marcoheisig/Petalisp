@@ -18,7 +18,7 @@
 (defun run-test-suite ()
   (print-test-suite-banner *test-dribble*)
   (print-system-statistics :petalisp *test-dribble*)
-  (print-package-statisitics :petalisp *test-dribble*)
+  (print-package-statistics :petalisp *test-dribble*)
   (fiveam:run! 'petalisp-test-suite))
 
 (def-suite petalisp-test-suite
