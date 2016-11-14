@@ -68,22 +68,6 @@ reader of the same name. Additionally, defines a <NAME>-P predicate."
                 ,expr)))
        ,store-expr)))
 
-(defun mapt (function tree)
-  (cond
-    ((atom tree)
-     (funcall function tree)
-     nil)
-    ((consp tree)
-     (mapt function (car tree))
-     (and (consp (cdr tree))
-          (mapt function (cdr tree))))))
-
-(defun tree-find-if (function tree)
-  (mapt (lambda (x)
-          (when (funcall function x)
-            (return-from tree-find-if x)))
-        tree))
-
 ;; make the symbol TODO a valid piece of lisp code
 (defconstant TODO 'TODO)
 
@@ -103,3 +87,29 @@ reader of the same name. Additionally, defines a <NAME>-P predicate."
   "Make a one element circular list with a CAR of VALUE."
   (let ((x (list value)))
     (setf (cdr x) x)))
+
+(defun system-source-file-pathnames (system)
+  (mapcar
+   #'asdf:component-pathname
+   (remove-if-not
+    (lambda (x)
+      (typep x 'asdf:source-file))
+    (asdf:required-components
+     (asdf:find-system system)))))
+
+(defun print-system-statistics (system &optional (stream t))
+  (loop for pathname in (system-source-file-pathnames system)
+        summing (count #\newline (read-file-into-string pathname))
+          into lines-of-code
+        counting pathname into files
+        finally
+           (format stream "The system ~a consists of ~d lines of code in ~d file~:P.~%"
+                   (asdf:primary-system-name system) lines-of-code files)))
+
+(defun print-package-statisitics (package &optional (stream t))
+  (loop for sym being the present-symbols of package
+        counting (fboundp sym) into functions
+        counting (find-class sym nil) into classes
+        finally
+           (format stream "The package ~a defines ~d functions and ~d classes.~%"
+                   (package-name (find-package package)) functions classes)))

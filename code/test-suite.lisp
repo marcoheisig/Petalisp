@@ -13,17 +13,12 @@
   (format stream "Machine: ~:[a strange system~;~:*~a~]"
           (machine-type))
   (format stream "~@[ ~a~]~%"
-          (machine-version))
-  ;; TODO compute lines and macroexpanded lines
-  (loop for sym being the present-symbols of :petalisp
-        count (fboundp sym) into functions
-        count (find-class sym nil) into classes
-        finally
-           (format stream "Petalisp size: ~d functions and ~d classes.~%"
-                   functions classes)))
+          (machine-version)))
 
 (defun run-test-suite ()
   (print-test-suite-banner *test-dribble*)
+  (print-system-statistics :petalisp *test-dribble*)
+  (print-package-statisitics :petalisp *test-dribble*)
   (fiveam:run! 'petalisp-test-suite))
 
 (def-suite petalisp-test-suite
@@ -36,6 +31,7 @@
 ;;; _________________________________________________________________
 
 (test (array-map)
+  (is (identical (iota 5) :test #'eql :key #'numberp))
   (is
    (equalp
     (array-map
