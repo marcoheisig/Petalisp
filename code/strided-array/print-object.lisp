@@ -6,9 +6,12 @@
   (format stream "~<(σ~@{ ~w~})~:>"
           (map 'list
                (lambda (range)
-                 (list (range-start range)
-                       (range-step range)
-                       (range-end range)))
+                 (if (= 1 (range-step range))
+                     (list (range-start range)
+                           (range-end range))
+                     (list (range-start range)
+                           (range-step range)
+                           (range-end range))))
                (ranges object))))
 
 (defmethod print-object ((object strided-array) stream)

@@ -184,25 +184,29 @@
      :permutation inverse-permutation)))
 
 (defmethod print-object ((object affine-transformation) stream)
-  (let ((input-forms
-          (loop for input-constraint across (input-constraints object)
-                and inpos from 0
-                collect (or input-constraint
-                            (intern (format nil "X~d" inpos)))))
-        (output-forms
-          (loop for outpos below (output-dimension object)
-                with coefficients = (affine-coefficients object)
-                collect
-                (let* ((p (aref (permutation object) outpos))
-                       (a (aref coefficients outpos 0))
-                       (b (aref coefficients outpos 1))
-                       (var (intern (format nil "X~d" p)))
-                       (mul-form (cond ((zerop a) 0)
-                                       ((= a 1) var)
-                                       (t `(* ,a ,var)))))
-                  (cond ((zerop b) mul-form)
-                        ((eql mul-form 0) b)
-                        (t `(+ ,b ,mul-form)))))))
+  (let* ((abc '(a b c d e f g h i j k l m n o p q r s t. u v w x y z))
+         (variables (if (<= (input-dimension object) (length abc))
+                        (subseq abc 0 (input-dimension object))
+                        (loop for inpos below (input-dimension object)
+                              collect (intern (format nil "V~d" inpos)))))
+         (input-forms
+           (loop for input-constraint across (input-constraints object)
+                 and variable in variables
+                 collect (or input-constraint variable)))
+         (output-forms
+           (loop for outpos below (output-dimension object)
+                 with coefficients = (affine-coefficients object)
+                 collect
+                 (let* ((p (aref (permutation object) outpos))
+                        (a (aref coefficients outpos 0))
+                        (b (aref coefficients outpos 1))
+                        (var (and p (nth p variables)))
+                        (mul-form (cond ((zerop a) 0)
+                                        ((= a 1) var)
+                                        (t `(* ,a ,var)))))
+                   (cond ((zerop b) mul-form)
+                         ((eql mul-form 0) b)
+                         (t `(+ ,b ,mul-form)))))))
     (format stream "(τ ~a ~a)" input-forms output-forms)))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
