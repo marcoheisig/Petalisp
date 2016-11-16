@@ -4,29 +4,20 @@
 
 (defmethod difference ((space-1 strided-array-index-space)
                        (space-2 strided-array-index-space))
-  (let* ((ranges-1 (ranges space-1))
-         (ranges-2 (ranges space-2))
-         (intersection (intersection space-1 space-2))
-         (dimension (length ranges-1))
-         differences)
-    (unless intersection
-      (return-from difference
-        (list space-1)))
-    (loop for i below dimension do
-      (loop for difference in (difference (aref ranges-1 i)
-                                          (aref ranges-2 i))
-            do (let ((array (copy-array ranges-1)))
-                 (replace array
-                  (ranges intersection)
-                  :end1 i)
-                 (setf (aref array i) difference)
-                 (push array differences))))
-    (mapcar
-     (lambda (ranges)
-       (make-instance
-        'strided-array-index-space
-        :ranges ranges))
-     differences)))
+  (let ((intersection
+          (or (intersection space-1 space-2)
+              (return-from difference `(,space-1)))))
+    (loop for r1 across (ranges space-1)
+          and r2 across (ranges space-2)
+          and i from 0
+          nconcing
+          (loop for difference in (difference r1 r2)
+                collect (let ((ranges (copy-array (ranges space-1))))
+                          (replace ranges (ranges intersection) :end1 i)
+                          (setf (aref ranges i) difference)
+                          (make-instance
+                           'strided-array-index-space
+                           :ranges ranges))))))
 
 (defmethod difference ((space-1 range) (space-2 range))
   (let ((intersection

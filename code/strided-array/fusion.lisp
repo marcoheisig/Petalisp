@@ -6,10 +6,9 @@
 
 ;;; (fusion #i((1 2 3) (1 2 3)) #i((2 2 4) (1 2 3)) #i((1 2 3) (2 2 4)) #i((2 2 4) (2 2 4)))
 (defmethod fusion ((object strided-array-index-space) &rest more-objects)
-  (let ((objects (list* object more-objects))
-        (dimension (dimension object)))
+  (let ((objects (cons object more-objects)))
     (apply #'make-index-space
-           (loop for i below dimension
+           (loop for i below (dimension object)
                  collect (apply #'fuse-dimension i objects)))))
 
 (defmethod fusion ((object strided-array) &rest more-objects)
@@ -20,17 +19,15 @@
      :ranges (ranges (apply #'fusion (mapcar #'index-space objects))))))
 
 (defmethod fusion ((range range) &rest more-ranges)
-  (let* ((ranges (list* range more-ranges))
-         (fusion
-           (loop for range in ranges
-                 sum (size range) into number-of-elements
-                 maximize (range-end range) into end
-                 minimize (range-start range) into start
-                 finally
-                    (let ((step (ceiling (1+ (- end start))
-                                         number-of-elements)))
-                      (return (range start step end))))))
-    fusion))
+  (let ((ranges (cons range more-ranges)))
+    (loop for range in ranges
+          sum (size range) into number-of-elements
+          maximize (range-end range) into end
+          minimize (range-start range) into start
+          finally
+             (let ((step (ceiling (1+ (- end start))
+                                  number-of-elements)))
+               (return (range start step end))))))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;;  fusion islands - specially annotated index spaces

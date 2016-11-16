@@ -3,10 +3,11 @@
 (in-package :petalisp)
 
 (define-class strided-array (structured-operand)
-  ((element-type :initform t)
-   ranges index-space))
+  (ranges index-space))
 
-(define-class strided-array-index-space (strided-array index-space) ())
+(define-class strided-array-index-space (strided-array index-space)
+  ((element-type :initform t :allocation :class)
+   (predecessors :initform () :allocation :class)))
 
 (defmethod dimension ((object strided-array))
   (length (ranges object)))

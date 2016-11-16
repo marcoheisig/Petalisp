@@ -5,6 +5,9 @@
 (in-package :petalisp)
 
 (defmethod compute (&rest objects)
+  ;; build graph
   ;; CSE
-  ;; scheduling
+  ;; grouping
+  ;; allocation and schedulting
+  ;; execution
   )

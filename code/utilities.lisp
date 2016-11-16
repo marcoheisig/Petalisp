@@ -97,7 +97,7 @@ reader of the same name. Additionally, defines a <NAME>-P predicate."
     (asdf:required-components
      (asdf:find-system system)))))
 
-(defun print-system-statistics (system &optional (stream t))
+(defun print-system-statistics (system &optional (stream *standard-output*))
   (loop for pathname in (system-source-file-pathnames system)
         summing (count #\newline (read-file-into-string pathname))
           into lines-of-code
@@ -108,7 +108,7 @@ reader of the same name. Additionally, defines a <NAME>-P predicate."
             "The system ~a consists of ~d lines of code in ~d file~:P.~%"
             (asdf:primary-system-name system) lines-of-code files)))
 
-(defun print-package-statistics (package &optional (stream t))
+(defun print-package-statistics (package &optional (stream *standard-output*))
   (loop for sym being the present-symbols of package
         counting (find-class sym nil) into classes
         when (macro-function sym)
@@ -121,3 +121,13 @@ reader of the same name. Additionally, defines a <NAME>-P predicate."
             stream
             "The package ~a defines ~d functions, ~d macros and ~d classes.~%"
             (package-name (find-package package)) functions macros classes)))
+
+(defun print-platform-information (&optional (stream *standard-output*))
+  (format stream "Implementation: ~:[Something weird~;~:*~a~]"
+          (lisp-implementation-type))
+  (format stream "~@[ ~a~]~%"
+          (lisp-implementation-version))
+  (format stream "Machine: ~:[a strange system~;~:*~a~]"
+          (machine-type))
+  (format stream "~@[ ~a~]~%"
+          (machine-version)))

@@ -4,21 +4,11 @@
 
 (in-package :petalisp)
 
-(defun print-test-suite-banner (stream)
-  (format stream "== Testing Petalisp ==~%")
-  (format stream "Implementation: ~:[Something weird~;~:*~a~]"
-          (lisp-implementation-type))
-  (format stream "~@[ ~a~]~%"
-          (lisp-implementation-version))
-  (format stream "Machine: ~:[a strange system~;~:*~a~]"
-          (machine-type))
-  (format stream "~@[ ~a~]~%"
-          (machine-version)))
-
 (defun run-test-suite ()
-  (print-test-suite-banner *test-dribble*)
-  (print-system-statistics :petalisp *test-dribble*)
-  (print-package-statistics :petalisp *test-dribble*)
+  (format t "== Testing Petalisp ==~%")
+  (print-platform-information)
+  (print-system-statistics :petalisp)
+  (print-package-statistics :petalisp)
   (fiveam:run! 'petalisp-test-suite))
 
 (def-suite petalisp-test-suite
@@ -157,7 +147,7 @@
                     (reduce #'+ (mapcar #'size args)))))))
     (? (σ (2 2 4) (2 2 4))
        (σ (2 2 4) (1 2 5))
-       (σ (1 2 5) (1 1 5)))))
+       (σ (1 2 5) (1 1 5))))) ; TODO more test cases
 
 (test (strided-array-difference)
   (flet ((? (a b)

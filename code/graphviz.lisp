@@ -17,7 +17,7 @@
     (let ((*graphviz-node-table* (make-hash-table :test #'eq))
           (*print-pretty* nil))
       (format stream "digraph G {~%")
-      (format stream "    node [shape = box, style=filled];~%")
+      (format stream "    node [shape = Mrecord, style=filled];~%")
       (dolist (start-node start-nodes)
         (stream-draw-graph start-node stream))
       (format stream "}~%"))))
@@ -36,25 +36,26 @@
 ;;; _________________________________________________________________
 
 (defmethod stream-draw-graph ((node application) stream)
-  (format stream "    ~w [fillcolor = tomato, label = \"~w\\n~w\"];~%"
+  (format stream "    ~w [fillcolor = tomato, label = \"application ~w\\n~w\"];~%"
           (id node) (name (operator node)) (index-space node)))
 
 (defmethod stream-draw-graph ((node reduction) stream)
-  (format stream "    ~w [fillcolor = cornflowerblue, label = \"~w\\n~w\"];~%"
+  (format stream "    ~w [fillcolor = cornflowerblue, label = \"reduction ~w\\n~w\"];~%"
           (id node) (name (operator node)) (index-space node)))
 
 (defmethod stream-draw-graph ((node fusion) stream)
-  (format stream "    ~w [fillcolor = grey, label = \"~w\"];~%"
+  (format stream "    ~w [fillcolor = grey, label = \"fusion\\n~w\"];~%"
           (id node) (index-space node)))
 
 (defmethod stream-draw-graph ((node reference) stream)
-  (format stream "    ~w [fillcolor = lavender, label = \"~w\\n~w\"];~%"
+  (format stream "    ~w [fillcolor = lavender, label = \"reference\\n~w\\n~w\"];~%"
           (id node) (transformation node) (index-space node)))
 
-(defmethod stream-draw-graph ((node structured-operand) stream)
-  (format stream "    ~w [fillcolor = cyan, label = \"~w\"];~%"
+(defmethod stream-draw-graph ((node repetition) stream)
+  (format stream "    ~w [fillcolor = lightseagreen, label = \"repetition\\n~w\"];~%"
           (id node) (index-space node)))
 
-(defmethod stream-draw-graph ((node repetition) stream)
-  (format stream "    ~w [fillcolor = lightseagreen, label = \"~w\"];~%"
-          (id node) (index-space node)))
+(defmethod stream-draw-graph ((node structured-operand) stream)
+  (format stream "    ~w [fillcolor = cyan, label = \"~w\\n~w\"];~%"
+          (id node) (element-type node) (index-space node)))
+
