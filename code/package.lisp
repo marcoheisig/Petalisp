@@ -5,7 +5,7 @@
 (in-package :cl-user)
 
 (defpackage :petalisp
-  (:use :cl :optima :alexandria :fare-memoization)
+  (:use :cl :optima :alexandria :fare-memoization :anaphora-basic)
   (:import-from :fiveam #:test #:is #:*test-dribble* #:in-suite #:def-suite #:signals)
   (:shadowing-import-from :trivial-garbage #:make-hash-table)
   (:shadow #:intersection #:compose)

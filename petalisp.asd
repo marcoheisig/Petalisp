@@ -11,7 +11,8 @@
    :optima
    :fare-memoization
    :trivial-garbage
-   :fiveam)
+   :fiveam
+   :anaphora)
 
   :perform
   (test-op (o s)

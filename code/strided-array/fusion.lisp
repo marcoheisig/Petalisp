@@ -4,19 +4,18 @@
 
 (define-class strided-array-fusion (strided-array fusion) ())
 
-;;; (fusion #i((1 2 3) (1 2 3)) #i((2 2 4) (1 2 3)) #i((1 2 3) (2 2 4)) #i((2 2 4) (2 2 4)))
-(defmethod fusion ((object strided-array-index-space) &rest more-objects)
-  (let ((objects (cons object more-objects)))
-    (apply #'make-index-space
-           (loop for i below (dimension object)
-                 collect (apply #'fuse-dimension i objects)))))
-
 (defmethod fusion ((object strided-array) &rest more-objects)
   (let ((objects (list* object more-objects)))
     (make-instance
      'strided-array-fusion
      :objects objects
      :ranges (ranges (apply #'fusion (mapcar #'index-space objects))))))
+
+(defmethod fusion ((object strided-array-index-space) &rest more-objects)
+  (let ((objects (cons object more-objects)))
+    (apply #'make-index-space
+           (loop for i below (dimension object)
+                 collect (apply #'fuse-dimension i objects)))))
 
 (defmethod fusion ((range range) &rest more-ranges)
   (let ((ranges (cons range more-ranges)))
@@ -36,7 +35,6 @@
 (define-class fusion-island (strided-array-index-space)
   (ranges-to-fuse))
 
-;;; (fuse-dimension 0 #i((1 2 3) (1 2 3)) #i((2 2 4) (1 2 3)) #i((1 2 3) (2 2 4)) #i((2 2 4) (2 2 4)))
 (defun fuse-dimension (dimension &rest objects)
   (let* ((islands
            (apply
