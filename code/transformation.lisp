@@ -206,7 +206,8 @@
                                         (t `(* ,a ,var)))))
                    (cond ((zerop b) mul-form)
                          ((eql mul-form 0) b)
-                         (t `(+ ,b ,mul-form)))))))
+                         ((plusp b) `(+ ,mul-form ,b))
+                         ((minusp b) `(- ,mul-form ,(abs b))))))))
     (format stream "(τ ~a ~a)" input-forms output-forms)))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾

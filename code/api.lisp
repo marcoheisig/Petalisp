@@ -17,10 +17,10 @@
     (apply #'application operator objects)))
 
 (defun β (operator object)
-  (reduction operator object))
+  (reduction operator (lisp->petalisp object)))
 
 (defun fuse (object &rest more-objects)
-  (let* ((objects (list* object more-objects))
+  (let* ((objects (mapcar #'lisp->petalisp (cons object more-objects)))
          (current ())
          (new ()))
     (dolist (b objects)
@@ -31,17 +31,17 @@
               ((not a∩b) (push a new))
               (t
                (setf b-intersects t)
-               (push (reference b a∩b TODO) new)
+               (push (-> b a∩b) new)
                (dolist (difference (difference a b))
-                 (push (reference a difference TODO) new))
+                 (push (-> a difference) new))
                (dolist (difference (difference b a))
-                 (push (reference b difference TODO) new))))))
+                 (push (-> b difference) new))))))
         (unless b-intersects (push b new)))
       (psetf current new new ()))
     (apply #'fusion current)))
 
 (defun repeat (object space)
-  (repetition object space))
+  (repetition (lisp->petalisp object) space))
 
 (defun -> (object &rest subspaces-and-transformations)
   (let* ((object (lisp->petalisp object))

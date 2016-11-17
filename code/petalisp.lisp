@@ -167,3 +167,5 @@ arguments."))
                     when (intersection particle object) collect it)
               object-w/o-dust))))
     (reduce #'shatter more-objects :initial-value (list object))))
+
+(defparameter *constant-fold-threshold* 99)

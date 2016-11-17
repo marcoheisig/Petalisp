@@ -68,9 +68,6 @@ reader of the same name. Additionally, defines a <NAME>-P predicate."
                 ,expr)))
        ,store-expr)))
 
-;; make the symbol TODO a valid piece of lisp code
-(defconstant TODO 'TODO)
-
 (defun array-map (function array &rest more-arrays)
   (let ((n-elements (array-total-size array))
         (arrays (cons array more-arrays))
@@ -87,6 +84,10 @@ reader of the same name. Additionally, defines a <NAME>-P predicate."
   "Make a one element circular list with a CAR of VALUE."
   (let ((x (list value)))
     (setf (cdr x) x)))
+
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;;  print useful system information
+;;; _________________________________________________________________
 
 (defun system-source-file-pathnames (system)
   (mapcar

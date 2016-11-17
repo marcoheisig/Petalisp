@@ -5,10 +5,12 @@
 (define-class strided-array-fusion (strided-array fusion) ())
 
 (defmethod fusion ((object strided-array) &rest more-objects)
-  (let ((objects (list* object more-objects)))
+  (let ((objects (cons object more-objects)))
     (make-instance
      'strided-array-fusion
      :objects objects
+     :element-type (element-type object)
+     :predecessors objects
      :ranges (ranges (apply #'fusion (mapcar #'index-space objects))))))
 
 (defmethod fusion ((object strided-array-index-space) &rest more-objects)
@@ -24,8 +26,7 @@
           maximize (range-end range) into end
           minimize (range-start range) into start
           finally
-             (let ((step (ceiling (1+ (- end start))
-                                  number-of-elements)))
+             (let ((step (ceiling (1+ (- end start)) number-of-elements)))
                (return (range start step end))))))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾

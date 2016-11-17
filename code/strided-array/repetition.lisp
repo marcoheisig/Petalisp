@@ -23,16 +23,3 @@
             :predecessors (list object)
             :element-type (element-type object)
             :ranges (ranges space)))))
-
-#+nil
-(defmethod repetition ((object strided-array-constant)
-                       (space strided-array-index-space))
-  (cond
-    ((> (size space) 42)
-     (call-next-method))
-    (t
-     (make-instance
-      'strided-array-constant
-      :data array ; TODO
-      :element-type (element-type object)
-      :ranges (ranges space)))))

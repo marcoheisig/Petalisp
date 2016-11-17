@@ -32,11 +32,11 @@
              :ranges (ranges object)))))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;;  convert lisp arrays to strided arrays
+;;;  convert lisp arrays to strided array constants
 ;;; _________________________________________________________________
 
 (define-class strided-array-constant (strided-array)
-  (data
+  (data transformation
    (predecessors :initform () :allocation :class)))
 
 (defmethod lisp->petalisp ((array array))
@@ -47,7 +47,7 @@
    (make-array () :initial-element object
                   :element-type (type-of object))))
 
-(defun array-ranges (array)
+(defmethod ranges ((array array))
   (map 'vector
        (lambda (end)
          (range 0 1 (1- end)))
@@ -56,11 +56,13 @@
 (define-memo-function
     (array->strided-array
      :table (make-hash-table :test #'equal :weakness :value)) (array)
-  (make-instance
-   'strided-array-constant
-   :data array
-   :element-type (element-type array)
-   :ranges (array-ranges array)))
+  (let ((ranges (ranges array)))
+    (make-instance
+     'strided-array-constant
+     :data array
+     :transformation (identity-transformation (length ranges))
+     :element-type (element-type array)
+     :ranges ranges)))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;;  working with ranges
