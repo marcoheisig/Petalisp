@@ -225,7 +225,7 @@
 (defmethod equal? ((a identity-transformation) (b identity-transformation))
   (= (input-dimension a) (input-dimension b)))
 
-(defmethod transform ((object structured-operand) (f identity-transformation))
+(defmethod transform ((object data-structure) (f identity-transformation))
   object)
 
 (define-memo-function identity-transformation (dimension)

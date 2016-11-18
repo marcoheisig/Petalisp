@@ -4,11 +4,11 @@
 
 (in-package :petalisp)
 
-(define-class structured-operand () (element-type predecessors))
+(define-class data-structure () (element-type predecessors))
 
 (defmacro define-node (name lambda-list slots)
   `(progn
-     (define-class ,name (structured-operand) ,slots)
+     (define-class ,name (data-structure) ,slots)
      (defgeneric ,name ,lambda-list)))
 
 (define-node application (operator object &rest more-objects) (operator))
@@ -25,7 +25,7 @@
 ;;;  classes and methods concerning index spaces
 ;;; _________________________________________________________________
 
-(define-class index-space (structured-operand) ())
+(define-class index-space (data-structure) ())
 
 (defgeneric index-space (object))
 
@@ -94,20 +94,20 @@ arguments."))
 ;;; _________________________________________________________________
 
 (defmethod application :before ((operator function)
-                                (object structured-operand)
+                                (object data-structure)
                                 &rest more-objects)
   (assert (identical (cons object more-objects)
                      :test #'equal? :key #'index-space)))
 
 (defmethod reduction :before ((operator function)
-                              (object structured-operand))
+                              (object data-structure))
   (assert (plusp (dimension object))))
 
 (defmethod repetition :before (object space)
   (assert
    (<= (dimension object) (dimension space))))
 
-(defmethod fusion :before ((object structured-operand) &rest more-objects)
+(defmethod fusion :before ((object data-structure) &rest more-objects)
   (assert (identical (cons object more-objects)
                      :test #'= :key #'dimension)))
 
@@ -124,7 +124,7 @@ arguments."))
 (defmethod compose :before ((t1 transformation) (t2 transformation))
   (assert (= (input-dimension t1) (output-dimension t2))))
 
-(defmethod transform :before ((object structured-operand)
+(defmethod transform :before ((object data-structure)
                               (transformation transformation))
   (assert (= (dimension object) (input-dimension transformation))))
 
@@ -145,17 +145,17 @@ arguments."))
 (defmethod subspace? (space-1 space-2)
   (equal? space-1 (intersection space-1 space-2)))
 
-(defmethod intersection ((object-1 structured-operand)
-                         (object-2 structured-operand))
+(defmethod intersection ((object-1 data-structure)
+                         (object-2 data-structure))
   (intersection (index-space object-1) (index-space object-2)))
 
-(defmethod difference ((object-1 structured-operand)
-                       (object-2 structured-operand))
+(defmethod difference ((object-1 data-structure)
+                       (object-2 data-structure))
   (difference (index-space object-1) (index-space object-2)))
 
-(defmethod lisp->petalisp ((object structured-operand)) object)
+(defmethod lisp->petalisp ((object data-structure)) object)
 
-(defmethod subdivision ((object structured-operand) &rest more-objects)
+(defmethod subdivision ((object data-structure) &rest more-objects)
   (flet ((shatter (dust object)
            (let ((object-w/o-dust (list object)))
              (nconc

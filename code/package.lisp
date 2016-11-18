@@ -15,6 +15,4 @@
    #:->
    #:τ
    #:σ
-   #:fuse
-   #:repeat
    #:subspace))

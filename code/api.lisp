@@ -19,44 +19,40 @@
 (defun β (operator object)
   (reduction operator (lisp->petalisp object)))
 
-(defun fuse (object &rest more-objects)
-  (let* ((objects (mapcar #'lisp->petalisp (cons object more-objects)))
-         (current ())
-         (new ()))
-    (dolist (b objects)
-      (let ((b-intersects nil))
-        (dolist (a current)
-          (let ((a∩b (intersection a b)))
-            (cond
-              ((not a∩b) (push a new))
-              (t
-               (setf b-intersects t)
-               (push (-> b a∩b) new)
-               (dolist (difference (difference a b))
-                 (push (-> a difference) new))
-               (dolist (difference (difference b a))
-                 (push (-> b difference) new))))))
-        (unless b-intersects (push b new)))
-      (psetf current new new ()))
-    (apply #'fusion current)))
+(defun -> (data-structure &rest modifiers)
+  "Manipulate DATA-STRUCTURE depending on the individual MODIFIERS. The
+MODIFIERS are applied from left to right, the result of the first
+modification is used as the argument to the second one and so on. The value
+of the last modification is returned.
 
-(defun repeat (object space)
-  (repetition (lisp->petalisp object) space))
+When a modifier is of type INDEX-SPACE, it denotes a selection of the given
+data structure. For example the modifier (σ (7 9)) would select only the
+elements with the keys 7, 8 and 9 from the given argument.
 
-(defun -> (object &rest subspaces-and-transformations)
-  (let* ((object (lisp->petalisp object))
-         (target-space (index-space object))
-         (transformation (identity-transformation (dimension object))))
-    (dolist (x subspaces-and-transformations)
-      (etypecase x
-        (transformation
-         (zapf target-space (transform % x))
-         (zapf transformation (compose x %)))
-        (index-space
-         (assert (subspace? x target-space))
-         (setf target-space x))))
-    (let ((source-space (transform target-space (invert transformation))))
-      (reference object source-space transformation))))
+When a modifier is of type DATA-STRUCTURE, but not of type INDEX-SPACE, it
+denotes a shadowing of values. The index space of the modifier must be a
+subset of the index space of the argument. The result is a data structure
+that has the values of the modifier, where both index spaces coincide and
+the values of the argument otherwise.
+
+When a modifier is of type TRANSFORMATION, the argument is permuted
+accordingly. For example applying the transformation (τ (m n) (n m) to a
+3x10 array would result in a 10x3 array."
+  (labels ((id (x) (identity-transformation (dimension x)))
+           (apply-modification (x modifier)
+             (etypecase modifier
+               (index-space
+                (reference x modifier (id x)))
+               (data-structure
+                (apply #'fusion modifier
+                       (mapcar #'reference
+                               (forever x)
+                               (difference x modifier)
+                               (forever (id x)))))
+               (transformation
+                (reference x (index-space x) modifier)))))
+    (reduce #'apply-modification modifiers
+            :initial-value (lisp->petalisp data-structure))))
 
 (defmacro subspace (space &rest dimensions)
   (with-gensyms (dim)

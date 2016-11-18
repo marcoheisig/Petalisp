@@ -4,18 +4,29 @@
 
 (in-package :petalisp)
 
-(defparameter *node-table* nil)
+(defparameter *successors* nil)
 
-(defun populate-node-table (object)
-  (unless (gethash object *node-table*)
-    (setf (gethash object *node-table*) object)
-    (mapc #'populate-node-table (predecessors object))))
+(defun successors (object)
+  (gethash object *successors*))
+
+(defun populate-successors (node &optional successor)
+  (let ((first-visit (not (gethash node *successors*))))
+    (when successor
+      (pushnew successor (gethash node *successors*)))
+    (when first-visit
+      (mapc #'populate-successors (predecessors node) (forever node)))))
+
+(defun work-node (x)
+  (or (application? x) (reduction? x)))
 
 (defmethod compute (&rest objects)
-  (let ((*node-table* (make-hash-table :test #'eq)))
-    (mapc #'populate-node-table objects)
-  ;; build graph
-  ;; grouping
-  ;; allocation and schedulting
-  ;; execution
+  (let ((*successors* (make-hash-table :test #'eq)))
+    (mapc #'populate-successors objects)
+    ;; identify iteration spaces
+    (let ((foo *successors*))
+      ;(break)
+      foo)
+    ;; allocation and scheduling
+
+    ;; execution
     ))
