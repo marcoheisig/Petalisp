@@ -7,7 +7,7 @@
 (defmacro define-class (name direct-superclasses slots &rest options)
   "Defines a class using DEFCLASS, where all slot-specifiers that consist
 only of a single symbol are expanded to define a :initarg keyword and a
-reader of the same name. Additionally, defines a <NAME>-P predicate."
+reader of the same name. Additionally, defines a <NAME>? predicate."
   `(progn
      (defclass ,name ,direct-superclasses
        ,(loop for slot in slots
@@ -25,8 +25,6 @@ reader of the same name. Additionally, defines a <NAME>-P predicate."
   (declare (type unsigned-byte u v))
   (labels
       ((bignum-euclid (u1 u3 v1 v3)
-         (declare (type integer u1 v1)
-                  (type unsigned-byte u3 v3))
          (if (zerop v3)
              (values u1 u3)
              (let ((q (floor u3 v3)))
@@ -84,6 +82,18 @@ reader of the same name. Additionally, defines a <NAME>-P predicate."
   "Make a one element circular list with a CAR of VALUE."
   (let ((x (list value)))
     (setf (cdr x) x)))
+
+(defmacro defalias (alias fname)
+  "Define ALIAS to be an alias to the function FNAME."
+  `(progn
+     (eval-when (:compile-toplevel)
+       (defun ,alias (&rest args)
+         (declare (ignore args))))
+     (eval-when (:load-toplevel :execute)
+       (setf (fdefinition ',alias)
+             #',fname)
+       (setf (documentation ',alias 'function)
+             (documentation #',fname 'function)))))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;;  print useful system information

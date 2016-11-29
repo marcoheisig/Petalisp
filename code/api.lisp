@@ -5,6 +5,9 @@
 (in-package :petalisp)
 
 (defun α (operator object &rest more-objects)
+  "Apply OPERATOR element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
+for Petalisp data structures. When the dimensions of some of the inputs
+mismatch, the smaller objects are broadcasted where possible."
   (let* ((objects
            (mapcar #'lisp->petalisp (cons object more-objects)))
          (index-space
@@ -17,12 +20,13 @@
     (apply #'application operator objects)))
 
 (defun β (operator object)
+  "Reduce the last dimension of OBJECT with OPERATOR."
   (reduction operator (lisp->petalisp object)))
 
 (defun -> (data-structure &rest modifiers)
   "Manipulate DATA-STRUCTURE depending on the individual MODIFIERS. The
 MODIFIERS are applied from left to right, the result of the first
-modification is used as the argument to the second one and so on. The value
+modification is used as the argument to the second one and so on. The result
 of the last modification is returned.
 
 When a modifier is of type INDEX-SPACE, it denotes a selection of the given
@@ -53,6 +57,8 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
                 (reference x (index-space x) modifier)))))
     (reduce #'apply-modification modifiers
             :initial-value (lisp->petalisp data-structure))))
+
+(defalias → ->)
 
 (defmacro subspace (space &rest dimensions)
   (with-gensyms (dim)

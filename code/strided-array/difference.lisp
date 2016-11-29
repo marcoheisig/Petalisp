@@ -19,23 +19,24 @@
                            :ranges ranges))))))
 
 (defmethod difference ((space-1 range) (space-2 range))
-  (let ((intersection (intersection space-1 space-2)))
-    (unless intersection (return-from difference `(,space-1)))
+  ;; we only care about the part of space-2 that intersects with space-1
+  (let ((space-2 (intersection space-1 space-2)))
+    (unless space-2 (return-from difference `(,space-1)))
     (let ((start-1 (range-start space-1))
           (step-1 (range-step space-1))
           (end-1 (range-end space-1))
-          (i-start (range-start intersection))
-          (i-step (range-step intersection))
-          (i-end (range-end intersection)))
+          (start-2 (range-start space-2))
+          (step-2 (range-step space-2))
+          (end-2 (range-end space-2)))
       (flet ((range (start step end)
                (when (<= start-1 start end end-1)
                  (range start step end))))
-        (loop for x from i-start below i-end by i-step
-              when (range (+ x step-1) step-1 (- (+ x i-step) step-1))
+        (loop for x from start-2 below end-2 by step-2
+              when (range (+ x step-1) step-1 (- (+ x step-2) step-1))
                 collect it into result
               finally
-                 (awhen (range start-1 step-1 (- i-start step-1))
+                 (awhen (range start-1 step-1 (- start-2 step-1))
                    (push it result))
-                 (awhen (range (+ i-end step-1) step-1 end-1)
+                 (awhen (range (+ end-2 step-1) step-1 end-1)
                    (push it result))
                  (return result))))))

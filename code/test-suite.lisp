@@ -112,7 +112,8 @@
     (? (range 0 (expt 6 40) (expt 2 200)) (range 0 (expt 9 40) (expt 2 200))
        (range 0 (expt 18 40) (expt 2 200)))
     (?  (σ) (σ) (σ))
-    (? (σ (0 9) (0 9)) (σ (2 10) (2 10)) (σ (2 9) (2 9)))))
+    (? (σ (0 9) (0 9)) (σ (2 10) (2 10)) (σ (2 9) (2 9)))
+    (? (σ (1 2 3) (0 3 6)) (σ (1 1 3) (0 2 6)) (σ (1 2 3) (0 6 6)))))
 
 (test (strided-array-transform)
   (flet ((? (object transformation result)
@@ -217,3 +218,11 @@
     (? '(complex double-float) #'* 'double-float '(complex single-float))
     (? '(complex double-float) #'* '(complex double-float) 'single-float)
     (? 'double-float #'+ 'single-float 'double-float 'single-float)))
+
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;;  testing full programs
+;;; _________________________________________________________________
+
+(test (graph-creation)
+
+  )

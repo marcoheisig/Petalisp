@@ -35,29 +35,29 @@
 ;;; _________________________________________________________________
 
 (defmethod stream-draw-graph ((node application) stream)
-  (format stream "    ~a [label=\"~w\\napplication ~w\"];~%"
-          (id node) (index-space node) (name (operator node))))
+  (format stream "    ~a [label=\"application ~w\\n~w\"];~%"
+          (id node) (name (operator node)) (index-space node)))
 
 (defmethod stream-draw-graph ((node reduction) stream)
-  (format stream "    ~a [label = \"~w\\nreduction ~w\"];~%"
-          (id node) (index-space node) (name (operator node))))
+  (format stream "    ~a [label = \"reduction ~w\\n~w\"];~%"
+          (id node) (name (operator node)) (index-space node)))
 
 (defmethod stream-draw-graph ((node fusion) stream)
   (format stream "    ~a [label = \"fusion\\n~w\"];~%"
           (id node) (index-space node)))
 
 (defmethod stream-draw-graph ((node reference) stream)
-  (format stream "    ~a [label=\"~w\\n~w\"];~%"
+  (format stream "    ~a [label=\"reference\\n~w\\n~w\"];~%"
           (id node)
           (transform (index-space node) (invert (transformation node)))
           (transformation node)))
 
 (defmethod stream-draw-graph ((node repetition) stream)
-  (format stream "    ~a [label = \"~w\\n~w\"];~%"
+  (format stream "    ~a [label = \"repetition\\n~w\\n~w\"];~%"
           (id node) (index-space (first (predecessors node))) (index-space node)))
 
 (defmethod stream-draw-graph ((node data-structure) stream)
-  (format stream "    ~a [label = \"~w\\n~w\"];~%"
-          (id node) (class-name (class-of node))
+  (format stream "    ~a [label = \"~a\\n~w\"];~%"
+          (id node) (string-downcase (class-name (class-of node)))
           (index-space node)))
 

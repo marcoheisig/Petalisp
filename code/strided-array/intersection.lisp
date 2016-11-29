@@ -4,7 +4,6 @@
 
 (defmethod intersection ((space-1 strided-array-index-space)
                          (space-2 strided-array-index-space))
-  (assert (= (dimension space-1) (dimension space-2)))
   (make-instance
    'strided-array-index-space
    :ranges (map 'vector
@@ -23,13 +22,13 @@
     (multiple-value-bind (s gcd)
         (extended-euclid a b)
       (unless (integerp (/ c gcd))
-        (return-from intersection nil))
+        (return-from intersection))
       (let ((x (+ (* s (/ c gcd) a)
                   (range-start range-1)))
             (lcm (/ (* a b) gcd)))
         (let ((smallest (+ x (* lcm (ceiling (- lb x) lcm))))
               (biggest  (+ x (* lcm (floor (- ub x) lcm)))))
           (unless (<= lb smallest biggest ub)
-            (return-from intersection nil))
+            (return-from intersection))
           (range smallest lcm biggest))))))
 
