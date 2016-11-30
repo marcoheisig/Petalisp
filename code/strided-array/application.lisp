@@ -23,11 +23,14 @@
       (call-next-method)))
 
 (defmethod evaluate-node ((node strided-array-application))
-  (let ((args (mapcar #'evaluate-node (predecessors node)))
-        (op (operator node)))
+  (let ((args (mapcar (compose #'data #'evaluate-node) (predecessors node)))
+        (op (operator node))
+        (result (make-array
+                 (map 'list #'size (ranges node))
+                 :element-type (element-type node))))
+    (apply #'array-map op result args)
     (make-instance
      'strided-array-constant
-     :data array
-     :affine-coefficients TODO
+     :data result
      :element-type (element-type node)
      :ranges (ranges node))))

@@ -20,13 +20,14 @@
 ;;;  utilities
 ;;; _________________________________________________________________
 
-(test (array-map)
+(test (utilities)
   (is (identical (iota 5) :test #'eql :key #'numberp))
   (is
    (equalp
     #2a((1 2 3 4) (1 2 3 4) (1 2 3 4) (1 2 3 4))
     (array-map
      #'+
+     (make-array '(4 4))
      #2a((1 1 1 1) (1 1 1 1) (1 1 1 1) (1 1 1 1))
      #2a((0 1 2 3) (0 1 2 3) (0 1 2 3) (0 1 2 3))))))
 
@@ -218,13 +219,12 @@
     (? 'double-float #'+ 'single-float 'double-float 'single-float)))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;;  testing full programs
+;;;  testing the core operations
 ;;; _________________________________________________________________
 
-(test (core-operations)
+(test (strided-array-reference)
   (flet ((? (expression result)
            (is (equal? result (compute expression)))))
-    ;; testing references
     (? (-> #(1 2 3 4) (τ (i) ((* -1 i))))
        #(4 3 2 1))
     (? (-> #2a((1 2) (3 4)) (τ (m n) (n m)))
@@ -235,6 +235,14 @@
        #0a42)
     (? (-> #(1 2 3 4) (σ (1 2)) (τ (x) (x 0)))
        #2a((2) (3)))))
+
+(test (strided-array-application)
+  (flet ((? (expression result)
+           (is (equal? result (compute expression)))))
+    (? (α #'+ #(1 1 1 1) #(2 2 2 2))
+       #(3 3 3 3))
+    (? (α #'* #2a((2 2) (2 2)) #2a((1 2) (3 4)))
+       #2a((2 4) (6 8)))))
 
 #+nil
 (test (matrix-multiplication)

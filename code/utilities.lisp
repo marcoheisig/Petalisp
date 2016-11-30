@@ -66,10 +66,9 @@ reader of the same name. Additionally, defines a <NAME>? predicate."
                 ,expr)))
        ,store-expr)))
 
-(defun array-map (function array &rest more-arrays)
+(defun array-map (function result array &rest more-arrays)
   (let ((n-elements (array-total-size array))
-        (arrays (cons array more-arrays))
-        (result (copy-array array)))
+        (arrays (cons array more-arrays)))
     (loop for i below n-elements do
       (setf (row-major-aref result i)
             (apply function

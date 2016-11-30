@@ -64,7 +64,6 @@
     (make-instance
      'strided-array-constant
      :data array
-     :transformation (identity-transformation (length ranges))
      :element-type (element-type array)
      :ranges ranges)))
 
