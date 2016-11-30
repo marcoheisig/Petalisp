@@ -10,23 +10,32 @@
   (gethash object *successors*))
 
 (defun populate-successors (node &optional successor)
-  (let ((first-visit (not (gethash node *successors*))))
+  (let ((first-visit? (not (gethash node *successors*))))
     (when successor
       (pushnew successor (gethash node *successors*)))
-    (when first-visit
+    (when first-visit?
       (mapc #'populate-successors (predecessors node) (forever node)))))
 
-(defun work-node (x)
-  (or (application? x) (reduction? x)))
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;;  a simple reference implementation of COMPUTE
+;;; _________________________________________________________________
+
+(defparameter *value-cache* nil)
+
+(defmethod evaluate-node :around ((node t))
+  (if (not (and *value-cache* *successors*))
+      (call-next-method)
+      (aif (gethash node *value-cache*) it
+           (if (<= (length (successors node)) 1)
+               (call-next-method)
+               (setf (gethash node *value-cache*)
+                     (call-next-method))))))
 
 (defmethod compute (&rest objects)
-  (let ((*successors* (make-hash-table :test #'eq)))
+  (let ((*successors* (make-hash-table :test #'eq))
+        (*value-cache* (make-hash-table :test #'eq)))
     (mapc #'populate-successors objects)
-    ;; identify iteration spaces
-    (let ((foo *successors*))
-      ;(break)
-      foo)
-    ;; allocation and scheduling
-
-    ;; execution
-    ))
+    (apply #'values
+           (mapcar
+            (compose #'petalisp->lisp #'evaluate-node)
+            objects))))

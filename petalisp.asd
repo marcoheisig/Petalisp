@@ -22,12 +22,13 @@
   ((:module "code"
     :components
     ((:file "package")
-     (:file "utilities" :depends-on ("package"))
-     (:file "petalisp" :depends-on ("utilities"))
-     (:file "transformation"    :depends-on ("petalisp"))
-     (:file "database" :depends-on ("petalisp"))
-     (:file "graphviz"          :depends-on ("petalisp"))
-     (:module "strided-array"   :depends-on ("petalisp")
+     (:file "utilities"       :depends-on ("package"))
+     (:file "petalisp"        :depends-on ("utilities"))
+     (:file "transformation"  :depends-on ("petalisp"))
+     (:file "database"        :depends-on ("petalisp"))
+     (:file "graphviz"        :depends-on ("petalisp"))
+     (:file "compute"         :depends-on ("petalisp"))
+     (:module "strided-array" :depends-on ("petalisp")
       :components
       ((:file "strided-array")
        (:file "application"  :depends-on ("strided-array"))

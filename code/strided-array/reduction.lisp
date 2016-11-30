@@ -16,9 +16,8 @@
    :ranges (all-but-last (ranges object))))
 
 (defmethod reduction ((operator function) (object strided-array-constant))
-  (when (> (size object) *constant-fold-threshold*)
-    (return-from reduction (call-next-method)))
-  ;; now the actual constant folding
-  (call-next-method)) ; TODO
+  (if (<= (size object) *constant-fold-threshold*)
+      (evaluate-node (call-next-method)) ; constant folding
+      (call-next-method)))
 
 

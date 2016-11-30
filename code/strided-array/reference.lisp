@@ -8,14 +8,20 @@
                       (space strided-array-index-space)
                       (transformation transformation))
   (let ((target-space (transform space transformation)))
+    (make-instance
+     'strided-array-reference
+     :predecessors (list object)
+     :ranges (ranges target-space)
+     :element-type (element-type object)
+     :transformation transformation)))
+
+(defmethod reference ((object strided-array)
+                      (space strided-array-index-space)
+                      (transformation identity-transformation))
+  (let ((target-space (transform space transformation)))
     (if (equal? (index-space object) target-space)
         object
-        (make-instance
-         'strided-array-reference
-         :predecessors (list object)
-         :ranges (ranges target-space)
-         :element-type (element-type object)
-         :transformation transformation))))
+        (call-next-method))))
 
 (defmethod reference ((object strided-array-reference)
                       (space strided-array-index-space)
@@ -35,3 +41,86 @@
   (aif (find space (predecessors fusion) :test #'equal? :key #'index-space)
        (reference it space transformation)
        (call-next-method)))
+
+(defmacro generate-reference (inputs permutation plusp)
+  (let* ((input-indices
+           (loop repeat inputs
+                 collect (gensym "I")))
+         (output-indices
+           (loop repeat (length permutation)
+                 collect (gensym "O")))
+         (dim (length permutation)))
+    (labels ((generate-loop (n)
+               (block nil
+                 (when (= n -1)
+                   (return
+                     `(setf (aref out ,@output-indices)
+                            (aref in ,@input-indices))))
+                 (let ((inpos (svref permutation n))
+                       (output-index (nth n output-indices)))
+                   (when (not inpos)
+                     (return
+                       `(let ((,output-index 0))
+                          ,(generate-loop (1- n)))))
+                   (let ((input-index (nth inpos input-indices)))
+                     (if (svref plusp n)
+                         `(loop for ,input-index
+                                from (svref lb ,inpos)
+                                upto (svref ub ,inpos)
+                                and ,output-index from 0 do
+                                ,(generate-loop (1- n)))
+                         `(loop for ,input-index
+                                from (svref ub ,inpos)
+                                downto (svref lb ,inpos)
+                                and ,output-index from 0 do
+                                ,(generate-loop (1- n)))))))))
+      `(lambda (in out lb ub)
+         (declare (type array in out)
+                  (type vector lb ub)
+                  (optimize (debug 3))
+                  (ignorable lb ub))
+         (let (,@(loop for i in input-indices collect `(,i 0)))
+           (declare (ignorable ,@input-indices))
+           ,(generate-loop (1- dim)))))))
+
+(defun compile-reference (inputs permutation scaling-plusp)
+  (eval
+   `(generate-reference ,inputs ,permutation ,scaling-plusp)))
+
+(defmethod evaluate-node ((node strided-array-reference))
+  (let* ((predecessor (evaluate-node (first (predecessors node))))
+         (transformation (transformation node))
+         (input-ranges
+           (ranges
+            (transform
+             (index-space node)
+             (invert transformation))))
+         (plusp (make-array (output-dimension transformation)))
+         (out (make-array (map 'list #'size (ranges node))
+                          :element-type (element-type node)))
+         (lb (make-array (input-dimension transformation)))
+         (ub (make-array (input-dimension transformation))))
+    ;; determine PLUSP, the direction of each array access
+    (loop for i below (output-dimension transformation)
+          with c = (affine-coefficients transformation) do
+            (setf (aref plusp i) (plusp (aref c i 0))))
+    ;; determine LB and UB, the bounds of the input data to be read
+    (loop for irange across input-ranges
+          and prange across (ranges predecessor)
+          and i from 0 do
+            (setf (aref lb i)
+                  (/ (- (range-start irange) (range-start prange))
+                     (range-step irange)))
+            (setf (aref ub i)
+                  (/ (- (range-end irange) (range-start prange))
+                     (range-step irange))))
+    (funcall (compile-reference
+              (input-dimension transformation)
+              (permutation transformation)
+              plusp)
+             (data predecessor) out lb ub)
+    (make-instance
+     'strided-array-constant
+     :ranges (ranges node)
+     :element-type (element-type node)
+     :data out)))

@@ -17,4 +17,3 @@
 (defmethod print-object ((object strided-array) stream)
   (print-unreadable-object (object stream :type t)
     (princ (index-space object) stream)))
-

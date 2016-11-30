@@ -35,8 +35,8 @@
 ;;;  convert lisp arrays to strided array constants
 ;;; _________________________________________________________________
 
-(define-class strided-array-constant (strided-array)
-  (data transformation
+(define-class strided-array-constant (strided-array constant)
+  (data
    (predecessors :initform () :allocation :class)))
 
 (defmethod lisp->petalisp ((array array))
@@ -46,6 +46,10 @@
   (lisp->petalisp
    (make-array () :initial-element object
                   :element-type (type-of object))))
+
+(defmethod petalisp->lisp ((object data-structure) &optional storage)
+  (declare (ignore storage))
+  (data object))
 
 (defmethod ranges ((array array))
   (map 'vector

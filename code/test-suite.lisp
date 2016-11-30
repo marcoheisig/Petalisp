@@ -24,11 +24,11 @@
   (is (identical (iota 5) :test #'eql :key #'numberp))
   (is
    (equalp
+    #2a((1 2 3 4) (1 2 3 4) (1 2 3 4) (1 2 3 4))
     (array-map
      #'+
      #2a((1 1 1 1) (1 1 1 1) (1 1 1 1) (1 1 1 1))
-     #2a((0 1 2 3) (0 1 2 3) (0 1 2 3) (0 1 2 3)))
-    #2a ((1 2 3 4) (1 2 3 4) (1 2 3 4) (1 2 3 4)))))
+     #2a((0 1 2 3) (0 1 2 3) (0 1 2 3) (0 1 2 3))))))
 
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
@@ -90,7 +90,7 @@
 
 (test (strided-array-broadcast)
   (flet ((? (a b result)
-           (is (equal? (broadcast a b) result))))
+           (is (equal? result (broadcast a b)))))
     (? (σ (0 9)) (σ (9 9)) (σ (0 9)))
     (? (σ (9 9)) (σ (0 9)) (σ (0 9)))
     (? (σ (-5 5)) (σ (-5 5)) (σ (-5 5)))
@@ -100,7 +100,7 @@
 
 (test (strided-array-intersection)
   (flet ((? (a b result)
-           (is (equal? (intersection a b) result))))
+           (is (equal? result (intersection a b)))))
     (is (intersection (range 0 0 0) (range 0 0 0)))
     (is (null (intersection (range 1 1 5) (range 6 1 10))))
     (? (range -5 1 5) (range 0 1 10) (range 0 1 5))
@@ -117,8 +117,7 @@
 
 (test (strided-array-transform)
   (flet ((? (object transformation result)
-           (is (equal? (transform object transformation)
-                       result))
+           (is (equal? result (transform object transformation)))
            (is (equal? (transform result (invert transformation))
                        object))))
     (? (σ (1 1 1)) (τ (m) ((1+ m)))
@@ -211,8 +210,7 @@
 
 (test (type-inference)
   (flet ((? (result fun &rest types)
-           (is (equal (apply #'result-type fun types)
-                      result))))
+           (is (equal result (apply #'result-type fun types)))))
     (? 'double-float #'+ 'double-float 'double-float)
     (? 't #'- 'double-float 'character)
     (? '(complex double-float) #'* 'double-float '(complex single-float))
@@ -223,6 +221,28 @@
 ;;;  testing full programs
 ;;; _________________________________________________________________
 
-(test (graph-creation)
+(test (core-operations)
+  (flet ((? (expression result)
+           (is (equal? result (compute expression)))))
+    ;; testing references
+    (? (-> #(1 2 3 4) (τ (i) ((* -1 i))))
+       #(4 3 2 1))
+    (? (-> #2a((1 2) (3 4)) (τ (m n) (n m)))
+       #2a((1 3) (2 4)))
+    (? (-> #(42) (τ (0) (0 0 0 0)))
+       #4a((((42)))))
+    (? (-> #2a((42)) (τ (0 0) ()))
+       #0a42)
+    (? (-> #(1 2 3 4) (σ (1 2)) (τ (x) (x 0)))
+       #2a((2) (3)))))
 
-  )
+#+nil
+(test (matrix-multiplication)
+  (let ((I-2x2 #2a((1.0 0.0) (0.0 1.0)))
+        (A-2x2 #2a((1.0 2.0) (3.0 4.0))))
+    (flet ((matmul (a b)
+             (β #'*
+                (α #'*
+                   (-> A (τ (m n) (m 1 n)))
+                   (-> B (τ (n k) (1 k n)))))))
+      (is (equal? (compute (matmul I-2x2 A-2x2)) A-2x2)))))

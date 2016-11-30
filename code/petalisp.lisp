@@ -6,6 +6,8 @@
 
 (define-class data-structure () (element-type predecessors))
 
+(define-class constant () ())
+
 (defmacro define-node (name lambda-list slots)
   `(progn
      (define-class ,name (data-structure) ,slots)
@@ -76,6 +78,8 @@ arguments."))
 (defgeneric result-type (function &rest arguments))
 
 (defgeneric compute (&rest objects))
+
+(defgeneric evaluate-node (node))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;;  input and output
@@ -167,5 +171,7 @@ arguments."))
                     when (intersection particle object) collect it)
               object-w/o-dust))))
     (reduce #'shatter more-objects :initial-value (list object))))
+
+(defmethod evaluate-node ((node constant)) node)
 
 (defparameter *constant-fold-threshold* 99)

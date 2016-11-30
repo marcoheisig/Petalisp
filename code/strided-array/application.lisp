@@ -17,8 +17,17 @@
 
 (defmethod application ((operator function) (object strided-array-constant)
                         &rest more-objects)
-  (when (or (> (size object) *constant-fold-threshold*)
-            (not (every #'strided-array-constant? more-objects)))
-    (return-from application (call-next-method)))
-  ;; now the actual constant folding
-  (call-next-method)) ; TODO
+  (if (and (<= (size object) *constant-fold-threshold*)
+           (every #'strided-array-constant? more-objects))
+      (evaluate-node (call-next-method)) ; constant folding
+      (call-next-method)))
+
+(defmethod evaluate-node ((node strided-array-application))
+  (let ((args (mapcar #'evaluate-node (predecessors node)))
+        (op (operator node)))
+    (make-instance
+     'strided-array-constant
+     :data array
+     :affine-coefficients TODO
+     :element-type (element-type node)
+     :ranges (ranges node))))
