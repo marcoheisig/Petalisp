@@ -42,7 +42,7 @@
        (reference it space transformation)
        (call-next-method)))
 
-(defmacro generate-reference (inputs permutation plusp)
+(defkernel affine-reference (inputs permutation plusp)
   (let* ((input-indices
            (loop repeat inputs
                  collect (gensym "I")))
@@ -83,10 +83,6 @@
            (declare (ignorable ,@input-indices))
            ,(generate-loop (1- dim)))))))
 
-(defun compile-reference (inputs permutation scaling-plusp)
-  (eval
-   `(generate-reference ,inputs ,permutation ,scaling-plusp)))
-
 (defmethod evaluate-node ((node strided-array-reference))
   (let* ((predecessor (evaluate-node (first (predecessors node))))
          (transformation (transformation node))
@@ -114,11 +110,12 @@
             (setf (aref ub i)
                   (/ (- (range-end irange) (range-start prange))
                      (range-step irange))))
-    (funcall (compile-reference
-              (input-dimension transformation)
-              (permutation transformation)
-              plusp)
-             (data predecessor) out lb ub)
+    (funcall
+     (affine-reference
+      (input-dimension transformation)
+      (permutation transformation)
+      plusp)
+     (data predecessor) out lb ub)
     (make-instance
      'strided-array-constant
      :ranges (ranges node)

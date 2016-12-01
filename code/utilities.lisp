@@ -141,3 +141,42 @@ reader of the same name. Additionally, defines a <NAME>? predicate."
           (machine-type))
   (format stream "~@[ ~a~]~%"
           (machine-version)))
+
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;;  JIT compilation of compute intensive kernels
+;;; _________________________________________________________________
+
+(defvar *kernels* (make-hash-table :test #'equalp))
+
+(defvar *kernel-definitions* (make-hash-table :test #'eq))
+
+(defun redefine-kernel (name macroexpander)
+  (let ((previous-macroexpander (gethash name *kernel-definitions*)))
+    (unless (eq macroexpander previous-macroexpander)
+      ;; install new definition
+      (setf (gethash name *kernel-definitions*) macroexpander)
+      ;; invalidate old kernels
+      (mapc
+       (lambda (key)
+         (remhash key *kernels*))
+       (loop for key being the hash-keys of *kernels*
+             when (eq (first key) name) collect key)))))
+
+(defun get-kernel (name &rest args)
+  (or (gethash (cons name args) *kernels*)
+      (setf (gethash (cons name args) *kernels*)
+            (compile
+             nil
+             (apply (gethash name *kernel-definitions*) args)))))
+
+(defmacro defkernel (name lambda-list &body body)
+  (let* ((variables
+           (remove-if
+            (lambda (x) (find x lambda-list-keywords))
+            (flatten lambda-list))))
+    `(progn
+       (redefine-kernel
+        ',name
+        (lambda ,variables ,@body))
+       (defun ,name ,lambda-list
+         (get-kernel ',name ,@variables)))))
