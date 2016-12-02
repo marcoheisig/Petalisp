@@ -205,23 +205,6 @@
   (is (subspace? (σ (0 6 120) (1 1 100))
                  (σ (0 2 130) (0 1 101)))))
 
-;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;;  type inference
-;;; _________________________________________________________________
-
-(test (type-inference)
-  (flet ((? (result fun &rest types)
-           (is (equal result (apply #'result-type fun types)))))
-    (? 'double-float #'+ 'double-float 'double-float)
-    (? 't #'- 'double-float 'character)
-    (? '(complex double-float) #'* 'double-float '(complex single-float))
-    (? '(complex double-float) #'* '(complex double-float) 'single-float)
-    (? 'double-float #'+ 'single-float 'double-float 'single-float)))
-
-;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;;  testing the core operations
-;;; _________________________________________________________________
-
 (test (strided-array-reference)
   (flet ((? (expression result)
            (is (equal? result (compute expression)))))
@@ -243,6 +226,39 @@
        #(3 3 3 3))
     (? (α #'* #2a((2 2) (2 2)) #2a((1 2) (3 4)))
        #2a((2 4) (6 8)))))
+
+(test (strided-array-repetition)
+  (flet ((? (expression result)
+           (is (equal? result (compute expression)))))
+    (? (repetition (lisp->petalisp #(7)) (σ (0 9)))
+       #(7 7 7 7 7 7 7 7 7 7))
+    (? (repetition (lisp->petalisp #(1)) (σ (0 2) (0 2)))
+       #2a((1 1 1) (1 1 1) (1 1 1)))
+    (? (α #'* #(1 2 3) #2a((1 2 3)))
+       #2a((1 2 3) (2 4 6) (3 6 9)))))
+
+#+nil
+(test (strided-array-fusion)
+  (flet ((? (expression result)
+           (is (equal? result (compute expression)))))
+    ))
+
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;;  type inference
+;;; _________________________________________________________________
+
+(test (type-inference)
+  (flet ((? (result fun &rest types)
+           (is (equal result (apply #'result-type fun types)))))
+    (? 'double-float #'+ 'double-float 'double-float)
+    (? 't #'- 'double-float 'character)
+    (? '(complex double-float) #'* 'double-float '(complex single-float))
+    (? '(complex double-float) #'* '(complex double-float) 'single-float)
+    (? 'double-float #'+ 'single-float 'double-float 'single-float)))
+
+;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;;  testing full programs
+;;; _________________________________________________________________
 
 #+nil
 (test (matrix-multiplication)

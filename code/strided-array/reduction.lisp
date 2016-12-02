@@ -20,4 +20,15 @@
       (evaluate-node (call-next-method)) ; constant folding
       (call-next-method)))
 
-
+#+nil
+(defmethod evaluate-node ((node strided-array-reduction))
+  (let ((args (mapcar (compose #'data #'evaluate-node) (predecessors node)))
+        (op (operator node))
+        (result (make-array
+                 (map 'list #'size (ranges node))
+                 :element-type (element-type node))))
+    (make-instance
+     'strided-array-constant
+     :data result
+     :element-type (element-type node)
+     :ranges (ranges node))))

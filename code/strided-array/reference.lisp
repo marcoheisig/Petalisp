@@ -42,12 +42,13 @@
        (reference it space transformation)
        (call-next-method)))
 
-(defkernel affine-reference (inputs permutation plusp)
-  (let* ((input-indices
-           (loop repeat inputs
+(defkernel reference-kernel (element-type input-dimension permutation direction)
+  (let* ((output-dimension (length permutation))
+         (input-indices
+           (loop repeat input-dimension
                  collect (gensym "I")))
          (output-indices
-           (loop repeat (length permutation)
+           (loop repeat output-dimension
                  collect (gensym "O")))
          (dim (length permutation)))
     (labels ((generate-loop (n)
@@ -56,28 +57,33 @@
                    (return
                      `(setf (aref out ,@output-indices)
                             (aref in ,@input-indices))))
-                 (let ((inpos (svref permutation n))
+                 (let ((inpos (aref permutation n))
                        (output-index (nth n output-indices)))
                    (when (not inpos)
                      (return
                        `(let ((,output-index 0))
                           ,(generate-loop (1- n)))))
                    (let ((input-index (nth inpos input-indices)))
-                     (if (svref plusp n)
+                     (if (aref direction n)
                          `(loop for ,input-index
-                                from (svref lb ,inpos)
-                                upto (svref ub ,inpos)
+                                from (aref lb ,inpos)
+                                upto (aref ub ,inpos)
                                 and ,output-index from 0 do
                                 ,(generate-loop (1- n)))
                          `(loop for ,input-index
-                                from (svref ub ,inpos)
-                                downto (svref lb ,inpos)
+                                from (aref ub ,inpos)
+                                downto (aref lb ,inpos)
                                 and ,output-index from 0 do
                                 ,(generate-loop (1- n)))))))))
       `(lambda (in out lb ub)
-         (declare (type array in out)
-                  (type vector lb ub)
-                  (optimize (debug 3))
+         (declare (type (simple-array
+                         ,element-type
+                         ,(loop repeat input-dimension collect '*)) in)
+                  (type (simple-array
+                         ,element-type
+                         ,(loop repeat output-dimension collect '*)) out)
+                  (type (simple-array (unsigned-byte 64)
+                                      (,input-dimension)) lb ub)
                   (ignorable lb ub))
          (let (,@(loop for i in input-indices collect `(,i 0)))
            (declare (ignorable ,@input-indices))
@@ -91,15 +97,17 @@
             (transform
              (index-space node)
              (invert transformation))))
-         (plusp (make-array (output-dimension transformation)))
+         (direction (make-array (output-dimension transformation)))
          (out (make-array (map 'list #'size (ranges node))
                           :element-type (element-type node)))
-         (lb (make-array (input-dimension transformation)))
-         (ub (make-array (input-dimension transformation))))
-    ;; determine PLUSP, the direction of each array access
+         (lb (make-array (input-dimension transformation)
+                         :element-type '(unsigned-byte 64)))
+         (ub (make-array (input-dimension transformation)
+                         :element-type '(unsigned-byte 64))))
+    ;; determine the DIRECTION of each array access
     (loop for i below (output-dimension transformation)
           with c = (affine-coefficients transformation) do
-            (setf (aref plusp i) (plusp (aref c i 0))))
+            (setf (aref direction i) (plusp (aref c i 0))))
     ;; determine LB and UB, the bounds of the input data to be read
     (loop for irange across input-ranges
           and prange across (ranges predecessor)
@@ -111,10 +119,11 @@
                   (/ (- (range-end irange) (range-start prange))
                      (range-step irange))))
     (funcall
-     (affine-reference
+     (reference-kernel
+      (element-type node)
       (input-dimension transformation)
       (permutation transformation)
-      plusp)
+      direction)
      (data predecessor) out lb ub)
     (make-instance
      'strided-array-constant

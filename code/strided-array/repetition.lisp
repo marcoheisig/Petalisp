@@ -23,3 +23,60 @@
             :predecessors (list object)
             :element-type (element-type object)
             :ranges (ranges space)))))
+
+(defkernel repetition-kernel (element-type input-dimension repeat?)
+  (let* ((output-dimension (length repeat?))
+         (input-indices
+           (loop repeat input-dimension
+                 collect (gensym "I")))
+         (output-indices
+           (loop repeat output-dimension
+                 collect (gensym "O"))))
+    (labels ((generate-loop (n)
+               (block nil
+                 (when (= n -1)
+                   (return
+                     `(setf (aref out ,@output-indices)
+                            (aref in ,@input-indices))))
+                 (let ((input-index (nth n input-indices))
+                       (output-index (nth n output-indices)))
+                   (if (aref repeat? n)
+                       `(loop for ,output-index from 0 upto (aref ub ,n) do
+                              ,(generate-loop (1- n)))
+                       `(loop for ,output-index from 0 upto (aref ub ,n)
+                              and ,input-index from 0 upto (aref ub ,n) do
+                              ,(generate-loop (1- n))))))))
+      `(lambda (in out ub)
+         (declare (type (simple-array
+                         ,element-type
+                         ,(loop repeat input-dimension collect '*)) in)
+                  (type (simple-array
+                         ,element-type
+                         ,(loop repeat output-dimension collect '*)) out)
+                  (type (simple-array (unsigned-byte 64) (,output-dimension))))
+         (let (,@(loop for i in input-indices collect `(,i 0)))
+           (declare (ignorable ,@input-indices))
+           ,(generate-loop (1- output-dimension)))))))
+
+(defmethod evaluate-node ((node strided-array-repetition))
+  (let* ((bounds (map 'list #'size (ranges node)))
+         (pred (first (predecessors node)))
+         (data (make-array bounds
+                           :element-type (element-type node)))
+         (ub (make-array (dimension node)
+                         :element-type '(unsigned-byte 64)
+                         :initial-contents (mapcar #'1- bounds)))
+         (input-dimension (length (ranges pred)))
+         (repeat? (make-array (dimension node) :initial-element t)))
+    (loop for i below input-dimension do
+      (setf (aref repeat? i)
+            (unary-range? (aref (ranges pred) i))))
+    (funcall
+     (repetition-kernel (element-type node) input-dimension repeat?)
+     (data (first (predecessors node))) data ub)
+    (make-instance
+     'strided-array-constant
+     :ranges (ranges node)
+     :element-type (element-type node)
+     :data data)))
+

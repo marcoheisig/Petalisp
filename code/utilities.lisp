@@ -164,16 +164,18 @@ reader of the same name. Additionally, defines a <NAME>? predicate."
 
 (defun get-kernel (name &rest args)
   (or (gethash (cons name args) *kernels*)
-      (setf (gethash (cons name args) *kernels*)
-            (compile
-             nil
-             (apply (gethash name *kernel-definitions*) args)))))
+      (progn
+        #+nil(print (apply (gethash name *kernel-definitions*) args))
+        (setf (gethash (cons name args) *kernels*)
+              (compile
+               nil
+               (apply (gethash name *kernel-definitions*) args))))))
 
 (defmacro defkernel (name lambda-list &body body)
-  (let* ((variables
-           (remove-if
-            (lambda (x) (find x lambda-list-keywords))
-            (flatten lambda-list))))
+  (let ((variables
+          (remove-if
+           (lambda (x) (find x lambda-list-keywords))
+           (flatten lambda-list))))
     `(progn
        (redefine-kernel
         ',name
