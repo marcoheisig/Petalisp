@@ -30,18 +30,18 @@
                  collect (gensym "O"))))
     (labels ((generate-loop (n)
                (block nil
-                 (when (= n 0)
+                 (when (= n output-dimension)
                    (return
-                     `(let ((acc (aref in 0 ,@(cdr input-indices))))
-                        (loop for ,(first input-indices) fixnum
+                     `(let ((acc (aref in ,@(all-but-last input-indices) 0)))
+                        (loop for ,(nth n input-indices) fixnum
                               from 1 below (aref ub ,n) do
                                 (setf acc (funcall ,function acc
                                                    (aref in ,@input-indices))))
                         (setf (aref out ,@output-indices) acc))))
-                 `(loop for ,(nth (1- n) output-indices) fixnum
+                 `(loop for ,(nth n output-indices) fixnum
                         from 0 below (aref ub ,n)
                         and ,(nth n input-indices) fixnum from 0 do
-                        ,(generate-loop (1- n))))))
+                        ,(generate-loop (1+ n))))))
       `(lambda (in out ub)
          (declare (type (simple-array
                          ,element-type
@@ -51,7 +51,7 @@
                          ,(loop repeat output-dimension collect '*)) out)
                   (type (simple-array fixnum (,input-dimension)) ub)
                   #+nil(optimize (speed 3) (safety 0)))
-         ,(generate-loop output-dimension)))))
+         ,(generate-loop 0)))))
 
 (defmethod evaluate-node ((node strided-array-reduction))
   (let* ((op (operator node))
