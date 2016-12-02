@@ -41,10 +41,10 @@
                  (let ((input-index (nth n input-indices))
                        (output-index (nth n output-indices)))
                    (if (aref repeat? n)
-                       `(loop for ,output-index from 0 upto (aref ub ,n) do
+                       `(loop for ,output-index fixnum from 0 upto (aref ub ,n) do
                               ,(generate-loop (1- n)))
-                       `(loop for ,output-index from 0 upto (aref ub ,n)
-                              and ,input-index from 0 upto (aref ub ,n) do
+                       `(loop for ,output-index fixnum from 0 upto (aref ub ,n)
+                              and ,input-index fixnum from 0 upto (aref ub ,n) do
                               ,(generate-loop (1- n))))))))
       `(lambda (in out ub)
          (declare (type (simple-array
@@ -53,9 +53,11 @@
                   (type (simple-array
                          ,element-type
                          ,(loop repeat output-dimension collect '*)) out)
-                  (type (simple-array (unsigned-byte 64) (,output-dimension))))
+                  (type (simple-array fixnum (,output-dimension)) ub)
+                  (optimize (speed 3) (safety 0)))
          (let (,@(loop for i in input-indices collect `(,i 0)))
-           (declare (ignorable ,@input-indices))
+           (declare (ignorable ,@input-indices)
+                    (type fixnum ,@input-indices))
            ,(generate-loop (1- output-dimension)))))))
 
 (defmethod evaluate-node ((node strided-array-repetition))
@@ -64,7 +66,7 @@
          (data (make-array bounds
                            :element-type (element-type node)))
          (ub (make-array (dimension node)
-                         :element-type '(unsigned-byte 64)
+                         :element-type 'fixnum
                          :initial-contents (mapcar #'1- bounds)))
          (input-dimension (length (ranges pred)))
          (repeat? (make-array (dimension node) :initial-element t)))

@@ -65,15 +65,15 @@
                           ,(generate-loop (1- n)))))
                    (let ((input-index (nth inpos input-indices)))
                      (if (aref direction n)
-                         `(loop for ,input-index
+                         `(loop for ,input-index fixnum
                                 from (aref lb ,inpos)
                                 upto (aref ub ,inpos)
-                                and ,output-index from 0 do
+                                and ,output-index fixnum from 0 do
                                 ,(generate-loop (1- n)))
-                         `(loop for ,input-index
+                         `(loop for ,input-index fixnum
                                 from (aref ub ,inpos)
                                 downto (aref lb ,inpos)
-                                and ,output-index from 0 do
+                                and ,output-index fixnum from 0 do
                                 ,(generate-loop (1- n)))))))))
       `(lambda (in out lb ub)
          (declare (type (simple-array
@@ -82,11 +82,12 @@
                   (type (simple-array
                          ,element-type
                          ,(loop repeat output-dimension collect '*)) out)
-                  (type (simple-array (unsigned-byte 64)
-                                      (,input-dimension)) lb ub)
-                  (ignorable lb ub))
+                  (type (simple-array fixnum (,input-dimension)) lb ub)
+                  (ignorable lb ub)
+                  (optimize (speed 3) (safety 0)))
          (let (,@(loop for i in input-indices collect `(,i 0)))
-           (declare (ignorable ,@input-indices))
+           (declare (ignorable ,@input-indices)
+                    (type fixnum ,@input-indices))
            ,(generate-loop (1- dim)))))))
 
 (defmethod evaluate-node ((node strided-array-reference))
@@ -101,9 +102,9 @@
          (out (make-array (map 'list #'size (ranges node))
                           :element-type (element-type node)))
          (lb (make-array (input-dimension transformation)
-                         :element-type '(unsigned-byte 64)))
+                         :element-type 'fixnum))
          (ub (make-array (input-dimension transformation)
-                         :element-type '(unsigned-byte 64))))
+                         :element-type 'fixnum)))
     ;; determine the DIRECTION of each array access
     (loop for i below (output-dimension transformation)
           with c = (affine-coefficients transformation) do

@@ -165,7 +165,7 @@ reader of the same name. Additionally, defines a <NAME>? predicate."
 (defun get-kernel (name &rest args)
   (or (gethash (cons name args) *kernels*)
       (progn
-        #+nil(print (apply (gethash name *kernel-definitions*) args))
+        (print (apply (gethash name *kernel-definitions*) args))
         (setf (gethash (cons name args) *kernels*)
               (compile
                nil
