@@ -105,7 +105,6 @@
          ,(generate-loop (1- dimension))))))
 
 (defmethod evaluate-node ((node strided-array-fusion))
-  (declare (optimize debug))
   (let* ((dimension (dimension node))
          (out (make-array (map 'list #'size (ranges node))
                           :element-type (element-type node)))
@@ -130,3 +129,4 @@
      :ranges (ranges node)
      :element-type (element-type node)
      :data out)))
+

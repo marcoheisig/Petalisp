@@ -62,7 +62,7 @@
 
 (defmethod evaluate-node ((node strided-array-repetition))
   (let* ((bounds (map 'list #'size (ranges node)))
-         (pred (first (predecessors node)))
+         (pred (evaluate-node (first (predecessors node))))
          (data (make-array bounds
                            :element-type (element-type node)))
          (ub (make-array (dimension node)
@@ -75,7 +75,7 @@
             (unary-range? (aref (ranges pred) i))))
     (funcall
      (repetition-kernel (element-type node) input-dimension repeat?)
-     (data (first (predecessors node))) data ub)
+     (data pred) data ub)
     (make-instance
      'strided-array-constant
      :ranges (ranges node)
