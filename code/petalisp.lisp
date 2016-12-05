@@ -79,7 +79,7 @@ arguments."))
 
 (defgeneric compute (&rest objects))
 
-(defgeneric evaluate-node (node))
+(defgeneric evaluate (node))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;;  input and output
@@ -172,6 +172,6 @@ arguments."))
               object-w/o-dust))))
     (reduce #'shatter more-objects :initial-value (list object))))
 
-(defmethod evaluate-node ((node constant)) node)
+(defmethod evaluate ((node constant)) node)
 
 (defparameter *constant-fold-threshold* 99)

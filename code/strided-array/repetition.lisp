@@ -60,9 +60,9 @@
                     (type fixnum ,@input-indices))
            ,(generate-loop (1- output-dimension)))))))
 
-(defmethod evaluate-node ((node strided-array-repetition))
+(defmethod evaluate ((node strided-array-repetition))
   (let* ((bounds (map 'list #'size (ranges node)))
-         (pred (evaluate-node (first (predecessors node))))
+         (pred (evaluate (first (predecessors node))))
          (data (make-array bounds
                            :element-type (element-type node)))
          (ub (make-array (dimension node)

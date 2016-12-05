@@ -90,8 +90,8 @@
                     (type fixnum ,@input-indices))
            ,(generate-loop (1- dim)))))))
 
-(defmethod evaluate-node ((node strided-array-reference))
-  (let* ((predecessor (evaluate-node (first (predecessors node))))
+(defmethod evaluate ((node strided-array-reference))
+  (let* ((predecessor (evaluate (first (predecessors node))))
          (transformation (transformation node))
          (input-ranges
            (ranges

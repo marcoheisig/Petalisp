@@ -280,11 +280,18 @@
 ;;; _________________________________________________________________
 
 (test (matrix-multiplication)
-  (let ((I-2x2 #2a((1.0 0.0) (0.0 1.0)))
-        (A-2x2 #2a((1.0 2.0) (3.0 4.0))))
-    (flet ((matmul (a b)
-             (β #'+
-                (α #'*
-                   (-> A (τ (m n) (m 1 n)))
-                   (-> B (τ (n k) (1 k n)))))))
-      (is (equal? (compute (matmul I-2x2 A-2x2)) A-2x2)))))
+  (flet ((? (expression result)
+           (is (equal? result (compute expression))))
+         (matmul (a b)
+           (β #'+
+              (α #'*
+                 (-> A (τ (m n) (m 1 n)))
+                 (-> B (τ (n k) (1 k n)))))))
+    (let* ((nullvector #2a((0 0 0 0 0 0 0 0)))
+           (nullmatrix (α #'* nullvector (-> nullvector (τ (a b) (b a))))))
+      (? (matmul nullmatrix nullmatrix) (compute nullmatrix)))
+    (let ((I-2x2 #2a((1.0 0.0) (0.0 1.0)))
+          (A-2x2 #2a((1.0 2.0) (3.0 4.0))))
+      (? (matmul I-2x2 I-2x2) I-2x2)
+      (? (matmul I-2x2 A-2x2) A-2x2)
+      (? (matmul A-2x2 A-2x2) #2a((7.0 10.0) (15.0 22.0))))))

@@ -17,7 +17,7 @@
 
 (defmethod reduction ((operator function) (object strided-array-constant))
   (if (<= (size object) *constant-fold-threshold*)
-      (evaluate-node (call-next-method)) ; constant folding
+      (evaluate (call-next-method)) ; constant folding
       (call-next-method)))
 
 (defkernel reduction-kernel (function element-type output-dimension)
@@ -53,9 +53,9 @@
                   #+nil(optimize (speed 3) (safety 0)))
          ,(generate-loop 0)))))
 
-(defmethod evaluate-node ((node strided-array-reduction))
+(defmethod evaluate ((node strided-array-reduction))
   (let* ((op (operator node))
-         (pred (evaluate-node (first (predecessors node))))
+         (pred (evaluate (first (predecessors node))))
          (ub (make-array (dimension pred)
                          :element-type 'fixnum
                          :initial-contents (map 'list #'size (ranges pred))))

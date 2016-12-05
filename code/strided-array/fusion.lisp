@@ -104,7 +104,7 @@
                   (optimize (speed 3) (safety 0)))
          ,(generate-loop (1- dimension))))))
 
-(defmethod evaluate-node ((node strided-array-fusion))
+(defmethod evaluate ((node strided-array-fusion))
   (let* ((dimension (dimension node))
          (out (make-array (map 'list #'size (ranges node))
                           :element-type (element-type node)))
@@ -113,7 +113,7 @@
          (ub (make-array dimension :element-type 'fixnum))
          (fstart (map 'vector #'range-start (ranges node)))
          (fstep (map 'vector #'range-step (ranges node))))
-    (dolist (pred (mapcar #'evaluate-node (predecessors node)))
+    (dolist (pred (mapcar #'evaluate (predecessors node)))
       (let ((in (data pred))
             (pstart (map 'vector #'range-start (ranges pred)))
             (pstep (map 'vector #'range-step (ranges pred)))

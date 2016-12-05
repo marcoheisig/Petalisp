@@ -19,11 +19,11 @@
                         &rest more-objects)
   (if (and (<= (size object) *constant-fold-threshold*)
            (every #'strided-array-constant? more-objects))
-      (evaluate-node (call-next-method)) ; constant folding
+      (evaluate (call-next-method)) ; constant folding
       (call-next-method)))
 
-(defmethod evaluate-node ((node strided-array-application))
-  (let ((args (mapcar (compose #'data #'evaluate-node) (predecessors node)))
+(defmethod evaluate ((node strided-array-application))
+  (let ((args (mapcar (compose #'data #'evaluate) (predecessors node)))
         (op (operator node))
         (result (make-array
                  (map 'list #'size (ranges node))
