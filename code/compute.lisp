@@ -22,7 +22,7 @@
 
 (defparameter *value-cache* nil)
 
-(defmethod evaluate-node :around ((node t))
+(defmethod evaluate :around ((node t))
   (if (not (and *value-cache* *successors*))
       (call-next-method)
       (aif (gethash node *value-cache*) it
@@ -34,8 +34,9 @@
 (defmethod compute (&rest objects)
   (let ((*successors* (make-hash-table :test #'eq))
         (*value-cache* (make-hash-table :test #'eq)))
-    (mapc #'populate-successors objects)
-    (apply #'values
-           (mapcar
-            (compose #'petalisp->lisp #'evaluate-node)
-            objects))))
+    (let ((objects (mapcar #'lisp->petalisp objects)))
+      (mapc #'populate-successors objects)
+      (apply #'values
+             (mapcar
+              (compose #'petalisp->lisp #'evaluate)
+              objects)))))

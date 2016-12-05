@@ -64,7 +64,7 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
 
 (defalias → ->)
 
-(defmacro subspace (space &rest dimensions)
+(defmacro σ* (space &rest dimensions)
   (with-gensyms (dim)
     (once-only (space)
       `(symbol-macrolet
@@ -80,7 +80,7 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
     ,@(loop for range in ranges
             collect `(range ,@range))))
 
-(defmacro τ (input-forms output-forms)
+(defmacro τ (input-forms &rest output-forms)
   (loop for form in input-forms
         collect (when (integerp form) form) into input-constraints
         collect (if (symbolp form) form (gensym)) into symbols

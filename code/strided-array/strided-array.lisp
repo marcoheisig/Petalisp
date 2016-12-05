@@ -49,7 +49,9 @@
 
 (defmethod petalisp->lisp ((object data-structure) &optional storage)
   (declare (ignore storage))
-  (data object))
+  (if (array-dimensions (data object))
+      (data object)
+      (aref (data object))))
 
 (defmethod ranges ((array array))
   (map 'vector

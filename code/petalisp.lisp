@@ -174,4 +174,6 @@ arguments."))
 
 (defmethod evaluate ((node constant)) node)
 
+(defmethod evaluate (node) node)
+
 (defparameter *constant-fold-threshold* 99)
