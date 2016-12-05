@@ -287,8 +287,7 @@
               (α #'*
                  (-> A (τ (m n) (m 1 n)))
                  (-> B (τ (n k) (1 k n)))))))
-    (let* ((nullvector #2a((0 0 0 0 0 0 0 0)))
-           (nullmatrix (α #'* nullvector (-> nullvector (τ (a b) (b a))))))
+    (let ((nullmatrix (-> 0 (σ (0 9) (0 9)))))
       (? (matmul nullmatrix nullmatrix) (compute nullmatrix)))
     (let ((I-2x2 #2a((1.0 0.0) (0.0 1.0)))
           (A-2x2 #2a((1.0 2.0) (3.0 4.0))))

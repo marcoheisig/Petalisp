@@ -46,7 +46,11 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
            (apply-modification (x modifier)
              (etypecase modifier
                (index-space
-                (reference x modifier (id x)))
+                (if (or (/= (dimension x)
+                            (dimension modifier))
+                        (subspace? x modifier))
+                    (repetition x modifier)
+                    (reference x modifier (id x))))
                (data-structure
                 (apply #'fusion modifier
                        (mapcar #'reference
