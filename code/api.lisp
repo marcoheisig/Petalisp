@@ -23,6 +23,9 @@ mismatch, the smaller objects are broadcasted where possible."
   "Reduce the last dimension of OBJECT with OPERATOR."
   (reduction operator (lisp->petalisp object)))
 
+(defun fuse (&rest objects)
+  (apply #'fusion (mapcar #'lisp->petalisp objects)))
+
 (defun -> (data-structure &rest modifiers)
   "Manipulate DATA-STRUCTURE depending on the individual MODIFIERS. The
 MODIFIERS are applied from left to right, the result of the first

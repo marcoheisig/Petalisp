@@ -50,7 +50,7 @@
                          ,element-type
                          ,(loop repeat output-dimension collect '*)) out)
                   (type (simple-array fixnum (,input-dimension)) ub)
-                  #+nil(optimize (speed 3) (safety 0)))
+                  (optimize (speed 3) (safety 0)))
          ,(generate-loop 0)))))
 
 (defmethod evaluate ((node strided-array-reduction))
