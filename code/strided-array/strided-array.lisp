@@ -92,6 +92,8 @@
     (setf end (+ start (* step (truncate (- end start) step))))
     ;; ensure START is bigger than END
     (when (> start end) (rotatef start end))
+    ;; normalize step again
+    (when (= start end) (setf step 1))
     (%make-range start step end)))
 
 (defun range? (x) (typep x 'range))

@@ -208,7 +208,7 @@
                          ((eql mul-form 0) b)
                          ((plusp b) `(+ ,mul-form ,b))
                          ((minusp b) `(- ,mul-form ,(abs b))))))))
-    (format stream "(τ ~a ~{~a~})" input-forms output-forms)))
+    (format stream "(τ ~a ~{~a~^ ~})" input-forms output-forms)))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;;  the special case of identity transformations

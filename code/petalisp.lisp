@@ -138,6 +138,8 @@ arguments."))
 
 (defmethod predecessors ((node t)) (declare (ignore node)) nil)
 
+(defun predecessor (node) (first (predecessors node)))
+
 (defmethod equal? ((object-1 t) (object-2 t))
   (equalp object-1 object-2))
 

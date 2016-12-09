@@ -67,23 +67,25 @@
                      (if (aref direction n)
                          `(loop for ,input-index fixnum
                                 from (aref lb ,inpos)
+                                by (aref step ,inpos)
                                 upto (aref ub ,inpos)
                                 and ,output-index fixnum from 0 do
                                 ,(generate-loop (1- n)))
                          `(loop for ,input-index fixnum
                                 from (aref ub ,inpos)
+                                by (aref step ,inpos)
                                 downto (aref lb ,inpos)
                                 and ,output-index fixnum from 0 do
                                 ,(generate-loop (1- n)))))))))
-      `(lambda (in out lb ub)
+      `(lambda (in out lb step ub)
          (declare (type (simple-array
                          ,element-type
                          ,(loop repeat input-dimension collect '*)) in)
                   (type (simple-array
                          ,element-type
                          ,(loop repeat output-dimension collect '*)) out)
-                  (type (simple-array fixnum (,input-dimension)) lb ub)
-                  (ignorable lb ub)
+                  (type (simple-array fixnum (,input-dimension)) lb ub step)
+                  (ignorable lb ub step)
                   (optimize (speed 3) (safety 0)))
          (let (,@(loop for i in input-indices collect `(,i 0)))
            (declare (ignorable ,@input-indices)
@@ -99,6 +101,8 @@
              (index-space node)
              (invert transformation))))
          (direction (make-array (output-dimension transformation)))
+         (step (make-array (input-dimension transformation)
+                           :element-type 'fixnum))
          (out (make-array (map 'list #'size (ranges node))
                           :element-type (element-type node)))
          (lb (make-array (input-dimension transformation)
@@ -109,23 +113,29 @@
     (loop for i below (output-dimension transformation)
           with c = (affine-coefficients transformation) do
             (setf (aref direction i) (plusp (aref c i 0))))
+    ;; determine the input data STEP size
+    (loop for irange across input-ranges
+          and prange across (ranges predecessor)
+          and i from 0 do
+      (setf (aref step i)
+            (/ (range-step irange) (range-step prange))))
     ;; determine LB and UB, the bounds of the input data to be read
     (loop for irange across input-ranges
           and prange across (ranges predecessor)
           and i from 0 do
             (setf (aref lb i)
                   (/ (- (range-start irange) (range-start prange))
-                     (range-step irange)))
+                     (range-step prange)))
             (setf (aref ub i)
                   (/ (- (range-end irange) (range-start prange))
-                     (range-step irange))))
+                     (range-step prange))))
     (funcall
      (reference-kernel
       (element-type node)
       (input-dimension transformation)
       (permutation transformation)
       direction)
-     (data predecessor) out lb ub)
+     (data predecessor) out lb step ub)
     (make-instance
      'strided-array-constant
      :ranges (ranges node)
