@@ -143,7 +143,7 @@
     (signals error
       (transform (σ (0 0) (0 0)) (τ (1 m) m 1)))))
 
-(test (strided-array-fusion)
+(test (strided-array-index-space-fusion)
   (flet ((? (&rest args)
            (let ((fusion (apply #'fusion args)))
              (is (every (lambda (x) (subspace? x fusion)) args))
@@ -160,7 +160,13 @@
     (? (σ (1 2 3) (1 2 3))
        (σ (2 2 4) (1 2 3))
        (σ (1 2 3) (2 2 4))
-       (σ (2 2 4) (2 2 4)))))
+       (σ (2 2 4) (2 2 4)))
+    (?
+     (σ (2 2 6) (2 2 6))
+     (σ (8 8) (0 2 8))
+     (σ (0 0) (0 2 8))
+     (σ (2 2 6) (0 0))
+     (σ (2 2 6) (8 8)))))
 
 (test (strided-array-difference)
   (flet ((? (a b)
@@ -249,7 +255,8 @@
    #2a((0 0 2 2) (0 0 2 2) (4 4 6 6) (4 4 6 6)))
   (? (-> (-> #(2 3) (τ (x) (+ x 1)))
          (-> #(1 4) (τ (x) (* 3 x))))
-     #(1 2 3 4)))
+     #(1 2 3 4))
+  )
 
 (test (strided-array-reduction)
   (? (β #'+ #(1 2 3 4 5 6 7 8 9 10)) #0a55)
@@ -289,7 +296,7 @@
       (? (matmul I-2x2 A-2x2) A-2x2)
       (? (matmul A-2x2 A-2x2) #2a((7.0 10.0) (15.0 22.0))))))
 
-(test (jacobi-2d)
+(test (iterative-solvers)
   (flet ((jacobi-2d (grid iterations)
            (let ((interior (σ* grid
                                ((+ start 1) step (- end 1))
@@ -303,12 +310,34 @@
                                     (-> grid (τ (i j) i (1+ j)) interior)
                                     (-> grid (τ (i j) i (1- j)) interior)))))
                    finally (return grid))))
+         (rbgs-2d (u iterations)
+           (let ((r1 (σ* u ((+ start 2) 2 (1- end)) ((+ start 2) 2 (1- end))))
+                 (r2 (σ* u ((+ start 1) 2 (1- end)) ((+ start 1) 2 (1- end))))
+                 (b1 (σ* u ((+ start 2) 2 (1- end)) ((+ start 1) 2 (1- end))))
+                 (b2 (σ* u ((+ start 1) 2 (1- end)) ((+ start 2) 2 (1- end)))))
+             (labels ((update (u what)
+                        (α #'* 0.25
+                           (α #'+
+                              (-> u (τ (i j) (1+ i) j) what)
+                              (-> u (τ (i j) (1- i) j) what)
+                              (-> u (τ (i j) i (1+ j)) what)
+                              (-> u (τ (i j) i (1- j)) what)))))
+               (loop repeat iterations do
+                 (setf u (-> u (update u r1) (update u r2)))
+                 (setf u (-> u (update u b1) (update u b2))))
+               u)))
          (inf-error-2d (x exact-solution)
            (β #'max (β #'max (α #'abs (α #'- x exact-solution))))))
+    ;; zero start values should remain so
     (? (jacobi-2d (-> 0.0 (σ (0 10) (0 10))) 10)
        (-> 0.0 (σ (0 10) (0 10))))
+    (? (rbgs-2d (-> 0.0 (σ (42 54) (11 27))) 10)
+       (-> 0.0 (σ (42 54) (11 27))))
+    ;; both methods should converge to some exact solution
     (let* ((grid (-> (-> 1.0 (σ (10 20) (10 20)))
                      (-> 0.0 (σ (11 19) (11 19)))))
            (exact-solution (-> 1.0 (σ (10 20) (10 20)))))
-      (is (< (compute (inf-error-2d (jacobi-2d grid 100) exact-solution))
-             (compute (inf-error-2d (jacobi-2d grid 10) exact-solution)))))))
+      (is (< (compute (inf-error-2d (jacobi-2d grid 6) exact-solution))
+             (compute (inf-error-2d (jacobi-2d grid 5) exact-solution))))
+      (is (< (compute (inf-error-2d (rbgs-2d grid 6) exact-solution))
+             (compute (inf-error-2d (rbgs-2d grid 5) exact-solution)))))))

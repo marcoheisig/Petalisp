@@ -16,6 +16,8 @@
 (defmethod fusion ((object strided-array-index-space) &rest more-objects)
   (let ((objects (cons object more-objects)))
     (apply #'make-index-space
+           (fuse-recursively objects)
+           #+nil
            (loop for i below (dimension object)
                  collect (apply #'fuse-dimension i objects)))))
 
@@ -34,35 +36,41 @@
 ;;; _________________________________________________________________
 
 (define-class fusion-island (strided-array-index-space)
-  (ranges-to-fuse))
+  (spaces-to-fuse))
 
-(defun fuse-dimension (dimension &rest objects)
-  (let* ((islands
-           (apply
-            #'subdivision
-            (mapcar
-             (lambda (object)
-               (let ((ranges (ranges object)))
-                 (make-instance
-                  'fusion-island
-                  :ranges (subseq ranges (1+ dimension))
-                  :ranges-to-fuse (list (aref ranges dimension)))))
-             objects)))
-         (fusions
-           (mapcar
-            (lambda (fusion-island)
-              (apply #'fusion (ranges-to-fuse fusion-island)))
-            islands)))
-    (assert (identical fusions :test #'equal?))
-    (first fusions)))
+(defun fuse-recursively (spaces)
+  (unless (every (compose #'zerop #'dimension) spaces)
+    (let ((islands
+            (apply
+             #'subdivision
+             (mapcar
+              (lambda (space)
+                (let ((ranges (ranges space)))
+                  (make-instance
+                   'fusion-island
+                   :ranges (subseq ranges 0 1)
+                   :spaces-to-fuse (list
+                                    (apply #'make-index-space
+                                           (cdr (vector->list ranges)))))))
+              spaces))))
+      (let ((results (mapcar ; recurse
+                      (compose #'fuse-recursively #'spaces-to-fuse)
+                      islands)))
+        (assert (identical results :test #'equalp))
+        (cons (apply #'fusion
+                     (mapcar
+                      (lambda (x)
+                        (elt (ranges x) 0))
+                      islands))
+              (first results))))))
 
 (defmethod intersection :around ((space-1 fusion-island)
                                  (space-2 fusion-island))
   (let ((result (call-next-method)))
     (when result
       (change-class result 'fusion-island
-                    :ranges-to-fuse (union (ranges-to-fuse space-1)
-                                           (ranges-to-fuse space-2))))))
+                    :spaces-to-fuse (union (spaces-to-fuse space-1)
+                                           (spaces-to-fuse space-2))))))
 
 (defmethod difference :around ((space-1 fusion-island)
                                (space-2 fusion-island))
@@ -70,7 +78,7 @@
     (mapcar
      (lambda (x)
        (change-class x 'fusion-island
-                     :ranges-to-fuse (ranges-to-fuse space-1)))
+                     :spaces-to-fuse (spaces-to-fuse space-1)))
      result)))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
@@ -101,7 +109,7 @@
                          ,element-type
                          ,(loop repeat dimension collect '*)) in out)
                   (type (simple-array fixnum (,dimension)) lb ub step)
-                  (optimize (speed 3) (safety 0)))
+                  (optimize (debug 3)))
          ,(generate-loop (1- dimension))))))
 
 (defmethod evaluate ((node strided-array-fusion))

@@ -77,6 +77,9 @@ reader of the same name. Additionally, defines a <NAME>? predicate."
                     arrays))))
     result))
 
+(defun vector->list (vector)
+  (loop for x across vector collect x))
+
 (defun forever (value)
   "Make a one element circular list with a CAR of VALUE."
   (let ((x (list value)))
