@@ -118,7 +118,7 @@
           and prange across (ranges predecessor)
           and i from 0 do
       (setf (aref step i)
-            (/ (range-step irange) (range-step prange))))
+            (ceiling (range-step irange) (range-step prange))))
     ;; determine LB and UB, the bounds of the input data to be read
     (loop for irange across input-ranges
           and prange across (ranges predecessor)

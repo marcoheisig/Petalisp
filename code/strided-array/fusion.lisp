@@ -56,7 +56,7 @@
       (let ((results (mapcar ; recurse
                       (compose #'fuse-recursively #'spaces-to-fuse)
                       islands)))
-        (assert (identical results :test #'equalp))
+        (assert (identical results :test #'equal? :key #'first))
         (cons (apply #'fusion
                      (mapcar
                       (lambda (x)
@@ -126,9 +126,9 @@
             (pstart (map 'vector #'range-start (ranges pred)))
             (pstep (map 'vector #'range-step (ranges pred)))
             (pend (map 'vector #'range-end (ranges pred))))
-        (map-into step #'/ pstep fstep)
-        (map-into lb #'* (map 'vector #'- pstart fstart) fstep)
-        (map-into ub #'* (map 'vector #'- pend fstart) fstep)
+        (map-into step #'ceiling pstep fstep)
+        (map-into lb #'/ (map 'vector #'- pstart fstart) fstep)
+        (map-into ub #'/ (map 'vector #'- pend fstart) fstep)
         (funcall
          (fusion-kernel (element-type node) dimension)
          in out lb step ub)))
