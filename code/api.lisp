@@ -35,7 +35,7 @@ mismatch, the smaller objects are broadcasted where possible."
       (lambda (piece)
         (reference
          (find piece objects :from-end t :test #'subspace?)
-         piece
+         (index-space piece)
          (identity-transformation (dimension piece))))
       pieces))))
 
@@ -55,7 +55,7 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
   (labels ((id (x) (identity-transformation (dimension x)))
            (apply-modification (x modifier)
              (etypecase modifier
-               (index-space
+               (data-structure
                 (if (or (/= (dimension x) (dimension modifier))
                         (subspace? x modifier))
                     (repetition x modifier)
