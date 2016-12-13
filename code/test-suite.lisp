@@ -244,7 +244,7 @@
      #2a((1 2 3) (2 4 6) (3 6 9))))
 
 (test (strided-array-fusion)
-  (? (-> #(1 2 3) (-> #(4 5 6) (τ (x) (+ x 3))))
+  (? (fuse #(1 2 3) (-> #(4 5 6) (τ (x) (+ x 3))))
      #(1 2 3 4 5 6))
   (?
    (apply #'fusion
@@ -253,8 +253,8 @@
                                #2a((1 1) (1 1)))
                             (τ (x y) (+ x dx) (+ y dy)))))
    #2a((0 0 2 2) (0 0 2 2) (4 4 6 6) (4 4 6 6)))
-  (? (-> (-> #(2 3) (τ (x) (+ x 1)))
-         (-> #(1 4) (τ (x) (* 3 x))))
+  (? (fuse (-> #(2 3) (τ (x) (+ x 1)))
+           (-> #(1 4) (τ (x) (* 3 x))))
      #(1 2 3 4))
   )
 
@@ -302,13 +302,14 @@
                                ((+ start 1) step (- end 1))
                                ((+ start 1) step (- end 1)))))
              (loop repeat iterations do
-               (setf grid (-> grid
-                              (α #'* 0.25
-                                 (α #'+
-                                    (-> grid (τ (i j) (1+ i) j) interior)
-                                    (-> grid (τ (i j) (1- i) j) interior)
-                                    (-> grid (τ (i j) i (1+ j)) interior)
-                                    (-> grid (τ (i j) i (1- j)) interior)))))
+               (setf grid (fuse*
+                           grid
+                           (α #'* 0.25
+                              (α #'+
+                                 (-> grid (τ (i j) (1+ i) j) interior)
+                                 (-> grid (τ (i j) (1- i) j) interior)
+                                 (-> grid (τ (i j) i (1+ j)) interior)
+                                 (-> grid (τ (i j) i (1- j)) interior)))))
                    finally (return grid))))
          (rbgs-2d (u iterations)
            (let ((r1 (σ* u ((+ start 2) 2 (1- end)) ((+ start 2) 2 (1- end))))
@@ -323,8 +324,8 @@
                               (-> u (τ (i j) i (1+ j)) what)
                               (-> u (τ (i j) i (1- j)) what)))))
                (loop repeat iterations do
-                 (setf u (-> u (update u r1) (update u r2)))
-                 (setf u (-> u (update u b1) (update u b2))))
+                 (setf u (fuse* u (update u r1) (update u r2)))
+                 (setf u (fuse* u (update u b1) (update u b2))))
                u)))
          (inf-error-2d (x exact-solution)
            (β #'max (β #'max (α #'abs (α #'- x exact-solution))))))
@@ -334,8 +335,8 @@
     (? (rbgs-2d (-> 0.0 (σ (42 54) (11 27))) 10)
        (-> 0.0 (σ (42 54) (11 27))))
     ;; both methods should converge to some exact solution
-    (let* ((grid (-> (-> 1.0 (σ (10 20) (10 20)))
-                     (-> 0.0 (σ (11 19) (11 19)))))
+    (let* ((grid (fuse* (-> 1.0 (σ (10 20) (10 20)))
+                        (-> 0.0 (σ (11 19) (11 19)))))
            (exact-solution (-> 1.0 (σ (10 20) (10 20)))))
       (is (< (compute (inf-error-2d (jacobi-2d grid 6) exact-solution))
              (compute (inf-error-2d (jacobi-2d grid 5) exact-solution))))

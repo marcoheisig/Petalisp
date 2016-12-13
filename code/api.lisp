@@ -26,6 +26,19 @@ mismatch, the smaller objects are broadcasted where possible."
 (defun fuse (&rest objects)
   (apply #'fusion (mapcar #'lisp->petalisp objects)))
 
+(defun fuse* (&rest objects)
+  (let* ((objects (mapcar #'lisp->petalisp objects))
+         (pieces (apply #'subdivision objects)))
+    (apply
+     #'fusion
+     (mapcar
+      (lambda (piece)
+        (reference
+         (find piece objects :from-end t :test #'subspace?)
+         piece
+         (identity-transformation (dimension piece))))
+      pieces))))
+
 (defun -> (data-structure &rest modifiers)
   "Manipulate DATA-STRUCTURE depending on the individual MODIFIERS. The
 MODIFIERS are applied from left to right, the result of the first
@@ -35,12 +48,6 @@ of the last modification is returned.
 When a modifier is of type INDEX-SPACE, it denotes a selection of the given
 data structure. For example the modifier (σ (7 9)) would select only the
 elements with the keys 7, 8 and 9 from the given argument.
-
-When a modifier is of type DATA-STRUCTURE, but not of type INDEX-SPACE, it
-denotes a shadowing of values. The index space of the modifier must be a
-subset of the index space of the argument. The result is a data structure
-that has the values of the modifier, where both index spaces coincide and
-the values of the argument otherwise.
 
 When a modifier is of type TRANSFORMATION, the argument is permuted
 accordingly. For example applying the transformation (τ (m n) (n m) to a
@@ -53,12 +60,6 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
                         (subspace? x modifier))
                     (repetition x modifier)
                     (reference x (intersection modifier x) (id x))))
-               (data-structure
-                (apply #'fusion modifier
-                       (mapcar #'reference
-                               (forever x)
-                               (difference x modifier)
-                               (forever (id x)))))
                (transformation
                 (reference x (index-space x) modifier)))))
     (reduce #'apply-modification modifiers

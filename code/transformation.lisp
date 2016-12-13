@@ -185,10 +185,11 @@
 
 (defmethod print-object ((object affine-transformation) stream)
   (let* ((abc '(a b c d e f g h i j k l m n o p q r s t. u v w x y z))
-         (variables (if (<= (input-dimension object) (length abc))
-                        (subseq abc 0 (input-dimension object))
-                        (loop for inpos below (input-dimension object)
-                              collect (intern (format nil "V~d" inpos)))))
+         (variables
+           (if (<= (input-dimension object) (length abc))
+               (subseq abc 0 (input-dimension object))
+               (loop for inpos below (input-dimension object)
+                     collect (intern (format nil "V~d" inpos)))))
          (input-forms
            (loop for input-constraint across (input-constraints object)
                  and variable in variables
@@ -208,7 +209,7 @@
                          ((eql mul-form 0) b)
                          ((plusp b) `(+ ,mul-form ,b))
                          ((minusp b) `(- ,mul-form ,(abs b))))))))
-    (format stream "(τ ~a ~{~a~^ ~})" input-forms output-forms)))
+    (format stream "(τ ~a~{ ~a~})" input-forms output-forms)))
 
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
 ;;;  the special case of identity transformations
