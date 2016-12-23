@@ -1,11 +1,11 @@
 ;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
 ;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;; definitions of externally visible functions
+;;; definitions of externally visible Petalisp functions
 
 (in-package :petalisp)
 
-(defun α (operator object &rest more-objects)
-  "Apply OPERATOR element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
+(defun α (function object &rest more-objects)
+  "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
 for Petalisp data structures. When the dimensions of some of the inputs
 mismatch, the smaller objects are broadcasted where possible."
   (let* ((objects
@@ -17,16 +17,21 @@ mismatch, the smaller objects are broadcasted where possible."
             (lambda (object)
               (repetition object index-space))
             objects)))
-    (apply #'application operator objects)))
+    (apply #'application function objects)))
 
-(defun β (operator object)
-  "Reduce the last dimension of OBJECT with OPERATOR."
-  (reduction operator (lisp->petalisp object)))
+(defun β (function object)
+  "Reduce the last dimension of OBJECT with FUNCTION."
+  (reduction function (lisp->petalisp object)))
 
 (defun fuse (&rest objects)
+  "Combine OBJECTS into a single petalisp data structure. It is an error if
+some of the inputs overlap, or if there exists no suitable data structure
+to represent the fusion."
   (apply #'fusion (mapcar #'lisp->petalisp objects)))
 
 (defun fuse* (&rest objects)
+  "Combine OBJECTS into a single petalisp data structure. When some OBJECTS
+overlap partially, the value of the rightmost object is used."
   (let* ((objects (mapcar #'lisp->petalisp objects))
          (pieces (apply #'subdivision objects)))
     (apply
@@ -52,14 +57,14 @@ elements with the keys 7, 8 and 9 from the given argument.
 When a modifier is of type TRANSFORMATION, the argument is permuted
 accordingly. For example applying the transformation (τ (m n) (n m) to a
 3x10 array would result in a 10x3 array."
-  (labels ((id (x) (identity-transformation (dimension x)))
-           (apply-modification (x modifier)
+  (labels ((apply-modification (x modifier)
              (etypecase modifier
                (data-structure
                 (if (or (/= (dimension x) (dimension modifier))
                         (subspace? x modifier))
                     (repetition x modifier)
-                    (reference x (intersection modifier x) (id x))))
+                    (reference x (intersection modifier x)
+                               (identity-transformation (dimension x)))))
                (transformation
                 (reference x (index-space x) modifier)))))
     (reduce #'apply-modification modifiers

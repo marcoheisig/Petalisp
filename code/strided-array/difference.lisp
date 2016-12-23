@@ -21,22 +21,26 @@
 (defmethod difference ((space-1 range) (space-2 range))
   ;; we only care about the part of space-2 that intersects with space-1
   (let ((space-2 (intersection space-1 space-2)))
-    (unless space-2 (return-from difference `(,space-1)))
-    (let ((start-1 (range-start space-1))
-          (step-1 (range-step space-1))
-          (end-1 (range-end space-1))
-          (start-2 (range-start space-2))
-          (step-2 (range-step space-2))
-          (end-2 (range-end space-2)))
-      (flet ((range (start step end)
-               (when (<= start-1 start end end-1)
-                 (range start step end))))
-        (loop for x from start-2 below end-2 by step-2
-              when (range (+ x step-1) step-1 (- (+ x step-2) step-1))
-                collect it into result
-              finally
-                 (awhen (range start-1 step-1 (- start-2 step-1))
-                   (push it result))
-                 (awhen (range (+ end-2 step-1) step-1 end-1)
-                   (push it result))
-                 (return result))))))
+    (if (not space-2) `(,space-1)
+        (let ((start-1 (range-start space-1))
+              (step-1 (range-step space-1))
+              (end-1 (range-end space-1))
+              (start-2 (range-start space-2))
+              (step-2 (range-step space-2))
+              (end-2 (range-end space-2)))
+          ;; There are two options to form the difference of two
+          ;; ranges. Either by creating ranges with the step size of
+          ;; space-1, or by creating ranges with the step size of
+          ;; space-2. Which one is more efficient depends on the situation.
+          (flet ((range (start step end)
+                   (when (<= start-1 start end end-1)
+                     (range start step end))))
+            (loop for x from start-2 below end-2 by step-2
+                  when (range (+ x step-1) step-1 (- (+ x step-2) step-1))
+                    collect it into result
+                  finally
+                     (awhen (range start-1 step-1 (- start-2 step-1))
+                       (push it result))
+                     (awhen (range (+ end-2 step-1) step-1 end-1)
+                       (push it result))
+                     (return result)))))))

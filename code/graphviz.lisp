@@ -34,30 +34,23 @@
 ;;; methods to draw individual nodes
 ;;; _________________________________________________________________
 
-(defmethod stream-draw-graph ((node application) stream)
-  (format stream "    ~a [label=\"application ~w\\n~w\"];~%"
-          (id node) (name (operator node)) (index-space node)))
+(defmethod printworthy-slots ((class standard-class))
+  (flet ((boring? (slot)
+           (member slot '(ranges predecessors))))
+    (loop for slot in (class-slots class)
+          unless (boring? (slot-definition-name slot))
+            collect (slot-definition-name slot))))
 
-(defmethod stream-draw-graph ((node reduction) stream)
-  (format stream "    ~a [label = \"reduction ~w\\n~w\"];~%"
-          (id node) (name (operator node)) (index-space node)))
-
-(defmethod stream-draw-graph ((node fusion) stream)
-  (format stream "    ~a [label = \"fusion\\n~w\"];~%"
-          (id node) (index-space node)))
-
-(defmethod stream-draw-graph ((node reference) stream)
-  (format stream "    ~a [label=\"reference\\n~w\\n~w\"];~%"
+(defmethod stream-draw-graph ((node standard-object) stream)
+  (format stream "    ~a [label=\"~{~a~^\\n~}\"]~%"
           (id node)
-          (transform (index-space node) (invert (transformation node)))
-          (transformation node)))
-
-(defmethod stream-draw-graph ((node repetition) stream)
-  (format stream "    ~a [label = \"repetition\\n~w\\n~w\"];~%"
-          (id node) (index-space (first (predecessors node))) (index-space node)))
-
-(defmethod stream-draw-graph ((node data-structure) stream)
-  (format stream "    ~a [label = \"~a\\n~w\"];~%"
-          (id node) (string-downcase (class-name (class-of node)))
-          (index-space node)))
-
+          (list*
+           (string-downcase (class-name (class-of node)))
+           (mapcar
+            (lambda (slot)
+              (format nil "~a: ~a"
+                      (string-downcase slot)
+                      (remove-if
+                       (lambda (x) (member x '(#\# #\< #\>)))
+                       (format nil "~a" (slot-value node slot)))))
+            (printworthy-slots (class-of node))))))

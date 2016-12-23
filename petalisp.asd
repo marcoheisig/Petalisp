@@ -8,11 +8,12 @@
 
   :depends-on
   (:alexandria
-   :optima
+   :anaphora
+   :closer-mop
    :fare-memoization
-   :trivial-garbage
    :fiveam
-   :anaphora)
+   :optima
+   :trivial-garbage)
 
   :perform
   (test-op (o s)
