@@ -1,8 +1,15 @@
 *
 !/COPYING
 !/.gitignore
-!*.lisp
-!*.asd
-!*.org
+!/README.org
+# limit the number of subdirectories
 !/*/
 !/*/*/
+# Lisp related files
+!*.lisp
+!*.asd
+# TeX related files
+!*.tex
+!*.cls
+!*.bib
+!*.bst
