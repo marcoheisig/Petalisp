@@ -1,0 +1,55 @@
+% -*- TeX-master: "petalisp.tex" -*-
+\section{Introduction}
+\label{sec:introduction}
+
+The automatic parallelization of computer programs is the holy grail of
+parallel computing. The search for this holy grail has spawned many
+programming languages, such as High Performance Fortran \cite{HPF}, SISAL
+\cite{SISAL}, Fortress \cite{Fortress}, SequenceL \cite{SequenceL}, CM Lisp
+\cite{CM-Lisp}, Chapel \cite{Chapel}, Unified Parallel C \cite{UPC} and X10
+\cite{X10}. Each of these languages offers a notation for parallel
+algorithms and relieves the programmer form the tedious and error-prone
+task of communicating data between processes. Yet the majority of parallel
+programs in industry and scientific computing are written using classical
+general-purpose programming languages. This is not surprising, since no
+parallelizing compiler can match or outperform a human expert programmer.
+
+But why is that so? Why are parallelizing compilers consistently worse than
+human experts? The key difference is not so much the repertoire of known
+optimization techniques, but the understanding of the given program. When a
+programmer studies a program, she focuses on the high-level algorithm and
+data structures. While doing so, she identifies and skips many irrelevant
+sections. She might even find some bugs in the original code. This
+illustrates that humans have knowledge far beyond the source code.
+
+In contrast, a machine cannot make assumptions about the meaning of a
+program. Without any noteworthy intelligence, it is forced to take the
+whole program literally. Consequently, the machine has usually zero
+knowledge of the high-level behavior of the program. It only sees a jungle
+of data and control flow dependencies. Each of these dependencies can
+prevent the whole program from parallelization, even if it belongs only to
+a superfluous print statement. In other words, it is impossible to develop
+a compiler that reliably parallelizes real world programs. The search for
+the holy grail is indeed futile.
+
+This does not mean that computers are bad at generating parallel
+programs. The source code of a general purpose program is just a horrible
+way to convey meaning to such a code generator. Instead we propose a
+specialized programming language to express parallel algorithms at a higher
+level. This language must be simple enough that every possible combination
+of language primitives is intelligible, yet expressive enough to implement
+real world algorithms.
+
+In this paper, we describe the design and implementation of the parallel
+programming language Petalisp. In section \ref{sec:examples} we show how it
+can be applied to several important parallel algorithms.
+
+A peculiarity of Petalisp is its tight integration into the Common Lisp
+programming language. Common Lisp programs are used to create Petalisp
+programs, and Petalisp operators take ordinary Common Lisp functions as
+arguments\footnote{albeit undefined behavior occurs if these functions have
+  side effects}. This approach has two advantages. The first one is that
+Petalisp itself is a purely functional language, with all associated
+benefits for analysis and optimization. The second one is that Petalisp has
+access to every feature and library of Common Lisp. Effectively, Petalisp
+is an extension of Common Lisp for massively parallel computing.
