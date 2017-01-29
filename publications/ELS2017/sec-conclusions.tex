@@ -2,3 +2,43 @@
 \section{Conclusions}
 \label{sec:conclusions}
 
+Petalisp has been designed as a simple language with only four primitive
+operators and a high potential for optimization and
+parallelization. Compilers for general purpose programming languages
+struggle with compile-time uncertainty and complicated control flow,
+whereas in Petalisp, these problems vanish. Its programs are massively
+parallel data flow graphs and they are compiled on the fly during the
+actual execution.
+
+A high-quality implementation of Petalisp has been written to study this
+programming model for real applications. Using this implementation, it has
+been demonstrated that parallel HPC algorithms can be written concisely as
+Petalisp programs. An unforeseen consequence of the focus on powerful
+parallel operations is that it is remarkably pleasant to write Petalisp
+programs. Algorithms that would require many nested loops and local
+variables in imperative languages can be expressed with only few lines of
+Petalisp code. Neither expressiveness, nor elegant notation have been a
+primary design goal of Petalisp. The original idea was to find a
+fundamental notation for parallel programming, which is well suited for
+compilers. It is a relief that the resulting programming language turned
+out to be convenient for humans, too.
+
+One final ingredient is still missing before the language can be considered
+ready for mainstream adoption: A parallelizing compiler back end. At the
+moment, all Petalisp programs are run in serial. The work on this subject
+has been postponed while the semantics of the language is still under
+development. More algorithms, e.g. Gaussian elimination, need to be written
+in Petalisp to determine whether the current set of features is really
+sufficient to denote all important parallel algorithms.
+
+Once this work is done, it is possible to proceed to the next chapter of
+Petalisp development and investigate parallelization strategies. Any
+reasonable parallel scheduler requires detailed knowledge of the given
+system resources, so a big portion of this work will be devoted to
+performance introspection. The scheduler needs a way to detect the number
+of available compute nodes, CPU cores, main memory size, cache hierarchies
+and communication channels. Afterwards this information can be combined
+with performance models (e.g. Roofline \cite{roofline} or ECM \cite{ecm})
+to make qualified scheduling and domain partitioning decisions. The
+ambitious long-term goal is that the Petalisp code generator outperforms
+even expert HPC programmers.
