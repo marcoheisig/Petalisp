@@ -1,9 +1,37 @@
+% -*- TeX-master: "petalisp.tex"; TeX-engine: xetex; coding: utf-8 -*-
 \documentclass[sigconf]{acmart}
 \citestyle{acmauthoryear}
 
 \usepackage{amsthm}
 \theoremstyle{definition}
 \newtheorem{define}{Definition}
+
+% workaround to get Greek letters in typewriter font. Requires XeTeX
+\usepackage{fontspec}
+\setmonofont{DejaVu Sans Mono}[Scale=0.88]
+
+% fancy boxes around source code examples
+\usepackage{alltt}
+\usepackage{calc}
+\usepackage{fancybox}
+\usepackage{lineno}
+\setlength{\shadowsize}{1.5pt} \setlength{\fboxsep}{5pt}
+\newenvironment{code}
+{ \begin{Sbox} \begin{minipage}{\linewidth-26pt}
+  \internallinenumbers \begin{alltt} }
+{ \end{alltt} \end{minipage} \end{Sbox}
+\makebox[\linewidth] { \mbox{\phantom{\tiny 99}}
+\shadowbox{\TheSbox} } }
+
+% Fancy display of function signatures
+\newenvironment{function}
+{\noindent
+  \begin{minipage}{\linewidth}
+    \setlength\tabcolsep{0pt}
+    \begin{tabular}{p{0.86\linewidth}p{0.14\linewidth}}
+      \rule{\linewidth}{1pt} & \rule{\linewidth}{1pt} \\
+      \rule{0pt}{1.3em} }
+{\rule{\linewidth}{1pt} & \rule{\linewidth}{1pt} \\ \end{tabular} \end{minipage} }
 
 \def \N {\mathbb{N}}
 \def \Z {\mathbb{Z}}
@@ -36,7 +64,11 @@
 \email{marco.heisig@fau.de}
 
 \begin{abstract}
-  Petalisp!
+  We present the design and our reference implementation of the parallel
+  programming language Petalisp. We discovered that a simple data flow
+  language is sufficient to express many practically relevant parallel
+  algorithms. This programming model is a possible foundation for powerful
+  parallel code generators.
 \end{abstract}
 
 \begin{CCSXML}
@@ -93,9 +125,9 @@
 
 \input{sec-introduction}
 \input{sec-design}
-%\input{sec-examples}
-%\input{sec-implementation}
-%\input{sec-conclusions}
+\input{sec-examples}
+\input{sec-implementation}
+\input{sec-conclusions}
 
 \section{Acknowledgments}
 

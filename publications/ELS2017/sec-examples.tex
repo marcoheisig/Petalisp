@@ -1,3 +1,97 @@
-% -*- TeX-master: "petalisp.tex" -*-
+% -*- TeX-master: "petalisp.tex"; TeX-engine: xetex; coding: utf-8 -*-
 \section{Examples}
 \label{sec:examples}
+
+This section contains a collection of Petalisp programs and their
+description to familiarize the reader with the previously defined
+API.
+
+\subsection{Linear Algebra}
+
+The first batch of examples are from the domain of linear algebra, i.e. the
+study of vector spaces and linear mappings between them. Elements and
+operations on finite dimensional vector spaces are naturally represented as
+vectors and matrices, which are both special cases of strided arrays.
+
+The first example in figure \ref{fig:summation} shows two ways to compute
+the sum of six integers, either using an application or a reduction. In
+both cases, the functions α and β perform an implicit conversion of their
+arguments from lisp objects to strided arrays.
+
+\begin{figure}[h]
+\resetlinenumber
+\begin{code}
+(α #'+ 1 2 3 4 5 6)
+(β #'+ #(1 2 3 4 5 6))
+\end{code}
+\caption{Summation of integers in two different ways.}
+\label{fig:summation}
+\end{figure}
+
+The dot product of two vectors $\mathbf{a}$ and $\mathbf{b}$ is defined as
+$${ \mathbf {a} \cdot \mathbf {b} =\sum _{i=1}^{n}a_{i}b_{i}=a_{1}b_{1}+a_{2}b_{2}+\cdots +a_{n}b_{n}},$$
+i.e. the sum of the products of the corresponding entries in both
+vectors. The dot product is widely used, e.g. to compute physical
+properties like the mechanical work or the magnetic flux. The corresponding
+Petalisp program is shown in figure \ref{fig:dotproduct}.
+
+\begin{figure}[h]
+\resetlinenumber
+\begin{code}
+(β #'+ (α #'* a b))
+\end{code}
+\caption{The dot product of two vectors u and v.}
+\label{fig:dotproduct}
+\end{figure}
+
+Norms are an essential tool for many areas of mathematics. One possible
+norm for matrices is the row sum norm, which is defined as
+$$ ||A||_\infty = \max_{1 \le i \le m} \sum_{j=1}^n |a_{ij}|.$$
+Matrices are the first example of multidimensional strided
+arrays. According to definition \ref{def:reduction}, reductions apply to
+the last dimension of a strided array, such that a reduction on a
+$m \times n$ matrix yields a vector of length $m$ and the reduction of such
+a vector yields a scalar.  The program in figure \ref{fig:rowsumnorm}
+illustrates this convention, where the innermost reduction computes the sum
+of the absolute values in each row, while the outer reduction forms the
+maximum over the resulting row sums.
+
+\begin{figure}[h]
+\resetlinenumber
+\begin{code}
+(β #'max (β #'+ (α #'abs A)))
+\end{code}
+\caption{The row sum norm of a matrix A.}
+\label{fig:rowsumnorm}
+\end{figure}
+
+The final linear algebra example is the matrix multiplication of two
+matrices A and B. It is defined as
+
+$$C_{i,j} = \sum_{p=1}^{n} A_{ip} B_{pj}.$$
+
+The corresponding Petalisp program in figure \ref{fig:matmul} is the first
+example to use the → function to reshape the matrices A and B. The
+$m \times n$ matrix A is transformed to a $m \times 1 \times n$ array and
+the $n \times k$ matrix B is transformed to a $1 \times k \times n$
+array. Both arrays are then passed to the α function, which detects the
+different shape of its arguments, broadcasts both to a common space of size
+$m \times k \times n$ and multiplies them element-wise. In other words, $k$
+reshaped instances of the matrix A and $m$ reshaped instances of the matrix
+B are stacked next to each other before multiplying. In the end the last
+dimension of the result of the α function is summed with a reduction
+operation, completing the matrix multiplication.
+
+\begin{figure}[h]
+\resetlinenumber
+\begin{code}
+(β #'+
+   (α #'*
+      (→ A (τ (m n) (m 1 n)))
+      (→ B (τ (n k) (1 k n))))))
+\end{code}
+\caption{The matrix multiplication of matrices A and B.}
+\label{fig:matmul}
+\end{figure}
+
+\subsection{Iterative Methods}

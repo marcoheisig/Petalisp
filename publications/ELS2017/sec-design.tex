@@ -1,4 +1,4 @@
-% -*- TeX-master: "petalisp.tex" -*-
+% -*- TeX-master: "petalisp.tex"; TeX-engine: xetex; coding: utf-8 -*-
 \section{The Design of Petalisp}
 \label{sec:design}
 
@@ -11,13 +11,14 @@ would be:
 \end{quotation}
 
 \noindent A consequence of this goal is that other language qualities, such
-as expressiveness are sacrificed where necessary. The design process
+as expressiveness, are sacrificed where necessary. The design process
 thereby turns into a search for the minimal set of features that are
-sufficient to denote typical parallel algorithms. The result of this
+sufficient to denote the majority parallel algorithms. The result of this
 minimization problem is a language with only a single data structure and
 four primitive operators, which are described hereafter.
 
 \subsection{Strided Arrays}
+\label{sec:strided-arrays}
 
 Computation is hardly meaningful without structured data. In classical
 Lisps, this role is filled by the \texttt{cons} function, from which all
@@ -26,50 +27,54 @@ structures that are far too heterogeneous for any automatic
 parallelization. Instead Petalisp uses a data structure that has far more
 data regularity: strided arrays.
 
-Strided arrays are an extension of classical arrays, where the valid
-elements in each dimension are denoted by three integers: The smallest
-admissible index, the step size and the highest admissible index. More
-precisely, strided arrays can be defined as:
-
-\begin{define}[range]
-  A range with the lower bound $x_L$, the step size $s$ and the upper bound
-  $x_U$, with $x_L, s, u_U \in \Z$, is the set of integers
-  $$\{\, x \in \Z \;|\; x_{L} \le x \le x_{U} \;\wedge\; (\exists k \in \Z)\,[ x = x_{L} + k s]\,\}$$
-\end{define}
+The viability of array oriented programming has been demonstrated by the
+programming language APL \cite{APL}. Strided arrays are an extension of
+classical arrays, where the valid indices in each dimension are denoted by
+three integers: The smallest admissible index, the step size and the
+highest admissible index. More precisely, strided arrays can be defined as:
 
 \begin{define}[strided array]
   A strided array in $n$ dimensions is a function from elements of the
   cartesian product of $n$ ranges to a set of Common Lisp objects.
 \end{define}
 
+\begin{define}[range]
+  A range with the lower bound $x_L$, the step size $s$ and the upper bound
+  $x_U$, with $x_L,\, s,\, u_U \in \Z$, is the set of integers
+  $$\{\, x \in \Z \;|\; x_{L} \le x \le x_{U} \;\wedge\; (\exists k \in \Z)\,[ x = x_{L} + k s]\,\}$$
+\end{define}
+
 Because strided arrays are so important, they deserve their own
 notation. The shape of a strided array is denoted by an S-expression,
-starting with the Greek letter $\sigma$ (for \textbf{s}pace or
-\textbf{s}hape), followed by lists of integers denoting the lower bound,
-step size and upper bound of each range, as in the following examples:
+starting with the Greek letter σ \,(for \textbf{s}pace or \textbf{s}hape),
+followed by lists of integers denoting the lower bound, step size and upper
+bound of each range. If the step size is one, it can be omitted. Figure
+\ref{fig:sigma-examples} illustrates this convention.
 
 \begin{figure}[h]
-\begin{tabular}{ll}
-  \texttt{($\sigma$)}                         & \hspace{-1em} the zero-dimensional space \\
-  \texttt{($\sigma$ (0 1 8) (0 1 8))}         & \hspace{-1em} index space of a $9 \times 9$ array \\
-  \texttt{($\sigma$ (10 2 98))}               & \hspace{-1em} all even two-digit numbers \\
-  \texttt{($\sigma$ (1 2 3) (1 2 3) (1 2 3))} & \hspace{-1em} corners of a $3 \times 3 \times 3$ cube \\
-\end{tabular}
-\caption{A notation for strided arrays.}
-\label{fig:sigma-examples}
+  \begin{tabular}{ll}
+    \texttt{(σ)}                         & \hspace{-1em} the zero-dimensional space \\
+    \texttt{(σ (0 1 8) (0 1 8))}         & \hspace{-1em} index space of a $9 \times 9$ array \\
+    \texttt{(σ (0 8) (0 8))}             & \hspace{-1em} ditto \\
+    \texttt{(σ (10 2 98))}               & \hspace{-1em} all even two-digit numbers \\
+    \texttt{(σ (1 2 3) (1 2 3) (1 2 3))} & \hspace{-1em} corners of a $3 \times 3 \times 3$ cube \\
+  \end{tabular}
+  \caption{A notation for strided arrays.}
+  \label{fig:sigma-examples}
 \end{figure}
 
-Strided arrays have several advantages over classical arrays, as used
-e.g. in the APL programming language \cite{APL}: The lowest and highest
-index can be chosen arbitrarily, including from the set of negative
-integers \footnote{Coincidentally avoiding any debate over a canonical
-  lowest array index.}. This flexibility is later used to define
-translations of arrays and subsequently to define an unambiguous way to
-stack multiple strided arrays next to each other.
+Strided arrays have several advantages over classical arrays. The lowest
+and highest index can be chosen arbitrarily, including from the set of
+negative integers \footnote{Coincidentally avoiding any debate over a
+  canonical lowest array index.} --- a flexibility that is later used to
+define translations of arrays and subsequently to define an unambiguous way
+to stack multiple strided arrays next to each other.  The step size
+parameter allows to model data that is not contiguous, yet has some level
+of regularity.
 
-The additional step size parameter fills also an important role. Many
-parallel algorithms have some nearest neighbor data dependencies. To
-parallelize them nonetheless, the domain must be partitioned into multiple
+The original motivation to support array strides stems from the observation
+that many parallel algorithms have nearest neighbor data dependencies. To
+parallelize them regardless, the domain must be partitioned into multiple
 independent sets. This process is called coloring. A simple example of such
 a coloring strategy is a chessboard, which ensures that the direct
 neighbors of any white field are black, and vice versa. All elements with
@@ -92,8 +97,7 @@ single function is applied to every element of one or more strided arrays,
 much like the Lisp function \texttt{map}. A secondary source of parallelism
 is introduced by the distributed \emph{reduction} operator, which is
 similar to the Lisp function \texttt{reduce}, but where the order of
-reduction is unspecified. In the case of multidimensional arrays, only the
-last dimension is reduced.
+reduction is unspecified.
 
 \begin{define}[application]
   Let $f$ be a referentially transparent\footnote{A function is
@@ -106,6 +110,7 @@ last dimension is reduced.
 \end{define}
 
 \begin{define}[reduction]
+  \label{def:reduction}
   Let $f$ be a referentially transparent Common Lisp function that accepts
   two arguments, and let $a$ be strided array of dimension $n$, i.e. a
   mapping from each element of the cartesian product of the ranges
@@ -117,9 +122,13 @@ last dimension is reduced.
 \end{define}
 
 Parallel application and reduction are the only two operators that actually
-evaluate Common Lisp functions to compute new values.
+evaluate Common Lisp functions to compute new values. The remaining two
+operators are the \emph{fusion} of several strided arrays, and
+\emph{reference} operator, which allow to combine, destructure and reshape
+existing strided arrays.
 
 \begin{define}[fusion]
+  \label{def:fusion}
   Let $a_{1}, \ldots, a_{n}$ be strided arrays, each mapping from a set of
   indices $\Omega_{k}$ to a set of values.  Furthermore, let the sets
   $\Omega_{1}, \ldots, \Omega_{n}$ be pairwise disjoint. Then the fusion of
@@ -128,6 +137,179 @@ evaluate Common Lisp functions to compute new values.
   structure $a_{k}$ whose domain contains $x$.
 \end{define}
 
-% reference
+\begin{define}[reference]
+  \label{def:reference}
+  Let $a$ be a strided array with domain $\Omega_a$, let $\Omega_b$ be a
+  strided array index space and let $t$ be a transformation from $\Omega_b$
+  to $\Omega_a$. Then the reference of $a$ by $\Omega_b$ and $t$ is a
+  strided array that maps each $i \in \Omega_b$ to $a(t(i))$.
+\end{define}
 
-\subsection{Transformations}
+What has not been specified so far is the space of permissible
+transformations in definition \ref{def:reference}, i.e. the possible ways
+to reshape an array. This choice is crucial. Limiting the space of
+transformations extremely, e.g. only to the identity function, would render
+the language more or less useless. A too liberal policy would increase the
+complexity of the language to unmanageable levels, conflicting with our
+design goal of providing reliable optimization. The next section describes
+the compromise that was finally chosen.
+
+\subsection{Permissible Transformations}
+\label{sec:transformations}
+
+Study of real world applications has determined, that the following
+elementary transformations on strided arrays are particularly useful:
+
+\begin{itemize}
+\item \textbf{translation} of indices by a constant, e.g.
+  \begin{flushleft}
+    $\texttt{(σ (0 9))} \xrightarrow{+\,10} \texttt{(σ (10 19))}$
+  \end{flushleft}
+\item \textbf{scaling} of indices with a constant, e.g.
+  \begin{flushleft}
+    $\texttt{(σ (0 4))} \xrightarrow{\times\, 11} \texttt{(σ (0 11 44))}$
+  \end{flushleft}
+\item \textbf{permuting} the indices of a multidimensional array, e.g.
+  \begin{flushleft}
+    $\texttt{(σ (-4 4) (2 9))}
+    \xrightarrow{1^{\text{st}} \,\leftrightarrow\, 2^{\text{nd}}}
+    \texttt{(σ (2 9) (-4 4))}$
+  \end{flushleft}
+\item \textbf{shrinking} the dimension by dropping some indices, e.g.
+  \begin{flushleft}
+    $\texttt{(σ (2 2) (3 9))}
+    \xrightarrow{\text{drop}\, 1^{\text{st}}}
+    \texttt{(σ (3 9))}$
+  \end{flushleft}
+\item \textbf{increasing} the dimension by adding some indices,e.g.
+  \begin{flushleft}
+    $\texttt{(σ)}
+    \xrightarrow{\text{add}\, 4,\, \text{add}\, 9}
+    \texttt{(σ (4 4) (9 9))}$
+  \end{flushleft}
+\item \textbf{collapsing} one dimension to a single element, e.g.
+  \begin{flushleft}
+    $\texttt{(σ (2 19) (4 12)}
+    \xrightarrow{\text{collapse}\, 1^{\text{st}}\, \text{to}\, 0}
+    \texttt{(σ (0 0) (4 12))}$
+  \end{flushleft}
+\end{itemize}
+
+These six elementary transformations and all possible combinations thereof
+form the set of permissible transformations in Petalisp. Understanding and
+implementing this set of transformation in Common Lisp is a central
+component of this programming model. Transformations are treated as
+first-class citizens in Petalisp and have their own notation, which is
+similar to the notation of ordinary lambda functions, but starting with the
+letter τ and with an implicit values form wrapped around the body, as seen
+in figure \ref{fig:transformation-examples}
+
+\begin{figure}[htb]
+  \begin{tabular}{ll}
+    \texttt{(τ ())} & \hspace*{-1em} the transformation from \texttt{(σ)} to \texttt{(σ)} \\
+    \texttt{(τ (i) (+ i 2))} & \hspace*{-1em} shift all indices of a $1$D array by $2$ \\
+    \texttt{(τ (m n) m (* n 1/2))} & \hspace*{-1em} scale the second dimension by $1/2$ \\
+    \texttt{(τ (m n) n m)} & \hspace*{-1em} invert a matrix \\
+    \texttt{(τ (5 a) a)} & \hspace*{-1em} drop the first index if it is 5 \\
+    \texttt{(τ (a) a 9)} & \hspace*{-1em} add one dimension with index 9 \\
+  \end{tabular}
+  \caption{A notation for transformations.}
+  \label{fig:transformation-examples}
+\end{figure}
+
+\subsection{The Petalisp API}
+
+The core operators of Petalisp --- application, reduction, fusion and
+reference --- are simple and orthogonal. They are designed to be easy to
+reason about, but not to make it pleasant to write programs with them. This
+concern is addressed by the Petalisp API, a set of powerful, smart
+functions that expand into one or more invocations of Petalisp core
+operators.
+
+\begin{function}
+  \texttt{ \textbf{σ} \&rest range-specifications} & \textsl{macro} \\
+\end{function}
+
+The macro σ parses the notation for strided arrays from section
+\ref{sec:strided-arrays}. Each range specification must be a list of forms,
+which are evaluated from left to right in the current environment to
+produce the parameters of this range. Returns an object of type
+\texttt{strided-array-index-space}.
+
+\begin{function}
+  \texttt{ \textbf{σ*} space \&rest range-specifications} & \textsl{macro} \\
+\end{function}
+
+Space must be a strided array index space, whose dimension matches the
+number of range specifications. Each range specification is parsed as in
+the macro σ, but with the variables start, step and end bound to the
+respective values of the corresponding range in \texttt{space}. This macro
+allows to describe a strided array index space relative to another one,
+e.g. stripping the boundary of an existing space. Returns an object of type
+\texttt{strided-array-index-space}.
+
+\begin{function}
+  \texttt{ \textbf{τ} arguments \&body body} & \textsl{macro} \\
+\end{function}
+
+Arguments must be a list of symbols, body must be a list of forms, as shown
+in figure \ref{fig:transformation-examples}. The body forms are evaluated
+multiple times, with symbols bound to some integers, to determine the
+properties of the transformation. Only transformations as specified in
+section \ref{sec:transformations} are permitted, an attempt is made to
+signal an error in case of invalid transformations. Returns an object of
+type \texttt{transformation}.
+
+\begin{function}
+  \texttt{ \textbf{α} function \&rest arguments} & \textsl{function} \\
+\end{function}
+
+Apply the application operator to the given \texttt{function} and the
+\texttt{arguments}. If any of the latter is not a strided array, but a Lisp
+scalar or array, it is suitably converted. If, after conversion, the
+strided arrays have a different shape, an attempt is made to broadcast them
+to a common shape using the reference operator. These references must not
+permute, scale or translate their arguments. An error is signaled, when
+there is no way to broadcast all strided arrays to a common shape. Returns
+an object of type \texttt{strided-array}.
+
+\begin{function}
+  \texttt{ \textbf{β} function argument} & \textsl{function} \\
+\end{function}
+
+Apply the reduction operator to the given \texttt{function} and
+\texttt{argument}. If the latter is a Lisp array, it is converted to a
+strided array. Returns an object of type \texttt{strided-array}.
+
+\begin{function}
+  \texttt{ \textbf{→} strided-array \&rest modifiers} & \textsl{function} \\
+\end{function}
+
+The function → is the generalized reference and broadcast operator. If
+\texttt{strided-array} is a Lisp array or scalar, it is suitably converted.
+Afterwards, the \texttt{modifiers} are processed from left to right, using
+the result of each modification as argument for the next one. Each modifier
+must either be a strided array index space or a transformation. If the
+current modifier is a transformation, emit a reference node that reshapes
+the argument accordingly.  If the current modifier is a strided array index
+space and a subspace of the index space of the argument, emit a reference
+that selects only this subspace. Otherwise attempt to broadcast the
+argument to the given space with a suitable reference. Returns an object of
+type \texttt{strided-array}.
+
+\begin{function}
+  \texttt{ \textbf{fuse} \&rest arguments} & \textsl{function} \\
+\end{function}
+
+All \texttt{arguments} are converted to strided arrays when necessary. The
+resulting arrays must must not overlap and are passed to the fusion
+operator. Returns an object of type \texttt{strided-array}.
+
+\begin{function}
+  \texttt{ \textbf{fuse*} \&rest arguments} & \textsl{function} \\
+\end{function}
+
+The fuse* function is similar to the fuse function, but the arguments may
+overlap. For indices where some of the arguments overlap, the value of the
+rightmost array is chosen. Returns an object of type
+\texttt{strided-array}.
