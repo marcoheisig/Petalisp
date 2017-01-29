@@ -29,7 +29,11 @@ arguments from lisp objects to strided arrays.
 \end{figure}
 
 The dot product of two vectors $\mathbf{a}$ and $\mathbf{b}$ is defined as
-$${ \mathbf {a} \cdot \mathbf {b} =\sum _{i=1}^{n}a_{i}b_{i}=a_{1}b_{1}+a_{2}b_{2}+\cdots +a_{n}b_{n}},$$
+
+\begin{align}
+{ \mathbf {a} \cdot \mathbf {b} =\sum _{i=1}^{n}a_{i}b_{i}=a_{1}b_{1}+a_{2}b_{2}+\cdots +a_{n}b_{n}},
+\end{align}
+
 i.e. the sum of the products of the corresponding entries in both
 vectors. The dot product is widely used, e.g. to compute physical
 properties like the mechanical work or the magnetic flux. The corresponding
@@ -46,7 +50,11 @@ Petalisp program is shown in figure \ref{fig:dotproduct}.
 
 Norms are an essential tool for many areas of mathematics. One possible
 norm for matrices is the row sum norm, which is defined as
-$$ ||A||_\infty = \max_{1 \le i \le m} \sum_{j=1}^n |a_{ij}|.$$
+
+\begin{align}
+|A||_\infty = \max_{1 \le i \le m} \sum_{j=1}^n |a_{ij}|.
+\end{align}
+
 Matrices are the first example of multidimensional strided
 arrays. According to definition \ref{def:reduction}, reductions apply to
 the last dimension of a strided array, such that a reduction on a
@@ -68,7 +76,9 @@ maximum over the resulting row sums.
 The final linear algebra example is the matrix multiplication of two
 matrices A and B. It is defined as
 
-$$C_{i,j} = \sum_{p=1}^{n} A_{ip} B_{pj}.$$
+\begin{align}
+C_{ij} = \sum_{p=1}^{n} A_{ip} B_{pj}.
+\end{align}
 
 The corresponding Petalisp program in figure \ref{fig:matmul} is the first
 example to use the → function to reshape the matrices A and B. The
@@ -79,8 +89,8 @@ different shape of its arguments, broadcasts both to a common space of size
 $m \times k \times n$ and multiplies them element-wise. In other words, $k$
 reshaped instances of the matrix A and $m$ reshaped instances of the matrix
 B are stacked next to each other before multiplying. In the end the last
-dimension of the result of the α function is summed with a reduction
-operation, completing the matrix multiplication.
+dimension of the result of the α function (with size $n$) is summed up,
+producing the result with shape $m \times k$.
 
 \begin{figure}[h]
 \resetlinenumber
@@ -94,4 +104,104 @@ operation, completing the matrix multiplication.
 \label{fig:matmul}
 \end{figure}
 
-\subsection{Iterative Methods}
+Readers who think the matrix multiplication program in figure
+\ref{fig:matmul} is more intricate than a classical version with three
+nested loops are reminded that the code in figure \ref{fig:matmul} shows a
+\emph{parallel} implementation of a matrix multiplication that may be used
+to multiply matrices with a size of several terabytes on a supercomputer.
+These four lines of Petalisp are roughly equivalent to parallel
+implementations as in ScaLAPACK \cite{slug}, whose matrix multiplication
+routine has several hundred lines of code.
+
+\subsection{The Jacobi Method}
+
+Most real world applications on parallel computers are concerned with
+numerical algorithms. One such algorithm is the Jacobi method to solve
+diagonally dominant systems of linear equations. Such systems arise
+frequently in the discretization of partial differential equations
+(PDEs). A simple and instructive example of such a PDE is the Laplace
+equation with Dirichlet boundary conditions:
+
+\begin{align}
+- \Delta u &= 0 \qquad \text{on } \Omega \label{eq:laplace1} \\
+ u &= C \qquad \text{on } \partial\Omega. \label{eq:laplace2}
+\end{align}
+
+\noindent Equation \ref{eq:laplace1} states that the divergence of the negative
+gradient of a given quantity $u$ shall be zero at each point in the domain
+$\Omega$. Equation \ref{eq:laplace2} provides the Dirichlet boundary conditions
+for the problem, by assigning $u$ fixed values on each point of the domain
+boundary $\partial\Omega$. In practice, the Laplace equation occurs e.g. when solving
+heat diffusion problems. In this case, $u$ would be the temperature of the
+medium. Heat flows from hot regions to colder ones, so the heat flux can be
+modeled by the negative gradient of $u$. The conservation of energy implies
+that the divergence of the heat flux is zero and leads exactly to the
+Laplace equation.
+
+For most domains and boundary values, there is no way to derive an analytic
+solution to the Laplace equation. Instead the solution must be approximated
+by numerical methods. A classical approach is to replace equation
+\ref{eq:laplace1} by a linear system of equations that approximate the
+Laplace operator at a finite set of grid points in the interior of $\Omega$. If
+a two-dimensional domain is discretized by a rectangular grid with distance
+$h$, a linear approximation of the Laplace equation at each point is given
+by
+
+\begin{align}
+\label{eq:discretized-laplace}
+- \Delta u_{x,y} \approx \frac{-4 u_{x,y} + u_{x+h,y} + u_{x-h,y} + u_{x,y+h} + u_{x,y-h}}{h^2} = 0.
+\end{align}
+
+\noindent The validity of this formula can be confirmed by Taylor expansion and
+solving for the second derivatives. The Jacobi method approximates the
+solution of such a system by starting with a random initial guess
+$u_{0}$. Based on this initial guess, an improved guess $u_{k+1}$ is
+obtained by solving the linear system point-wise, using the values of
+$u_{k}$ for each neighbor:
+
+\begin{align}
+\label{eq:jacobi-update}
+u_{k+1,x,y} = \frac{u_{k,x+h,y} + u_{k,x-h,y} + u_{k,x,y+h} + u_{k,x,y-h}}{4}
+\end{align}
+
+This update formula is applied in parallel to the interior point of the
+discretized domain $\Omega$. The Dirichlet boundary values are never
+modified. The Petalisp implementation of the Jacobi method for this
+particular problem is shown in figure \ref{fig:Jacobi}. It starts in lines
+2--4 by defining the interior of the given domain with the σ* macro. The
+interior is then used in lines 10--13 to select exactly those points of $u$
+that are in the interior \emph{after} the specified transformation. Finally
+the fuse* function in line 7 determines the next value of $u_{k+1}$ by
+overriding the interior of $u_{k}$ according to the update formula from
+equation \ref{eq:jacobi-update}.
+
+\begin{figure}[htb]
+\resetlinenumber
+\begin{code}
+(defun jacobi-2d (u iterations)
+ (let ((in
+        (σ* u ((+ start 1) 1 (- end 1))
+              ((+ start 1) 1 (- end 1)))))
+   (loop repeat iterations do
+     (setf u
+       (fuse* u
+        (α #'* 0.25
+          (α #'+
+             (→ u (τ (x y) (1+ x) y) in)
+             (→ u (τ (x y) (1- x) y) in)
+             (→ u (τ (x y) x (1+ y)) in)
+             (→ u (τ (x y) x (1- y)) in))))))
+   u))
+\end{code}
+\caption{The Jacobi Method to solve the equation $- \Delta u = 0$}
+\label{fig:Jacobi}
+\end{figure}
+
+\subsection{Other examples}
+
+There is a growing number of Petalisp examples on the Petalisp homepage
+\footnote{\url{https://github.com/marcoheisig/Petalisp}}, ranging from
+simple linear algebra examples to advanced techniques like multigrid
+algorithms \cite{briggs2000}. The study of Petalisp examples is currently a
+high priority, because we want to make sure that the language is prepared
+for the parallel computing needs of the working computer scientist.
