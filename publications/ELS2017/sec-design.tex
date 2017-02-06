@@ -40,16 +40,16 @@ highest admissible index. More precisely, strided arrays can be defined as:
 
 \begin{define}[range]
   A range with the lower bound $x_L$, the step size $s$ and the upper bound
-  $x_U$, with $x_L,\, s,\, u_U \in \Z$, is the set of integers
+  $x_U$, with $x_L,\, s,\, x_U \in \Z$, is the set of integers
   $$\{\, x \in \Z \;|\; x_{L} \le x \le x_{U} \;\wedge\; (\exists k \in \Z)\,[ x = x_{L} + k s]\,\}$$
 \end{define}
 
-Because strided arrays are so important, they deserve their own
-notation. The shape of a strided array is denoted by an S-expression,
-starting with the Greek letter σ \,(for \textbf{s}pace or \textbf{s}hape),
-followed by lists of integers denoting the lower bound, step size and upper
-bound of each range. If the step size is one, it can be omitted. Figure
-\ref{fig:sigma-examples} illustrates this convention.
+The domain of an array is henceforth called its \emph{index space}.  An
+index space is denoted by an S-expression, starting with the Greek letter σ
+\,(for \textbf{s}pace or \textbf{s}hape), followed by lists of integers
+denoting the lower bound, step size and upper bound of each range. If the
+step size is one, it can be omitted. Figure \ref{fig:sigma-examples}
+illustrates this convention.
 
 \begin{figure}[h]
   \begin{tabular}{ll}
@@ -85,11 +85,11 @@ tiles of the same color.
 \subsection{Core Operations}
 
 Before the four core operations of Petalisp are discussed, it is
-instructive to discuss those features that are not present in
-Petalisp. Petalisp lacks any form of control flow --- no conditionals, no
-function calls, no jumps and no mechanism for exception handling. Even
-more, there is no mechanism for destructive assignment. As a result, a
-Petalisp program is nothing more than a pure data flow graph.
+instructive to discuss those features that are not present in Petalisp: The
+language lacks any form of control flow --- no conditionals, no function
+calls, no jumps and no mechanism for exception handling. Even more, there
+is no mechanism for destructive assignment. As a result, a Petalisp program
+is nothing more than a pure data flow graph.
 
 The most prominent Petalisp operator is the distributed
 \emph{application}. It describes embarrassingly parallel problems, where a
@@ -129,12 +129,13 @@ existing strided arrays.
 
 \begin{define}[fusion]
   \label{def:fusion}
-  Let $a_{1}, \ldots, a_{n}$ be strided arrays, each mapping from a set of
-  indices $\Omega_{k}$ to a set of values.  Furthermore, let the sets
-  $\Omega_{1}, \ldots, \Omega_{n}$ be pairwise disjoint. Then the fusion of
-  $a_{1},\ldots, a_{n}$ is a strided array that maps each index
-  $i \in \bigcup_{k=1}^{n} \Omega_{k}$ to the value of $i$ of the unique data
-  structure $a_{k}$ whose domain contains $x$.
+  Let $a_{1}, \ldots, a_{n}$ be strided arrays with equal dimension, each
+  mapping from an index space $\Omega_{k}$ to a set of values.
+  Furthermore, let the sets $\Omega_{1}, \ldots, \Omega_{n}$ be pairwise
+  disjoint, and let $\Omega_f = \bigcup_{k=1}^{n} \Omega_{k}$ be again a
+  valid index space. Then the fusion of $a_{1},\ldots, a_{n}$ is a strided
+  array that maps each index $i \in \Omega_f$ to the value of $i$ of the
+  unique strided array $a_{k}$ whose index space contains $i$.
 \end{define}
 
 \begin{define}[reference]
@@ -289,13 +290,18 @@ The function → is the generalized reference and broadcast operator. If
 \texttt{strided-array} is a Lisp array or scalar, it is suitably converted.
 Afterwards, the \texttt{modifiers} are processed from left to right, using
 the result of each modification as argument for the next one. Each modifier
-must either be a strided array index space or a transformation. If the
-current modifier is a transformation, emit a reference node that reshapes
-the argument accordingly.  If the current modifier is a strided array index
-space and a subspace of the index space of the argument, emit a reference
-that selects only this subspace. Otherwise attempt to broadcast the
-argument to the given space with a suitable reference. Returns an object of
-type \texttt{strided-array}.
+must either be a strided array index space or an invertible
+transformation. If the current modifier is an invertible transformation,
+emit a reference node to the resulting index space and the inverse of this
+transformation\footnote{The inverse of each transformation is used to
+  accommodate for the different perspectives of programmers and data flow
+  graphs.  Programmers prefer to say ``shift those elements to the right'',
+  while the natural corresponding data flow node is ``these are the values
+  of my predecessor, coming from the left.''}. If the current modifier is a
+strided array index space and a subspace of the index space of the
+argument, emit a reference that selects only this subspace. Otherwise
+attempt to broadcast the argument to the given space with a suitable
+reference. Returns an object of type \texttt{strided-array}.
 
 \begin{function}
   \texttt{ \textbf{fuse} \&rest arguments} & \textsl{function} \\

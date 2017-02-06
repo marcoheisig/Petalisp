@@ -27,9 +27,9 @@ One final ingredient is still missing before the language can be considered
 ready for mainstream adoption: A parallelizing compiler back end. At the
 moment, all Petalisp programs are run in serial. The work on this subject
 has been postponed while the semantics of the language is still under
-development. More algorithms, e.g. Gaussian elimination, need to be written
-in Petalisp to determine whether the current set of features is really
-sufficient to denote all important parallel algorithms.
+development. More algorithms need to be written in Petalisp to determine
+whether the current set of features is really sufficient to denote a
+reasonable set of parallel algorithms.
 
 Once this work is done, it is possible to proceed to the next chapter of
 Petalisp development and investigate parallelization strategies. Any
@@ -38,7 +38,7 @@ system resources, so a big portion of this work will be devoted to
 performance introspection. The scheduler needs a way to detect the number
 of available compute nodes, CPU cores, main memory size, cache hierarchies
 and communication channels. Afterwards this information can be combined
-with performance models (e.g. Roofline \cite{roofline} or ECM \cite{ecm})
+with performance models, e.g. Roofline \cite{roofline} or ECM \cite{ecm},
 to make qualified scheduling and domain partitioning decisions. The
 ambitious long-term goal is that the Petalisp code generator outperforms
 even expert HPC programmers.
