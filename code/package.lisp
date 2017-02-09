@@ -5,10 +5,15 @@
 (in-package :cl-user)
 
 (defpackage :petalisp
-  (:use :closer-common-lisp :optima :alexandria :fare-memoization :anaphora-basic)
-  (:import-from :fiveam #:test #:is #:*test-dribble* #:in-suite #:def-suite #:signals)
+  (:use
+   :closer-common-lisp
+   :optima
+   :alexandria
+   :fare-memoization
+   :anaphora)
   (:shadowing-import-from :trivial-garbage #:make-hash-table)
   (:shadow #:intersection #:compose)
+  (:import-from :fiveam #:test #:is #:*test-dribble* #:in-suite #:def-suite #:signals)
   (:export
    #:α
    #:β

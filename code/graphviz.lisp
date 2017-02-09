@@ -34,23 +34,21 @@
 ;;; methods to draw individual nodes
 ;;; _________________________________________________________________
 
-(defmethod printworthy-slots ((class standard-class))
-  (flet ((boring? (slot)
-           (member slot '(ranges predecessors))))
-    (loop for slot in (class-slots class)
-          unless (boring? (slot-definition-name slot))
-            collect (slot-definition-name slot))))
+(defgeneric printworthy? (object)
+  (:method ((object t)) t)
+  (:method ((slot standard-effective-slot-definition))
+    (not (member (slot-definition-name slot) '(ranges predecessors)))))
 
 (defmethod stream-draw-graph ((node standard-object) stream)
-  (format stream "    ~a [label=\"~{~a~^\\n~}\"]~%"
-          (id node)
-          (list*
-           (string-downcase (class-name (class-of node)))
-           (mapcar
-            (lambda (slot)
-              (format nil "~a: ~a"
-                      (string-downcase slot)
-                      (remove-if
-                       (lambda (x) (member x '(#\# #\< #\>)))
-                       (format nil "~a" (slot-value node slot)))))
-            (printworthy-slots (class-of node))))))
+  (let ((class (class-of node)))
+    (format stream "    ~a [label=\"" (id node))
+    (format stream "~a\\n" (string-downcase (class-name class)))
+    (loop for slot in (class-slots class)
+          when (printworthy? slot) do
+            (format
+             stream "~a: ~a\\n"
+             (string-downcase (slot-definition-name slot))
+             (remove-if
+              (lambda (x) (member x '(#\# #\< #\>)))
+              (format nil "~a" (slot-value-using-class class node slot)))))
+    (format stream "\"]~%")))
