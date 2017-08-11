@@ -24,7 +24,7 @@
 ;;; _________________________________________________________________
 
 (test (utilities)
-  (is (identical (iota 5) :test #'eql :key #'numberp))
+  (is (identical? '(2.2 2.3 2.4) :key #'floor #'test #'=))
   (is
    (equalp
     #2a((1 2 3 4) (1 2 3 4) (1 2 3 4) (1 2 3 4))

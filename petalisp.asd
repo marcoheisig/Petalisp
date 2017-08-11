@@ -1,5 +1,3 @@
-(in-package :asdf-user)
-
 (defsystem :petalisp
   :description "Elegant code generation for high-performance computing."
   :author "Marco Heisig <marco.heisig@fau.de>"
