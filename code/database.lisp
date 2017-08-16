@@ -44,7 +44,7 @@
   (match args
     ((list (or (and t1 (list 'complex x)) x)
            (or (and t2 (list 'complex y)) y))
-     (unless (or t1 t2) (fail))
+     (unless (or t1 t2) (error ""))
      (let ((base-type (numeric-supertype x y)))
        (case base-type
          ((single-float) '(complex-single-float))

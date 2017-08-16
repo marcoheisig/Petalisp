@@ -8,13 +8,17 @@
 (defpackage :petalisp
   (:use
    :closer-common-lisp
-   :optima
    :alexandria
    :fare-memoization
    :anaphora)
   (:shadowing-import-from :trivial-garbage #:make-hash-table)
   (:shadow #:intersection #:compose)
-  (:import-from :fiveam #:test #:is #:*test-dribble* #:in-suite #:def-suite #:signals)
+  (:import-from :fiveam
+                #:test #:is #:is-true #:is-false
+                #:*test-dribble* #:in-suite #:def-suite #:signals
+                #:for-all #:gen-integer #:gen-float)
+  (:import-from :optima
+                #:match #:ematch #:cmatch)
   (:export
    #:α
    #:β
@@ -22,3 +26,7 @@
    #:τ
    #:σ
    #:subspace))
+
+(in-package :petalisp)
+
+(def-suite petalisp :description "All Petalisp related tests.")

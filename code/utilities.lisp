@@ -3,7 +3,12 @@
 ;;;
 ;;; miscellaneous utilities that would not fit elsewhere
 
-(in-package :petalisp)
+(in-package :petalisp) (in-suite petalisp)
+
+(defmacro λ (&rest symbols-and-body)
+  "(λ x y (+ x y)) -> (lambda (x y) (+ x y))"
+  `(lambda ,(butlast symbols-and-body)
+     ,@(last symbols-and-body)))
 
 (defmacro define-class (name direct-superclasses slots &rest options)
   "Defines a class using DEFCLASS, where all slot-specifiers that consist
@@ -23,9 +28,10 @@ reader of the same name. Additionally, defines a <NAME>? predicate."
 (defun extended-euclid (u v)
   "Given nonnegative integers u and v, return the values u1 and u3 such
   that u*u1 + v*u2 = u3 = gcd(u,v)."
-  (declare (type unsigned-byte u v))
+  (declare (unsigned-byte u v))
   (labels
       ((bignum-euclid (u1 u3 v1 v3)
+         (declare (integer u1 u3 v1 v3))
          (if (zerop v3)
              (values u1 u3)
              (let ((q (floor u3 v3)))
@@ -34,8 +40,7 @@ reader of the same name. Additionally, defines a <NAME>? predicate."
                 (- u1 (* q v1))
                 (- u3 (* q v3))))))
        (fixnum-euclid (u1 u3 v1 v3)
-         (declare (type fixnum u1 v1)
-                  (type (and unsigned-byte fixnum) u3 v3)
+         (declare (fixnum u1 u3 v1 v3)
                   (optimize (speed 3) (safety 0)))
          (if (zerop v3)
              (values u1 u3)
@@ -44,18 +49,51 @@ reader of the same name. Additionally, defines a <NAME>? predicate."
                 v1 v3
                 (- u1 (the fixnum (* q v1)))
                 (- u3 (the fixnum (* q v3))))))))
-    (if (<= (* u v) ; crude estimate of (lcm u v)
-            most-positive-fixnum)
+    (if (<= (* u v) most-positive-fixnum) ; cheap estimate of (lcm u v)
         (fixnum-euclid 1 u 0 v)
         (bignum-euclid 1 u 0 v))))
 
-(defun identical (list &key (test #'eql) (key #'identity))
-  (or (null list)
-      (let ((reference-element (funcall key (car list))))
-        (every
-         (lambda (item)
-           (funcall test reference-element (funcall key item)))
-         (cdr list)))))
+(test extended-euclid
+  (flet ((? (u v)
+           (multiple-value-bind (u1 u3) (extended-euclid u v)
+             (is (= (gcd u v) u3))
+             (if (zerop v)
+                 (is (= u3 (* u u1)))
+                 (is (integerp (/ (- u3 (* u u1)) v)))))))
+    (? 0 0)
+    (? 1 0)
+    (? 0 1)
+    (? (expt 6 40) (expt 9 40))
+    (for-all ((u (gen-integer :min 0))
+              (v (gen-integer :min 0)))
+      (? u v))))
+
+(defun identical (sequence &key (test #'eql) (key #'identity))
+  "Check whether the KEYs of SEQUENCE are identical with respect to TEST."
+  (etypecase sequence
+    (list
+     (or (null sequence)
+         (loop :with reference-element := (funcall key (car sequence))
+               :for element :in (cdr sequence)
+               :always (funcall test
+                                reference-element
+                                (funcall key element)))))
+    (simple-vector #1=
+     (or (= 0 (length sequence))
+         (loop :with reference-element := (funcall key (elt sequence 0))
+               :for i :from 1 :below (length sequence)
+               :always (funcall test
+                                reference-element
+                                (funcall key (elt sequence i))))))
+    ((vector base-char) #1#)
+    ((vector extended-char) #1#)
+    (sequence #1#)))
+
+(test identical
+  (is-true (identical '(1 1 1)))
+  (is-true (identical #(1 1.0 1/1) :test #'=))
+  (is-true (identical '(1 2.0 6/2 4d0) :key #'numberp :test #'eq))
+  (is-true (identical "aaaAaa" :test #'char= :key #'char-upcase)))
 
 (defmacro zapf (place expr)
   (multiple-value-bind
@@ -77,6 +115,15 @@ reader of the same name. Additionally, defines a <NAME>? predicate."
                     #'(lambda (x) (row-major-aref x i))
                     arrays))))
     result))
+
+(test array-map
+  (is (equalp
+       #2a((1 2 3 4) (1 2 3 4) (1 2 3 4) (1 2 3 4))
+       (array-map
+        #'+
+        (make-array '(4 4))
+        #2a((1 1 1 1) (1 1 1 1) (1 1 1 1) (1 1 1 1))
+        #2a((0 1 2 3) (0 1 2 3) (0 1 2 3) (0 1 2 3))))))
 
 (defun vector->list (vector)
   (loop for x across vector collect x))
@@ -106,34 +153,33 @@ reader of the same name. Additionally, defines a <NAME>? predicate."
   (mapcar
    #'asdf:component-pathname
    (remove-if-not
-    (lambda (x)
-      (typep x 'asdf:source-file))
+    (lambda (x) (typep x 'asdf:source-file))
     (asdf:required-components
      (asdf:find-system system)))))
 
 (defun print-system-statistics (system &optional (stream *standard-output*))
-  (loop for pathname in (system-source-file-pathnames system)
-        summing (count #\newline (read-file-into-string pathname))
-          into lines-of-code
-        counting pathname into files
-        finally
+  (loop :for pathname :in (system-source-file-pathnames system)
+        :summing (count #\newline (read-file-into-string pathname))
+          :into lines-of-code
+        :counting pathname :into files
+        :finally
            (format
             stream
-            "The system ~a consists of ~d lines of code in ~d file~:P.~%"
+            "The system ~s consists of ~d lines of code in ~d file~:P.~%"
             (asdf:primary-system-name system) lines-of-code files)))
 
 (defun print-package-statistics (package &optional (stream *standard-output*))
-  (loop for sym being the present-symbols of package
-        counting (find-class sym nil) into classes
-        when (macro-function sym)
-          count it into macros
-        else
-          count (fboundp sym) into functions
-        end
-        finally
+  (loop :for sym :being :the :present-symbols :of package
+        :counting (find-class sym nil) :into classes
+        :when (macro-function sym)
+          :count :it :into macros
+        :else
+          :count (fboundp sym) :into functions
+        :end
+        :finally
            (format
             stream
-            "The package ~a defines ~d functions, ~d macros and ~d classes.~%"
+            "The package ~s defines ~d functions, ~d macros and ~d classes.~%"
             (package-name (find-package package)) functions macros classes)))
 
 (defun print-platform-information (&optional (stream *standard-output*))
