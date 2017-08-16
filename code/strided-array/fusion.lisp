@@ -31,9 +31,9 @@
              (let ((step (ceiling (1+ (- end start)) number-of-elements)))
                (return (range start step end))))))
 
-;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;;  fusion islands - specially annotated index spaces
-;;; _________________________________________________________________
 
 (define-class fusion-island (strided-array-index-space)
   (spaces-to-fuse))
@@ -81,9 +81,9 @@
                      :spaces-to-fuse (spaces-to-fuse space-1)))
      result)))
 
-;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;;  evaluation of fusion nodes
-;;; _________________________________________________________________
 
 (defkernel fusion-kernel (element-type dimension)
   (let ((input-indices
