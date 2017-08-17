@@ -1,7 +1,6 @@
 (defsystem :petalisp
   :description "Elegant code generation for high-performance computing."
   :author "Marco Heisig <marco.heisig@fau.de>"
-  :version "0.1"
   :license "AGPLv3"
 
   :depends-on
@@ -14,8 +13,12 @@
    :trivial-garbage)
 
   :perform
-  (test-op (o s)
-           (uiop:symbol-call '#:petalisp '#:run-test-suite))
+  (test-op (o c)
+           (format t "== Testing Petalisp ==~%")
+           (uiop:symbol-call :petalisp '#:print-platform-information)
+           (uiop:symbol-call :petalisp '#:print-system-statistics :petalisp)
+           (uiop:symbol-call :petalisp '#:print-package-statistics :petalisp)
+           (uiop:symbol-call '#:fiveam '#:run! (find-symbol "PETALISP" "PETALISP")))
 
   :components
   ((:module "code"
@@ -40,6 +43,5 @@
        (:file "reference"    :depends-on ("strided-array"))
        (:file "repetition"   :depends-on ("strided-array"))
        (:file "transform"    :depends-on ("strided-array"))))
-     (:file "api" :depends-on ("strided-array"))
-     (:file "test-suite" :depends-on ("api"))))))
+     (:file "api" :depends-on ("strided-array"))))))
 

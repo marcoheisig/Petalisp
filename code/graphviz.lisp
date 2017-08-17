@@ -1,5 +1,6 @@
 ;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
-;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; export Petalisp data flow problems as graphviz files
 
 (in-package :petalisp)
@@ -30,9 +31,9 @@
              (format stream "    ~a -> ~a;~%"
                      (id predecessor) (id node)))))
 
-;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; methods to draw individual nodes
-;;; _________________________________________________________________
 
 (defgeneric printworthy? (object)
   (:method ((object t)) t)

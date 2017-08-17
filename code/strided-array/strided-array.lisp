@@ -31,9 +31,9 @@
              'strided-array-index-space
              :ranges (ranges object)))))
 
-;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;;  convert lisp arrays to strided array constants
-;;; _________________________________________________________________
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;;  convert lisp arrays to strided arrays
 
 (define-class strided-array-constant (strided-array constant)
   (data
@@ -69,9 +69,9 @@
      :element-type (element-type array)
      :ranges ranges)))
 
-;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;;  working with ranges
-;;; _________________________________________________________________
 
 (defstruct (range (:constructor %make-range (start step end)))
   (start 0 :type integer :read-only t)

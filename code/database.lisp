@@ -1,12 +1,13 @@
 ;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
-;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
-;;; knowledge on Lisp functions for type inference and optimization
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; CL function knowledge for type inference and optimization
 
 (in-package :petalisp)
 
-;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;;  function names
-;;; _________________________________________________________________
 
 (defparameter *function-names* (make-hash-table :test #'eq))
 
@@ -18,9 +19,9 @@
 (defmethod name ((object function))
   (gethash object *function-names* 'unknown-function))
 
-;;; ‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾‾
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;;  type inference
-;;; _________________________________________________________________
 
 (defmethod result-type ((f t) &rest types)
   (declare (ignore types))
@@ -43,7 +44,7 @@
   (match args
     ((list (or (and t1 (list 'complex x)) x)
            (or (and t2 (list 'complex y)) y))
-     (unless (or t1 t2) (fail))
+     (unless (or t1 t2) (error ""))
      (let ((base-type (numeric-supertype x y)))
        (case base-type
          ((single-float) '(complex-single-float))
