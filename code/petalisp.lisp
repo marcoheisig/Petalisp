@@ -58,15 +58,42 @@ arguments."))
 
 (defgeneric invert (transformation))
 
-(defgeneric transform (object transformation))
-
 (defgeneric input-dimension (transformation))
 
 (defgeneric output-dimension (transformation))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;;  the special case of identity transformations
+
+(define-class identity-transformation (transformation) (dimension))
+
+(defmethod input-dimension ((tr identity-transformation)) (dimension tr))
+
+(defmethod output-dimension ((tr identity-transformation)) (dimension tr))
+
+(defmethod compose ((g transformation) (f identity-transformation)) g)
+
+(defmethod compose ((g identity-transformation) (f transformation)) f)
+
+(defmethod invert ((tr identity-transformation)) tr)
+
+(defmethod equal? ((a identity-transformation) (b identity-transformation))
+  (= (dimension a) (dimension b)))
+
+(defmethod generic-unary-funcall ((op identity-transformation) (arg data-structure)) arg)
+
+(defmethod print-object ((object identity-transformation) stream)
+  (let ((symbols (list-of-symbols (input-dimension object))))
+    (prin1 `(τ ,symbols ,@symbols))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;;  miscellaneous Petalisp functions
+
+(defgeneric generic-unary-funcall (operator argument))
+
+(defgeneric generic-binary-funcall (operator argument-1 argument-2))
 
 (defgeneric name (object))
 
@@ -74,7 +101,9 @@ arguments."))
 
 (defgeneric size (object))
 
-(defgeneric equal? (object-1 object-2))
+(defgeneric equal? (object-1 object-2)
+  (:documentation "Two objects are EQUAL? if their use in Petalisp will
+  always result in identical behavior."))
 
 (defgeneric result-type (function &rest arguments))
 

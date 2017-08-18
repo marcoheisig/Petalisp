@@ -3,7 +3,7 @@
 (in-package :petalisp)
 
 (defmethod transform ((object strided-array-index-space)
-                      (transformation affine-transformation))
+                      (transformation index-space-transformation))
   (let ((result (make-array (output-dimension transformation)))
         (ranges (ranges object)))
     (loop for input-constraint across (input-constraints transformation)

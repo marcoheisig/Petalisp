@@ -7,7 +7,117 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;;  affine transformations
+;;; special linear algebra subroutines for index space transformations
+
+(defstruct (super-sparse-matrix
+            (:conc-name ssm-)
+            (:constructor %super-sparse-matrix (m n column-indices values))
+            (:copier nil)
+            (:predicate super-sparse-matrix?))
+  "A `super-sparse-matrix' is a matrix with at most one nonzero entry per
+row and column. Such matrices arise as the combination of permutation
+matrices, diagonal matrices and selection matrices."
+  (m nil :type array-length :read-only t)
+  (n nil :type array-length :read-only t)
+  (column-indices nil :type (simple-array array-index (*)) :read-only t)
+  (values nil :type (simple-array rational (*))))
+
+(defun super-sparse-matrix (m n column-indices values)
+  (assert (= m (length column-indices) (length values)))
+  (assert (every (λ column-index (< -1 column-index n)) column-indices))
+  (%super-sparse-matrix m n column-indices values))
+
+(defun ssm-vector-dot-product (ssm vec)
+  "For a given m times n super sparse matrix SSM and a n-vector VEC, this
+function returns the m-vector that is the dot product of SSM and VEC."
+  (declare (type super-sparse-matrix ssm)
+           (type (simple-array rational (*)) vec))
+  (with-unsafe-optimizations
+    (flet ((column-index (row-index)
+             (aref (ssm-column-indices ssm) row-index))
+           (value (row-index)
+             (aref (ssm-values ssm) row-index)))
+      (let* ((rows (ssm-m ssm))
+             (result (make-array rows :element-type 'rational)))
+        (dotimes (row-index rows)
+          (setf (aref result row-index)
+                (* (value row-index)
+                   (aref vec (column-index row-index)))))))))
+
+(defun ssm-ssm-dot-product (ssm-1 ssm-2)
+  (declare (type super-sparse-matrix ssm-1 ssm-2))
+  (with-unsafe-optimizations
+    (let* ((m (ssm-m ssm-1))
+           (n (ssm-n ssm-2))
+           (column-indices (make-array m :element-type 'array-index
+                                         :initial-element 0))
+           (values (make-array m :element-type 'rational
+                                 :initial-element 0)))
+      (dotimes (i m)
+        (let* ((k (aref (ssm-column-indices ssm-1) i))
+               (j (aref (ssm-column-indices ssm-2) k)))
+          (setf (aref column-indices i) j)
+          (setf (aref values i)
+                (* (aref (ssm-values ssm-1) i)
+                   (aref (ssm-values ssm-2) k)))))
+      (super-sparse-matrix m n column-indices values))))
+
+(defun ssm-sexps-dot-product (ssm sexps)
+  (map 'list (λ col val (cond ((eql val 0) 0)
+                              ((eql val 1) (elt sexps col))
+                              (t `(* ,(elt sexps col) ,val))))
+       (ssm-column-indices ssm)
+       (ssm-values ssm)))
+
+;;; Note that a super sparse matrix is not generally invertible. The
+;;; inverse as returned from this function assumes A is only applied to
+;;; vectors which are zero whenever the corresponding column is zero.
+(defun ssm-inverse (ssm)
+  (declare (type super-sparse-matrix ssm))
+  (with-unsafe-optimizations
+    (let* ((original-column-indices (ssm-column-indices ssm))
+           (original-values (ssm-values ssm))
+           (m (ssm-n ssm))
+           (n (ssm-m ssm))
+           (column-indices (make-array m :element-type 'array-index
+                                         :initial-element 0))
+           (values (make-array m :element-type 'rational
+                                 :initial-element 0)))
+      (dotimes (row-index m)
+        (let ((column-index (position row-index original-column-indices)))
+          (when column-index
+            (setf (aref column-indices row-index) column-index)
+            (let ((value (aref original-values column-index)))
+              (setf (aref values row-index)
+                    (if (zerop value) 0 (/ value)))))))
+      (super-sparse-matrix m n column-indices values))))
+
+(defun ssm-identity? (ssm)
+  (let ((m (ssm-m ssm)) (n (ssm-n ssm)))
+    (and (= m n)
+         (loop :for row-index :below m
+               :for value :across (ssm-values ssm)
+               :for column-index :across (ssm-column-indices ssm)
+               :always (and (= column-index row-index)
+                            (= value 1))))))
+
+(defmethod input-dimension ((instance super-sparse-matrix))
+  (ssm-n instance))
+
+(defmethod output-dimension ((instance super-sparse-matrix))
+  (ssm-m instance))
+
+(defmethod invert ((ssm super-sparse-matrix))
+  (ssm-inverse ssm))
+
+(defmethod compose ((g super-sparse-matrix) (f super-sparse-matrix))
+  (ssm-ssm-dot-product g f))
+
+(defmethod equal? ((a super-sparse-matrix) (b super-sparse-matrix)) (equalp a b))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;;  index space transformations
 ;;;
 ;;; (1) translating the indices by a constant
 ;;; (2) multiplying the indices by a constant
@@ -15,242 +125,180 @@
 ;;; (4) introducing dimensions with an unary range
 ;;; (5) removing dimensions with an unary range
 ;;;
-;;; The class AFFINE-TRANSFORMATION contains all objects that are formed by
-;;; functional composition of these five elementary operations. A beautiful
-;;; property is that each of these transformations is an automorhism. In
-;;; particular this means they can always be inverted with INVERT and the
-;;; inverse is again such a transformation.
+;;; The class `index-space-transformation' contains all objects that are
+;;; formed by functional composition of these five elementary operations.
+;;;
+;;; In linear algebra lingo, we have
+;;;
+;;; (1) adding a vector
+;;; (2) multiplying with a diagonal matrix
+;;; (3) multiplying with a permutation matrix
+;;; (4) multiplying with an identity matrix, but with some zero rows inserted and adding a vector
+;;; (5) multiplying with an identity matrix, but with some rows removed
+;;;
+;;; One observes, that every index space transformation on an index vector
+;;; x can be represented as Ax + b, where b is the vector corresponding to
+;;; (1) and (4) and A is the matrix corresponding to (2), (3), (4) and
+;;; (5). The matrix A has a very particular structure - It has at most one
+;;; nonzero entry per row and column. We call such a matrix
+;;; `super-sparse-matrix'.
 
-(define-class affine-transformation (transformation)
-  (permutation affine-coefficients input-constraints))
 
-(defmethod input-dimension ((instance affine-transformation))
+(define-class index-space-transformation (transformation)
+  ((input-constraints :type (simple-array (or null integer) (*)))
+   (linear-operator :type super-sparse-matrix)
+   (translation-vector :type (simple-array integer (*)))))
+
+(defmethod input-dimension ((instance index-space-transformation))
   (length (input-constraints instance)))
 
-(defmethod output-dimension ((instance affine-transformation))
-  (length (permutation instance)))
+(defmethod output-dimension ((instance index-space-transformation))
+  (length (translation-vector instance)))
 
-(defmethod initialize-instance :before ((instance affine-transformation)
-                                        &key input-constraints permutation
-                                          affine-coefficients)
-  (let ((input-dimension (array-dimension input-constraints 0))
-        (output-dimension (array-dimension permutation 0)))
-    (assert (= output-dimension (array-dimension affine-coefficients 0)))
-    (let ((constant-outargs
-            (loop for p across permutation and i from 0
-                  with c = affine-coefficients
-                  count (and (not p) (= (aref c i 0) 0))))
-          (dropped-inargs
-            (count-if #'integerp input-constraints)))
-      (assert (= (- input-dimension dropped-inargs)
-                 (- output-dimension constant-outargs))))))
+(defmethod initialize-instance :before ((instance index-space-transformation)
+                                        &key
+                                          input-constraints
+                                          linear-operator
+                                          translation-vector)
+  (assert (and (= (input-dimension linear-operator)
+                  (length input-constraints))
+               (= (output-dimension linear-operator)
+                  (length translation-vector)))
+          (input-constraints linear-operator translation-vector)
+          "Incompatibe shapes:~%  ~S~%  ~S~%  ~S~%"
+          input-constraints linear-operator translation-vector))
 
 (defmethod classify-transformation ((f function)
                                     (input-constraints vector)
                                     (output-dimension integer))
-  (multiple-value-bind (zeroes ones twos)
-      (loop for input-constraint across input-constraints
-            collect (or input-constraint 0) into zeroes
-            collect (or input-constraint 1) into ones
-            collect (or input-constraint 2) into twos
-            finally (return (values zeroes ones twos)))
-    (let* ((permuted-translation
-             (multiple-value-list
-              (apply f zeroes)))
-           (args zeroes) ; shamelessly reusing memory here
-           (permuted-scaling-1
-             (mapcar #'-
-                     (multiple-value-list (apply f ones))
-                     permuted-translation))
-           (permuted-scaling-2
-             (mapcar (lambda (a b) (/ (- a b) 2))
-                     (multiple-value-list (apply f twos))
-                     permuted-translation))
-           (permutation (make-array output-dimension :initial-element nil))
-           (affine-coefficients (make-array `(,output-dimension 2))))
-      (unless (every #'= permuted-scaling-1 permuted-scaling-2)
-        (error "The transformation is not linear."))
-      ;; determine the permutation
-      (flet ((outpos (inpos) ; the output corresponding to the nth input
-               (setf (nth inpos args) 1)
-               (let ((occurences
-                       (loop for i below output-dimension
-                             and a in (multiple-value-list (apply f args))
-                             and b in permuted-translation
-                             when (/= a b) collect i)))
-                 (setf (nth inpos args) 0)
-                 (cond
-                   ((null occurences) nil)
-                   ((= 1 (length occurences)) (car occurences))
-                   (t (error "Input ~d affects more than one output." inpos))))))
-        (loop for input-constraint across input-constraints
-              and inpos from 0 do
-          (let ((outpos (if input-constraint nil (outpos inpos))))
-            (when outpos
-              (when (aref permutation outpos)
-                (error "Output argument ~d depends on more than one variable." outpos))
-              (setf (aref permutation outpos) inpos)))))
-      ;; determine the affine coefficients
-      (loop for outpos below output-dimension do
-        (setf (aref affine-coefficients outpos 0)
-              (nth outpos permuted-scaling-1))
-        (setf (aref affine-coefficients outpos 1)
-              (nth outpos permuted-translation)))
+  (let* ((input-dimension (length input-constraints))
+         (args (map 'list
+                    (λ constraint (or constraint 0))
+                    input-constraints))
+         ;; F is applied to many slightly different arguments, so we build a
+         ;; vector pointing to the individual conses of ARGS for fast random
+         ;; access.
+         (arg-conses (make-array input-dimension)))
+    (loop :for arg-cons :on args :and i :from 0 :do
+      (setf (aref arg-conses i) arg-cons))
+    ;; Initially x is the zero vector (except for input constraints, which
+    ;; are ignored by A), so f(x) = Ax + b = b
+    (let ((translation-vector (multiple-value-call #'vector (apply f args)))
+          ;; now determine the super sparse matrix A
+          (column-indices (make-array output-dimension
+                                      :element-type 'array-index
+                                      :initial-element 0))
+          (values (make-array output-dimension
+                              :element-type 'rational
+                              :initial-element 0)))
+      ;; set one input at a time from zero to one (ignoring those with
+      ;; constraints) and check how it changes the result
+      (loop :for input-constraint :across input-constraints
+            :for arg-cons :across arg-conses
+            :for column-index :from 0 :do
+              (unless input-constraint
+                (setf (car arg-cons) 1)
+                ;; find the row of A corresponding to the mutated input
+                (let ((results (multiple-value-call #'vector (apply f args))))
+                  (loop :for result :across results
+                        :for offset :across translation-vector
+                        :for row-index :from 0 :do
+                          (when (/= result offset)
+                            (setf (aref column-indices row-index) column-index)
+                            (setf (aref values row-index) (- result offset)))))
+                (setf (car arg-cons) 0)))
+      (let ((linear-operator
+              (super-sparse-matrix
+               output-dimension input-dimension column-indices values)))
+        ;; optional but oh so helpful: check whether the derived mapping
+        ;; satisfies other inputs, i.e. the mapping can indeed be represented
+        ;; as Ax + b
+        (loop :for input-constraint :across input-constraints
+              :for arg-cons :across arg-conses :do
+                (unless input-constraint
+                  (setf (car arg-cons) 3)))
+        (let* ((result-1 (multiple-value-call #'vector args))
+               (Ax (ssm-vector-dot-product
+                    linear-operator
+                    (make-array input-dimension
+                                :element-type 'rational
+                                :initial-contents args)))
+               (result-2 (map 'vector #'- Ax translation-vector)))
+          (assert (every #'= result-1 result-2) ()
+                  "Not a valid transformation:~%  ~S"
+                  f))
+        (make-instance
+         'index-space-transformation
+         :input-constraints input-constraints
+         :linear-operator linear-operator
+         :translation-vector translation-vector)))))
+
+(defmethod equal? ((t1 index-space-transformation)
+                   (t2 index-space-transformation))
+  (and (equalp (input-constraints t1)
+               (input-constraints t2))
+       (equalp (translation-vector t1)
+               (translation-vector t2))
+       (equal? (linear-operator t1)
+               (linear-operator t2))))
+
+(defmethod compose ((g index-space-transformation) (f index-space-transformation))
+  ;; A2(A1 x + b1) + b2 = A2 A1 x + A2 b1 + b2
+  (let ((A1 (linear-operator f))
+        (A2 (linear-operator g))
+        (b1 (translation-vector f))
+        (b2 (translation-vector g)))
+    (let ((input-constraints (input-constraints f))
+          (linear-operator (compose A2 A1))
+          (translation-vector (map 'vector #'+ (ssm-vector-dot-product A2 b1) b2)))
       (make-instance
-       'affine-transformation
-       :affine-coefficients affine-coefficients
-       :permutation permutation
-       :input-constraints input-constraints))))
+       'index-space-transformation
+       :input-constraints input-constraints
+       :linear-operator linear-operator
+       :translation-vector translation-vector))))
 
-(defmethod equal? ((t1 affine-transformation)
-                   (t2 affine-transformation))
-  (and (= (input-dimension t1)
-          (input-dimension t2))
-       (equalp (permutation t1)
-               (permutation t2))
-       (equalp (affine-coefficients t1)
-               (affine-coefficients t2))
-       (equalp (input-constraints t1)
-               (input-constraints t2))))
+(defmethod invert ((object index-space-transformation))
+  ;;    f(x) = (Ax + b)
+  ;; f^-1(x) = A^-1(x - b) = A^-1 x - A^-1 b
+  (let ((A (linear-operator object))
+        (b (translation-vector object))
+        (input-constraints (make-array (output-dimension object)
+                                       :initial-element nil
+                                       :element-type '(or null integer))))
+    ;; the new input constraints are the values of b whenever the
+    ;; corresponding row of A is zero
+    (loop :for value :across (ssm-values A)
+          :for translation :across b
+          :for row-index :from 0 :do
+            (when (zerop value)
+              (setf (aref input-constraints row-index) translation)))
+    (let* ((linear-operator (invert A))
+           (translation-vector (ssm-vector-dot-product linear-operator b)))
+      (make-instance
+       'index-space-transformation
+       :input-constraints input-constraints
+       :linear-operator linear-operator
+       :translation-vector translation-vector))))
 
-(defmethod compose ((g affine-transformation) (f affine-transformation))
-  (let ((compose-input-constraints
-          (input-constraints f))
-        (compose-permutation
-          (make-array (output-dimension g)))
-        (compose-affine-coefficients
-          (make-array `(,(output-dimension g) 2))))
-    (loop for f-pos across (permutation g)
-          and g-pos from 0
-          with g-coeffs = (affine-coefficients g)
-          and  f-coeffs = (affine-coefficients f)
-          when (not f-pos) do
-            (setf (aref compose-permutation g-pos) nil)
-            (setf (aref compose-affine-coefficients g-pos 0)
-                  (aref g-coeffs g-pos 0))
-            (setf (aref compose-affine-coefficients g-pos 1)
-                  (aref g-coeffs g-pos 1))
-          else do
-            (setf (aref compose-permutation g-pos)
-                  (aref (permutation f) f-pos))
-            (setf (aref compose-affine-coefficients g-pos 0)
-                  (* (aref f-coeffs f-pos 0)
-                     (aref g-coeffs g-pos 0)))
-            (setf (aref compose-affine-coefficients g-pos 1)
-                  (+ (* (aref g-coeffs g-pos 0)
-                        (aref f-coeffs f-pos 1))
-                     (aref g-coeffs g-pos 1))))
-    (make-instance
-     'affine-transformation
-     :input-constraints compose-input-constraints
-     :permutation compose-permutation
-     :affine-coefficients compose-affine-coefficients)))
+(defmethod print-object ((object index-space-transformation) stream)
+  (let ((inputs (loop :for input-constraint :across (input-constraints object)
+                      :for sym :in (list-of-symbols (input-dimension object))
+                      :collect (or input-constraint sym))))
+    (prin1 `(τ ,inputs ,@(map 'list (λ Ax b (cond ((eql Ax 0) b)
+                                                  ((numberp Ax) (+ Ax b))
+                                                  ((eql b 0) Ax)
+                                                  (t `(+ ,Ax ,b))))
+                              (ssm-sexps-dot-product (linear-operator object) inputs)
+                              (translation-vector object)))
+           stream)))
 
-(defmethod invert ((object affine-transformation))
-  (let ((inverse-input-constraints
-          (make-array (output-dimension object)))
-        (inverse-permutation
-          (make-array (input-dimension object)))
-        (inverse-affine-coefficients
-          (make-array `(,(input-dimension object) 2))))
-    ;; determine the input constraints
-    (loop for p across (permutation object)
-          and i from 0
-          with c = (affine-coefficients object) do
-      (setf (aref inverse-input-constraints i)
-            (unless p (aref c i 1))))
-    ;; determine the permutation
-    (loop for input-constraint across (input-constraints object)
-          and i from 0
-          with p = (permutation object) do
-            (cond (input-constraint
-                   (setf (aref inverse-permutation i) nil)
-                   (setf (aref inverse-affine-coefficients i 0) 0)
-                   (setf (aref inverse-affine-coefficients i 1) input-constraint))
-                  (t
-                   (setf (aref inverse-permutation i) (position i p)))))
-      ;; determine the affine coefficients
-    (loop for p across inverse-permutation
-          and i from 0
-          with c = (affine-coefficients object)
-          when p do
-            (let ((a (aref c p 0))
-                  (b (aref c p 1)))
-              (setf (aref inverse-affine-coefficients i 0) (/ a))
-              (setf (aref inverse-affine-coefficients i 1) (/ (- b) a))))
-    (make-instance
-     'affine-transformation
-     :input-constraints inverse-input-constraints
-     :affine-coefficients inverse-affine-coefficients
-     :permutation inverse-permutation)))
 
-(defmethod print-object ((object affine-transformation) stream)
-  (let* ((abc '(a b c d e f g h i j k l m n o p q r s t. u v w x y z))
-         (variables
-           (if (<= (input-dimension object) (length abc))
-               (subseq abc 0 (input-dimension object))
-               (loop for inpos below (input-dimension object)
-                     collect (intern (format nil "V~d" inpos)))))
-         (input-forms
-           (loop for input-constraint across (input-constraints object)
-                 and variable in variables
-                 collect (or input-constraint variable)))
-         (output-forms
-           (loop for outpos below (output-dimension object)
-                 with coefficients = (affine-coefficients object)
-                 collect
-                 (let* ((p (aref (permutation object) outpos))
-                        (a (aref coefficients outpos 0))
-                        (b (aref coefficients outpos 1))
-                        (var (and p (nth p variables)))
-                        (mul-form (cond ((zerop a) 0)
-                                        ((= a 1) var)
-                                        (t `(* ,a ,var)))))
-                   (cond ((zerop b) mul-form)
-                         ((eql mul-form 0) b)
-                         ((plusp b) `(+ ,mul-form ,b))
-                         ((minusp b) `(- ,mul-form ,(abs b))))))))
-    (format stream "(τ ~a~{ ~a~})" input-forms output-forms)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;;  the special case of identity transformations
-
-(define-class identity-transformation (affine-transformation) ())
-
-(defmethod invert ((tr identity-transformation)) tr)
-
-(defmethod compose ((g transformation) (f identity-transformation)) g)
-
-(defmethod compose ((g identity-transformation) (f transformation)) f)
-
-(defmethod equal? ((a identity-transformation) (b identity-transformation))
-  (= (input-dimension a) (input-dimension b)))
-
-(defmethod transform ((object data-structure) (f identity-transformation))
-  object)
-
-(define-memo-function identity-transformation (dimension)
-  (make-instance
-   'identity-transformation
-   :input-constraints (make-array dimension :initial-element nil)
-   :permutation (apply #'vector (iota dimension))
-   :affine-coefficients
-   (make-array
-    `(,dimension 2)
-    :initial-contents
-    (loop for i below dimension collect '(1 0)))))
-
-(defmethod initialize-instance :after ((instance affine-transformation)
+(defmethod initialize-instance :after ((instance index-space-transformation)
                                        &key &allow-other-keys)
-  (and
-   (not (identity-transformation? instance))
-   (= (input-dimension instance) (output-dimension instance))
-   (every #'null (input-constraints instance))
-   (loop for p across (permutation instance) and i from 0
-         with c = (affine-coefficients instance)
-         always
-         (and (= (aref c i 0) 1)
-              (= (aref c i 1) 0)
-              (= p i)))
-   (change-class instance 'identity-transformation)))
+  (when (and (= (input-dimension instance) (output-dimension instance))
+             (every #'null (input-constraints instance))
+             (every #'zerop (translation-vector instance))
+             (ssm-identity? (linear-operator instance)))
+    (change-class
+     instance 'identity-transformation
+     :dimension (input-dimension instance))))

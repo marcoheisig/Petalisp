@@ -15,6 +15,24 @@ Examples:
   `(lambda ,(butlast symbols-and-expr)
      ,@(last symbols-and-expr)))
 
+(defmacro with-unsafe-optimizations (&body body)
+  "Optimize the heck out of BODY. Use with caution!
+
+To preserve sanity, compiler efficiency hints are disabled by default. Use
+WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
+  `(locally
+       (declare
+        (optimize (speed 3) (space 0) (debug 0) (safety 0) (compilation-speed 0))
+        #+sbcl(sb-ext:muffle-conditions sb-ext:compiler-note))
+     ,@body))
+
+(defmacro with-unsafe-optimizations* (&body body)
+  "Optimize the heck out of BODY. Use with caution!"
+  `(locally
+       (declare
+        (optimize (speed 3) (space 0) (debug 0) (safety 0) (compilation-speed 0)))
+     ,@body))
+
 (defmacro define-class (class-name superclass-names slot-specifiers &rest class-options)
   "Defines a class using DEFCLASS, but defaulting to a :READER of
 SLOT-NAME and. Additionally, defines a <NAME>? predicate."
@@ -137,7 +155,7 @@ SLOT-NAME and. Additionally, defines a <NAME>? predicate."
         #2a((0 1 2 3) (0 1 2 3) (0 1 2 3) (0 1 2 3))))))
 
 (defun vector->list (vector)
-  (loop for x across vector collect x))
+  (loop :for x :across vector :collect x))
 
 (defun forever (value)
   "Make a one element circular list with a CAR of VALUE."
@@ -155,6 +173,13 @@ SLOT-NAME and. Additionally, defines a <NAME>? predicate."
              #',fname)
        (setf (documentation ',alias 'function)
              (documentation #',fname 'function)))))
+
+(defun list-of-symbols (length)
+  (loop :for i :below length
+        :with abc := #(a b c d e f g h i j k l m n o p q r s t. u v w x y z)
+        :collect (if (< i (length abc))
+                     (aref abc i)
+                     (symbolicate "VAR" i))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
