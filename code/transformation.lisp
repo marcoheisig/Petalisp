@@ -3,117 +3,7 @@
 ;;;
 ;;; the valid index space transformations in Petalisp
 
-(in-package :petalisp)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; special linear algebra subroutines for index space transformations
-
-(defstruct (super-sparse-matrix
-            (:conc-name ssm-)
-            (:constructor %super-sparse-matrix (m n column-indices values))
-            (:copier nil)
-            (:predicate super-sparse-matrix?))
-  "A `super-sparse-matrix' is a matrix with at most one nonzero entry per
-row and column. Such matrices arise as the combination of permutation
-matrices, diagonal matrices and selection matrices."
-  (m nil :type array-length :read-only t)
-  (n nil :type array-length :read-only t)
-  (column-indices nil :type (simple-array array-index (*)) :read-only t)
-  (values nil :type (simple-array rational (*))))
-
-(defun super-sparse-matrix (m n column-indices values)
-  (assert (= m (length column-indices) (length values)))
-  (assert (every (λ column-index (< -1 column-index n)) column-indices))
-  (%super-sparse-matrix m n column-indices values))
-
-(defun ssm-vector-dot-product (ssm vec)
-  "For a given m times n super sparse matrix SSM and a n-vector VEC, this
-function returns the m-vector that is the dot product of SSM and VEC."
-  (declare (type super-sparse-matrix ssm)
-           (type (simple-array rational (*)) vec))
-  (with-unsafe-optimizations
-    (flet ((column-index (row-index)
-             (aref (ssm-column-indices ssm) row-index))
-           (value (row-index)
-             (aref (ssm-values ssm) row-index)))
-      (let* ((rows (ssm-m ssm))
-             (result (make-array rows :element-type 'rational)))
-        (dotimes (row-index rows)
-          (setf (aref result row-index)
-                (* (value row-index)
-                   (aref vec (column-index row-index)))))))))
-
-(defun ssm-ssm-dot-product (ssm-1 ssm-2)
-  (declare (type super-sparse-matrix ssm-1 ssm-2))
-  (with-unsafe-optimizations
-    (let* ((m (ssm-m ssm-1))
-           (n (ssm-n ssm-2))
-           (column-indices (make-array m :element-type 'array-index
-                                         :initial-element 0))
-           (values (make-array m :element-type 'rational
-                                 :initial-element 0)))
-      (dotimes (i m)
-        (let* ((k (aref (ssm-column-indices ssm-1) i))
-               (j (aref (ssm-column-indices ssm-2) k)))
-          (setf (aref column-indices i) j)
-          (setf (aref values i)
-                (* (aref (ssm-values ssm-1) i)
-                   (aref (ssm-values ssm-2) k)))))
-      (super-sparse-matrix m n column-indices values))))
-
-(defun ssm-sexps-dot-product (ssm sexps)
-  (map 'list (λ col val (cond ((eql val 0) 0)
-                              ((eql val 1) (elt sexps col))
-                              (t `(* ,(elt sexps col) ,val))))
-       (ssm-column-indices ssm)
-       (ssm-values ssm)))
-
-;;; Note that a super sparse matrix is not generally invertible. The
-;;; inverse as returned from this function assumes A is only applied to
-;;; vectors which are zero whenever the corresponding column is zero.
-(defun ssm-inverse (ssm)
-  (declare (type super-sparse-matrix ssm))
-  (with-unsafe-optimizations
-    (let* ((original-column-indices (ssm-column-indices ssm))
-           (original-values (ssm-values ssm))
-           (m (ssm-n ssm))
-           (n (ssm-m ssm))
-           (column-indices (make-array m :element-type 'array-index
-                                         :initial-element 0))
-           (values (make-array m :element-type 'rational
-                                 :initial-element 0)))
-      (dotimes (row-index m)
-        (let ((column-index (position row-index original-column-indices)))
-          (when column-index
-            (setf (aref column-indices row-index) column-index)
-            (let ((value (aref original-values column-index)))
-              (setf (aref values row-index)
-                    (if (zerop value) 0 (/ value)))))))
-      (super-sparse-matrix m n column-indices values))))
-
-(defun ssm-identity? (ssm)
-  (let ((m (ssm-m ssm)) (n (ssm-n ssm)))
-    (and (= m n)
-         (loop :for row-index :below m
-               :for value :across (ssm-values ssm)
-               :for column-index :across (ssm-column-indices ssm)
-               :always (and (= column-index row-index)
-                            (= value 1))))))
-
-(defmethod input-dimension ((instance super-sparse-matrix))
-  (ssm-n instance))
-
-(defmethod output-dimension ((instance super-sparse-matrix))
-  (ssm-m instance))
-
-(defmethod invert ((ssm super-sparse-matrix))
-  (ssm-inverse ssm))
-
-(defmethod compose ((g super-sparse-matrix) (f super-sparse-matrix))
-  (ssm-ssm-dot-product g f))
-
-(defmethod equal? ((a super-sparse-matrix) (b super-sparse-matrix)) (equalp a b))
+(in-package :petalisp) (in-suite petalisp)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -141,12 +31,12 @@ function returns the m-vector that is the dot product of SSM and VEC."
 ;;; (1) and (4) and A is the matrix corresponding to (2), (3), (4) and
 ;;; (5). The matrix A has a very particular structure - It has at most one
 ;;; nonzero entry per row and column. We call such a matrix
-;;; `super-sparse-matrix'.
+;;; `scaled-permutation-matrix'.
 
 
 (define-class index-space-transformation (transformation)
   ((input-constraints :type (simple-array (or null integer) (*)))
-   (linear-operator :type super-sparse-matrix)
+   (linear-operator :type scaled-permutation-matrix)
    (translation-vector :type (simple-array integer (*)))))
 
 (defmethod input-dimension ((instance index-space-transformation))
@@ -167,6 +57,65 @@ function returns the m-vector that is the dot product of SSM and VEC."
           (input-constraints linear-operator translation-vector)
           "Incompatibe shapes:~%  ~S~%  ~S~%  ~S~%"
           input-constraints linear-operator translation-vector))
+
+(defmethod equal? ((t1 index-space-transformation)
+                   (t2 index-space-transformation))
+  (and (equalp (input-constraints t1)
+               (input-constraints t2))
+       (equalp (translation-vector t1)
+               (translation-vector t2))
+       (equal? (linear-operator t1)
+               (linear-operator t2))))
+
+(defmethod compose ((g index-space-transformation) (f index-space-transformation))
+  ;; A2(A1 x + b1) + b2 = A2 A1 x + A2 b1 + b2
+  (let ((A1 (linear-operator f))
+        (A2 (linear-operator g))
+        (b1 (translation-vector f))
+        (b2 (translation-vector g)))
+    (let ((input-constraints (input-constraints f))
+          (linear-operator (compose A2 A1))
+          (translation-vector (map 'vector #'+ (spm-vector-product A2 b1) b2)))
+      (make-instance
+       'index-space-transformation
+       :input-constraints input-constraints
+       :linear-operator linear-operator
+       :translation-vector translation-vector))))
+
+(defmethod invert ((object index-space-transformation))
+  ;;    f(x) = (Ax + b)
+  ;; f^-1(x) = A^-1(x - b) = A^-1 x - A^-1 b
+  (let ((A (linear-operator object))
+        (b (translation-vector object))
+        (input-constraints (make-array (output-dimension object)
+                                       :initial-element nil
+                                       :element-type '(or null integer))))
+    ;; the new input constraints are the values of b whenever the
+    ;; corresponding row of A is zero
+    (loop :for value :across (spm-values A)
+          :for translation :across b
+          :for row-index :from 0 :do
+            (when (zerop value)
+              (setf (aref input-constraints row-index) translation)))
+    (let* ((linear-operator (invert A))
+           (translation-vector (spm-vector-product linear-operator b)))
+      (make-instance
+       'index-space-transformation
+       :input-constraints input-constraints
+       :linear-operator linear-operator
+       :translation-vector translation-vector))))
+
+(defmethod print-object ((object index-space-transformation) stream)
+  (let ((inputs (loop :for input-constraint :across (input-constraints object)
+                      :for sym :in (list-of-symbols (input-dimension object))
+                      :collect (or input-constraint sym))))
+    (prin1 `(τ ,inputs ,@(map 'list (λ Ax b (cond ((eql Ax 0) b)
+                                                  ((numberp Ax) (+ Ax b))
+                                                  ((eql b 0) Ax)
+                                                  (t `(+ ,Ax ,b))))
+                              (spm-sexps-product (linear-operator object) inputs)
+                              (translation-vector object)))
+           stream)))
 
 (defmethod classify-transformation ((f function)
                                     (input-constraints vector)
@@ -208,7 +157,7 @@ function returns the m-vector that is the dot product of SSM and VEC."
                             (setf (aref values row-index) (- result offset)))))
                 (setf (car arg-cons) 0)))
       (let ((linear-operator
-              (super-sparse-matrix
+              (scaled-permutation-matrix
                output-dimension input-dimension column-indices values)))
         ;; optional but oh so helpful: check whether the derived mapping
         ;; satisfies other inputs, i.e. the mapping can indeed be represented
@@ -218,7 +167,7 @@ function returns the m-vector that is the dot product of SSM and VEC."
                 (unless input-constraint
                   (setf (car arg-cons) 3)))
         (let* ((result-1 (multiple-value-call #'vector args))
-               (Ax (ssm-vector-dot-product
+               (Ax (spm-vector-product
                     linear-operator
                     (make-array input-dimension
                                 :element-type 'rational
@@ -227,78 +176,15 @@ function returns the m-vector that is the dot product of SSM and VEC."
           (assert (every #'= result-1 result-2) ()
                   "Not a valid transformation:~%  ~S"
                   f))
-        (make-instance
-         'index-space-transformation
-         :input-constraints input-constraints
-         :linear-operator linear-operator
-         :translation-vector translation-vector)))))
-
-(defmethod equal? ((t1 index-space-transformation)
-                   (t2 index-space-transformation))
-  (and (equalp (input-constraints t1)
-               (input-constraints t2))
-       (equalp (translation-vector t1)
-               (translation-vector t2))
-       (equal? (linear-operator t1)
-               (linear-operator t2))))
-
-(defmethod compose ((g index-space-transformation) (f index-space-transformation))
-  ;; A2(A1 x + b1) + b2 = A2 A1 x + A2 b1 + b2
-  (let ((A1 (linear-operator f))
-        (A2 (linear-operator g))
-        (b1 (translation-vector f))
-        (b2 (translation-vector g)))
-    (let ((input-constraints (input-constraints f))
-          (linear-operator (compose A2 A1))
-          (translation-vector (map 'vector #'+ (ssm-vector-dot-product A2 b1) b2)))
-      (make-instance
-       'index-space-transformation
-       :input-constraints input-constraints
-       :linear-operator linear-operator
-       :translation-vector translation-vector))))
-
-(defmethod invert ((object index-space-transformation))
-  ;;    f(x) = (Ax + b)
-  ;; f^-1(x) = A^-1(x - b) = A^-1 x - A^-1 b
-  (let ((A (linear-operator object))
-        (b (translation-vector object))
-        (input-constraints (make-array (output-dimension object)
-                                       :initial-element nil
-                                       :element-type '(or null integer))))
-    ;; the new input constraints are the values of b whenever the
-    ;; corresponding row of A is zero
-    (loop :for value :across (ssm-values A)
-          :for translation :across b
-          :for row-index :from 0 :do
-            (when (zerop value)
-              (setf (aref input-constraints row-index) translation)))
-    (let* ((linear-operator (invert A))
-           (translation-vector (ssm-vector-dot-product linear-operator b)))
-      (make-instance
-       'index-space-transformation
-       :input-constraints input-constraints
-       :linear-operator linear-operator
-       :translation-vector translation-vector))))
-
-(defmethod print-object ((object index-space-transformation) stream)
-  (let ((inputs (loop :for input-constraint :across (input-constraints object)
-                      :for sym :in (list-of-symbols (input-dimension object))
-                      :collect (or input-constraint sym))))
-    (prin1 `(τ ,inputs ,@(map 'list (λ Ax b (cond ((eql Ax 0) b)
-                                                  ((numberp Ax) (+ Ax b))
-                                                  ((eql b 0) Ax)
-                                                  (t `(+ ,Ax ,b))))
-                              (ssm-sexps-dot-product (linear-operator object) inputs)
-                              (translation-vector object)))
-           stream)))
-
-
-(defmethod initialize-instance :after ((instance index-space-transformation)
-                                       &key &allow-other-keys)
-  (when (and (= (input-dimension instance) (output-dimension instance))
-             (every #'null (input-constraints instance))
-             (every #'zerop (translation-vector instance))
-             (ssm-identity? (linear-operator instance)))
-    (change-class
-     instance 'identity-transformation
-     :dimension (input-dimension instance))))
+        (if (and (= input-dimension output-dimension)
+                 (every #'null input-constraints)
+                 (every #'zerop translation-vector)
+                 (spm-identity? linear-operator))
+            (make-instance
+             'identity-transformation
+             :dimension input-dimension)
+            (make-instance
+             'index-space-transformation
+             :input-constraints input-constraints
+             :linear-operator linear-operator
+             :translation-vector translation-vector))))))

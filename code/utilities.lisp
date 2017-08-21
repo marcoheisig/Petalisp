@@ -15,23 +15,20 @@ Examples:
   `(lambda ,(butlast symbols-and-expr)
      ,@(last symbols-and-expr)))
 
-(defmacro with-unsafe-optimizations (&body body)
-  "Optimize the heck out of BODY. Use with caution!
-
-To preserve sanity, compiler efficiency hints are disabled by default. Use
-WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
-  `(locally
-       (declare
-        (optimize (speed 3) (space 0) (debug 0) (safety 0) (compilation-speed 0))
-        #+sbcl(sb-ext:muffle-conditions sb-ext:compiler-note))
-     ,@body))
-
 (defmacro with-unsafe-optimizations* (&body body)
   "Optimize the heck out of BODY. Use with caution!"
   `(locally
        (declare
         (optimize (speed 3) (space 0) (debug 0) (safety 0) (compilation-speed 0)))
      ,@body))
+
+(defmacro with-unsafe-optimizations (&body body)
+  "Optimize the heck out of BODY. Use with caution!
+
+To preserve sanity, compiler efficiency hints are disabled by default. Use
+WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
+  `(locally (declare #+sbcl(sb-ext:muffle-conditions sb-ext:compiler-note))
+     (with-unsafe-optimizations* ,@body)))
 
 (defmacro define-class (class-name superclass-names slot-specifiers &rest class-options)
   "Defines a class using DEFCLASS, but defaulting to a :READER of
@@ -113,8 +110,6 @@ SLOT-NAME and. Additionally, defines a <NAME>? predicate."
                :always (funcall test
                                 reference-element
                                 (funcall key (elt sequence i))))))
-    ((vector base-char) #1#)
-    ((vector extended-char) #1#)
     (sequence #1#)))
 
 (test identical

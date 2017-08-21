@@ -3,7 +3,7 @@
 ;;;
 ;;; compute does the actual work when running a Petalisp application
 
-(in-package :petalisp)
+(in-package :petalisp) (in-suite petalisp)
 
 (defparameter *successors* nil)
 

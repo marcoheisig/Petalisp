@@ -3,7 +3,7 @@
 ;;;
 ;;; definitions of externally visible Petalisp symbols
 
-(in-package :petalisp)
+(in-package :petalisp) (in-suite petalisp)
 
 (defun α (function object &rest more-objects)
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
@@ -42,7 +42,8 @@ overlap partially, the value of the rightmost object is used."
         (reference
          (find piece objects :from-end t :test #'subspace?)
          (index-space piece)
-         (identity-transformation (dimension piece))))
+         (make-instance 'identity-transformation
+                        :dimension (dimension piece))))
       pieces))))
 
 (defun -> (data-structure &rest modifiers)
@@ -65,7 +66,8 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
                         (subspace? x modifier))
                     (repetition x modifier)
                     (reference x (intersection modifier x)
-                               (identity-transformation (dimension x)))))
+                               (make-instance 'identity-transformation
+                                              :dimension (dimension x)))))
                (transformation
                 (reference x (index-space x) modifier)))))
     (reduce #'apply-modification modifiers

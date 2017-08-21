@@ -3,7 +3,7 @@
 ;;;
 ;;; CL function knowledge for type inference and optimization
 
-(in-package :petalisp)
+(in-package :petalisp) (in-suite petalisp)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

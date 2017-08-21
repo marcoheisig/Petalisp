@@ -3,7 +3,7 @@
 ;;;
 ;;; the fundamental building blocks of Petalisp
 
-(in-package :petalisp)
+(in-package :petalisp) (in-suite petalisp)
 
 (define-class data-structure () (element-type predecessors))
 
@@ -48,6 +48,30 @@ arguments."))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;;  miscellaneous Petalisp functions
+
+(defgeneric generic-unary-funcall (operator argument))
+
+(defgeneric generic-binary-funcall (operator argument-1 argument-2))
+
+(defgeneric name (object))
+
+(defgeneric dimension (object))
+
+(defgeneric size (object))
+
+(defgeneric equal? (object-1 object-2)
+  (:documentation "Two objects are EQUAL? if their use in Petalisp will
+  always result in identical behavior."))
+
+(defgeneric result-type (function &rest arguments))
+
+(defgeneric compute (&rest objects))
+
+(defgeneric evaluate (node))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;;  classes and methods concerning transformations
 
 (define-class transformation () ())
@@ -86,30 +110,6 @@ arguments."))
 (defmethod print-object ((object identity-transformation) stream)
   (let ((symbols (list-of-symbols (input-dimension object))))
     (prin1 `(τ ,symbols ,@symbols))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;;  miscellaneous Petalisp functions
-
-(defgeneric generic-unary-funcall (operator argument))
-
-(defgeneric generic-binary-funcall (operator argument-1 argument-2))
-
-(defgeneric name (object))
-
-(defgeneric dimension (object))
-
-(defgeneric size (object))
-
-(defgeneric equal? (object-1 object-2)
-  (:documentation "Two objects are EQUAL? if their use in Petalisp will
-  always result in identical behavior."))
-
-(defgeneric result-type (function &rest arguments))
-
-(defgeneric compute (&rest objects))
-
-(defgeneric evaluate (node))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
