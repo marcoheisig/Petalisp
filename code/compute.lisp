@@ -40,5 +40,5 @@
       (mapc #'populate-successors objects)
       (apply #'values
              (mapcar
-              (compose #'petalisp->lisp #'evaluate)
+              (compose #'depetalispify #'evaluate)
               objects)))))

@@ -39,11 +39,11 @@
   (data
    (predecessors :initform () :allocation :class)))
 
-(defmethod lisp->petalisp ((array array))
+(defmethod petalispify ((array array))
   (array->strided-array array))
 
-(defmethod lisp->petalisp ((object t))
-  (lisp->petalisp
+(defmethod petalispify ((object t))
+  (petalispify
    (make-array () :initial-element object
                   :element-type (type-of object))))
 

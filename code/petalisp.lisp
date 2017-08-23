@@ -115,13 +115,9 @@ arguments."))
 ;;;
 ;;;  input and output
 
-(defgeneric lisp->petalisp (object))
+(defgeneric petalispify (object))
 
-(defgeneric petalisp->lisp (object &optional storage))
-
-(defgeneric hdf5->petalisp (&rest arguments))
-
-(defgeneric petalisp->hdf5 (&rest arguments))
+(defgeneric depetalispify (object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -189,7 +185,7 @@ arguments."))
                        (object-2 data-structure))
   (difference (index-space object-1) (index-space object-2)))
 
-(defmethod lisp->petalisp ((object data-structure)) object)
+(defmethod petalispify ((object data-structure)) object)
 
 (defmethod subdivision ((object data-structure) &rest more-objects)
   (flet ((shatter (dust object)
