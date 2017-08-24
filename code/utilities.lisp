@@ -1,4 +1,4 @@
-    ;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
+;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; miscellaneous utilities that would not fit elsewhere
@@ -222,6 +222,42 @@ SLOT-NAME and. Additionally, defines a <NAME>? predicate."
           (machine-type))
   (format stream "~@[ ~a~]~%"
           (machine-version)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; testing with generators
+
+(macrolet
+    ((float-generator (type)
+       `(defun ,(symbolicate type "-GENERATOR")
+            (&optional
+               (infimum ,(coerce -2 type))
+               (supremum ,(coerce 2 type)))
+          (assert (< infimum supremum))
+          (let ((infimum (coerce infimum ',type))
+                (supremum (coerce supremum ',type)))
+            (let ((middle (+ (/ supremum 2) (/ infimum 2)))
+                  (half   (- (/ supremum 2) (/ infimum 2))))
+              (if (zerop half)
+                  (constantly middle)
+                  (lambda ()
+                    (let ((offset (random half)))
+                      (if (zerop (random 2))
+                          (- middle offset)
+                          (+ middle offset))))))))))
+  (float-generator short-float)
+  (float-generator single-float)
+  (float-generator double-float)
+  (float-generator long-float))
+
+(defun integer-generator (&optional
+                            (minimum (floor most-negative-fixnum 4/5))
+                            (maximum (ceiling most-positive-fixnum 4/5)))
+  (check-type minimum integer)
+  (check-type maximum integer)
+  (assert (<= minimum maximum))
+  (lambda ()
+    (+ minimum (random (1+ (- maximum minimum))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

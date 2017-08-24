@@ -15,8 +15,8 @@
   (:shadow #:intersection #:compose)
   (:import-from :fiveam
                 #:test #:is #:is-true #:is-false
-                #:*test-dribble* #:in-suite #:def-suite #:signals
-                #:for-all #:gen-integer #:gen-float)
+                #:*test-dribble* #:in-suite #:def-suite #:signals #:for-all
+                )
   (:import-from :optima
                 #:match #:ematch #:cmatch)
   (:export
