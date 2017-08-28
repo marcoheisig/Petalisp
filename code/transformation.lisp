@@ -3,7 +3,7 @@
 ;;;
 ;;; the valid index space transformations in Petalisp
 
-(in-package :petalisp) (in-suite petalisp)
+(in-package :petalisp)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

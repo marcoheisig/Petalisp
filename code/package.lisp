@@ -6,19 +6,16 @@
 (in-package :cl-user)
 
 (defpackage :petalisp
-  (:use
-   :closer-common-lisp
-   :alexandria
-   :fare-memoization
-   :anaphora)
+  (:use :closer-common-lisp :alexandria :fare-memoization :anaphora)
+  ;; support for weak hashtables
   (:shadowing-import-from :trivial-garbage #:make-hash-table)
+  ;; shadow ALEXANDRIA:COMPOSE and CL:INTERSECTION with generic methods
   (:shadow #:intersection #:compose)
-  (:import-from :fiveam
-                #:test #:is #:is-true #:is-false
-                #:*test-dribble* #:in-suite #:def-suite #:signals #:for-all
-                )
-  (:import-from :optima
-                #:match #:ematch #:cmatch)
+  ;; Petalisp imports only a small subset of fiveam functionality
+  (:import-from :fiveam #:is #:is-true #:is-false #:signals #:for-all)
+  ;; support for pattern matching
+  (:import-from :optima #:match #:ematch #:cmatch)
+  ;; The Petalisp API
   (:export
    #:α
    #:β
@@ -26,7 +23,3 @@
    #:τ
    #:σ
    #:subspace))
-
-(in-package :petalisp)
-
-(def-suite petalisp :description "All Petalisp related tests.")

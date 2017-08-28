@@ -3,7 +3,7 @@
 ;;;
 ;;; definitions of externally visible Petalisp symbols
 
-(in-package :petalisp) (in-suite petalisp)
+(in-package :petalisp)
 
 (defun α (function object &rest more-objects)
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR

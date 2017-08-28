@@ -1,9 +1,52 @@
 ;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; miscellaneous utilities that would not fit elsewhere
+;;; testing
 
-(in-package :petalisp) (in-suite petalisp)
+(in-package :petalisp)
+
+(defmacro test (name &body body)
+  "A thin wrapper around FIVEAM:TEST that automatically uses the name of
+the current package (interned in the current package) as test suite."
+  `(progn
+     (fiveam:in-suite* ,(intern (package-name *package*)))
+     (fiveam:test ,name ,@body)))
+
+(macrolet
+    ((float-generator (type)
+       `(defun ,(symbolicate type "-GENERATOR")
+            (&optional
+               (infimum ,(coerce -2 type))
+               (supremum ,(coerce 2 type)))
+          (assert (< infimum supremum))
+          (let ((infimum (coerce infimum ',type))
+                (supremum (coerce supremum ',type)))
+            (let ((middle (+ (/ supremum 2) (/ infimum 2)))
+                  (half   (- (/ supremum 2) (/ infimum 2))))
+              (if (zerop half)
+                  (constantly middle)
+                  (lambda ()
+                    (let ((offset (random half)))
+                      (if (zerop (random 2))
+                          (- middle offset)
+                          (+ middle offset))))))))))
+  (float-generator short-float)
+  (float-generator single-float)
+  (float-generator double-float)
+  (float-generator long-float))
+
+(defun integer-generator (&optional
+                            (minimum (floor most-negative-fixnum 4/5))
+                            (maximum (ceiling most-positive-fixnum 4/5)))
+  (check-type minimum integer)
+  (check-type maximum integer)
+  (assert (<= minimum maximum))
+  (lambda ()
+    (+ minimum (random (1+ (- maximum minimum))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; miscellaneous utilities that would not fit elsewhere
 
 (defmacro λ (&rest symbols-and-expr)
   "A shorthand notation for lambda expressions, provided your Lisp
@@ -89,8 +132,8 @@ SLOT-NAME and. Additionally, defines a <NAME>? predicate."
     (? 1 0)
     (? 0 1)
     (? (expt 6 40) (expt 9 40))
-    (for-all ((u (gen-integer :min 0))
-              (v (gen-integer :min 0)))
+    (for-all ((u (integer-generator 0))
+              (v (integer-generator 0)))
       (? u v))))
 
 (defun identical (sequence &key (test #'eql) (key #'identity))
@@ -222,42 +265,6 @@ SLOT-NAME and. Additionally, defines a <NAME>? predicate."
           (machine-type))
   (format stream "~@[ ~a~]~%"
           (machine-version)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; testing with generators
-
-(macrolet
-    ((float-generator (type)
-       `(defun ,(symbolicate type "-GENERATOR")
-            (&optional
-               (infimum ,(coerce -2 type))
-               (supremum ,(coerce 2 type)))
-          (assert (< infimum supremum))
-          (let ((infimum (coerce infimum ',type))
-                (supremum (coerce supremum ',type)))
-            (let ((middle (+ (/ supremum 2) (/ infimum 2)))
-                  (half   (- (/ supremum 2) (/ infimum 2))))
-              (if (zerop half)
-                  (constantly middle)
-                  (lambda ()
-                    (let ((offset (random half)))
-                      (if (zerop (random 2))
-                          (- middle offset)
-                          (+ middle offset))))))))))
-  (float-generator short-float)
-  (float-generator single-float)
-  (float-generator double-float)
-  (float-generator long-float))
-
-(defun integer-generator (&optional
-                            (minimum (floor most-negative-fixnum 4/5))
-                            (maximum (ceiling most-positive-fixnum 4/5)))
-  (check-type minimum integer)
-  (check-type maximum integer)
-  (assert (<= minimum maximum))
-  (lambda ()
-    (+ minimum (random (1+ (- maximum minimum))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

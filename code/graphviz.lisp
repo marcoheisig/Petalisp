@@ -3,7 +3,7 @@
 ;;;
 ;;; export Petalisp data flow problems as graphviz files
 
-(in-package :petalisp) (in-suite petalisp)
+(in-package :petalisp)
 
 (defgeneric stream-draw-graph (node stream))
 

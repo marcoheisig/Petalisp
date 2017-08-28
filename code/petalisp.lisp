@@ -3,7 +3,7 @@
 ;;;
 ;;; the fundamental building blocks of Petalisp
 
-(in-package :petalisp) (in-suite petalisp)
+(in-package :petalisp)
 
 (define-class data-structure () (element-type predecessors))
 

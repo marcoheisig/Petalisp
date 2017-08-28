@@ -3,7 +3,7 @@
 ;;;
 ;;; special linear algebra subroutines for index space transformations
 
-(in-package :petalisp) (in-suite petalisp)
+(in-package :petalisp)
 
 (defstruct (scaled-permutation-matrix
             (:conc-name spm-)
