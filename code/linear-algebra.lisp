@@ -13,7 +13,7 @@
   "A `scaled-permutation-matrix' is a matrix with at most one nonzero entry
 per row and column."
   (column-indices nil :type (simple-array array-index (*)) :read-only t)
-  (values nil :type (simple-array rational (*)) :read-only t)
+  (values nil :type (simple-array number (*)) :read-only t)
   (m nil :type array-length :read-only t)
   (n nil :type array-length :read-only t))
 
@@ -21,7 +21,7 @@ per row and column."
   (let ((column-indices
           (coerce column-indices '(simple-array array-index (*))))
         (values
-          (coerce values '(simple-array rational (*)))))
+          (coerce values '(simple-array number (*)))))
     (assert (= m (length column-indices) (length values))
             (m column-indices values)
             "Expected matrix creation arguments of lenght ~D, found:~%  ~S and~%  ~S~%"
@@ -50,39 +50,39 @@ per row and column."
   (signals error
     (scaled-permutation-matrix 2 2 #(0 0) #(1 1))))
 
-(defun spm-vector-product (spm vec)
+(defmethod binary-product ((spm scaled-permutation-matrix) (vector simple-array))
   "For a given m times n  sparse matrix SPM and a n-vector VEC, this
 function returns the m-vector that is the dot product of SPM and VEC."
   (declare (type scaled-permutation-matrix spm)
-           (type (simple-array rational (*)) vec))
+           (type (simple-array number (*)) vector))
   (with-unsafe-optimizations
     (flet ((column-index (row-index)
              (aref (spm-column-indices spm) row-index))
            (value (row-index)
              (aref (spm-values spm) row-index)))
       (let* ((rows (spm-m spm))
-             (result (make-array rows :element-type 'rational)))
+             (result (make-array rows :element-type 'number)))
         (dotimes (row-index rows)
           (setf (aref result row-index)
                 (* (value row-index)
-                   (aref vec (column-index row-index)))))
+                   (aref vector (column-index row-index)))))
         result))))
 
 (test spm-vector-product
   (is (equalp
        #(10 8)
-       (spm-vector-product
+       (product
         (scaled-permutation-matrix 2 2 #(1 0) #(2 2))
         #(4 5)))))
 
-(defun spm-spm-product (spm-1 spm-2)
+(defmethod binary-product ((spm-1 scaled-permutation-matrix) (spm-2 scaled-permutation-matrix))
   (declare (type scaled-permutation-matrix spm-1 spm-2))
   (with-unsafe-optimizations
     (let* ((m (spm-m spm-1))
            (n (spm-n spm-2))
            (column-indices (make-array m :element-type 'array-index
                                          :initial-element 0))
-           (values (make-array m :element-type 'rational
+           (values (make-array m :element-type 'number
                                  :initial-element 0)))
       (dotimes (i m)
         (let* ((k (aref (spm-column-indices spm-1) i))
@@ -96,16 +96,16 @@ function returns the m-vector that is the dot product of SPM and VEC."
 (test spm-spm-product
   (is (equalp
        (scaled-permutation-matrix 2 2 #(0 1) #(8 6))
-       (spm-spm-product
+       (product
         (scaled-permutation-matrix 2 2 #(1 0) #(2 2))
         (scaled-permutation-matrix 2 2 #(1 0) #(3 4)))))
   (is (equalp
        (scaled-permutation-matrix 3 5 #(0 0 0) #(0 0 0))
-       (spm-spm-product
+       (product
         (scaled-permutation-matrix 3 7 #(0 0 0) #(0 0 0))
         (scaled-permutation-matrix 7 5 #(0 1 2 3 4 0 0) #(6 6 6 6 6 0 0))))))
 
-(defun spm-sexps-product (spm sexps)
+(defmethod binary-product ((spm scaled-permutation-matrix) (sexps list))
   (map 'list (λ col val
                 (let ((sexp (elt sexps col)))
                   (cond ((eql val 0) 0)
@@ -118,14 +118,14 @@ function returns the m-vector that is the dot product of SPM and VEC."
 (test spm-sexps-product
   (is (equalp
        '(0 foo 84 (* 3 foo))
-       (spm-sexps-product
+       (product
         (scaled-permutation-matrix 4 4 #(0 1 2 3) #(0 1 2 3))
         '(foo foo 42 foo)))))
 
 ;;; Note that a  sparse matrix is not generally invertible. The
 ;;; inverse as returned from this function assumes A is only applied to
 ;;; vectors which are zero whenever the corresponding column is zero.
-(defun spm-inverse (spm)
+(defmethod inverse ((spm scaled-permutation-matrix))
   (declare (type scaled-permutation-matrix spm))
   (with-unsafe-optimizations
     (let* ((original-column-indices (spm-column-indices spm))
@@ -134,7 +134,7 @@ function returns the m-vector that is the dot product of SPM and VEC."
            (n (spm-m spm))
            (column-indices (make-array m :element-type 'array-index
                                          :initial-element 0))
-           (values (make-array m :element-type 'rational
+           (values (make-array m :element-type 'number
                                  :initial-element 0)))
       (dotimes (row-index m)
         (let ((column-index (position row-index original-column-indices)))
@@ -148,7 +148,7 @@ function returns the m-vector that is the dot product of SPM and VEC."
 (test spm-inverse
   (is (equalp
        (scaled-permutation-matrix 4 4 #(2 0 1 3) #(2 3 4 5))
-       (spm-inverse
+       (inverse
         (scaled-permutation-matrix 4 4 #(1 2 0 3) #(1/3 1/4 1/2 1/5))))))
 
 (defun spm-identity? (spm)
@@ -171,11 +171,8 @@ function returns the m-vector that is the dot product of SPM and VEC."
 (defmethod output-dimension ((instance scaled-permutation-matrix))
   (spm-m instance))
 
-(defmethod invert ((spm scaled-permutation-matrix))
-  (spm-inverse spm))
-
 (defmethod compose ((g scaled-permutation-matrix) (f scaled-permutation-matrix))
-  (spm-spm-product g f))
+  (product g f))
 
 (defmethod equal? ((a scaled-permutation-matrix) (b scaled-permutation-matrix))
-  (equalp a b))
+  (equalp a b)) ; we can use EQUALP, because both arguments are structs

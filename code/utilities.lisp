@@ -219,6 +219,24 @@ SLOT-NAME and. Additionally, defines a <NAME>? predicate."
                      (aref abc i)
                      (symbolicate "VAR" i))))
 
+(defun check-arity (function arity)
+  "Signal an error if FUNCTION cannot be called with ARITY arguments."
+  )
+
+(defmacro let/de (bindings &body body)
+  "Like LET, but declare every atom to have dynamic extent."
+  `(let ,bindings
+     (declare (dynamic-extent ,@(mapcar #'first bindings)))
+     ,@body))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Generic Funcallable Objects
+
+(defgeneric generic-unary-funcall (operator argument))
+
+(defgeneric generic-binary-funcall (operator argument-1 argument-2))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;;  print useful system information

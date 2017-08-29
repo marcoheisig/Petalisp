@@ -15,11 +15,6 @@
    :predecessors (list object)
    :ranges (all-but-last (ranges object))))
 
-(defmethod reduction ((operator function) (object strided-array-constant))
-  (if (<= (size object) *constant-fold-threshold*)
-      (evaluate (call-next-method)) ; constant folding
-      (call-next-method)))
-
 (defkernel reduction-kernel (function element-type output-dimension)
   (let* ((input-dimension (1+ output-dimension))
          (input-indices

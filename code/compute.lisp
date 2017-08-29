@@ -36,7 +36,7 @@
 (defmethod compute (&rest objects)
   (let ((*successors*  (make-hash-table :test #'eq))
         (*value-cache* (make-hash-table :test #'eq)))
-    (let ((objects (mapcar #'lisp->petalisp objects)))
+    (let ((objects (mapcar #'petalispify objects)))
       (mapc #'populate-successors objects)
       (apply #'values
              (mapcar

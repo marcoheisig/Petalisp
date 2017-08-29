@@ -15,13 +15,6 @@
      :predecessors objects
      :ranges (ranges object))))
 
-(defmethod application ((operator function) (object strided-array-constant)
-                        &rest more-objects)
-  (if (and (<= (size object) *constant-fold-threshold*)
-           (every #'strided-array-constant? more-objects))
-      (evaluate (call-next-method)) ; constant folding
-      (call-next-method)))
-
 (defmethod evaluate ((node strided-array-application))
   (let ((args (mapcar (compose #'data #'evaluate) (predecessors node)))
         (op (operator node))

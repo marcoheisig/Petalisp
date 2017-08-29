@@ -7,6 +7,32 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;;  the special case of identity transformations
+
+(define-class identity-transformation (transformation)
+  ((dimension :type (integer 0 *))))
+
+(defmethod input-dimension ((tr identity-transformation)) (dimension tr))
+
+(defmethod output-dimension ((tr identity-transformation)) (dimension tr))
+
+(defmethod compose ((g transformation) (f identity-transformation)) g)
+
+(defmethod compose ((g identity-transformation) (f transformation)) f)
+
+(defmethod invert ((tr identity-transformation)) tr)
+
+(defmethod equal? ((a identity-transformation) (b identity-transformation))
+  (= (dimension a) (dimension b)))
+
+(defmethod generic-unary-funcall ((op identity-transformation) (arg data-structure)) arg)
+
+(defmethod print-object ((object identity-transformation) stream)
+  (let ((symbols (list-of-symbols (input-dimension object))))
+    (prin1 `(τ ,symbols ,@symbols))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;;  index space transformations
 ;;;
 ;;; (1) translating the indices by a constant
@@ -75,7 +101,7 @@
         (b2 (translation-vector g)))
     (let ((input-constraints (input-constraints f))
           (linear-operator (compose A2 A1))
-          (translation-vector (map 'vector #'+ (spm-vector-product A2 b1) b2)))
+          (translation-vector (map 'vector #'+ (product A2 b1) b2)))
       (make-instance
        'index-space-transformation
        :input-constraints input-constraints
@@ -98,7 +124,7 @@
             (when (zerop value)
               (setf (aref input-constraints row-index) translation)))
     (let* ((linear-operator (invert A))
-           (translation-vector (spm-vector-product linear-operator b)))
+           (translation-vector (product linear-operator b)))
       (make-instance
        'index-space-transformation
        :input-constraints input-constraints
@@ -113,7 +139,7 @@
                                                   ((numberp Ax) (+ Ax b))
                                                   ((eql b 0) Ax)
                                                   (t `(+ ,Ax ,b))))
-                              (spm-sexps-product (linear-operator object) inputs)
+                              (product (linear-operator object) inputs)
                               (translation-vector object)))
            stream)))
 
@@ -167,7 +193,7 @@
                 (unless input-constraint
                   (setf (car arg-cons) 3)))
         (let* ((result-1 (multiple-value-call #'vector args))
-               (Ax (spm-vector-product
+               (Ax (product
                     linear-operator
                     (make-array input-dimension
                                 :element-type 'rational
