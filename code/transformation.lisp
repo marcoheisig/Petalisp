@@ -9,18 +9,7 @@
 ;;;
 ;;;  the special case of identity transformations
 
-(define-class identity-transformation (transformation)
-  ((dimension :type (integer 0 *))))
-
-(defmethod input-dimension ((tr identity-transformation)) (dimension tr))
-
-(defmethod output-dimension ((tr identity-transformation)) (dimension tr))
-
-(defmethod compose ((g transformation) (f identity-transformation)) g)
-
-(defmethod compose ((g identity-transformation) (f transformation)) f)
-
-(defmethod invert ((tr identity-transformation)) tr)
+(defmethod inverse ((tr identity-transformation)) tr)
 
 (defmethod equal? ((a identity-transformation) (b identity-transformation))
   (= (dimension a) (dimension b)))
@@ -93,14 +82,14 @@
        (equal? (linear-operator t1)
                (linear-operator t2))))
 
-(defmethod compose ((g index-space-transformation) (f index-space-transformation))
+(defmethod composition ((g index-space-transformation) (f index-space-transformation))
   ;; A2(A1 x + b1) + b2 = A2 A1 x + A2 b1 + b2
   (let ((A1 (linear-operator f))
         (A2 (linear-operator g))
         (b1 (translation-vector f))
         (b2 (translation-vector g)))
     (let ((input-constraints (input-constraints f))
-          (linear-operator (compose A2 A1))
+          (linear-operator (composition A2 A1))
           (translation-vector (map 'vector #'+ (product A2 b1) b2)))
       (make-instance
        'index-space-transformation
@@ -108,7 +97,7 @@
        :linear-operator linear-operator
        :translation-vector translation-vector))))
 
-(defmethod invert ((object index-space-transformation))
+(defmethod inverse ((object index-space-transformation))
   ;;    f(x) = (Ax + b)
   ;; f^-1(x) = A^-1(x - b) = A^-1 x - A^-1 b
   (let ((A (linear-operator object))
@@ -123,7 +112,7 @@
           :for row-index :from 0 :do
             (when (zerop value)
               (setf (aref input-constraints row-index) translation)))
-    (let* ((linear-operator (invert A))
+    (let* ((linear-operator (inverse A))
            (translation-vector (product linear-operator b)))
       (make-instance
        'index-space-transformation

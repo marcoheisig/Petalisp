@@ -221,6 +221,7 @@ SLOT-NAME and. Additionally, defines a <NAME>? predicate."
 
 (defun check-arity (function arity)
   "Signal an error if FUNCTION cannot be called with ARITY arguments."
+  (declare (ignorable function arity))
   )
 
 (defmacro let/de (bindings &body body)

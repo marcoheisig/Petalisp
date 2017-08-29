@@ -40,5 +40,5 @@
       (mapc #'populate-successors objects)
       (apply #'values
              (mapcar
-              (compose #'depetalispify #'evaluate)
+              (composition #'depetalispify #'evaluate)
               objects)))))

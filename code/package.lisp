@@ -9,8 +9,8 @@
   (:use :closer-common-lisp :alexandria :fare-memoization :anaphora)
   ;; support for weak hashtables
   (:shadowing-import-from :trivial-garbage #:make-hash-table)
-  ;; shadow ALEXANDRIA:COMPOSE and CL:INTERSECTION with generic methods
-  (:shadow #:intersection #:compose)
+  ;; shadow CL:INTERSECTION with a generic method
+  (:shadow #:intersection)
   ;; Petalisp imports only a small subset of fiveam functionality
   (:import-from :fiveam #:is #:is-true #:is-false #:signals #:for-all)
   ;; support for pattern matching

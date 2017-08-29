@@ -28,10 +28,10 @@
                       (t2 transformation))
   "Fold references to other references."
   (let ((target-space (transform space t2))
-        (transformation (compose t2 (transformation object))))
+        (transformation (composition t2 (transformation object))))
     (reference
      (first (predecessors object))
-     (transform target-space (invert transformation))
+     (transform target-space (inverse transformation))
      transformation)))
 
 (defmethod reference ((fusion strided-array-fusion)
@@ -99,7 +99,7 @@
            (ranges
             (transform
              (index-space node)
-             (invert transformation))))
+             (inverse transformation))))
          (direction (make-array (output-dimension transformation)))
          (step (make-array (input-dimension transformation)
                            :element-type 'fixnum))

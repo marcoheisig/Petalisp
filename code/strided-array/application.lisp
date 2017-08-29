@@ -16,7 +16,7 @@
      :ranges (ranges object))))
 
 (defmethod evaluate ((node strided-array-application))
-  (let ((args (mapcar (compose #'data #'evaluate) (predecessors node)))
+  (let ((args (mapcar (composition #'data #'evaluate) (predecessors node)))
         (op (operator node))
         (result (make-array
                  (map 'list #'size (ranges node))

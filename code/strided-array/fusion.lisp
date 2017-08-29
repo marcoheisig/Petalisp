@@ -39,7 +39,7 @@
   (spaces-to-fuse))
 
 (defun fuse-recursively (spaces)
-  (unless (every (compose #'zerop #'dimension) spaces)
+  (unless (every (composition #'zerop #'dimension) spaces)
     (let ((islands
             (apply
              #'subdivision
@@ -54,7 +54,7 @@
                                            (cdr (vector->list ranges)))))))
               spaces))))
       (let ((results (mapcar ; recurse
-                      (compose #'fuse-recursively #'spaces-to-fuse)
+                      (composition #'fuse-recursively #'spaces-to-fuse)
                       islands)))
         (assert (identical results :test #'equal? :key #'first))
         (cons (apply #'fusion

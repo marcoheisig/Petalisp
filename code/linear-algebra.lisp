@@ -171,7 +171,7 @@ function returns the m-vector that is the dot product of SPM and VEC."
 (defmethod output-dimension ((instance scaled-permutation-matrix))
   (spm-m instance))
 
-(defmethod compose ((g scaled-permutation-matrix) (f scaled-permutation-matrix))
+(defmethod composition ((g scaled-permutation-matrix) (f scaled-permutation-matrix))
   (product g f))
 
 (defmethod equal? ((a scaled-permutation-matrix) (b scaled-permutation-matrix))
