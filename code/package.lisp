@@ -1,7 +1,4 @@
-;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; packages used in Petalisp and the list of exported functions
+;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
 (in-package :cl-user)
 

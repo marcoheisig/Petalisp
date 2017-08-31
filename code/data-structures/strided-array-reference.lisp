@@ -1,4 +1,4 @@
-;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
+;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
 (in-package :petalisp)
 
@@ -7,7 +7,7 @@
 (defmethod reference ((object strided-array)
                       (space strided-array-index-space)
                       (transformation transformation))
-  (let ((target-space (transform space transformation)))
+  (let ((target-space (funcall transformation space)))
     (make-instance
      'strided-array-reference
      :predecessors (list object)
@@ -18,7 +18,7 @@
 (defmethod reference ((object strided-array)
                       (space strided-array-index-space)
                       (transformation identity-transformation))
-  (let ((target-space (transform space transformation)))
+  (let ((target-space (funcall transformation space)))
     (if (equal? (index-space object) target-space)
         object
         (call-next-method))))
@@ -27,11 +27,11 @@
                       (space strided-array-index-space)
                       (t2 transformation))
   "Fold references to other references."
-  (let ((target-space (transform space t2))
+  (let ((target-space (funcall t2 space))
         (transformation (composition t2 (transformation object))))
     (reference
      (first (predecessors object))
-     (transform target-space (inverse transformation))
+     (funcall (inverse transformation) target-space)
      transformation)))
 
 (defmethod reference ((fusion strided-array-fusion)
@@ -97,9 +97,7 @@
          (transformation (transformation node))
          (input-ranges
            (ranges
-            (transform
-             (index-space node)
-             (inverse transformation))))
+            (funcall (inverse transformation) (index-space node))))
          (direction (make-array (output-dimension transformation)))
          (step (make-array (input-dimension transformation)
                            :element-type 'fixnum))

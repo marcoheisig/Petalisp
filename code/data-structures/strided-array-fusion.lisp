@@ -1,4 +1,4 @@
-;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
+;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
 (in-package :petalisp)
 
@@ -12,74 +12,6 @@
      :element-type (element-type object)
      :predecessors objects
      :ranges (ranges (apply #'fusion (mapcar #'index-space objects))))))
-
-(defmethod fusion ((object strided-array-index-space) &rest more-objects)
-  (let ((objects (cons object more-objects)))
-    (apply #'make-index-space
-           (fuse-recursively objects)
-           #+nil
-           (loop for i below (dimension object)
-                 collect (apply #'fuse-dimension i objects)))))
-
-(defmethod fusion ((range range) &rest more-ranges)
-  (let ((ranges (cons range more-ranges)))
-    (loop for range in ranges
-          sum (size range) into number-of-elements
-          maximize (range-end range) into end
-          minimize (range-start range) into start
-          finally
-             (let ((step (ceiling (1+ (- end start)) number-of-elements)))
-               (return (range start step end))))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;;  fusion islands - specially annotated index spaces
-
-(define-class fusion-island (strided-array-index-space)
-  (spaces-to-fuse))
-
-(defun fuse-recursively (spaces)
-  (unless (every (composition #'zerop #'dimension) spaces)
-    (let ((islands
-            (apply
-             #'subdivision
-             (mapcar
-              (lambda (space)
-                (let ((ranges (ranges space)))
-                  (make-instance
-                   'fusion-island
-                   :ranges (subseq ranges 0 1)
-                   :spaces-to-fuse (list
-                                    (apply #'make-index-space
-                                           (cdr (vector->list ranges)))))))
-              spaces))))
-      (let ((results (mapcar ; recurse
-                      (composition #'fuse-recursively #'spaces-to-fuse)
-                      islands)))
-        (assert (identical results :test #'equal? :key #'first))
-        (cons (apply #'fusion
-                     (mapcar
-                      (lambda (x)
-                        (elt (ranges x) 0))
-                      islands))
-              (first results))))))
-
-(defmethod intersection :around ((space-1 fusion-island)
-                                 (space-2 fusion-island))
-  (let ((result (call-next-method)))
-    (when result
-      (change-class result 'fusion-island
-                    :spaces-to-fuse (union (spaces-to-fuse space-1)
-                                           (spaces-to-fuse space-2))))))
-
-(defmethod difference :around ((space-1 fusion-island)
-                               (space-2 fusion-island))
-  (let ((result (call-next-method)))
-    (mapcar
-     (lambda (x)
-       (change-class x 'fusion-island
-                     :spaces-to-fuse (spaces-to-fuse space-1)))
-     result)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

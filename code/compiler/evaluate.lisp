@@ -1,4 +1,4 @@
-;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
+;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; compute does the actual work when running a Petalisp application

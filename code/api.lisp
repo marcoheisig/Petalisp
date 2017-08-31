@@ -1,9 +1,30 @@
-;;; © 2016 Marco Heisig - licensed under AGPLv3, see the file COPYING
+;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; definitions of externally visible Petalisp symbols
 
 (in-package :petalisp)
+
+(defgeneric broadcast (space-1 space-2)
+  (:method ((space-1 strided-array-index-space)
+            (space-2 strided-array-index-space))
+    (when (>= (dimension space-1) (dimension space-2))
+      (rotatef space-1 space-2))
+    (let ((ranges-1 (ranges space-1))
+          (ranges-2 (ranges space-2)))
+      (make-instance
+       'strided-array-index-space
+       :ranges
+       (concatenate
+        'vector
+        (map 'vector #'broadcast ranges-1 ranges-2)
+        (subseq ranges-2 (length ranges-1))))))
+  (:method ((range-1 range) (range-2 range))
+    (cond
+      ((unary-range? range-1) range-2)
+      ((unary-range? range-2) range-1)
+      ((equalp range-1 range-2) range-1)
+      (t (error "Ranges not upgradeable.")))))
 
 (defun α (function object &rest more-objects)
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
@@ -12,7 +33,7 @@ mismatch, the smaller objects are broadcasted where possible."
   (let* ((objects
            (mapcar #'petalispify (cons object more-objects)))
          (index-space
-           (reduce #'broadcast objects))
+           (reduce (compose #'broadcast #'index-space) objects))
          (objects
            (mapcar
             (lambda (object)
@@ -73,33 +94,3 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
     (reduce #'apply-modification modifiers
             :initial-value (petalispify data-structure))))
 
-(defalias → ->)
-
-(defmacro σ* (space &rest dimensions)
-  (with-gensyms (dim)
-    (once-only (space)
-      `(symbol-macrolet
-           ((,(intern "START") (range-start (aref (ranges ,space) ,dim)))
-            (,(intern "STEP") (range-step (aref (ranges ,space) ,dim)))
-            (,(intern "END") (range-end (aref (ranges ,space) ,dim))))
-         (make-index-space
-          ,@(loop for form in dimensions and d from 0
-                  collect `(let ((,dim ,d)) (range ,@form))))))))
-
-(defmacro σ (&rest ranges)
-  `(make-index-space
-    ,@(loop for range in ranges
-            collect `(range ,@range))))
-
-(defmacro τ (input-forms &rest output-forms)
-  (loop for form in input-forms
-        collect (when (integerp form) form) into input-constraints
-        collect (if (symbolp form) form (gensym)) into symbols
-        finally
-           (return
-             `(classify-transformation
-               (lambda ,symbols
-                 (declare (ignorable ,@symbols))
-                 (values ,@output-forms))
-               ,(apply #'vector input-constraints)
-               ,(length output-forms)))))
