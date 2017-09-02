@@ -38,9 +38,9 @@
                       (space strided-array-index-space)
                       (transformation transformation))
   "Make references to fusions reference the inputs of the fusion instead."
-  (aif (find space (predecessors fusion) :test #'equal? :key #'index-space)
-       (reference it space transformation)
-       (call-next-method)))
+  (if-let (it (find space (predecessors fusion) :test #'equal? :key #'index-space))
+    (reference it space transformation)
+    (call-next-method)))
 
 (defkernel reference-kernel (element-type input-dimension permutation direction)
   (let* ((output-dimension (length permutation))

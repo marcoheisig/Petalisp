@@ -11,7 +11,7 @@
 ;;; (4) introducing dimensions with an unary range
 ;;; (5) removing dimensions with an unary range
 ;;;
-;;; The class `affine-trainsformation' contains all objects that are
+;;; The class `affine-transformation' contains all objects that are
 ;;; formed by functional composition of these five elementary operations.
 ;;;
 ;;; In linear algebra lingo, we have
@@ -22,7 +22,7 @@
 ;;; (4) multiplying with an identity matrix, but with some zero rows inserted and adding a vector
 ;;; (5) multiplying with an identity matrix, but with some rows removed
 ;;;
-;;; One observes, that every affine trainsformation on an index vector
+;;; One observes, that every affine transformation on an index vector
 ;;; x can be represented as Ax + b, where b is the vector corresponding to
 ;;; (1) and (4) and A is the matrix corresponding to (2), (3), (4) and
 ;;; (5). The matrix A has a very particular structure - It has at most one
@@ -34,13 +34,13 @@
    (linear-operator :type scaled-permutation-matrix)
    (translation-vector :type (simple-array integer (*)))))
 
-(defmethod input-dimension ((instance affine-trainsformation))
+(defmethod input-dimension ((instance affine-transformation))
   (length (input-constraints instance)))
 
-(defmethod output-dimension ((instance affine-trainsformation))
+(defmethod output-dimension ((instance affine-transformation))
   (length (translation-vector instance)))
 
-(defmethod initialize-instance :before ((instance affine-trainsformation)
+(defmethod initialize-instance :before ((instance affine-transformation)
                                         &key
                                           input-constraints
                                           linear-operator
@@ -53,8 +53,8 @@
           "Incompatibe shapes:~%  ~S~%  ~S~%  ~S~%"
           input-constraints linear-operator translation-vector))
 
-(defmethod equal? ((t1 affine-trainsformation)
-                   (t2 affine-trainsformation))
+(defmethod equal? ((t1 affine-transformation)
+                   (t2 affine-transformation))
   (and (equalp (input-constraints t1)
                (input-constraints t2))
        (equalp (translation-vector t1)
@@ -62,7 +62,7 @@
        (equal? (linear-operator t1)
                (linear-operator t2))))
 
-(defmethod composition ((g affine-trainsformation) (f affine-trainsformation))
+(defmethod composition ((g affine-transformation) (f affine-transformation))
   ;; A2(A1 x + b1) + b2 = A2 A1 x + A2 b1 + b2
   (let ((A1 (linear-operator f))
         (A2 (linear-operator g))
@@ -72,12 +72,12 @@
           (linear-operator (composition A2 A1))
           (translation-vector (map 'vector #'+ (product A2 b1) b2)))
       (make-instance
-       'affine-trainsformation
+       'affine-transformation
        :input-constraints input-constraints
        :linear-operator linear-operator
        :translation-vector translation-vector))))
 
-(defmethod inverse ((object affine-trainsformation))
+(defmethod inverse ((object affine-transformation))
   ;;    f(x) = (Ax + b)
   ;; f^-1(x) = A^-1(x - b) = A^-1 x - A^-1 b
   (let ((A (linear-operator object))
@@ -95,12 +95,12 @@
     (let* ((linear-operator (inverse A))
            (translation-vector (product linear-operator b)))
       (make-instance
-       'affine-trainsformation
+       'affine-transformation
        :input-constraints input-constraints
        :linear-operator linear-operator
        :translation-vector translation-vector))))
 
-(defmethod print-object ((object affine-trainsformation) stream)
+(defmethod print-object ((object affine-transformation) stream)
   (let ((inputs (loop :for input-constraint :across (input-constraints object)
                       :for sym :in (list-of-symbols (input-dimension object))
                       :collect (or input-constraint sym))))

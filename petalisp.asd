@@ -5,9 +5,7 @@
 
   :depends-on
   (:alexandria
-   :anaphora
    :closer-mop
-   :fare-memoization
    :fiveam
    :optima
    :trivial-garbage)

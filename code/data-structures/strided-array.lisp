@@ -22,11 +22,6 @@
 (defmethod petalispify ((array array))
   (array->strided-array array))
 
-(defmethod petalispify ((object t))
-  (petalispify
-   (make-array () :initial-element object
-                  :element-type (type-of object))))
-
 (defmethod petalisp->lisp ((object data-structure) &optional storage)
   (declare (ignore storage))
   (if (array-dimensions (data object))
@@ -43,9 +38,7 @@
          (range 0 1 (1- end)))
        (array-dimensions array)))
 
-(define-memo-function
-    (array->strided-array
-     :table (make-hash-table :test #'equal :weakness :value)) (array)
+(defun array->strided-array (array)
   (let ((ranges (ranges array)))
     (make-instance
      'strided-array-constant

@@ -3,7 +3,7 @@
 (in-package :cl-user)
 
 (defpackage :petalisp
-  (:use :closer-common-lisp :alexandria :fare-memoization :anaphora)
+  (:use :closer-common-lisp :alexandria)
   ;; support for weak hashtables
   (:shadowing-import-from :trivial-garbage #:make-hash-table)
   ;; shadow CL:INTERSECTION with a generic method

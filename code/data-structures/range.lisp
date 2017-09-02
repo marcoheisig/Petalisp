@@ -51,9 +51,9 @@
                   when (range (+ x step-1) step-1 (- (+ x step-2) step-1))
                     collect it into result
                   finally
-                     (awhen (range start-1 step-1 (- start-2 step-1))
+                     (if-let (it (range start-1 step-1 (- start-2 step-1)))
                        (push it result))
-                     (awhen (range (+ end-2 step-1) step-1 end-1)
+                     (if-let (it (range (+ end-2 step-1) step-1 end-1))
                        (push it result))
                      (return result)))))))
 
