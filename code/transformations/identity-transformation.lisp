@@ -27,4 +27,4 @@
 
 (defmethod print-object ((object identity-transformation) stream)
   (let ((symbols (list-of-symbols (input-dimension object))))
-    (prin1 `(τ ,symbols ,@symbols))))
+    (prin1 `(τ ,symbols ,@symbols) stream)))

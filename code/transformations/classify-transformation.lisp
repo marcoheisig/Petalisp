@@ -2,9 +2,21 @@
 
 (in-package :petalisp)
 
-(defmethod classify-transformation ((f function)
-                                    (input-constraints vector)
-                                    (output-dimension integer))
+(defun make-affine-transformation (input-constraints A b)
+  (declare (type scaled-permutation-matrix A)
+           (type simple-vector input-constraints b))
+  (if (and (= (length input-constraints) (matrix-n A) (matrix-m A))
+           (every #'null input-constraints)
+           (every #'zerop b)
+           (identity-matrix? A))
+      (make-identity-transformation (length input-constraints))
+      (make-instance
+       'affine-transformation
+       :input-constraints input-constraints
+       :linear-operator A
+       :translation-vector b)))
+
+(defun classify-transformation (f input-constraints output-dimension)
   (let* ((input-dimension (length input-constraints))
          (args (map 'list
                     (λ constraint (or constraint 0))
@@ -18,7 +30,7 @@
     ;; Initially x is the zero vector (except for input constraints, which
     ;; are ignored by A), so f(x) = Ax + b = b
     (let ((translation-vector (multiple-value-call #'vector (apply f args)))
-          ;; now determine the super sparse matrix A
+          ;; now determine the scaled permutation matrix A
           (column-indices (make-array output-dimension
                                       :element-type 'array-index
                                       :initial-element 0))
@@ -57,20 +69,14 @@
                     (make-array input-dimension
                                 :element-type 'rational
                                 :initial-contents args)))
-               (result-2 (map 'vector #'- Ax translation-vector)))
+               (result-2 (map 'vector #'+ Ax translation-vector)))
           (assert (every #'= result-1 result-2) ()
                   "Not a valid transformation:~%  ~S"
                   f))
-        (if (and (= input-dimension output-dimension)
-                 (every #'null input-constraints)
-                 (every #'zerop translation-vector)
-                 (identity-matrix? linear-operator))
-            (make-identity-transformation input-dimension)
-            (make-instance
-             'affine-trainsformation
-             :input-constraints input-constraints
-             :linear-operator linear-operator
-             :translation-vector translation-vector))))))
+        (make-affine-transformation
+         input-constraints
+         linear-operator
+         translation-vector)))))
 
 (defmacro τ (input-forms &rest output-forms)
   (loop for form in input-forms
@@ -98,3 +104,20 @@
       (is (equal? τ τ))
       (is (equal? τ (inverse τ)))
       (is (equal? τ (composition τ τ))))))
+
+(test affine-transformation
+  (dolist (τ (list (τ (m n) n m)
+                   (τ (m) (* 2 m))
+                   (τ (m) (/ (+ (* 90 (+ 2 m)) 15) 2))
+                   (τ (m) m 1 2 3)
+                   (τ (m) 5 9 m 2)
+                   (τ (0 n 0) n)
+                   (τ (i j 5) i j)))
+    (let ((τ-inv (inverse τ)))
+      (is (affine-transformation? τ))
+      (is (equal? τ (inverse τ-inv)))
+      (when (and (every #'null (input-constraints τ))
+                 (every #'null (input-constraints τ-inv)))
+        (is (equal? (composition τ-inv τ)
+                    (make-identity-transformation
+                     (input-dimension τ))))))))

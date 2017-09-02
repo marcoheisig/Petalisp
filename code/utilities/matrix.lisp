@@ -151,7 +151,11 @@ function returns the m-vector that is the dot product of SPM and VEC."
            (values (make-array m :element-type 'number
                                  :initial-element 0)))
       (dotimes (row-index m)
-        (let ((column-index (position row-index original-column-indices)))
+        (let ((column-index
+                (loop :for column :across original-column-indices
+                      :for value :across original-values
+                      :for position :from 0
+                        :thereis (and (/= 0 value) (= column row-index) position))))
           (when column-index
             (setf (aref column-indices row-index) column-index)
             (let ((value (aref original-values column-index)))

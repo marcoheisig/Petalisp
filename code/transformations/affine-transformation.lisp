@@ -32,7 +32,8 @@
 (define-class affine-transformation (transformation)
   ((input-constraints :type (simple-array (or null integer) (*)))
    (linear-operator :type scaled-permutation-matrix)
-   (translation-vector :type (simple-array integer (*)))))
+   (translation-vector :type (simple-array integer (*))))
+  (:metaclass funcallable-standard-class))
 
 (defmethod input-dimension ((instance affine-transformation))
   (length (input-constraints instance)))
@@ -70,12 +71,11 @@
         (b2 (translation-vector g)))
     (let ((input-constraints (input-constraints f))
           (linear-operator (matrix-product A2 A1))
-          (translation-vector (map 'vector #'+ (product A2 b1) b2)))
-      (make-instance
-       'affine-transformation
-       :input-constraints input-constraints
-       :linear-operator linear-operator
-       :translation-vector translation-vector))))
+          (translation-vector (map 'vector #'+ (matrix-product A2 b1) b2)))
+      (make-affine-transformation
+       input-constraints
+       linear-operator
+       translation-vector))))
 
 (defmethod inverse ((object affine-transformation))
   ;;    f(x) = (Ax + b)
@@ -92,13 +92,18 @@
           :for row-index :from 0 :do
             (when (zerop value)
               (setf (aref input-constraints row-index) translation)))
-    (let* ((linear-operator (inverse A))
-           (translation-vector (product linear-operator b)))
-      (make-instance
-       'affine-transformation
-       :input-constraints input-constraints
-       :linear-operator linear-operator
-       :translation-vector translation-vector))))
+    (let* ((linear-operator (matrix-inverse A))
+           (translation-vector (matrix-product linear-operator b)))
+      (map-into translation-vector #'- translation-vector) ; negate b
+      (loop :for index :below (length translation-vector)
+            :and input-constraint :across (input-constraints object) :do
+              (when input-constraint
+                (assert (= (aref translation-vector index) 0))
+                (setf (aref translation-vector index) input-constraint)))
+      (make-affine-transformation
+       input-constraints
+       linear-operator
+       translation-vector))))
 
 (defmethod print-object ((object affine-transformation) stream)
   (let ((inputs (loop :for input-constraint :across (input-constraints object)

@@ -55,12 +55,6 @@
   (:method ((a number) (b number))
     (+ a b)))
 
-(defgeneric classify-transformation (function input-constraints nargout)
-  (:documentation
-   "Convert an ordinary Common Lisp function FUNCTION to an appropriate
-   instance of the class TRANSFORMATION.")
-  (:method ((function transformation) input-constraints nargout) function))
-
 (defgeneric composition (g f)
   (:documentation
    "Returns a funcallable object such that its application is equivalent to
