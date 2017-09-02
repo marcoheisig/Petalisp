@@ -30,7 +30,7 @@
         (fixnum-euclid 1 u 0 v)
         (bignum-euclid 1 u 0 v))))
 
-(test extended-euclid
+(test |(extended-euclid)|
   (flet ((? (u v)
            (multiple-value-bind (u1 u3) (extended-euclid u v)
              (is (= (gcd u v) u3))
@@ -64,7 +64,7 @@
                                 (funcall key (elt sequence i))))))
     (sequence #1#)))
 
-(test identical
+(test |(identical)|
   (is-true (identical '(1 1 1)))
   (is-true (identical #(1 1.0 1/1) :test #'=))
   (is-true (identical '(1 2.0 6/2 4d0) :key #'numberp :test #'eq))
@@ -82,7 +82,7 @@
                            arrays))))
   result)
 
-(test array-map
+(test |(array-map)|
   (is (equalp
        #2a((1 2 3 4) (1 2 3 4) (1 2 3 4) (1 2 3 4))
        (array-map

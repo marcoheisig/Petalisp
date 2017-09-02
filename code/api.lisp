@@ -26,7 +26,7 @@
       ((equalp range-1 range-2) range-1)
       (t (error "Ranges not upgradeable.")))))
 
-(test broadcast
+(test |(broadcast)|
   (flet ((? (a b result)
            (is (equal? result (broadcast a b)))))
     (? (σ (0 9)) (σ (9 9)) (σ (0 9)))
