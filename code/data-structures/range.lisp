@@ -57,13 +57,26 @@
                        (push it result))
                      (return result)))))))
 
+(test |(difference range)|
+  (flet ((? (a b)
+           (if (intersection a b)
+               (is (equal? a (apply #'fusion
+                                    (intersection a b)
+                                    (difference a b))))
+               (is (equal? a (first (difference a b)))))))
+    (? (range 1 3 7) (range 8 1 22))
+    (? (range 1 3 7) (range 1 3 10))
+    (? (range 1 3 13) (range 4 2 10))
+    (? (range 0 1 9) (range 2 2 4))
+    (? (range 1 2 23) (range 3 10 23))))
+
 (defmethod fusion ((range range) &rest more-ranges)
   (let ((ranges (cons range more-ranges)))
-    (loop for range in ranges
-          sum (size range) into number-of-elements
-          maximize (range-end range) into end
-          minimize (range-start range) into start
-          finally
+    (loop :for range :in ranges
+          :sum (size range) :into number-of-elements
+          :maximize (range-end range) :into end
+          :minimize (range-start range) :into start
+          :finally
              (let ((step (ceiling (1+ (- end start)) number-of-elements)))
                (return (range start step end))))))
 
@@ -84,6 +97,20 @@
             (when (<= lb smallest biggest ub)
               (range smallest lcm biggest))))))))
 
+(test |(intersection range)|
+  (flet ((? (a b result)
+           (is (equal? result (intersection a b)))))
+    (is (intersection (range 0 0 0) (range 0 0 0)))
+    (is (null (intersection (range 1 1 5) (range 6 1 10))))
+    (? (range -5 1 5) (range 0 1 10) (range 0 1 5))
+    (? (range 0 3 12) (range 0 2 12) (range 0 6 12))
+    (? (range 1 2 23) (range 3 10 23) (range 3 10 23))
+    (? (range 0 55 1000) (range 0 143 1000) (range 0 715 1000))
+    (? (range -10 40902 50000000) (range 24 24140 50000000)
+       (range 13783964 (lcm 40902 24140) 42824384))
+    (? (range 0 (expt 6 40) (expt 2 200)) (range 0 (expt 9 40) (expt 2 200))
+       (range 0 (expt 18 40) (expt 2 200)))))
+
 (defmethod size ((object range))
   (1+ (the integer (/ (- (range-end object) (range-start object))
                       (range-step object)))))
@@ -95,7 +122,6 @@
 
 (test range
   (is (range? (range 0 1 10)))
-  (is (equal? (range 0 -3 3) (range 0 3 3)))
   (is (equal? (range 0 5 0) (range 0 0 0)))
   (is (equal? (range 5 3 12) (range 5 3 11)))
   (is (equal? (range -2 2 2) (range 2 2 -2)))
@@ -105,8 +131,9 @@
   (for-all ((start (integer-generator))
             (step (integer-generator))
             (end (integer-generator)))
-    (let ((range (if (zerop step)
-                     (range start end)
-                     (range start step end))))
-      (is (range? range))
-      (is (= (size range) (1+ (floor (abs (- start end)) (abs step))))))))
+    (let ((step (if (zerop step) 1 step)))
+      (is (range? (range start step end)))
+      (is (= (size (range start step end))
+             (1+ (floor (abs (- start end)) (abs step)))))
+      (is (equal? (range start step end)
+                  (range start (- step) end))))))

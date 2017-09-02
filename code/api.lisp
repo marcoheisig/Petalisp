@@ -26,6 +26,16 @@
       ((equalp range-1 range-2) range-1)
       (t (error "Ranges not upgradeable.")))))
 
+(test broadcast
+  (flet ((? (a b result)
+           (is (equal? result (broadcast a b)))))
+    (? (σ (0 9)) (σ (9 9)) (σ (0 9)))
+    (? (σ (9 9)) (σ (0 9)) (σ (0 9)))
+    (? (σ (-5 5)) (σ (-5 5)) (σ (-5 5)))
+    (? (σ) (σ (0 100) (0 100)) (σ (0 100) (0 100)))
+    (? (σ (0 100) (0 100)) (σ) (σ (0 100) (0 100)))
+    (signals error (broadcast (σ (2 4)) (σ (1 3))))))
+
 (defun α (function object &rest more-objects)
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
 for Petalisp data structures. When the dimensions of some of the inputs
