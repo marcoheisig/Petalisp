@@ -87,28 +87,29 @@
                                        :element-type '(or null integer))))
     ;; the new input constraints are the values of b whenever the
     ;; corresponding row of A is zero
-    (loop :for value :across (spm-values A)
-          :for translation :across b
-          :for row-index :from 0 :do
-            (when (zerop value)
-              (setf (aref input-constraints row-index) translation)))
+    (iterate (for value in-vector (spm-values A))
+             (for translation in-vector b)
+             (for row-index from 0)
+             (when (zerop value)
+               (setf (aref input-constraints row-index) translation)))
     (let* ((linear-operator (matrix-inverse A))
            (translation-vector (matrix-product linear-operator b)))
       (map-into translation-vector #'- translation-vector) ; negate b
-      (loop :for index :below (length translation-vector)
-            :and input-constraint :across (input-constraints object) :do
-              (when input-constraint
-                (assert (= (aref translation-vector index) 0))
-                (setf (aref translation-vector index) input-constraint)))
+      (iterate (for index below (length translation-vector))
+               (for input-constraint in-vector (input-constraints object))
+               (when input-constraint
+                 (assert (= (aref translation-vector index) 0))
+                 (setf (aref translation-vector index) input-constraint)))
       (make-affine-transformation
        input-constraints
        linear-operator
        translation-vector))))
 
 (defmethod print-object ((object affine-transformation) stream)
-  (let ((inputs (loop :for input-constraint :across (input-constraints object)
-                      :for sym :in (list-of-symbols (input-dimension object))
-                      :collect (or input-constraint sym))))
+  (let ((inputs
+          (iterate (for input-constraint in-vector (input-constraints object))
+                   (for symbol in (list-of-symbols (input-dimension object)))
+                   (collect (or input-constraint symbol)))))
     (prin1 `(τ ,inputs ,@(map 'list (λ Ax b (cond ((eql Ax 0) b)
                                                   ((numberp Ax) (+ Ax b))
                                                   ((eql b 0) Ax)

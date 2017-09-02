@@ -22,8 +22,8 @@
 
 (defmacro σ (&rest ranges)
   `(make-index-space
-    ,@(loop for range in ranges
-            collect `(range ,@range))))
+    ,@(iterate (for range in ranges)
+               (collect `(range ,@range)))))
 
 (test strided-array-index-space
   (is (strided-array-index-space? (σ)))
@@ -39,24 +39,26 @@
             (,(intern "STEP") (range-step (aref (ranges ,space) ,dim)))
             (,(intern "END") (range-end (aref (ranges ,space) ,dim))))
          (make-index-space
-          ,@(loop for form in dimensions and d from 0
-                  collect `(let ((,dim ,d)) (range ,@form))))))))
+          ,@(iterate (for form in dimensions)
+                     (for d from 0)
+                     (collect `(let ((,dim ,d)) (range ,@form)))))))))
 
 (defmethod difference ((space-1 strided-array-index-space)
                        (space-2 strided-array-index-space))
-  (let ((intersection (intersection space-1 space-2)))
-    (unless intersection (return-from difference `(,space-1)))
-    (loop for r1 across (ranges space-1)
-          and r2 across (ranges space-2)
-          and i from 0
-          nconcing
-          (loop for difference in (difference r1 r2)
-                collect (let ((ranges (copy-array (ranges space-1))))
-                          (replace ranges (ranges intersection) :end1 i)
-                          (setf (aref ranges i) difference)
-                          (make-instance
-                           'strided-array-index-space
-                           :ranges ranges))))))
+  (if-let ((intersection (intersection space-1 space-2)))
+    (iterate outer
+             (for r1 in-vector (ranges space-1))
+             (for r2 in-vector (ranges space-2))
+             (for i from 0)
+             (iterate (for difference in (difference r1 r2))
+                      (let ((ranges (copy-array (ranges space-1))))
+                        (replace ranges (ranges intersection) :end1 i)
+                        (setf (aref ranges i) difference)
+                        (in outer
+                            (collect
+                                (make-instance 'strided-array-index-space
+                                               :ranges ranges))))))
+    (list space-1)))
 
 (test |(difference strided-array-index-space)|
   (flet ((? (a b)
@@ -149,25 +151,25 @@
                                   (object strided-array-index-space))
   (let ((result (make-array (output-dimension transformation)))
         (ranges (ranges object)))
-    (loop :for input-constraint :across (input-constraints transformation)
-          :and range :across ranges :do
-          (when input-constraint
-            (assert (= (range-start range) input-constraint (range-end range)))))
+    (iterate (for input-constraint in-vector (input-constraints transformation))
+             (for range in-vector ranges)
+             (when input-constraint
+               (assert (= (range-start range) input-constraint (range-end range)))))
     (let ((A (linear-operator transformation))
           (b (translation-vector transformation)))
       (declare (type scaled-permutation-matrix A)
                (type (simple-array number (*)) b))
       (with-unsafe-optimizations
-        (loop :for row :from 0
-              :for column :across (spm-column-indices A)
-              :for scale :across (spm-values A)
-              :for offset :across b :do
-                (let ((range (aref ranges column)))
-                  (setf (aref result row)
-                        (range
-                         (+ offset (* scale (range-start range)))
-                         (* scale (range-step range))
-                         (+ offset (* scale (range-end range)))))))))
+        (iterate (for row from 0)
+                 (for column in-vector (spm-column-indices A))
+                 (for scale in-vector (spm-values A))
+                 (for offset in-vector b)
+                 (let ((range (aref ranges column)))
+                   (setf (aref result row)
+                         (range
+                          (+ offset (* scale (range-start range)))
+                          (* scale (range-step range))
+                          (+ offset (* scale (range-end range)))))))))
     (make-instance 'strided-array-index-space :ranges result)))
 
 (test |(generic-unery-funcall affine-transformation strided-array-index-space)|

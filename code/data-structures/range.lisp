@@ -71,14 +71,14 @@
     (? (range 1 2 23) (range 3 10 23))))
 
 (defmethod fusion ((range range) &rest more-ranges)
-  (let ((ranges (cons range more-ranges)))
-    (loop :for range :in ranges
-          :sum (size range) :into number-of-elements
-          :maximize (range-end range) :into end
-          :minimize (range-start range) :into start
-          :finally
-             (let ((step (ceiling (1+ (- end start)) number-of-elements)))
-               (return (range start step end))))))
+  (let/de ((ranges (cons range more-ranges)))
+    (iterate (for range in ranges)
+             (sum (size range) into number-of-elements)
+             (maximize (range-end range) into end)
+             (minimize (range-start range) into start)
+             (finally
+              (let ((step (ceiling (1+ (- end start)) number-of-elements)))
+                (return (range start step end)))))))
 
 (defmethod intersection ((range-1 range) (range-2 range))
   (let ((lb (max (range-start range-1) (range-start range-2)))

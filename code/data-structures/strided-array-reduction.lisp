@@ -18,11 +18,11 @@
 (defkernel reduction-kernel (function element-type output-dimension)
   (let* ((input-dimension (1+ output-dimension))
          (input-indices
-           (loop repeat input-dimension
-                 collect (gensym "I")))
+           (iterate (repeat input-dimension)
+                    (collect (gensym "I"))))
          (output-indices
-           (loop repeat output-dimension
-                 collect (gensym "O"))))
+           (iterate (repeat input-dimension)
+                    (collect (gensym "O")))))
     (labels ((generate-loop (n)
                (block nil
                  (when (= n output-dimension)

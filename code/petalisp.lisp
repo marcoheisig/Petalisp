@@ -216,7 +216,7 @@ function is the identity transformation."))
   "Return a list of disjoint objects. Each resulting object is a proper
 subspace of one or more of the arguments and their fusion covers all
 arguments."
-  (flet ((shatter (dust object)
+  (flet ((shatter (dust object) ; dust is a list of disjoint objects
            (let ((object-w/o-dust (list object)))
              (nconc
               (loop for particle in dust do

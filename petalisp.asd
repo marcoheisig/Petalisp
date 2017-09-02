@@ -7,6 +7,7 @@
   (:alexandria
    :closer-mop
    :fiveam
+   :iterate
    :optima
    :trivial-garbage)
 

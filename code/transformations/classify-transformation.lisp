@@ -25,8 +25,9 @@
          ;; vector pointing to the individual conses of ARGS for fast random
          ;; access.
          (arg-conses (make-array input-dimension)))
-    (loop :for arg-cons :on args :and i :from 0 :do
-      (setf (aref arg-conses i) arg-cons))
+    (iterate (for arg-cons on args)
+             (for i from 0)
+             (setf (aref arg-conses i) arg-cons))
     ;; Initially x is the zero vector (except for input constraints, which
     ;; are ignored by A), so f(x) = Ax + b = b
     (let ((translation-vector (multiple-value-call #'vector (apply f args)))
@@ -39,30 +40,29 @@
                               :initial-element 0)))
       ;; set one input at a time from zero to one (ignoring those with
       ;; constraints) and check how it changes the result
-      (loop :for input-constraint :across input-constraints
-            :for arg-cons :across arg-conses
-            :for column-index :from 0 :do
-              (unless input-constraint
-                (setf (car arg-cons) 1)
-                ;; find the row of A corresponding to the mutated input
-                (let ((results (multiple-value-call #'vector (apply f args))))
-                  (loop :for result :across results
-                        :for offset :across translation-vector
-                        :for row-index :from 0 :do
-                          (when (/= result offset)
-                            (setf (aref column-indices row-index) column-index)
-                            (setf (aref values row-index) (- result offset)))))
-                (setf (car arg-cons) 0)))
+      (iterate (for input-constraint in-vector input-constraints)
+               (for arg-cons in-vector arg-conses)
+               (for column-index from 0)
+               (unless input-constraint
+                 (setf (car arg-cons) 1)
+                 ;; find the row of A corresponding to the mutated input
+                 (let ((results (multiple-value-call #'vector (apply f args))))
+                   (iterate (for result in-vector results)
+                            (for offset in-vector translation-vector)
+                            (for row-index from 0)
+                            (when (/= result offset)
+                              (setf (aref column-indices row-index) column-index)
+                              (setf (aref values row-index) (- result offset)))))
+                 (setf (car arg-cons) 0)))
       (let ((linear-operator
               (scaled-permutation-matrix
                output-dimension input-dimension column-indices values)))
         ;; optional but oh so helpful: check whether the derived mapping
         ;; satisfies other inputs, i.e. the mapping can indeed be represented
         ;; as Ax + b
-        (loop :for input-constraint :across input-constraints
-              :for arg-cons :across arg-conses :do
-                (unless input-constraint
-                  (setf (car arg-cons) 3)))
+        (iterate (for input-constraint in-vector input-constraints)
+                 (for arg-cons in-vector arg-conses)
+                 (unless input-constraint (setf (car arg-cons) 3)))
         (let* ((result-1 (multiple-value-call #'vector (apply f args)))
                (Ax (matrix-product
                     linear-operator
@@ -79,17 +79,26 @@
          translation-vector)))))
 
 (defmacro τ (input-forms &rest output-forms)
-  (loop for form in input-forms
-        collect (when (integerp form) form) into input-constraints
-        collect (if (symbolp form) form (gensym)) into symbols
-        finally
-           (return
-             `(classify-transformation
-               (lambda ,symbols
-                 (declare (ignorable ,@symbols))
-                 (values ,@output-forms))
-               ,(apply #'vector input-constraints)
-               ,(length output-forms)))))
+  (let* ((input-dimension (length input-forms))
+         (input-constraints (make-array input-dimension :initial-element nil)))
+    (iterate (for form in input-forms)
+             (for index from 0)
+             (cond ((integerp form)
+                    (setf (aref input-constraints index) form)
+                    (collect (gensym) into symbols))
+                   ((symbolp form)
+                    (collect form into symbols))
+                   (t
+                    (simple-program-error
+                     "Invalid transformation lambda list item: ~S" form)))
+             (finally
+              (return
+                `(classify-transformation
+                  (lambda ,symbols
+                    (declare (ignorable ,@symbols))
+                    (values ,@output-forms))
+                  ,input-constraints
+                  ,(length output-forms)))))))
 
 (test identity-transformation
   (let ((τ (τ (a b) a b)))
