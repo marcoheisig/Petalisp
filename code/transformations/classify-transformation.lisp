@@ -51,8 +51,8 @@
               :for arg-cons :across arg-conses :do
                 (unless input-constraint
                   (setf (car arg-cons) 3)))
-        (let* ((result-1 (multiple-value-call #'vector args))
-               (Ax (product
+        (let* ((result-1 (multiple-value-call #'vector (apply f args)))
+               (Ax (matrix-product
                     linear-operator
                     (make-array input-dimension
                                 :element-type 'rational
@@ -64,10 +64,8 @@
         (if (and (= input-dimension output-dimension)
                  (every #'null input-constraints)
                  (every #'zerop translation-vector)
-                 (matrix-identity? linear-operator))
-            (make-instance
-             'identity-transformation
-             :dimension input-dimension)
+                 (identity-matrix? linear-operator))
+            (make-identity-transformation input-dimension)
             (make-instance
              'affine-trainsformation
              :input-constraints input-constraints
@@ -86,3 +84,17 @@
                  (values ,@output-forms))
                ,(apply #'vector input-constraints)
                ,(length output-forms)))))
+
+(test identity-transformation
+  (let ((τ (τ (a b) a b)))
+    (is (identity-transformation? τ))
+    (is (= 2 (input-dimension τ) (output-dimension τ))))
+  (let ((τ (τ (a b c d) a b (ash (* 2 c) -1) (+ d 0))))
+    (is (identity-transformation? τ))
+    (is (= 4 (input-dimension τ) (output-dimension τ))))
+  (for-all ((dimension (integer-generator 0 200)))
+    (let ((τ (make-identity-transformation dimension)))
+      (is (identity-transformation? τ))
+      (is (equal? τ τ))
+      (is (equal? τ (inverse τ)))
+      (is (equal? τ (composition τ τ))))))

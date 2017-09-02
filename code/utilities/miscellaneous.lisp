@@ -104,7 +104,7 @@
         :with abc := #(a b c d e f g h i j k l m n o p q r s t. u v w x y z)
         :collect (if (< i (length abc))
                      (aref abc i)
-                     (symbolicate "VAR" i))))
+                     (format-symbol t "VAR~D" i))))
 
 (defun check-arity (function arity)
   "Signal an error if FUNCTION cannot be called with ARITY arguments."

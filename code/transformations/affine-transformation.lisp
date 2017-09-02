@@ -69,7 +69,7 @@
         (b1 (translation-vector f))
         (b2 (translation-vector g)))
     (let ((input-constraints (input-constraints f))
-          (linear-operator (composition A2 A1))
+          (linear-operator (matrix-product A2 A1))
           (translation-vector (map 'vector #'+ (product A2 b1) b2)))
       (make-instance
        'affine-transformation
@@ -108,7 +108,7 @@
                                                   ((numberp Ax) (+ Ax b))
                                                   ((eql b 0) Ax)
                                                   (t `(+ ,Ax ,b))))
-                              (product (linear-operator object) inputs)
+                              (matrix-product (linear-operator object) inputs)
                               (translation-vector object)))
            stream)))
 

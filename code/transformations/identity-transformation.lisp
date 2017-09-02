@@ -6,6 +6,9 @@
   ((input-dimension :type (integer 0 *)))
   (:metaclass funcallable-standard-class))
 
+(defun make-identity-transformation (dimension)
+  (make-instance 'identity-transformation :input-dimension dimension))
+
 (defmethod composition ((g identity-transformation) (f transformation)) f)
 
 (defmethod composition ((g transformation) (f identity-transformation)) g)
