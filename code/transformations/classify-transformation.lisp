@@ -16,7 +16,7 @@
        :linear-operator A
        :translation-vector b)))
 
-(defun classify-transformation (f input-constraints output-dimension)
+(defun classify-transformation (f input-constraints)
   (let* ((input-dimension (length input-constraints))
          (args (map 'list
                     (λ constraint (or constraint 0))
@@ -30,14 +30,15 @@
              (setf (aref arg-conses i) arg-cons))
     ;; Initially x is the zero vector (except for input constraints, which
     ;; are ignored by A), so f(x) = Ax + b = b
-    (let ((translation-vector (multiple-value-call #'vector (apply f args)))
-          ;; now determine the scaled permutation matrix A
-          (column-indices (make-array output-dimension
-                                      :element-type 'array-index
-                                      :initial-element 0))
-          (values (make-array output-dimension
-                              :element-type 'rational
-                              :initial-element 0)))
+    (let* ((translation-vector (multiple-value-call #'vector (apply f args)))
+           (output-dimension (length translation-vector))
+           ;; now determine the scaled permutation matrix A
+           (column-indices (make-array output-dimension
+                                       :element-type 'array-index
+                                       :initial-element 0))
+           (values (make-array output-dimension
+                               :element-type 'rational
+                               :initial-element 0)))
       ;; set one input at a time from zero to one (ignoring those with
       ;; constraints) and check how it changes the result
       (iterate (for input-constraint in-vector input-constraints)
@@ -83,16 +84,13 @@
 ;; constants. This makes it possible to move the classification of many
 ;; transformations to load time.
 (define-compiler-macro classify-transformation
-    (&whole whole &environment env
-            function input-constraints output-dimension)
+    (&whole whole &environment env function input-constraints)
   (if (and (constantp input-constraints env)
-           (constantp output-dimension env)
            (not (free-variables function)))
       `(load-time-value
         (classify-transformation
          ,function
-         ,input-constraints
-         ,output-dimension))
+         ,input-constraints))
       whole))
 
 (defmacro τ (input-forms &rest output-forms)
@@ -114,8 +112,7 @@
                   (lambda ,symbols
                     (declare (ignorable ,@symbols))
                     (values ,@output-forms))
-                  ,input-constraints
-                  ,(length output-forms)))))))
+                  ,input-constraints))))))
 
 (test identity-transformation
   (let ((τ (τ (a b) a b)))
