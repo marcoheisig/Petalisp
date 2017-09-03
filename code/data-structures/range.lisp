@@ -6,9 +6,9 @@
             (:constructor %make-range (start step end))
             (:copier nil)
             (:predicate range?))
-  (start 0 :type integer       :read-only t)
-  (step  1 :type unsigned-byte :read-only t)
-  (end   0 :type integer       :read-only t))
+  (start 0 :type integer          :read-only t)
+  (step  1 :type positive-integer :read-only t)
+  (end   0 :type integer          :read-only t))
 
 (defun range (&rest spec)
   (declare (dynamic-extent spec))
@@ -74,7 +74,7 @@
                         (t
                          (maybe-push-range start-1 step-1 lower-max)
                          (maybe-push-range upper-min step-1 end-1)))
-                  (unless (= 1 step-2)
+                  (when (> step-2 step-1) ; i.e. there is an interior
                     ;; process the interior
                     (iterate (for start from (+ start-2 step-1) below end-2 by step-2)
                              (for end = (+ start step-2 (- step-1)))

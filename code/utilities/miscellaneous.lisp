@@ -5,7 +5,7 @@
 (defun extended-euclid (u v)
   "Given nonnegative integers u and v, return the values u1 and u3 such
   that u*u1 + v*u2 = u3 = gcd(u,v)."
-  (declare (unsigned-byte u v))
+  (declare (non-negative-integer u v))
   (labels
       ((bignum-euclid (u1 u3 v1 v3)
          (declare (integer u1 u3 v1 v3))
