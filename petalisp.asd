@@ -4,7 +4,8 @@
   :license "AGPLv3"
 
   :depends-on
-  (:alexandria
+  (:agnostic-lizard
+   :alexandria
    :closer-mop
    :fiveam
    :iterate
@@ -27,6 +28,7 @@
       :components
       ((:file "generic")
        (:file "introspection")
+       (:file "iterate")
        (:file "macros")
        (:file "matrix" :depends-on ("macros" "testing"))
        (:file "miscellaneous" :depends-on ("macros" "testing"))

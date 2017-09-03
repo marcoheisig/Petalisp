@@ -4,14 +4,25 @@
 
 (defpackage :petalisp
   (:use :closer-common-lisp :alexandria)
-  ;; support for weak hashtables
-  (:shadowing-import-from :trivial-garbage #:make-hash-table)
   ;; shadow CL:INTERSECTION with a generic method
   (:shadow #:intersection)
+  ;; support for weak hashtables
+  (:shadowing-import-from :trivial-garbage #:make-hash-table)
+  ;; everyone needs a code walker
+  (:import-from :agnostic-lizard
+                #:macroexpand-all #:walk-form
+                #:metaenv-function-like-entries
+                #:metaenv-variable-like-entries
+                #:metaenv-blocks
+                #:metaenv-tags
+                #:metaenv-ensure-name-from-environment
+                #:metaenv-ensure-names-from-environment)
   ;; Petalisp imports only a small subset of fiveam functionality
-  (:import-from :fiveam #:is #:is-true #:is-false #:signals #:for-all)
+  (:import-from :fiveam
+                #:is #:is-true #:is-false #:signals #:for-all)
   ;; support for pattern matching
-  (:import-from :optima #:match #:ematch #:cmatch)
+  (:import-from :optima
+                #:match #:ematch #:cmatch)
   ;; LOOP no more
   (:import-from :iterate
                 #:defsynonym #:dsetq #:declare-variables

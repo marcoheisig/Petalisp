@@ -91,14 +91,6 @@
         #2a((1 1 1 1) (1 1 1 1) (1 1 1 1) (1 1 1 1))
         #2a((0 1 2 3) (0 1 2 3) (0 1 2 3) (0 1 2 3))))))
 
-(defun vector->list (vector)
-  (loop :for x :across vector :collect x))
-
-(defun forever (value)
-  "Make a one element circular list with a CAR of VALUE."
-  (let ((x (list value)))
-    (setf (cdr x) x)))
-
 (defun list-of-symbols (length)
   (loop :for i :below length
         :with abc := #(a b c d e f g h i j k l m n o p q r s t. u v w x y z)
@@ -110,6 +102,18 @@
   "Signal an error if FUNCTION cannot be called with ARITY arguments."
   (declare (ignorable function arity))
   )
+
+(defun free-variables (form &optional environment)
+  (let (result)
+    (walk-form
+     form environment
+     :on-every-atom
+     (lambda (form env)
+       (prog1 form
+         (when (and (symbolp form)
+                    (not (find form (metaenv-variable-like-entries env) :key #'first)))
+           (pushnew form result)))))
+    result))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

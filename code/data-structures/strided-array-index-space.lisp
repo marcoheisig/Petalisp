@@ -280,9 +280,8 @@
                 result :length 2)
                (is (every #'null intersections)))
              ;; check for coverage
-             (is (every #'subspace?
-                        args
-                        (forever (apply #'fusion result)))))))
+             (let ((fusion (apply #'fusion result)))
+               (is (every (λ x (subspace? x fusion)) args))))))
     (? (σ (1 1 4)) (σ (1 2 5)))
     (? (σ (1 1 10) (1 1 10))
        (σ (5 1 10) (5 1 10)))))
