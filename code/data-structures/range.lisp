@@ -17,18 +17,18 @@
       (ematch spec
         ((list start step end) (values start step end))
         ((list start end) (values start 1 end)))
-    (assert (not (and (zerop step) (/= start end))))
-    ;; ensure that STEP is positive
-    (when (minusp step) (setf step (- step)))
-    ;; normalize step
-    (when (= start end) (setf step 1))
-    ;; ensure START and END are congruent relative to STEP
-    (setf end (+ start (* step (truncate (- end start) step))))
-    ;; ensure START is bigger than END
-    (when (> start end) (rotatef start end))
-    ;; normalize step again
-    (when (= start end) (setf step 1))
-    (%make-range start step end)))
+    (if (zerop step)
+        (if (= start end)
+            (range start 1 end)
+            (simple-program-error
+             "Bad step size 0 for range with start ~d and end ~d"
+             start end))
+        ;; ensure START and END are congruent relative to STEP
+        (let ((end (+ start (* step (truncate (- end start) step)))))
+          (%make-range
+           (min start end)
+           (if (= start end) 1 (abs step))
+           (max start end))))))
 
 (defmethod difference ((space-1 range) (space-2 range))
   ;; we only care about the part of space-2 that intersects with space-1
