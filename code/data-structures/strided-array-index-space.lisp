@@ -4,7 +4,8 @@
 
 (define-class strided-array-index-space (strided-array index-space)
   ((element-type :initform t :allocation :class)
-   (predecessors :initform () :allocation :class)))
+   (predecessors :initform () :allocation :class)
+   (ranges :type (simple-vector range (*)))))
 
 (defmethod initialize-instance :after ((object strided-array)
                                        &key &allow-other-keys)
@@ -15,15 +16,29 @@
              'strided-array-index-space
              :ranges (ranges object)))))
 
-(defun make-index-space (&rest ranges)
-  (make-instance
-   'strided-array-index-space
-   :ranges (make-array (length ranges) :initial-contents ranges)))
+(defgeneric make-strided-array-index-space (specification)
+  (:method ((space strided-array-index-space)) space)
+  (:method ((vector simple-vector))
+    (if (every #'range? vector)
+        (make-instance
+         'strided-array-index-space
+         :ranges vector)
+        (call-next-method)))
+  (:method ((array array))
+    (make-instance
+     'strided-array-index-space
+     :ranges (map 'vector (λ end (range 0 1 (1- end)))
+                  (array-dimensions array))))
+  (:method ((range-specifications list))
+    (make-instance
+     'strided-array-index-space
+     :ranges (map 'vector (λ spec (apply #'range spec))
+                  range-specifications))))
 
-(defmacro σ (&rest ranges)
-  `(make-index-space
-    ,@(iterate (for range in ranges)
-               (collect `(range ,@range)))))
+(defmacro σ (&rest range-specifications)
+  `(make-strided-array-index-space
+    (vector ,@(iterate (for spec in range-specifications)
+                       (collect `(range ,@spec))))))
 
 (test strided-array-index-space
   (is (strided-array-index-space? (σ)))
@@ -38,10 +53,11 @@
            ((,(intern "START") (range-start (aref (ranges ,space) ,dim)))
             (,(intern "STEP") (range-step (aref (ranges ,space) ,dim)))
             (,(intern "END") (range-end (aref (ranges ,space) ,dim))))
-         (make-index-space
-          ,@(iterate (for form in dimensions)
-                     (for d from 0)
-                     (collect `(let ((,dim ,d)) (range ,@form)))))))))
+         (make-strided-array-index-space
+          (vector
+           ,@(iterate (for form in dimensions)
+                      (for d from 0)
+                      (collect `(let ((,dim ,d)) (range ,@form))))))))))
 
 (defmethod difference ((space-1 strided-array-index-space)
                        (space-2 strided-array-index-space))
@@ -77,6 +93,9 @@
     (? (σ (1 1 9) (1 1 9) (1 1 9))
        (σ (1 8 9) (1 8 9) (1 8 9)))))
 
+(defmethod dimension ((object strided-array-index-space))
+  (length (ranges object)))
+
 (defmethod equal? ((object-1 strided-array-index-space)
                    (object-2 strided-array-index-space))
   (and (= (dimension object-1) (dimension object-2))
@@ -86,11 +105,8 @@
 
 (defmethod fusion ((object strided-array-index-space) &rest more-objects)
   (let ((objects (cons object more-objects)))
-    (apply #'make-index-space
-           (fuse-recursively objects)
-           #+nil
-           (loop for i below (dimension object)
-                 collect (apply #'fuse-dimension i objects)))))
+    (make-strided-array-index-space
+     (apply #'vector (fuse-recursively objects)))))
 
 (test |(fusion strided-array-index-space)|
   (flet ((? (&rest args)
@@ -213,9 +229,10 @@
                   (make-instance
                    'fusion-island
                    :ranges (subseq ranges 0 1)
-                   :spaces-to-fuse (list
-                                    (apply #'make-index-space
-                                           (cdr (vector->list ranges)))))))
+                   :spaces-to-fuse
+                   (list
+                    (make-strided-array-index-space
+                     (subseq ranges 1))))))
               spaces))))
       (let ((results (mapcar ; recurse
                       (composition #'fuse-recursively #'spaces-to-fuse)
@@ -244,6 +261,9 @@
        (change-class x 'fusion-island
                      :spaces-to-fuse (spaces-to-fuse space-1)))
      result)))
+
+(defmethod size ((object strided-array-index-space))
+  (reduce #'* (ranges object) :key #'size))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

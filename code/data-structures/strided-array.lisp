@@ -3,13 +3,13 @@
 (in-package :petalisp)
 
 (define-class strided-array (data-structure)
-  (ranges index-space))
+  (index-space))
 
 (defmethod dimension ((object strided-array))
-  (length (ranges object)))
+  (dimension (index-space object)))
 
 (defmethod size ((object strided-array))
-  (reduce #'* (ranges object) :key #'size))
+  (size (index-space object)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -31,12 +31,6 @@
 (defmethod print-object ((object strided-array) stream)
   (print-unreadable-object (object stream :type t)
     (princ (index-space object) stream)))
-
-(defmethod ranges ((array array))
-  (map 'vector
-       (lambda (end)
-         (range 0 1 (1- end)))
-       (array-dimensions array)))
 
 (defun array->strided-array (array)
   (let ((ranges (ranges array)))
