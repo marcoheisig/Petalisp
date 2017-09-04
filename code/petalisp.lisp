@@ -24,7 +24,7 @@
    memory, or whose elements are in tho process of being stored directly in
    memory."))
 
-(define-class index-space (data-structure elaboration) ()
+(define-class index-space (data-structure) ()
   (:documentation
    "An index space of dimension D is a set of D-tuples i1,...,iD."))
 

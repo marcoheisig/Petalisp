@@ -27,6 +27,7 @@
      (:module "utilities" :depends-on ("package")
       :components
       ((:file "generic")
+       (:file "graphviz")
        (:file "introspection")
        (:file "iterate")
        (:file "macros")
@@ -43,12 +44,12 @@
       :components
       ((:file "range")
        (:file "strided-array-application" :depends-on ("strided-array"))
+       (:file "strided-array-elaboration" :depends-on ("strided-array"))
        (:file "strided-array-fusion" :depends-on ("strided-array"))
        (:file "strided-array-index-space" :depends-on ("strided-array" "range"))
        (:file "strided-array")
        (:file "strided-array-reduction" :depends-on ("strided-array"))
-       (:file "strided-array-reference" :depends-on ("strided-array"))
-       (:file "strided-array-repetition" :depends-on ("strided-array"))))
+       (:file "strided-array-reference" :depends-on ("strided-array"))))
      (:module "compiler" :depends-on ("data-structures")
       :components
       ())
