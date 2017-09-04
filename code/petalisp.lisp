@@ -6,30 +6,63 @@
 (in-package :petalisp)
 
 (define-class transformation (unary-funcallable-object) ()
-  (:metaclass funcallable-standard-class))
+  (:metaclass funcallable-standard-class)
+  (:documentation
+   "A transformation is an analytically tractable function from indices to
+   indices."))
 
 (define-class data-structure ()
   ((element-type :initform t)
-   (predecessors :initform nil
-                 :type list)))
+   (predecessors :initform nil :type list))
+  (:documentation
+   "A data structure of dimension D is a mapping from indices i1,...,iD to
+   values of type ELEMENT-TYPE."))
 
-(define-class index-space (data-structure)
-  ())
+(define-class elaboration (data-structure) ()
+  (:documentation
+   "An elaboration is a data structure whose values are stored directly in
+   memory, or whose elements are in tho process of being stored directly in
+   memory."))
+
+(define-class index-space (data-structure elaboration) ()
+  (:documentation
+   "An index space of dimension D is a set of D-tuples i1,...,iD."))
 
 (define-class application (data-structure)
-  ((operator :type function)))
+  ((operator :type function))
+  (:documentation
+   "Let F be a referentially transparent Common Lisp function that accepts
+   n arguments, and let A1...AN be data structures with index space Ω. The
+   the application of f to A1...AN is a data structure that maps each index
+   k ∈ Ω to (F (A1 k) ... (AN k))."))
 
 (define-class reduction (data-structure)
-  ((operator :type function)))
+  ((operator :type function))
+  (:documentation
+   "Let F be a referentially transparent Common Lisp function that accepts
+   two arguments, and let A be a data structure of dimension n, i.e. a
+   mapping from each element of the cartesian product of the spaces S1,
+   ..., Sn to some values. Then the reduction of A by F is a data structure
+   of dimension n-1 that maps each element k of S1 ⨯ ... ⨯ Sn-1 to the
+   pairwise combination of the elements {a(i) | i ∈ k ⨯ Sn} by F in some
+   arbitrary order."))
 
-(define-class repetition (data-structure)
-  ())
-
-(define-class fusion (data-structure)
-  ())
+(define-class fusion (data-structure) ()
+  (:documentation
+   "Let A1...AN be strided arrays with equal dimension, each mapping from
+   an index space Ωk to a set of values.  Furthermore, let the sets Ω1...ΩN
+   be pairwise disjoint, and let Ωf = ∪ Ω1...Ωk be again a valid index
+   space. Then the fusion of A1...AN is a data structure that maps each
+   index i ∈ Ωf to the value of i of the unique strided array Ak whose
+   index space contains i."))
 
 (define-class reference (data-structure)
-  ((transformation :type transformation)))
+  ((transformation :type transformation))
+  (:documentation
+   "Let A be a strided array with domain ΩA, let ΩB be a strided array
+   index space and let T be a transformation from ΩB to ΩA. Then the
+   reference of A by ΩB and T is a strided array that maps each index tuple
+   k \in ΩB to A(T(k))."))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -37,10 +70,8 @@
 
 (defgeneric application (f a1 &rest a2...aN)
   (:documentation
-   "Let F be a referentially transparent Common Lisp function that accepts
-   n arguments, and let A1...AN be data structures with index space Ω. The
-   the application of f to A1...AN is a data structure that maps each index
-   k ∈ Ω to (F (A1 k) ... (AN k)).")
+   "Return a (potentially optimized and simplified) data structure
+   equivalent to an instance of class APPLICATION.")
   (:method :before ((f function) (a1 data-structure) &rest a2...aN)
     (assert (every #'data-structure? a2...aN))
     (let/de ((a1...aN (list* a1 a2...aN)))
@@ -48,10 +79,12 @@
       (assert (identical a1...aN :test #'equal? :key #'index-space)))))
 
 (defgeneric binary-product (object-1 object-2)
+  (:documentation "The generic function invoked by PRODUCT.")
   (:method ((a number) (b number))
     (* a b)))
 
 (defgeneric binary-sum (object-1 object-2)
+  (:documentation "The generic function invoked by SUM.")
   (:method ((a number) (b number))
     (+ a b)))
 
@@ -98,12 +131,8 @@
 
 (defgeneric fusion (a1 &rest a2...aN)
   (:documentation
-   " Let A1...AN be strided arrays with equal dimension, each mapping from
-  an index space Ωk to a set of values.  Furthermore, let the sets Ω1...ΩN
-  be pairwise disjoint, and let Ωf = ∪ Ω1...Ωk be again a valid index
-  space. Then the fusion of A1...AN is a data structure that maps each
-  index i ∈ Ωf to the value of i of the unique strided array Ak whose index
-  space contains i.")
+   "Return a (potentially optimized and simplified) data structure
+   equivalent to an instance of class FUSION.")
   (:method :before ((a1 data-structure) &rest a2...aN)
     (let/de ((a1...aN (list* a1 a2...aN)))
       (assert (identical a1...aN :test #'= :key #'dimension)))))
@@ -153,25 +182,19 @@ function is the identity transformation."))
 
 (defgeneric reduction (f a)
   (:documentation
-   "Let F be a referentially transparent Common Lisp function that accepts
-   two arguments, and let A be a data structure of dimension n, i.e. a
-   mapping from each element of the cartesian product of the ranges R1,
-   ..., Rn to some values. Then the reduction of A by F is a data structure
-   of dimension n-1 that maps each element k of R1 ⨯ ... ⨯ Rn-1 to the
-   combination of the elements {a(i) | i ∈ k ⨯ Rn} by F in some arbitrary
-   order.")
+   "Return a (potentially optimized and simplified) data structure
+   equivalent to an instance of class REDUCTION.")
   (:method :before ((f function) (a data-structure))
     (assert (< 0 (dimension a)))
     (check-arity f 2)))
 
 (defgeneric reference (object space transformation)
+  (:documentation
+   "Return a (potentially optimized and simplified) data structure
+   equivalent to an instance of class REFERENCE.")
   (:method :before ((object data-structure) space (transformation transformation))
     (assert (and (subspace? space object)
                  (= (dimension space) (input-dimension transformation))))))
-
-(defgeneric repetition (object space)
-  (:method :before ((object data-structure) space)
-    (assert (<= (dimension object) (dimension space)))))
 
 (defgeneric result-type (function &rest arguments))
 
