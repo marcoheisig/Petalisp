@@ -196,6 +196,7 @@ function is the identity transformation."))
    equivalent to an instance of class REFERENCE.")
   (:method :before ((object data-structure) (space index-space) (transformation transformation))
     (assert (and (= (dimension space) (input-dimension transformation))
+                 #+nil
                  (subspace? (funcall transformation space)
                             (index-space object))))))
 

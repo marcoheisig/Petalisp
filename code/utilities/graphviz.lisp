@@ -45,37 +45,47 @@
     (with-output-to-string (stream)
       (print-object (car node) stream))))
 
+(defgeneric graphviz-node-color (purpose node)
+  (:method ((purpose <graph>) (node t)) "white")
+  (:method ((purpose <s-expression>) (node list)) "gray"))
+
 (defgeneric graphviz-edge-label (purpose from to)
   (:method ((purpose <graph>) (from t) (to t)) ""))
 
-(defparameter *graphviz-node-table* nil) ; maping from node to unique id
+(defgeneric graphviz-edge-color (purpose from to)
+  (:method ((purpose <graph>) (from t) (to t)) "black"))
 
 (defgeneric graphviz-draw-graph (purpose graph-roots &optional stream)
   (:method ((purpose symbol) (graph-roots list) &optional (stream t))
     (graphviz-draw-graph (make-instance purpose) graph-roots stream))
   (:method ((purpose <graph>) (graph-roots list) &optional (stream t))
-    (let ((*graphviz-node-table* (make-hash-table :test #'eq))
+    (let ((table (make-hash-table :test #'eq))
           (node-id 0))
       ;; 1. populate node table
       (labels ((populate-node-table (node)
-                 (unless (gethash node *graphviz-node-table*)
-                   (setf (gethash node *graphviz-node-table*) (incf node-id))
+                 (unless (gethash node table)
+                   (setf (gethash node table) (incf node-id))
                    (dolist (successor (graphviz-successors purpose node))
                      (populate-node-table successor)))))
         (mapc #'populate-node-table graph-roots))
       (format stream "digraph G {~%")
+      (format stream "  node[shape=box, style=filled]~%")
       ;; 2. draw nodes
       (loop :for node :being :each :hash-key
-              :using (:hash-value node-id) :of *graphviz-node-table* :do
-                (format stream "  node~d [label=~S];~%"
-                        node-id (graphviz-node-label purpose node)))
+              :using (:hash-value node-id) :of table :do
+                (format stream "  node~d [label=~S, fillcolor=~S]~%"
+                        node-id
+                        (graphviz-node-label purpose node)
+                        (graphviz-node-color purpose node)))
       ;; 2. draw edges
       (loop :for from :being :each :hash-key
-              :using (:hash-value from-id) :of *graphviz-node-table* :do
+              :using (:hash-value from-id) :of table :do
                 (dolist (to (graphviz-successors purpose from))
-                  (let ((to-id (gethash to *graphviz-node-table*)))
-                    (format stream "  node~d -> node~d [label=~S];~%"
-                            from-id to-id (graphviz-edge-label purpose from to)))))
+                  (let ((to-id (gethash to table)))
+                    (format stream "  node~d -> node~d [label=~S, color=~S]~%"
+                            from-id to-id
+                            (graphviz-edge-label purpose from to)
+                            (graphviz-edge-color purpose from to)))))
       (format stream "}~%"))))
 
 #+nil

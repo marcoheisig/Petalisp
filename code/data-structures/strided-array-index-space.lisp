@@ -39,7 +39,7 @@
 
 (defmacro σ* (space-form &rest dimensions)
   (with-gensyms (dim space)
-    `(let ((,space (index-space ,space-form)))
+    `(let ((,space (index-space (petalispify ,space-form))))
        (symbol-macrolet
            ((,(intern "START") (range-start (aref (ranges ,space) ,dim)))
             (,(intern "STEP") (range-step (aref (ranges ,space) ,dim)))
