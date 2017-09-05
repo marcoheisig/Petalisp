@@ -88,9 +88,11 @@
   (if (and (constantp input-constraints env)
            (not (free-variables function)))
       `(load-time-value
-        (classify-transformation
-         ,function
-         ,input-constraints))
+        (locally
+            (declare (notinline classify-transformation))
+          (classify-transformation
+           ,function
+           ,input-constraints)))
       whole))
 
 (defmacro τ (input-forms &rest output-forms)
