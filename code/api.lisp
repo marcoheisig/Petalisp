@@ -5,51 +5,66 @@
 
 (in-package :petalisp)
 
-(defgeneric broadcast (space-1 space-2)
-  (:method ((space-1 strided-array-index-space)
-            (space-2 strided-array-index-space))
-    (when (>= (dimension space-1) (dimension space-2))
-      (rotatef space-1 space-2))
-    (let ((ranges-1 (ranges space-1))
-          (ranges-2 (ranges space-2)))
-      (make-instance
-       'strided-array-index-space
-       :ranges
-       (concatenate
-        'vector
-        (map 'vector #'broadcast ranges-1 ranges-2)
-        (subseq ranges-2 (length ranges-1))))))
-  (:method ((range-1 range) (range-2 range))
-    (cond
-      ((unary-range? range-1) range-2)
-      ((unary-range? range-2) range-1)
-      ((equalp range-1 range-2) range-1)
-      (t (error "Ranges not upgradeable.")))))
+(defgeneric broadcast-to (object space)
+  (:method :before ((object data-structure) (space index-space))
+    (assert (<= (dimension object) (dimension space))))
+  (:method ((object strided-array) (space strided-array-index-space))
+    (let ((transformation
+            (let ((input-dimension (dimension space))
+                  (output-dimension (dimension object)))
+              (let ((translation-vector (make-array output-dimension :initial-element 0))
+                    (column-indices (make-array output-dimension :initial-element 0))
+                    (values (make-array output-dimension :initial-element 0)))
+                (iterate (for input-range in-vector (ranges (index-space object)))
+                         (for output-range in-vector (ranges space))
+                         (for index from 0)
+                         (setf (aref column-indices index) index)
+                         (cond ((unary-range? output-range)
+                                (setf (aref translation-vector index) (range-start output-range)))
+                               ((equal? input-range output-range)
+                                (setf (aref values index) 1))))
+                (make-affine-transformation
+                 (make-array input-dimension :initial-element nil)
+                 (scaled-permutation-matrix
+                  output-dimension
+                  input-dimension
+                  column-indices
+                  values)
+                 translation-vector)))))
+      (reference object space transformation))))
 
-(test |(broadcast)|
-  (flet ((? (a b result)
-           (is (equal? result (broadcast a b)))))
-    (? (σ (0 9)) (σ (9 9)) (σ (0 9)))
-    (? (σ (9 9)) (σ (0 9)) (σ (0 9)))
-    (? (σ (-5 5)) (σ (-5 5)) (σ (-5 5)))
-    (? (σ) (σ (0 100) (0 100)) (σ (0 100) (0 100)))
-    (? (σ (0 100) (0 100)) (σ) (σ (0 100) (0 100)))
-    (signals error (broadcast (σ (2 4)) (σ (1 3))))))
+(defgeneric broadcast (object &rest more-objects)
+  (:method ((object strided-array) &rest more-objects)
+    (let/de ((objects (cons object more-objects)))
+      (let ((dimension (iterate (for object in objects)
+                                (maximize (dimension object)))))
+        (let ((upgraded-ranges (make-array dimension :initial-element nil)))
+          (iterate (for object in objects)
+                   (for arg-index from 0)
+                   (for ranges = (ranges (index-space object)))
+                   (iterate (for range in-vector ranges)
+                            (for upgraded-range in-vector upgraded-ranges)
+                            (for index from 0)
+                            (if (not upgraded-range)
+                                (setf (aref upgraded-ranges index) range)
+                                (if (unary-range? upgraded-range)
+                                    (setf (aref upgraded-ranges index) range)
+                                    (assert (equal? range upgraded-range)
+                                            (object)
+                                            "Illegal broadcasting in dimension ~D of argument ~D."
+                                            index arg-index)))))
+          (let ((index-space (make-strided-array-index-space upgraded-ranges)))
+            (mapcar (λ x (broadcast-to x index-space)) objects)))))))
 
 (defun α (function object &rest more-objects)
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
 for Petalisp data structures. When the dimensions of some of the inputs
-mismatch, the smaller objects are broadcasted where possible."
-  (let* ((objects
-           (mapcar #'petalispify (cons object more-objects)))
-         (index-space
-           (reduce (compose #'broadcast #'index-space) objects))
-         (objects
-           (mapcar
-            (lambda (object)
-              (repetition object index-space))
-            objects)))
-    (apply #'application function objects)))
+mismatch, the smaller objects are broadcast."
+  (let/de ((objects (cons object more-objects)))
+    (apply #'application
+           function
+           (apply #'broadcast
+                  (mapcar #'petalispify objects)))))
 
 (defun β (function object)
   "Reduce the last dimension of OBJECT with FUNCTION."
@@ -64,18 +79,14 @@ to represent the fusion."
 (defun fuse* (&rest objects)
   "Combine OBJECTS into a single petalisp data structure. When some OBJECTS
 overlap partially, the value of the rightmost object is used."
-  (let* ((objects (mapcar #'petalispify objects))
-         (pieces (apply #'subdivision objects)))
-    (apply
-     #'fusion
-     (mapcar
-      (lambda (piece)
-        (reference
-         (find piece objects :from-end t :test #'subspace?)
-         (index-space piece)
-         (make-instance 'identity-transformation
-                        :dimension (dimension piece))))
-      pieces))))
+  (let ((objects (mapcar #'petalispify objects)))
+    (let ((pieces (apply #'subdivision objects)))
+      (flet ((reference-origin (piece)
+               (reference
+                (find piece objects :from-end t :test #'subspace?)
+                (index-space piece)
+                (make-identity-transformation (dimension piece)))))
+        (apply #'fusion (mapcar #'reference-origin pieces))))))
 
 (defun -> (data-structure &rest modifiers)
   "Manipulate DATA-STRUCTURE depending on the individual MODIFIERS. The
@@ -90,17 +101,26 @@ elements with the keys 7, 8 and 9 from the given argument.
 When a modifier is of type TRANSFORMATION, the argument is permuted
 accordingly. For example applying the transformation (τ (m n) (n m) to a
 3x10 array would result in a 10x3 array."
-  (labels ((apply-modification (x modifier)
+  (labels ((recurse (data-structure modifiers)
+             (if (null modifiers)
+                 data-structure
+                 (recurse
+                  (modify data-structure (first modifiers))
+                  (rest modifiers))))
+           (modify (data-structure modifier)
              (etypecase modifier
-               (data-structure
-                (if (or (/= (dimension x) (dimension modifier))
-                        (subspace? x modifier))
-                    (repetition x modifier)
-                    (reference x (intersection modifier x)
-                               (make-instance 'identity-transformation
-                                              :dimension (dimension x)))))
+               (index-space
+                (if (or (<= (dimension data-structure) (dimension modifier))
+                        (subspace? (index-space data-structure) modifier))
+                    (broadcast-to data-structure modifier)
+                    (reference
+                     data-structure
+                     (intersection modifier data-structure)
+                     (make-identity-transformation
+                      (dimension data-structure)))))
                (transformation
-                (reference x (index-space x) modifier)))))
-    (reduce #'apply-modification modifiers
-            :initial-value (petalispify data-structure))))
-
+                (reference
+                 data-structure
+                 (index-space data-structure)
+                 (inverse modifier))))))
+    (recurse (petalispify data-structure) modifiers)))

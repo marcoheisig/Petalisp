@@ -24,7 +24,7 @@
   (:import-from :optima
                 #:match #:ematch #:cmatch)
   ;; LOOP no more
-  (:import-from :iterate
+  (:import-from :iterate #:display-iterate-clauses
                 #:defsynonym #:dsetq #:declare-variables
                 #:defmacro-clause #:defmacro-driver #:defclause-sequence
                 #:initially #:after-each #:finally #:finally-protected

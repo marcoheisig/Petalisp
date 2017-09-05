@@ -18,13 +18,14 @@
    "A data structure of dimension D is a mapping from indices i1,...,iD to
    values of type ELEMENT-TYPE."))
 
-(define-class elaboration (data-structure) ()
+(define-class elaboration (data-structure)
+  (data)
   (:documentation
    "An elaboration is a data structure whose values are stored directly in
    memory, or whose elements are in tho process of being stored directly in
    memory."))
 
-(define-class index-space (data-structure) ()
+(define-class index-space () ()
   (:documentation
    "An index space of dimension D is a set of D-tuples i1,...,iD."))
 
@@ -177,8 +178,9 @@ function is the identity transformation."))
    element.")
   (:method ((object data-structure)) object)
   (:method ((object t))
-    (make-array '() :initial-element object
-                    :element-type (type-of object))))
+    (petalispify
+     (make-array '() :initial-element object
+                     :element-type (type-of object)))))
 
 (defgeneric reduction (f a)
   (:documentation
@@ -193,10 +195,12 @@ function is the identity transformation."))
    "Return a (potentially optimized and simplified) data structure
    equivalent to an instance of class REFERENCE.")
   (:method :before ((object data-structure) space (transformation transformation))
-    (assert (and (subspace? space object)
-                 (= (dimension space) (input-dimension transformation))))))
+    (assert (and (= (dimension space) (input-dimension transformation))))))
 
-(defgeneric result-type (function &rest arguments))
+(defgeneric result-type (function &rest arguments)
+  (:method ((function function) &rest arguments)
+    (declare (ignore arguments))
+    t))
 
 (defgeneric size (object)
   (:method ((object t)) 1)

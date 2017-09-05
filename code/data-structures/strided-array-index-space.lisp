@@ -7,15 +7,6 @@
    (predecessors :initform () :allocation :class)
    (ranges :type (simple-vector range (*)))))
 
-(defmethod initialize-instance :after ((object strided-array)
-                                       &key &allow-other-keys)
-  (if (typep object 'strided-array-index-space)
-      (setf (slot-value object 'index-space) object)
-      (setf (slot-value object 'index-space)
-            (make-instance
-             'strided-array-index-space
-             :ranges (ranges object)))))
-
 (defgeneric make-strided-array-index-space (specification)
   (:method ((space strided-array-index-space)) space)
   (:method ((vector simple-vector))

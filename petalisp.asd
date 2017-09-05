@@ -52,6 +52,6 @@
        (:file "strided-array-reference" :depends-on ("strided-array"))))
      (:module "compiler" :depends-on ("data-structures")
       :components
-      ())
+      ((:file "visualization")))
      (:file "api" :depends-on ("data-structures"))))))
 
