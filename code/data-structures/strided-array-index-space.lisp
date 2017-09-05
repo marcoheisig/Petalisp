@@ -37,10 +37,10 @@
   (is (equal? (σ (0 10 20) (5 1 5)) (σ (0 10 25) (5 5 5))))
   (is (= 1000 (size (σ (0 1 9) (0 1 9) (0 1 9))))))
 
-(defmacro σ* (space &rest dimensions)
-  (with-gensyms (dim)
-    (once-only (space)
-      `(symbol-macrolet
+(defmacro σ* (space-form &rest dimensions)
+  (with-gensyms (dim space)
+    `(let ((,space (index-space ,space-form)))
+       (symbol-macrolet
            ((,(intern "START") (range-start (aref (ranges ,space) ,dim)))
             (,(intern "STEP") (range-step (aref (ranges ,space) ,dim)))
             (,(intern "END") (range-end (aref (ranges ,space) ,dim))))

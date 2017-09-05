@@ -80,11 +80,11 @@ to represent the fusion."
   "Combine OBJECTS into a single petalisp data structure. When some OBJECTS
 overlap partially, the value of the rightmost object is used."
   (let ((objects (mapcar #'petalispify objects)))
-    (let ((pieces (apply #'subdivision objects)))
+    (let ((pieces (apply #'subdivision (mapcar #'index-space objects))))
       (flet ((reference-origin (piece)
                (reference
-                (find piece objects :from-end t :test #'subspace?)
-                (index-space piece)
+                (find piece objects :from-end t :key #'index-space :test #'subspace?)
+                piece
                 (make-identity-transformation (dimension piece)))))
         (apply #'fusion (mapcar #'reference-origin pieces))))))
 
@@ -110,17 +110,40 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
            (modify (data-structure modifier)
              (etypecase modifier
                (index-space
-                (if (or (<= (dimension data-structure) (dimension modifier))
+                (if (or (< (dimension data-structure) (dimension modifier))
                         (subspace? (index-space data-structure) modifier))
                     (broadcast-to data-structure modifier)
                     (reference
                      data-structure
-                     (intersection modifier data-structure)
+                     (intersection modifier (index-space data-structure))
                      (make-identity-transformation
                       (dimension data-structure)))))
                (transformation
                 (reference
                  data-structure
-                 (index-space data-structure)
+                 (funcall modifier (index-space data-structure))
                  (inverse modifier))))))
     (recurse (petalispify data-structure) modifiers)))
+
+(test API
+  ;; 2D Multigrid
+  (flet ((red-black-gauss-seidel (u rhs iterations)
+           (let ((r1 (σ* u ((+ start 2) 2 (1- end)) ((+ start 2) 2 (1- end))))
+                 (r2 (σ* u ((+ start 1) 2 (1- end)) ((+ start 1) 2 (1- end))))
+                 (b1 (σ* u ((+ start 2) 2 (1- end)) ((+ start 1) 2 (1- end))))
+                 (b2 (σ* u ((+ start 1) 2 (1- end)) ((+ start 2) 2 (1- end))))
+                 (h (/ (1- (sqrt (size u))))))
+             (labels ((update (u what)
+                        (α #'* 0.25
+                           (α #'+
+                              (-> u (τ (i j) (1+ i) j) what)
+                              (-> u (τ (i j) (1- i) j) what)
+                              (-> u (τ (i j) i (1+ j)) what)
+                              (-> u (τ (i j) i (1- j)) what)
+                              (-> (α #'* (* h h) rhs) what)))))
+               (iterate (repeat iterations)
+                        (setf u (fuse* u (update u r1) (update u r2)))
+                        (setf u (fuse* u (update u b1) (update u b2))))
+               u))))
+    (red-black-gauss-seidel (-> 0.0 (σ (0 9) (0 9)))
+                            (-> 0.0 (σ (0 9) (0 9))) 1)))

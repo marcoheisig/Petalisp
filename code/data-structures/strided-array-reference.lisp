@@ -25,12 +25,10 @@
                       (space strided-array-index-space)
                       (t2 transformation))
   "Fold references to other references."
-  (let ((target-space (funcall t2 space))
-        (transformation (composition t2 (transformation object))))
-    (reference
-     (first (predecessors object))
-     (funcall (inverse transformation) target-space)
-     transformation)))
+  (reference
+   (first (predecessors object))
+   space
+   (composition (transformation object) t2)))
 
 (defmethod reference ((fusion strided-array-fusion)
                       (space strided-array-index-space)

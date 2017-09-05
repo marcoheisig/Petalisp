@@ -194,8 +194,10 @@ function is the identity transformation."))
   (:documentation
    "Return a (potentially optimized and simplified) data structure
    equivalent to an instance of class REFERENCE.")
-  (:method :before ((object data-structure) space (transformation transformation))
-    (assert (and (= (dimension space) (input-dimension transformation))))))
+  (:method :before ((object data-structure) (space index-space) (transformation transformation))
+    (assert (and (= (dimension space) (input-dimension transformation))
+                 (subspace? (funcall transformation space)
+                            (index-space object))))))
 
 (defgeneric result-type (function &rest arguments)
   (:method ((function function) &rest arguments)
