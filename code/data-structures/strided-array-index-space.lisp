@@ -26,16 +26,30 @@
      :ranges (map 'vector (λ spec (apply #'range spec))
                   range-specifications))))
 
+(defun strided-array-index-space-generator (&key
+                                              (dimension 3)
+                                              (max-size 30)
+                                              (max-extent 100)
+                                              intersecting)
+  (assert (or (not intersecting)
+              (= dimension (dimension intersecting))))
+  (let ((range-generators
+          (if intersecting
+              (map 'list (λ range (range-generator :max-size max-size
+                                                   :max-extent max-extent
+                                                   :intersecting range))
+                   (ranges intersecting))
+              (make-list dimension :initial-element
+                         (range-generator :max-size max-size
+                                          :max-extent max-extent)))))
+    (lambda ()
+      (make-strided-array-index-space
+       (map 'vector #'funcall range-generators)))))
+
 (defmacro σ (&rest range-specifications)
   `(make-strided-array-index-space
     (vector ,@(iterate (for spec in range-specifications)
                        (collect `(range ,@spec))))))
-
-(test strided-array-index-space
-  (is (strided-array-index-space? (σ)))
-  (is (= 2 (dimension (σ (1 2 3) (4 5 6)))))
-  (is (equal? (σ (0 10 20) (5 1 5)) (σ (0 10 25) (5 5 5))))
-  (is (= 1000 (size (σ (0 1 9) (0 1 9) (0 1 9))))))
 
 (defmacro σ* (space-form &rest dimensions)
   (with-gensyms (dim space)
@@ -68,21 +82,14 @@
     (list space-1)))
 
 (test |(difference strided-array-index-space)|
-  (flet ((? (a b)
-           (if (intersection a b)
-               (is (equal? a (apply #'fusion
-                                    (intersection a b)
-                                    (difference a b))))
-               (is (equal? a (first (difference a b)))))))
-    (? (σ (1 1 4)) (σ (1 2 5)))
-    (? (σ (1 2 5)) (σ (1 1 4)))
-    (? (σ (1 2 5)) (σ (2 2 4)))
-    (? (σ (1 1 5) (1 1 5))
-       (σ (2 2 4) (2 2 4)))
-    (? (σ (1 1 5) (1 1 5))
-       (σ (1 2 5) (1 2 5)))
-    (? (σ (1 1 9) (1 1 9) (1 1 9))
-       (σ (1 8 9) (1 8 9) (1 8 9)))))
+  (for-all ((a (strided-array-index-space-generator :dimension 3
+                                                    :max-extent 40)))
+    (for-all ((b (strided-array-index-space-generator :dimension 3
+                                                      :intersecting a
+                                                      :max-extent 40)))
+      (is (equal? a (apply #'fusion
+                           (intersection a b)
+                           (difference a b)))))))
 
 (defmethod dimension ((object strided-array-index-space))
   (length (ranges object)))
@@ -98,31 +105,6 @@
   (let ((objects (cons object more-objects)))
     (make-strided-array-index-space
      (apply #'vector (fuse-recursively objects)))))
-
-(test |(fusion strided-array-index-space)|
-  (flet ((? (&rest args)
-           (let ((fusion (apply #'fusion args)))
-             (is (every (lambda (x) (subspace? x fusion)) args))
-             (is (= (size fusion)
-                    (reduce #'+ (mapcar #'size args)))))))
-    (? (σ (1 1)) (σ (2 2)) (σ (3 3)) (σ (0 0)))
-    (? (σ (1 2 (expt 10 15))) (σ (2 2 (expt 10 15))))
-    (? (σ (1 5) (1 5))
-       (σ (6 10) (1 10))
-       (σ (1 5) (6 10)))
-    (? (σ (2 2 4) (2 2 4))
-       (σ (2 2 4) (1 2 5))
-       (σ (1 2 5) (1 1 5)))
-    (? (σ (1 2 3) (1 2 3))
-       (σ (2 2 4) (1 2 3))
-       (σ (1 2 3) (2 2 4))
-       (σ (2 2 4) (2 2 4)))
-    (?
-     (σ (2 2 6) (2 2 6))
-     (σ (8 8) (0 2 8))
-     (σ (0 0) (0 2 8))
-     (σ (2 2 6) (0 0))
-     (σ (2 2 6) (8 8)))))
 
 (defmethod intersection ((space-1 strided-array-index-space)
                          (space-2 strided-array-index-space))

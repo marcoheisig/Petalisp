@@ -29,19 +29,45 @@
            (if (= start end) 1 (abs step))
            (max start end))))))
 
-(defun range-generator (&optional (max-size #.(* 3 most-positive-fixnum)))
-  "Return a random range, whose start and end are at most MAX-SIZE apart."
-  (let ((random-integer (integer-generator
-                         (- (round max-size 2))
-                         (round max-size 2))))
+(defun range-generator (&key
+                          (max-extent #.(floor most-positive-fixnum 4/5))
+                          (max-size (floor (sqrt max-extent)))
+                          intersecting)
+  "Return a random range with at most MAX-SIZE elements, bounded by
+MAX-EXTENT. If another range INTERSECTING is given, the result will
+intersect it (potentially violating MAX-EXTENT)."
+  (assert (and (plusp max-extent)
+               (plusp max-size)
+               (<= max-size max-extent)))
+  (let ((max-step (floor max-extent (1- max-size))))
     (lambda ()
-      (let ((start (funcall random-integer))
-            (end (funcall random-integer)))
-        (let ((step (apply #'* (random-selection
-                                (prime-factors
-                                 (abs (- end start))
-                                 :less-than #.(expt 10 6))))))
-          (range start step end))))))
+      (let ((step (1+ (random max-step)))
+            (size (1+ (random max-size)))
+            (sign (- (* (random 2) 2) 1)))
+        (let ((extent (floor (* size step) 2)))
+          (let ((offset (* sign (random (max (- max-extent extent) 1)))))
+            (let ((start (- offset extent)))
+              (let ((range (range start step (+ start (* (1- size) step)))))
+                (if (not intersecting)
+                    range
+                    (flet ((random-element (range)
+                             (+ (range-start range)
+                                (* (range-step range)
+                                   (random (size range))))))
+                      (let ((offset (- (random-element intersecting)
+                                       (random-element range))))
+                        (range (+ (range-start range) offset)
+                               (range-step range)
+                               (+ (range-end range) offset)))))))))))))
+
+(test |(range-generator)|
+  (let ((max-size 10)
+        (max-extent 100))
+    (for-all ((range (range-generator :max-extent max-extent
+                                      :max-size max-size)))
+      (is (<= (abs (range-start range)) max-extent))
+      (is (<= (abs (range-end range)) max-extent))
+      (is (<= (size range) max-size)))))
 
 (defmethod difference ((space-1 range) (space-2 range))
   ;; we only care about the part of space-2 that intersects with space-1
@@ -97,13 +123,12 @@
           result))))
 
 (test |(difference range)|
-  (for-all ((a (range-generator 1000))
-            (b (range-generator 1000)))
-    (if (intersection a b)
-        (is (equal? a (apply #'fusion
-                             (intersection a b)
-                             (difference a b))))
-        (is (equal? a (first (difference a b)))))))
+  (for-all ((a (range-generator :max-extent 1000)))
+    (for-all ((b (range-generator :max-extent 1000
+                                  :intersecting a)))
+      (is (equal? a (apply #'fusion
+                           (intersection a b)
+                           (difference a b)))))))
 
 (defmethod fusion ((range range) &rest more-ranges)
   (let ((ranges (list* range more-ranges)))
@@ -138,27 +163,14 @@
               (range smallest lcm biggest))))))))
 
 (test |(intersection range)|
-  (for-all ((a (range-generator 10000))
-            (b (range-generator 10000))
-            (rand-a (integer-generator 0))
-            (rand-b (integer-generator 0)))
-    ;; make both ranges intersect by selecting a random point in each one
-    ;; and moving b such that these points coincide
-    (let ((pa (+ (range-start a)
-                 (* (range-step a)
-                    (mod rand-a (size a)))))
-          (pb (+ (range-start b)
-                 (* (range-step b)
-                    (mod rand-b (size b))))))
-      (let ((offset (- pa pb)))
-        (let ((b (range (+ (range-start b) offset)
-                        (range-step b)
-                        (+ (range-end b) offset))))
-          (let ((intersection (intersection a b)))
-            (is-true (subspace? intersection a))
-            (is-true (subspace? intersection b))
-            (is (not (difference intersection a)))
-            (is (not (difference intersection b)))))))))
+  (for-all ((a (range-generator :max-extent 10000)))
+    (for-all ((b (range-generator :max-extent 10000
+                                  :intersecting a)))
+      (let ((intersection (intersection a b)))
+        (is-true (subspace? intersection a))
+        (is-true (subspace? intersection b))
+        (is (not (difference intersection a)))
+        (is (not (difference intersection b)))))))
 
 (defmethod size ((object range))
   (1+ (the integer (/ (- (range-end object) (range-start object))
@@ -170,19 +182,13 @@
      (range-end range)))
 
 (test range
-  (is (range? (range 0 1 10)))
-  (is (equal? (range 0 5 0) (range 0 0 0)))
-  (is (equal? (range 5 3 12) (range 5 3 11)))
-  (is (equal? (range -2 2 2) (range 2 2 -2)))
-  (is (unary-range? (range 99 -5 103)))
-  (is (= (size (range 0 1 100))
-         (size (range 5 5 505))))
+  (is (range? (range 0 0 0)))
+  (signals error (range 0 0 1))
   (for-all ((start (integer-generator))
-            (step (integer-generator))
+            (step (integer-generator 1))
             (end (integer-generator)))
-    (let ((step (if (zerop step) 1 step)))
-      (is (range? (range start step end)))
-      (is (= (size (range start step end))
-             (1+ (floor (abs (- start end)) (abs step)))))
-      (is (equal? (range start step end)
-                  (range start (- step) end))))))
+    (is (range? (range start step end)))
+    (is (= (size (range start step end))
+           (1+ (floor (abs (- start end)) (abs step)))))
+    (is (equal? (range start step end)
+                (range start (- step) end)))))
