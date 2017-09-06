@@ -38,9 +38,9 @@
       (let ((start (funcall random-integer))
             (end (funcall random-integer)))
         (let ((step (apply #'* (random-selection
-                                'list
                                 (prime-factors
-                                 (abs (- end start)))))))
+                                 (abs (- end start))
+                                 :less-than #.(expt 10 6))))))
           (range start step end))))))
 
 (defmethod difference ((space-1 range) (space-2 range))
@@ -90,33 +90,34 @@
                          (maybe-push-range upper-min step-1 end-1)))
                   (when (> step-2 step-1) ; i.e. there is an interior
                     ;; process the interior
-                    (iterate (for start from (+ start-2 step-1) below end-2 by step-2)
-                             (for end = (+ start step-2 (- step-1)))
-                             (maybe-push-range start step-1 end))))))
+                    (let ((end-offset (- step-2 step-1 step-1)))
+                      (iterate (for start from (+ start-2 step-1) below end-2 by step-2)
+                               (for end = (+ start end-offset))
+                               (maybe-push-range start step-1 end)))))))
           result))))
 
 (test |(difference range)|
-  (flet ((? (a b)
-           (if (intersection a b)
-               (is (equal? a (apply #'fusion
-                                    (intersection a b)
-                                    (difference a b))))
-               (is (equal? a (first (difference a b)))))))
-    (? (range 1 3 7) (range 8 1 22))
-    (? (range 1 1 5) (range 6 1 10))
-    (? (range 1 3 7) (range 1 3 10))
-    (? (range 1 3 13) (range 4 2 10))
-    (? (range 0 1 9) (range 2 2 4))
-    (? (range 1 2 23) (range 3 10 23))))
+  (for-all ((a (range-generator 1000))
+            (b (range-generator 1000)))
+    (if (intersection a b)
+        (is (equal? a (apply #'fusion
+                             (intersection a b)
+                             (difference a b))))
+        (is (equal? a (first (difference a b)))))))
 
 (defmethod fusion ((range range) &rest more-ranges)
-  (let/de ((ranges (cons range more-ranges)))
+  (let ((ranges (list* range more-ranges)))
     (iterate (for range in ranges)
              (sum (size range) into number-of-elements)
              (maximize (range-end range) into end)
              (minimize (range-start range) into start)
              (finally
-              (let ((step (ceiling (1+ (- end start)) number-of-elements)))
+              (let ((step (if (= number-of-elements 1) 1
+                              (/ (- end start) (1- number-of-elements)))))
+                (assert (integerp step)
+                        (ranges)
+                        "Unable to fuse ranges:~%~{~A~%~}"
+                        ranges)
                 (return (range start step end)))))))
 
 (defmethod intersection ((range-1 range) (range-2 range))

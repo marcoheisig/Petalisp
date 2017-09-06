@@ -115,8 +115,12 @@
            (pushnew form result)))))
     result))
 
-(defun prime-factors (n)
-  "Return a list of the prime factors of N, in ascending order."
+(defun prime-factors (n &key less-than)
+  "Return a list of the prime factors of N, in ascending order. If the
+keyword argument LESS-THAN is specified, only smaller factors are
+determined and the last element of the result list is not necessarily prime
+anymore. In all cases, the product of the elements of the resulting list is
+again N."
   (let ((rest n)
         result)
     (declare (non-negative-integer n rest))
@@ -127,28 +131,31 @@
                    (setf rest quotient)
                    (push divisor result)
                    (extract divisor)))))
-      (case n
-        ((0 1 2 3) (list n))
-        (otherwise
-         (extract 2)
-         (iterate (for divisor from 3 by 2)
-                  (while (<= divisor rest))
-                  (extract divisor))
-         (nreverse
-          (or result (list n))))))))
+      (when (plusp n)
+        (extract 2)
+        (iterate (for divisor from 3 by 2
+                      below (min (floor (sqrt n))
+                                 (or less-than n)))
+                 (while (<= divisor rest))
+                 (extract divisor))
+        (nreverse
+         (if (<= rest 1)
+             result
+             (list* rest result)))))))
 
-(defun random-selection (result-type sequence)
-  "Return a random selection of elements of sequence."
-  (let ((n (length sequence)))
-    (let ((survival-probability
-            (- 1.0 (expt (/ 1.0 (expt 2 n))
-                         (/ 1.0 n))))
-          selection)
-      (map nil (lambda (element)
-                 (if (< (random 1.0) survival-probability)
-                     (push element selection)))
-           sequence)
-      (coerce (nreverse selection) result-type))))
+(defun random-selection (sequence)
+  "Return a list of a random selection of elements of sequence."
+  (unless (emptyp sequence)
+    (let ((n (length sequence)))
+      (let ((survival-probability
+              (- 1.0 (expt (/ 1.0 (expt 2 n))
+                           (/ 1.0 n))))
+            selection)
+        (map nil (lambda (element)
+                   (if (< (random 1.0) survival-probability)
+                       (push element selection)))
+             sequence)
+        (nreverse selection)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
