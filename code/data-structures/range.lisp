@@ -29,6 +29,20 @@
            (if (= start end) 1 (abs step))
            (max start end))))))
 
+(defun range-generator (&optional (max-size #.(* 3 most-positive-fixnum)))
+  "Return a random range, whose start and end are at most MAX-SIZE apart."
+  (let ((random-integer (integer-generator
+                         (- (round max-size 2))
+                         (round max-size 2))))
+    (lambda ()
+      (let ((start (funcall random-integer))
+            (end (funcall random-integer)))
+        (let ((step (apply #'* (random-selection
+                                'list
+                                (prime-factors
+                                 (abs (- end start)))))))
+          (range start step end))))))
+
 (defmethod difference ((space-1 range) (space-2 range))
   ;; we only care about the part of space-2 that intersects with space-1
   (let ((space-2 (intersection space-1 space-2)))

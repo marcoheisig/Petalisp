@@ -33,8 +33,8 @@ the current package (interned in the current package) as test suite."
   (float-generator long-float))
 
 (defun integer-generator (&optional
-                            (minimum (floor most-negative-fixnum 4/5))
-                            (maximum (ceiling most-positive-fixnum 4/5)))
+                            (minimum #.(floor most-negative-fixnum 4/5))
+                            (maximum #.(ceiling most-positive-fixnum 4/5)))
   (check-type minimum integer)
   (check-type maximum integer)
   (assert (<= minimum maximum))

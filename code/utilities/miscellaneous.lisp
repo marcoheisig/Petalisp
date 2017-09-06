@@ -115,6 +115,41 @@
            (pushnew form result)))))
     result))
 
+(defun prime-factors (n)
+  "Return a list of the prime factors of N, in ascending order."
+  (let ((rest n)
+        result)
+    (declare (non-negative-integer n rest))
+    (labels ((extract (divisor)
+               (multiple-value-bind (quotient remainder)
+                   (floor rest divisor)
+                 (when (zerop remainder)
+                   (setf rest quotient)
+                   (push divisor result)
+                   (extract divisor)))))
+      (case n
+        ((0 1 2 3) (list n))
+        (otherwise
+         (extract 2)
+         (iterate (for divisor from 3 by 2)
+                  (while (<= divisor rest))
+                  (extract divisor))
+         (nreverse
+          (or result (list n))))))))
+
+(defun random-selection (result-type sequence)
+  "Return a random selection of elements of sequence."
+  (let ((n (length sequence)))
+    (let ((survival-probability
+            (- 1.0 (expt (/ 1.0 (expt 2 n))
+                         (/ 1.0 n))))
+          selection)
+      (map nil (lambda (element)
+                 (if (< (random 1.0) survival-probability)
+                     (push element selection)))
+           sequence)
+      (coerce (nreverse selection) result-type))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;;  JIT compilation of compute intensive kernels
