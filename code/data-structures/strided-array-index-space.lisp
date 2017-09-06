@@ -82,14 +82,15 @@
     (list space-1)))
 
 (test |(difference strided-array-index-space)|
-  (for-all ((a (strided-array-index-space-generator :dimension 3
-                                                    :max-extent 40)))
-    (for-all ((b (strided-array-index-space-generator :dimension 3
-                                                      :intersecting a
+  (let ((fiveam::*num-trials* (ceiling (sqrt fiveam::*num-trials*))))
+    (for-all ((a (strided-array-index-space-generator :dimension 3
                                                       :max-extent 40)))
-      (is (equal? a (apply #'fusion
-                           (intersection a b)
-                           (difference a b)))))))
+      (for-all ((b (strided-array-index-space-generator :dimension 3
+                                                        :intersecting a
+                                                        :max-extent 40)))
+        (is (equal? a (apply #'fusion
+                             (intersection a b)
+                             (difference a b))))))))
 
 (defmethod dimension ((object strided-array-index-space))
   (length (ranges object)))

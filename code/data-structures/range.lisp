@@ -163,14 +163,15 @@ intersect it (potentially violating MAX-EXTENT)."
               (range smallest lcm biggest))))))))
 
 (test |(intersection range)|
-  (for-all ((a (range-generator :max-extent 10000)))
-    (for-all ((b (range-generator :max-extent 10000
-                                  :intersecting a)))
-      (let ((intersection (intersection a b)))
-        (is-true (subspace? intersection a))
-        (is-true (subspace? intersection b))
-        (is (not (difference intersection a)))
-        (is (not (difference intersection b)))))))
+  (let ((fiveam::*num-trials* (ceiling (sqrt fiveam::*num-trials*))))
+    (for-all ((a (range-generator :max-extent 10000)))
+      (for-all ((b (range-generator :max-extent 10000
+                                    :intersecting a)))
+        (let ((intersection (intersection a b)))
+          (is-true (subspace? intersection a))
+          (is-true (subspace? intersection b))
+          (is (not (difference intersection a)))
+          (is (not (difference intersection b))))))))
 
 (defmethod size ((object range))
   (1+ (the integer (/ (- (range-end object) (range-start object))
