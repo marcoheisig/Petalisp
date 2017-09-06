@@ -60,7 +60,8 @@
     (graphviz-draw-graph (make-instance purpose) graph-roots stream))
   (:method ((purpose <graph>) (graph-roots list) &optional (stream t))
     (let ((table (make-hash-table :test #'eq))
-          (node-id 0))
+          (node-id 0)
+          (*print-case* :downcase))
       ;; 1. populate node table
       (labels ((populate-node-table (node)
                  (unless (gethash node table)
@@ -87,24 +88,3 @@
                             (graphviz-edge-label purpose from to)
                             (graphviz-edge-color purpose from to)))))
       (format stream "}~%"))))
-
-#+nil
-(defgeneric printworthy? (object)
-  (:method ((object t)) t)
-  (:method ((slot standard-effective-slot-definition))
-    (not (member (slot-definition-name slot) '(ranges predecessors)))))
-
-#+nil
-(defmethod stream-draw-graph ((node standard-object) stream)
-  (let ((class (class-of node)))
-    (format stream "    ~a [label=\"" (id node))
-    (format stream "~a\\n" (string-downcase (class-name class)))
-    (loop for slot in (class-slots class)
-          when (printworthy? slot) do
-            (format
-             stream "~a: ~a\\n"
-             (string-downcase (slot-definition-name slot))
-             (remove-if
-              (lambda (x) (member x '(#\# #\< #\>)))
-              (format nil "~a" (slot-value-using-class class node slot)))))
-    (format stream "\"]~%")))

@@ -6,6 +6,9 @@
 (in-package :petalisp)
 
 (defgeneric broadcast-to (object space)
+  (:documentation
+   "Return a broadcasting reference data structure to the elements of
+   OBJECT with the shape of SPACE.")
   (:method :before ((object data-structure) (space index-space))
     (assert (<= (dimension object) (dimension space))))
   (:method ((object strided-array) (space strided-array-index-space))
@@ -34,6 +37,8 @@
       (reference object space transformation))))
 
 (defgeneric broadcast (object &rest more-objects)
+  (:documentation
+   "Return the common broadcast space of the given OBJECTS.")
   (:method ((object strided-array) &rest more-objects)
     (let/de ((objects (cons object more-objects)))
       (let ((dimension (iterate (for object in objects)
