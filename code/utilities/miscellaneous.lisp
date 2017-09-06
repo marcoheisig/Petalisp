@@ -143,6 +143,14 @@ again N."
              result
              (list* rest result)))))))
 
+(test |(prime-factors n)|
+  (is (eq nil (prime-factors 0)))
+  (for-all ((n (integer-generator 1 10000)))
+    (let ((primes (prime-factors n :less-than #.(expt 10 6))))
+      (is (= n (apply #'* primes)))
+      (dolist (prime primes)
+        (is (integerp (/ n prime)))))))
+
 (defun random-selection (sequence)
   "Return a list of a random selection of elements of sequence."
   (unless (emptyp sequence)
