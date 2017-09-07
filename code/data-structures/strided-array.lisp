@@ -9,7 +9,12 @@
 ;;;
 ;;; subclasses of the class STRIDED-ARRAY and corresponding constructors
 
-(define-class strided-array-application (strided-array application) ())
+;; note: the fact that APPLICATION appears before STRIDED-ARRAY in the
+;; following list of superclasses is meaningful. We want methods
+;; specializing on APPLICATION (graph optimizations) to be more specific
+;; than methods specializing on STRIDED-ARRAY. The same holds for all the
+;; other subclasses of STRIDED-ARRAY.
+(define-class strided-array-application (application strided-array) ())
 
 (defmethod application ((operator function) (object strided-array)
                         &rest more-objects)
@@ -22,7 +27,7 @@
      :predecessors objects
      :index-space (index-space object))))
 
-(define-class strided-array-elaboration (strided-array elaboration)
+(define-class strided-array-elaboration (elaboration strided-array)
   ((data :type array)))
 
 (defmethod petalispify ((array array))
@@ -35,7 +40,7 @@
 (defmethod depetalispify ((instance strided-array-elaboration))
   (data instance))
 
-(define-class strided-array-fusion (strided-array fusion) ())
+(define-class strided-array-fusion (fusion strided-array) ())
 
 (defmethod fusion ((object strided-array) &rest more-objects)
   (let ((objects (cons object more-objects)))
@@ -45,7 +50,7 @@
      :predecessors objects
      :index-space (apply #'fusion (mapcar #'index-space objects)))))
 
-(define-class strided-array-reduction (strided-array reduction) ())
+(define-class strided-array-reduction (reduction strided-array) ())
 
 (defmethod reduction ((operator function) (object strided-array))
   (let ((ranges (ranges (index-space object))))
@@ -57,7 +62,7 @@
      :index-space (make-strided-array-index-space
                    (subseq ranges 0 (1- (length ranges)))))))
 
-(define-class strided-array-reference (strided-array reference) ())
+(define-class strided-array-reference (reference strided-array) ())
 
 (defmethod reference ((object strided-array)
                       (space strided-array-index-space)
