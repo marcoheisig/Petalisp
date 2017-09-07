@@ -73,11 +73,12 @@
   (:documentation
    "Return a (potentially optimized and simplified) data structure
    equivalent to an instance of class APPLICATION.")
-  (:method :before ((f function) (a1 data-structure) &rest a2...aN)
-    (assert (every #'data-structure? a2...aN))
+  (:method :around ((f function) (a1 data-structure) &rest a2...aN)
     (let/de ((a1...aN (list* a1 a2...aN)))
       (check-arity f (length a1...aN))
-      (assert (identical a1...aN :test #'equal? :key #'index-space)))))
+      (assert (identical a1...aN :test #'equal? :key #'index-space)))
+    (or (apply #'optimize-application f a1 a2...aN)
+        (call-next-method))))
 
 (defgeneric binary-product (object-1 object-2)
   (:documentation "The generic function invoked by PRODUCT.")
@@ -135,9 +136,11 @@
   (:documentation
    "Return a (potentially optimized and simplified) data structure
    equivalent to an instance of class FUSION.")
-  (:method :before ((a1 data-structure) &rest a2...aN)
+  (:method :around ((a1 data-structure) &rest a2...aN)
     (let/de ((a1...aN (list* a1 a2...aN)))
-      (assert (identical a1...aN :test #'= :key #'dimension)))))
+      (assert (identical a1...aN :test #'= :key #'dimension))
+      (or (apply #'optimize-fusion a1 a2...aN)
+          (call-next-method)))))
 
 (defgeneric index-space (object)
   (:documentation
@@ -163,6 +166,45 @@ are the indices of OBJECT.")
   (:documentation
    "Return a transformation whose composition with the argument of this
 function is the identity transformation."))
+
+(defgeneric optimize-application (f a1 &rest a2...aN)
+  (:documentation "Return an optimized data-structure, or NIL.")
+  (:method-combination or)
+  (:method or ((f function) (a1 data-structure) &rest a2...aN)
+    (when (and (eq f #'identity) (null a2...aN)) a1)))
+
+(defgeneric optimize-fusion (a1 &rest a2...aN)
+  (:documentation "Return an optimized data-structure, or NIL.")
+  (:method-combination or)
+  (:method or ((a1 data-structure) &rest a2...aN)
+    "One-argument fusions are equivalent to that argument."
+    (unless a2...aN a1)))
+
+(defgeneric optimize-reduction (f a)
+  (:documentation "Return an optimized data-structure, or NIL.")
+  (:method-combination or)
+  (:method or ((f function) (a data-structure))
+    (declare (ignore f a))
+    nil))
+
+(defgeneric optimize-reference (object space transformation)
+  (:documentation "Return an optimized data-structure, or NIL.")
+  (:method-combination or)
+  (:method or ((object data-structure) (space index-space) (transformation transformation)) nil)
+  (:method or ((object reference) (space index-space) (transformation transformation))
+    "Fold consecutive references. This method is crucial for Petalisp, as
+    it ensures there will never be two consecutive references."
+    (reference (predecessor object)
+               space
+               (composition (transformation object) transformation)))
+  (:method or ((object fusion) (space index-space) (transformation transformation))
+    "Permit references to fusions that affect only a single predecessor of
+    this fuison to skip the fusion entirely, potentially leading to further
+    optimization."
+    (if-let ((unique-predecessor (find space (predecessors object)
+                                       :test #'subspace?
+                                       :key #'index-space)))
+      (reference unique-predecessor space transformation))))
 
 (defgeneric output-dimension (transformation)
   (:documentation
@@ -191,34 +233,25 @@ function is the identity transformation."))
   (:documentation
    "Return a (potentially optimized and simplified) data structure
    equivalent to an instance of class REDUCTION.")
-  (:method :before ((f function) (a data-structure))
+  (:method :around ((f function) (a data-structure))
     (assert (< 0 (dimension a)))
-    (check-arity f 2)))
+    (check-arity f 2)
+    (or (optimize-reduction f a)
+        (call-next-method))))
 
 (defgeneric reference (object space transformation)
   (:documentation
    "Return a (potentially optimized and simplified) data structure
    equivalent to an instance of class REFERENCE.")
-  (:method :before ((object data-structure) (space index-space) (transformation transformation))
+  (:method :around ((object data-structure)
+                    (space index-space)
+                    (transformation transformation))
     (assert (and (= (dimension space) (input-dimension transformation))
                  #+nil
                  (subspace? (funcall transformation space)
-                            (index-space object)))))
-  (:method ((object reference) (space index-space) (transformation transformation))
-    "Fold consecutive references. This method is crucial for Petalisp, as
-    it ensures there will never be two consecutive references."
-    (reference (predecessor object)
-               space
-               (composition (transformation object) transformation)))
-  (:method ((object fusion) (space index-space) (transformation transformation))
-    "Permit references to fusions that affect only a single predecessor of
-    this fuison to skip the fusion entirely, potentially leading to further
-    optimization."
-    (if-let ((unique-predecessor (find space (predecessors object)
-                                       :test #'subspace?
-                                       :key #'index-space)))
-      (reference unique-predecessor space transformation)
-      (call-next-method))))
+                            (index-space object))))
+    (or (optimize-reference object space transformation)
+        (call-next-method))))
 
 (defgeneric result-type (function &rest arguments)
   (:method ((function function) &rest arguments)

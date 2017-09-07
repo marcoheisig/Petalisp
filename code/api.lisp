@@ -54,7 +54,8 @@
                                 (setf (aref upgraded-ranges index) range)
                                 (if (unary-range? upgraded-range)
                                     (setf (aref upgraded-ranges index) range)
-                                    (assert (equal? range upgraded-range)
+                                    (assert (or (unary-range? range)
+                                                (equal? range upgraded-range))
                                             (object)
                                             "Illegal broadcasting in dimension ~D of argument ~D."
                                             index arg-index)))))

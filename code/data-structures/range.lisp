@@ -87,13 +87,15 @@ intersect it (potentially violating MAX-EXTENT)."
             (if (and (/= step-2 1)
                      (<= (the positive-integer (/ step-2 step-1))
                          (size space-2)))
-                ;; Case 1: ranges with step size step-2
+                ;; Case 1: create ranges with step size step-2
                 (let ((include-lowers (> start-1 (- start-2 step-2)))
                       (include-uppers (< end-1 (+ end-2 step-2))))
+                  ;; process the boundaries
                   (unless include-lowers
                     (maybe-push-range start-1 step-1 (- start-2 step-1)))
                   (unless include-uppers
                     (maybe-push-range (+ end-2 step-1) step-1 end-1))
+                  ;; process the interior
                   (iterate (for offset from step-1 by step-1 below step-2)
                            (for start = (if include-lowers
                                             (+ start-2 (- step-2) offset)
@@ -105,7 +107,7 @@ intersect it (potentially violating MAX-EXTENT)."
                             (if (< start start-1) (+ start step-2) start)
                             step-2
                             (if (< end-1 end) (- end step-2) end))))
-                ;; Case 2: ranges with step-size step-1
+                ;; Case 2: create ranges with step size step-1
                 (let ((lower-max (- start-2 step-1))
                       (upper-min (+ end-2 step-1)))
                   ;; process the boundaries
