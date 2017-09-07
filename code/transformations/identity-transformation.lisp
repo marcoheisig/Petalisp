@@ -28,3 +28,11 @@
 (defmethod print-object ((object identity-transformation) stream)
   (let ((symbols (list-of-symbols (input-dimension object))))
     (prin1 `(τ ,symbols ,@symbols) stream)))
+
+(defmethod reference ((object data-structure)
+                      (space index-space)
+                      (transformation identity-transformation))
+  "Drop references with no effect."
+  (if (equal? (index-space object) space)
+      object
+      (call-next-method)))

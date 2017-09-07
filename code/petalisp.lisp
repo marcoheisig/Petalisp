@@ -5,6 +5,10 @@
 
 (in-package :petalisp)
 
+(define-class index-space () ()
+  (:documentation
+   "An index space of dimension D is a set of D-tuples i1,...,iD."))
+
 (define-class transformation (unary-funcallable-object) ()
   (:metaclass funcallable-standard-class)
   (:documentation
@@ -24,10 +28,6 @@
    "An elaboration is a data structure whose values are stored directly in
    memory, or whose elements are in tho process of being stored directly in
    memory."))
-
-(define-class index-space () ()
-  (:documentation
-   "An index space of dimension D is a set of D-tuples i1,...,iD."))
 
 (define-class application (data-structure)
   ((operator :type function))
@@ -116,7 +116,8 @@
   (:documentation
    "Return the number of dimensions of OBJECT.")
   (:method ((object t)) 0)
-  (:method ((object array)) (length (array-dimensions object))))
+  (:method ((object array)) (length (array-dimensions object)))
+  (:method ((object data-structure)) (dimension (index-space object))))
 
 (defgeneric enqueue (object)
   (:documentation
@@ -182,6 +183,10 @@ function is the identity transformation."))
      (make-array '() :initial-element object
                      :element-type (type-of object)))))
 
+(defmethod print-object ((object data-structure) stream)
+  (print-unreadable-object (object stream :type t :identity t)
+    (princ (index-space object) stream)))
+
 (defgeneric reduction (f a)
   (:documentation
    "Return a (potentially optimized and simplified) data structure
@@ -198,7 +203,22 @@ function is the identity transformation."))
     (assert (and (= (dimension space) (input-dimension transformation))
                  #+nil
                  (subspace? (funcall transformation space)
-                            (index-space object))))))
+                            (index-space object)))))
+  (:method ((object reference) (space index-space) (transformation transformation))
+    "Fold consecutive references. This method is crucial for Petalisp, as
+    it ensures there will never be two consecutive references."
+    (reference (predecessor object)
+               space
+               (composition (transformation object) transformation)))
+  (:method ((object fusion) (space index-space) (transformation transformation))
+    "Permit references to fusions that affect only a single predecessor of
+    this fuison to skip the fusion entirely, potentially leading to further
+    optimization."
+    (if-let ((unique-predecessor (find space (predecessors object)
+                                       :test #'subspace?
+                                       :key #'index-space)))
+      (reference unique-predecessor space transformation)
+      (call-next-method))))
 
 (defgeneric result-type (function &rest arguments)
   (:method ((function function) &rest arguments)
@@ -207,7 +227,8 @@ function is the identity transformation."))
 
 (defgeneric size (object)
   (:method ((object t)) 1)
-  (:method ((object array)) (array-total-size object)))
+  (:method ((object array)) (array-total-size object))
+  (:method ((object data-structure)) (size (index-space object))))
 
 (defgeneric subspace? (space-1 space-2)
   (:documentation

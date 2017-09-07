@@ -43,13 +43,8 @@
      (:module "data-structures" :depends-on ("transformations")
       :components
       ((:file "range")
-       (:file "strided-array-application" :depends-on ("strided-array"))
-       (:file "strided-array-elaboration" :depends-on ("strided-array"))
-       (:file "strided-array-fusion" :depends-on ("strided-array"))
-       (:file "strided-array-index-space" :depends-on ("strided-array" "range"))
-       (:file "strided-array")
-       (:file "strided-array-reduction" :depends-on ("strided-array"))
-       (:file "strided-array-reference" :depends-on ("strided-array"))))
+       (:file "strided-array-index-space" :depends-on ("range"))
+       (:file "strided-array" :depends-on ("strided-array-index-space"))))
      (:module "compiler" :depends-on ("data-structures")
       :components
       ((:file "visualization")))
