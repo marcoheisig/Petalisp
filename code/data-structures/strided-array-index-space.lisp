@@ -2,10 +2,8 @@
 
 (in-package :petalisp)
 
-(define-class strided-array-index-space (strided-array index-space)
-  ((element-type :initform t :allocation :class)
-   (predecessors :initform () :allocation :class)
-   (ranges :type (simple-vector range (*)))))
+(define-class strided-array-index-space (index-space)
+  ((ranges :type simple-vector)))
 
 (defgeneric make-strided-array-index-space (specification)
   (:method ((space strided-array-index-space)) space)
