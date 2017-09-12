@@ -5,12 +5,17 @@
 (defclass <data-flow-graph> (<graph>) ())
 
 (defmethod graphviz-successors ((purpose <data-flow-graph>) (node data-structure))
-  (predecessors node))
+  (inputs node))
+
+(defmethod graphviz-successors ((purpose <data-flow-graph>) (node elaboration))
+  (ensure-list (recipe node)))
 
 (defmethod graphviz-node-plist plist-append ((purpose <data-flow-graph>) (node data-structure))
   (list :label (format nil "~A~%~A"
                        (class-name (class-of node))
-                       (index-space node))))
+                       (index-space node))
+        :shape "box"
+        :style "filled"))
 
 (defmethod graphviz-node-plist plist-append ((purpose <data-flow-graph>) (node application))
   (list :label (format nil "~A~%~A~%~A"
@@ -37,7 +42,8 @@
   (list :label (format nil "~A~%~A~%~A"
                        (class-name (class-of node))
                        (data node)
-                       (index-space node))))
+                       (index-space node))
+        :fillcolor "white"))
 
 (defmethod view ((object data-structure))
   (with-temporary-file (:stream stream :pathname dotfile :direction :output)
@@ -47,6 +53,9 @@
       (run-program (list "dot" "-Tpdf" "-o"
                          (native-namestring imagefile)
                          (native-namestring dotfile)))
-      (run-program (list "evince" (native-namestring imagefile)))
-      )))
-(make-hash-table)
+      (run-program (list "evince" (native-namestring imagefile))))))
+
+(defmethod graphviz-draw-graph
+    :around ((purpose <data-flow-graph>) graph-roots &optional stream)
+  (let ((*print-case* :downcase))
+    (call-next-method purpose graph-roots stream)))

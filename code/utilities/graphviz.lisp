@@ -20,16 +20,19 @@
                         :thereis (eq key-1 key-2))
           (push (car rest) result)
           (push key-1 result)))
-      result)))
+      result))
+  (define-method-combination plist-append :identity-with-one-argument t))
 
-(define-method-combination plist-append :identity-with-one-argument t)
+(defgeneric graphviz-graph-plist (purpose)
+  (:method-combination plist-append)
+  (:method plist-append ((purpose <graph>))
+    (list)))
 
 (defgeneric graphviz-node-plist (purpose node)
   (:method-combination plist-append)
   (:method plist-append ((purpose <graph>) (node t))
     (list :label (with-output-to-string (stream)
-                   (print-object node stream))
-          :fillcolor "white")))
+                   (print-object node stream)))))
 
 (defgeneric graphviz-edge-plist (purpose from to)
   (:method-combination plist-append)
@@ -41,8 +44,7 @@
     (graphviz-draw-graph (make-instance purpose) graph-roots stream))
   (:method ((purpose <graph>) (graph-roots list) &optional (stream t))
     (let ((table (make-hash-table :test #'eq))
-          (node-id 0)
-          (*print-case* :downcase))
+          (node-id 0))
       ;; 1. populate node table
       (labels ((populate-node-table (node)
                  (unless (gethash node table)
@@ -51,13 +53,14 @@
                      (populate-node-table successor)))))
         (map nil #'populate-node-table graph-roots))
       (format stream "digraph G {~%")
-      (format stream "  node[shape=box, style=filled]~%")
-      ;; 2. draw nodes
+      ;; 2. write graph attributes
+      (format stream "~{  ~A=~S~%~}" (graphviz-graph-plist purpose))
+      ;; 3. write nodes
       (loop :for node :being :each :hash-key
               :using (:hash-value node-id) :of table :do
                 (format stream "  node~d [~{~A=~S,~^ ~}]~%"
                         node-id (graphviz-node-plist purpose node)))
-      ;; 2. draw edges
+      ;; 4. write edges
       (loop :for from :being :each :hash-key
               :using (:hash-value from-id) :of table :do
                 (dolist (to (graphviz-successors purpose from))

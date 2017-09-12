@@ -44,9 +44,10 @@
       :components
       ((:file "range")
        (:file "strided-array-index-space" :depends-on ("range"))
-       (:file "strided-array" :depends-on ("strided-array-index-space"))))
-     (:module "compiler" :depends-on ("data-structures")
+       (:file "strided-array" :depends-on ("strided-array-index-space"))
+       (:file "visualization" :depends-on ("strided-array"))))
+     (:module "evaluator" :depends-on ("data-structures")
       :components
-      ((:file "visualization")))
+      ((:file "evaluate")))
      (:file "api" :depends-on ("data-structures"))))))
 

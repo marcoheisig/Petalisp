@@ -17,13 +17,15 @@
 
 (define-class data-structure ()
   ((element-type :initform t)
-   (predecessors :initform nil :type list))
+   (inputs :initform nil :type list))
   (:documentation
    "A data structure of dimension D is a mapping from indices i1,...,iD to
    values of type ELEMENT-TYPE."))
 
 (define-class elaboration (data-structure)
-  (data)
+  ((data :initform nil)
+   (dependencies :initform nil)
+   (recipe :initform nil))
   (:documentation
    "An elaboration is a data structure whose values are stored directly in
    memory, or whose elements are in tho process of being stored directly in
@@ -120,10 +122,10 @@
   (:method ((object array)) (length (array-dimensions object)))
   (:method ((object data-structure)) (dimension (index-space object))))
 
-(defgeneric enqueue (object)
+(defgeneric enqueue (&rest objects)
   (:documentation
-   "Instruct Petalisp to compute the elements of OBJECT
-   asynchronously. Return NIL."))
+   "Instruct Petalisp to compute all given OBJECTS asynchronously. Return
+   NIL."))
 
 (defgeneric equal? (a b)
   (:documentation
@@ -194,17 +196,17 @@ function is the identity transformation."))
   (:method or ((object reference) (space index-space) (transformation transformation))
     "Fold consecutive references. This method is crucial for Petalisp, as
     it ensures there will never be two consecutive references."
-    (reference (predecessor object)
+    (reference (input object)
                space
                (composition (transformation object) transformation)))
   (:method or ((object fusion) (space index-space) (transformation transformation))
-    "Permit references to fusions that affect only a single predecessor of
+    "Permit references to fusions that affect only a single input of
     this fuison to skip the fusion entirely, potentially leading to further
     optimization."
-    (if-let ((unique-predecessor (find space (predecessors object)
+    (if-let ((unique-input (find space (inputs object)
                                        :test #'subspace?
                                        :key #'index-space)))
-      (reference unique-predecessor space transformation))))
+      (reference unique-input space transformation))))
 
 (defgeneric output-dimension (transformation)
   (:documentation
@@ -300,9 +302,9 @@ function is the identity transformation."))
       object
       (reduce #'binary-product more-objects :initial-value object)))
 
-(defun predecessor (object)
-  "Return the unique predecessor of OBJECT."
-  (ematch (predecessors object)
+(defun input (object)
+  "Return the unique input of OBJECT."
+  (ematch (inputs object)
     ((list first) first)))
 
 (defun subdivision (object &rest more-objects)

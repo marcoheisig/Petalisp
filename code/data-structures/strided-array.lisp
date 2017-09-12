@@ -19,8 +19,16 @@
      :operator operator
      :element-type (apply #'result-type operator
                           (mapcar #'element-type objects))
-     :predecessors objects
+     :inputs objects
      :index-space (index-space object))))
+
+(defmethod shallow-copy ((object strided-array-application))
+  (make-instance
+   'strided-array-application
+   :operator (operator object)
+   :element-type (element-type object)
+   :inputs (inputs object)
+   :index-space (index-space object)))
 
 (define-class strided-array-elaboration (strided-array elaboration)
   ((data :type array)))
@@ -42,8 +50,15 @@
     (make-instance
      'strided-array-fusion
      :element-type (element-type object)
-     :predecessors objects
+     :inputs objects
      :index-space (apply #'fusion (mapcar #'index-space objects)))))
+
+(defmethod shallow-copy ((object strided-array-fusion))
+  (make-instance
+   'strided-array-fusion
+   :element-type (element-type object)
+   :inputs (inputs object)
+   :index-space (index-space object)))
 
 (define-class strided-array-reduction (strided-array reduction) ())
 
@@ -53,9 +68,17 @@
      'strided-array-reduction
      :operator operator
      :element-type (element-type object)
-     :predecessors (list object)
+     :inputs (list object)
      :index-space (make-strided-array-index-space
                    (subseq ranges 0 (1- (length ranges)))))))
+
+(defmethod shallow-copy ((object strided-array-reduction))
+  (make-instance
+   'strided-array-reduction
+   :operator (operator object)
+   :element-type (element-type object)
+   :inputs (inputs object)
+   :index-space (index-space object)))
 
 (define-class strided-array-reference (strided-array reference) ())
 
@@ -64,7 +87,15 @@
                       (transformation transformation))
   (make-instance
    'strided-array-reference
-   :predecessors (list object)
-   :index-space space
    :element-type (element-type object)
+   :inputs (list object)
+   :index-space space
    :transformation transformation))
+
+(defmethod shallow-copy ((object strided-array-reference))
+  (make-instance
+   'strided-array-reference
+   :element-type (element-type object)
+   :inputs (inputs object)
+   :index-space (index-space object)
+   :transformation (transformation object)))
