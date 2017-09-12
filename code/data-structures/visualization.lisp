@@ -43,7 +43,7 @@
                        (class-name (class-of node))
                        (data node)
                        (index-space node))
-        :fillcolor "white"))
+        :fillcolor (if (dependencies node) "green" "white")))
 
 (defmethod view ((object data-structure))
   (with-temporary-file (:stream stream :pathname dotfile :direction :output)
