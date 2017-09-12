@@ -7,40 +7,46 @@
 (defmethod graphviz-successors ((purpose <data-flow-graph>) (node data-structure))
   (predecessors node))
 
-(defmethod graphviz-node-label ((purpose <data-flow-graph>) (node data-structure))
-  (format nil "~A~%~A"
-          (class-name (class-of node))
-          (index-space node)))
+(defmethod graphviz-node-plist plist-append ((purpose <data-flow-graph>) (node data-structure))
+  (list :label (format nil "~A~%~A"
+                       (class-name (class-of node))
+                       (index-space node))))
 
-(defmethod graphviz-node-label ((purpose <data-flow-graph>) (node application))
-  (format nil "~A~%~A~%~A"
-          (class-name (class-of node))
-          (operator node)
-          (index-space node)))
+(defmethod graphviz-node-plist plist-append ((purpose <data-flow-graph>) (node application))
+  (list :label (format nil "~A~%~A~%~A"
+                       (class-name (class-of node))
+                       (operator node)
+                       (index-space node))
+        :fillcolor "indianred1"))
 
-(defmethod graphviz-node-label ((purpose <data-flow-graph>) (node reduction))
-  (format nil "~A~%~A~%~A"
-          (class-name (class-of node))
-          (operator node)
-          (index-space node)))
+(defmethod graphviz-node-plist plist-append ((purpose <data-flow-graph>) (node reduction))
+  (list :label (format nil "~A~%~A~%~A"
+                      (class-name (class-of node))
+                      (operator node)
+                      (index-space node))
+        :fillcolor "indianred3"))
 
-(defmethod graphviz-node-label ((purpose <data-flow-graph>) (node reference))
-  (format nil "~A~%~A~%~A"
-          (class-name (class-of node))
-          (transformation node)
-          (index-space node)))
+(defmethod graphviz-node-plist plist-append ((purpose <data-flow-graph>) (node reference))
+  (list :label (format nil "~A~%~A~%~A"
+                       (class-name (class-of node))
+                       (transformation node)
+                       (index-space node))
+        :fillcolor "gray"))
 
-(defmethod graphviz-node-label ((purpose <data-flow-graph>) (node elaboration))
-  (format nil "~A~%~A~%~A"
-          (class-name (class-of node))
-          (data node)
-          (index-space node)))
+(defmethod graphviz-node-plist plist-append ((purpose <data-flow-graph>) (node elaboration))
+  (list :label (format nil "~A~%~A~%~A"
+                       (class-name (class-of node))
+                       (data node)
+                       (index-space node))))
 
-(defmethod graphviz-node-color ((purpose <data-flow-graph>) (node application))
-  (values "indianred1"))
-
-(defmethod graphviz-node-color ((purpose <data-flow-graph>) (node reduction))
-  (values "indianred3"))
-
-(defmethod graphviz-node-color ((purpose <data-flow-graph>) (node reference))
-  (values "gray"))
+(defmethod view ((object data-structure))
+  (with-temporary-file (:stream stream :pathname dotfile :direction :output)
+    (graphviz-draw-graph '<data-flow-graph> (list object) stream)
+    :close-stream
+    (with-temporary-file (:pathname imagefile)
+      (run-program (list "dot" "-Tpdf" "-o"
+                         (native-namestring imagefile)
+                         (native-namestring dotfile)))
+      (run-program (list "evince" (native-namestring imagefile)))
+      )))
+(make-hash-table)

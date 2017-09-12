@@ -258,6 +258,10 @@ function is the identity transformation."))
     (declare (ignore arguments))
     t))
 
+(defgeneric shallow-copy (object)
+  (:documentation
+   "Return an object that is EQUAL? to OBJECT, but not EQ."))
+
 (defgeneric size (object)
   (:method ((object t)) 1)
   (:method ((object array)) (array-total-size object))
@@ -268,6 +272,11 @@ function is the identity transformation."))
    "Return true if every index in SPACE-1 occurs also in SPACE-2.")
   (:method ((space-1 t) (space-2 t))
     (equal? space-1 (intersection space-1 space-2))))
+
+(defgeneric view (object)
+  (:documentation
+   "Present OBJECT graphically.")
+  (:method ((object t)) (describe object)))
 
 (defgeneric wait-for-completion (&rest objects)
   (:documentation

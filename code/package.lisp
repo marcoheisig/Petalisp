@@ -8,6 +8,8 @@
   (:shadow #:intersection)
   ;; support for weak hashtables
   (:shadowing-import-from :trivial-garbage #:make-hash-table)
+  ;; portable OS interface
+  (:import-from :uiop #:run-program #:with-temporary-file #:native-namestring)
   ;; everyone needs a code walker
   (:import-from :agnostic-lizard
                 #:macroexpand-all #:walk-form

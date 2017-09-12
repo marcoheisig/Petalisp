@@ -2,58 +2,39 @@
 
 (in-package :petalisp)
 
-;;; A single data structure might be interpreted as many different
+;;; A sequence of root objects can be interpreted as many different
 ;;; graphs. To account for this, all subsequent generic functions accept a
 ;;; "purpose" object as their first argument, which should be an instance
-;;; of a subclass of <graph>. The class <s-expression> and the specialized
-;;; methods for it illustrate the general technique.
-;;;
-;;; Example:
-;;; (graphviz-draw-graph '<s-expression> (list '(a b (c d)))) prints
-;;;
-;;; digraph G {
-;;;   node1 [label="A"];
-;;;   node2 [label="B"];
-;;;   node3 [label="C"];
-;;;   node4 [label="D"];
-;;;   node1 -> node2 [label=""];
-;;;   node1 -> node3 [label=""];
-;;;   node3 -> node4 [label=""];
-;;; }
-;;;
-;;; while
-;;;
-;;; (graphviz-draw-graph '<graph> (list '(a b (c d)))) prints
-;;;
-;;; digraph G {
-;;;   node1 [label="(A B (C D))"];
-;;; }.
+;;; of a subclass of <graph>.
 
 (defclass <graph> () ())
 
-(defclass <s-expression> (<graph>) ())
-
 (defgeneric graphviz-successors (purpose node)
-  (:method ((purpose <graph>) (node t)) nil)
-  (:method ((purpose <s-expression>) (node list)) (cdr node)))
+  (:method ((purpose <graph>) (node t)) nil))
 
-(defgeneric graphviz-node-label (purpose node)
-  (:method ((purpose <graph>) (node t))
-    (with-output-to-string (stream)
-      (print-object node stream)))
-  (:method ((purpose <s-expression>) (node list))
-    (with-output-to-string (stream)
-      (print-object (car node) stream))))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun plist-append (&rest plists)
+    (let (result)
+      (loop :for (key-1 . rest) :on (apply #'append plists) :by #'cddr :do
+        (unless (loop :for (key-2 . nil) :on result :by #'cddr
+                        :thereis (eq key-1 key-2))
+          (push (car rest) result)
+          (push key-1 result)))
+      result)))
 
-(defgeneric graphviz-node-color (purpose node)
-  (:method ((purpose <graph>) (node t)) "white")
-  (:method ((purpose <s-expression>) (node list)) "gray"))
+(define-method-combination plist-append :identity-with-one-argument t)
 
-(defgeneric graphviz-edge-label (purpose from to)
-  (:method ((purpose <graph>) (from t) (to t)) ""))
+(defgeneric graphviz-node-plist (purpose node)
+  (:method-combination plist-append)
+  (:method plist-append ((purpose <graph>) (node t))
+    (list :label (with-output-to-string (stream)
+                   (print-object node stream))
+          :fillcolor "white")))
 
-(defgeneric graphviz-edge-color (purpose from to)
-  (:method ((purpose <graph>) (from t) (to t)) "black"))
+(defgeneric graphviz-edge-plist (purpose from to)
+  (:method-combination plist-append)
+  (:method plist-append ((purpose <graph>) (from t) (to t))
+    (list :color "black")))
 
 (defgeneric graphviz-draw-graph (purpose graph-roots &optional stream)
   (:method ((purpose symbol) (graph-roots list) &optional (stream t))
@@ -68,23 +49,20 @@
                    (setf (gethash node table) (incf node-id))
                    (dolist (successor (graphviz-successors purpose node))
                      (populate-node-table successor)))))
-        (mapc #'populate-node-table graph-roots))
+        (map nil #'populate-node-table graph-roots))
       (format stream "digraph G {~%")
       (format stream "  node[shape=box, style=filled]~%")
       ;; 2. draw nodes
       (loop :for node :being :each :hash-key
               :using (:hash-value node-id) :of table :do
-                (format stream "  node~d [label=~S, fillcolor=~S]~%"
-                        node-id
-                        (graphviz-node-label purpose node)
-                        (graphviz-node-color purpose node)))
+                (format stream "  node~d [~{~A=~S,~^ ~}]~%"
+                        node-id (graphviz-node-plist purpose node)))
       ;; 2. draw edges
       (loop :for from :being :each :hash-key
               :using (:hash-value from-id) :of table :do
                 (dolist (to (graphviz-successors purpose from))
                   (let ((to-id (gethash to table)))
-                    (format stream "  node~d -> node~d [label=~S, color=~S]~%"
+                    (format stream "  node~d -> node~d [~{~A=~S,~^ ~}]~%"
                             from-id to-id
-                            (graphviz-edge-label purpose from to)
-                            (graphviz-edge-color purpose from to)))))
+                            (graphviz-edge-plist purpose from to)))))
       (format stream "}~%"))))
