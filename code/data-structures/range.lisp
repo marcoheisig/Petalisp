@@ -6,28 +6,22 @@
             (:constructor %make-range (start step end))
             (:copier nil)
             (:predicate range?))
-  (start 0 :type integer          :read-only t)
-  (step  1 :type positive-integer :read-only t)
-  (end   0 :type integer          :read-only t))
+  "A range denotes the set {x | ∃n ∈ N0, x = START + n STEP ∧ x <= END}."
+  (start nil :type integer          :read-only t)
+  (step  nil :type positive-integer :read-only t)
+  (end   nil :type integer          :read-only t))
 
-(defun range (&rest spec)
-  (declare (dynamic-extent spec))
-  (multiple-value-bind (start step end)
-      (ematch spec
-        ((list start step end) (values start step end))
-        ((list start end) (values start 1 end)))
-    (if (zerop step)
-        (if (= start end)
-            (range start 1 end)
-            (simple-program-error
-             "Bad step size 0 for range with start ~d and end ~d"
-             start end))
-        ;; ensure START and END are congruent relative to STEP
-        (let ((end (+ start (* step (truncate (- end start) step)))))
-          (%make-range
-           (min start end)
-           (if (= start end) 1 (abs step))
-           (max start end))))))
+(defun range (start step-or-end &optional end)
+  (let ((end (or end step-or-end))
+        (step (if end step-or-end 1)))
+    (when (and (zerop step) (/= start end))
+      (simple-program-error
+       "Bad step size 0 for range with start ~d and end ~d"
+       start end))
+    (let ((step (if (= start end) 1 (abs step))))
+      ;; ensure START and END are congruent relative to STEP
+      (let ((end (+ start (* step (truncate (- end start) step)))))
+        (%make-range (min start end) step (max start end))))))
 
 (defun range-generator (&key
                           (max-extent #.(floor most-positive-fixnum 4/5))
