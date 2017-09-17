@@ -30,17 +30,17 @@
    :inputs (inputs object)
    :index-space (index-space object)))
 
-(define-class strided-array-elaboration (strided-array elaboration)
+(define-class strided-array-immediate (strided-array immediate)
   ((data :type array)))
 
 (defmethod petalispify ((array array))
   (make-instance
-   'strided-array-elaboration
+   'strided-array-immediate
    :element-type (array-element-type array)
    :data array
    :index-space (make-strided-array-index-space array)))
 
-(defmethod depetalispify ((instance strided-array-elaboration))
+(defmethod depetalispify ((instance strided-array-immediate))
   (data instance))
 
 (define-class strided-array-fusion (strided-array fusion) ())

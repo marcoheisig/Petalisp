@@ -2,6 +2,23 @@
 
 (in-package :petalisp)
 
+(defmethod enqueue (&rest objects)
+  (if-let ((unsuitable-arguments (remove-if #'data-structure? objects)))
+    (simple-program-error
+     "Unsuitable argument~s to enqueue:~%~{  ~S~}"
+     (length unsuitable-arguments) unsuitable-arguments)
+    (let ((work-items (remove-if #'leaf? (mapcar #'petalispify objects))))
+      (when work-items
+        (iterate (for work-item in work-items)
+                 (change-class work-item 'strided-array-computation))
+        ;; (queue-enqueue objects)
+        ))))
+
+(defmethod wait-for (&rest objects)
+  (apply #'enqueue objects)
+  ;; wait until all computations are immediates
+  )
+
 (defvar *kernel-table* (make-hash-table :test #'eq :weakness :key))
 
 (defmethod enqueue (&rest objects)
@@ -19,12 +36,12 @@
     (labels ((dependencies (node)
                (let (dependencies)
                  (labels ((recurse (node)
-                            (if (elaboration? node)
+                            (if (leaf? node)
                                 (push node dependencies)
                                 (mapc #'dependencies (inputs node)))))
                    (recurse node))))
              (recurse (node)
-               (unless (elaboration? node)
+               (unless (leaf? node)
                  (if (or (< 1 (length (gethash node use-table)))
                          (member node objects :test #'eq))
                      (let ((recipe (shallow-copy node)))

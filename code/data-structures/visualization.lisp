@@ -7,7 +7,7 @@
 (defmethod graphviz-successors ((purpose <data-flow-graph>) (node data-structure))
   (inputs node))
 
-(defmethod graphviz-successors ((purpose <data-flow-graph>) (node elaboration))
+(defmethod graphviz-successors ((purpose <data-flow-graph>) (node immediate))
   (ensure-list (recipe node)))
 
 (defmethod graphviz-node-plist plist-append ((purpose <data-flow-graph>) (node data-structure))
@@ -38,7 +38,7 @@
                        (index-space node))
         :fillcolor "gray"))
 
-(defmethod graphviz-node-plist plist-append ((purpose <data-flow-graph>) (node elaboration))
+(defmethod graphviz-node-plist plist-append ((purpose <data-flow-graph>) (node immediate))
   (list :label (format nil "~A~%~A~%~A"
                        (class-name (class-of node))
                        (data node)

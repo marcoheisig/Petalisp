@@ -22,13 +22,22 @@
    "A data structure of dimension D is a mapping from indices i1,...,iD to
    values of type ELEMENT-TYPE."))
 
-(define-class elaboration (data-structure)
-  ((data :initform nil)
-   (dependencies :initform nil)
+(define-class leaf (data-structure)
+  ((inputs :type null :allocation :class))
+  (:documentation
+   "A leaf is a data-structure with no inputs."))
+
+(define-class computation (leaf)
+  ((dependencies :initform nil)
    (recipe :initform nil))
   (:documentation
-   "An elaboration is a data structure whose values are stored directly in
-   memory, or whose elements are in tho process of being stored directly in
+   "An computation is a data structure whose elements are in tho process of
+   being stored directly in memory."))
+
+(define-class immediate (leaf)
+  (data)
+  (:documentation
+   "An immediate is a data structure whose elements are directly stored in
    memory."))
 
 (define-class application (data-structure)
@@ -322,3 +331,5 @@ arguments."
                     when (intersection particle object) collect it)
               object-w/o-dust))))
     (reduce #'shatter more-objects :initial-value (list object))))
+
+
