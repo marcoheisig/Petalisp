@@ -6,6 +6,7 @@
   :depends-on
   (:agnostic-lizard
    :alexandria
+   :bordeaux-threads
    :closer-mop
    :fiveam
    :iterate
@@ -33,6 +34,7 @@
        (:file "macros")
        (:file "matrix" :depends-on ("macros" "testing"))
        (:file "miscellaneous" :depends-on ("macros" "testing"))
+       (:file "queue")
        (:file "testing")))
      (:file "petalisp" :depends-on ("utilities"))
      (:module "transformations" :depends-on ("petalisp")
