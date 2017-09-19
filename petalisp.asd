@@ -1,5 +1,5 @@
 (defsystem :petalisp
-  :description "Elegant code generation for high-performance computing."
+  :description "Elegant High Performance Computing"
   :author "Marco Heisig <marco.heisig@fau.de>"
   :license "AGPLv3"
 
@@ -11,15 +11,10 @@
    :fiveam
    :iterate
    :optima
-   :trivial-garbage)
+   :trivial-garbage
+   :uiop)
 
-  :perform
-  (test-op (o c)
-           (format t "== Testing Petalisp ==~%")
-           (uiop:symbol-call :petalisp '#:print-platform-information)
-           (uiop:symbol-call :petalisp '#:print-system-statistics :petalisp)
-           (uiop:symbol-call :petalisp '#:print-package-statistics :petalisp)
-           (uiop:symbol-call '#:fiveam '#:run! (find-symbol "PETALISP" "PETALISP")))
+  :perform (test-op (o c) (uiop:symbol-call "PETALISP" "RUN-TEST-SUITE"))
 
   :components
   ((:module "code"

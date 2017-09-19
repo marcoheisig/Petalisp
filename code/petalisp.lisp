@@ -332,4 +332,9 @@ arguments."
               object-w/o-dust))))
     (reduce #'shatter more-objects :initial-value (list object))))
 
-
+(defun run-test-suite ()
+  (format t "== Testing Petalisp ==~%")
+  (print-platform-information)
+  (print-system-statistics :petalisp)
+  (print-package-statistics :petalisp)
+  (fiveam:run! 'petalisp))

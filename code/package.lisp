@@ -1,6 +1,6 @@
 ;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(in-package :cl-user)
+(in-package :common-lisp-user)
 
 (defpackage :petalisp
   (:use :closer-common-lisp :alexandria :bordeaux-threads)
