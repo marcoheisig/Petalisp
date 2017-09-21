@@ -4,9 +4,7 @@
 (in-package :petalisp)
 
 (defun ! (expression)
-  (draw-graph "graph.dot" expression)
-  (print
-   (compute expression)))
+  (view expression))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -228,7 +226,7 @@
 
 (defun mg (u f n)
   (loop repeat n do
-    (setf u (v-cycle u f 2 2)))
+    (setf u (v-cycle u f 1 1)))
   u)
 
 (defun inf-norm (u u-exact)
@@ -242,7 +240,5 @@
                    (-> 1.0
                        (σ* f
                            ((1+ start) step (1- end))
-                           ((1+ start) step (1- end))))))
-       (n 1))
-  (! (inf-norm (rbgs u0 f n) f))
-  (! (inf-norm (mg u0 f n) f)))
+                           ((1+ start) step (1- end)))))))
+  (view (mg u0 f 1)))

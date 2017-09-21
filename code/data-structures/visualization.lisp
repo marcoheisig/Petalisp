@@ -7,9 +7,6 @@
 (defmethod graphviz-successors ((purpose <data-flow-graph>) (node data-structure))
   (inputs node))
 
-(defmethod graphviz-successors ((purpose <data-flow-graph>) (node immediate))
-  (ensure-list (recipe node)))
-
 (defmethod graphviz-node-plist plist-append ((purpose <data-flow-graph>) (node data-structure))
   (list :label (format nil "~A~%~A"
                        (class-name (class-of node))
@@ -37,13 +34,6 @@
                        (transformation node)
                        (index-space node))
         :fillcolor "gray"))
-
-(defmethod graphviz-node-plist plist-append ((purpose <data-flow-graph>) (node immediate))
-  (list :label (format nil "~A~%~A~%~A"
-                       (class-name (class-of node))
-                       (data node)
-                       (index-space node))
-        :fillcolor (if (dependencies node) "green" "white")))
 
 (defmethod view ((object data-structure))
   (with-temporary-file (:stream stream :pathname dotfile :direction :output)

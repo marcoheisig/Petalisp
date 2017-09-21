@@ -153,6 +153,10 @@
       (or (apply #'optimize-fusion a1 a2...aN)
           (call-next-method)))))
 
+(defmethod generic-unary-funcall :before ((transformation transformation)
+                                          (object index-space))
+  (assert (= (input-dimension transformation) (dimension object))))
+
 (defgeneric index-space (object)
   (:documentation
    "Return the INDEX-SPACE of OBJECT, i.e. a data structure whose elements
