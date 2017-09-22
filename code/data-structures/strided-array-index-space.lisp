@@ -24,13 +24,9 @@
      :ranges (map 'vector (λ spec (apply #'range spec))
                   range-specifications))))
 
-(defun strided-array-index-space-generator (&key
-                                              (dimension 3)
-                                              (max-size 30)
-                                              (max-extent 100)
-                                              intersecting)
-  (assert (or (not intersecting)
-              (= dimension (dimension intersecting))))
+(defun strided-array-index-space-generator
+    (&key (dimension 3) (max-size 30) (max-extent 100) intersecting)
+  (assert (or (not intersecting) (= dimension (dimension intersecting))))
   (let ((range-generators
           (if intersecting
               (map 'list (λ range (range-generator :max-size max-size

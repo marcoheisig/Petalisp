@@ -123,6 +123,12 @@
   (:method :before ((g transformation) (f transformation))
     (assert (= (input-dimension g) (output-dimension f)))))
 
+(defgeneric compute (&rest objects)
+  (:documentation
+   "Return the computed value of OBJECTS.")
+  (:method :around (&rest objects)
+    (apply #'call-next-method (mapcar #'petalispify objects))))
+
 (defgeneric depetalispify (object)
   (:documentation
    "If OBJECT is a Petalisp data structure, return an array with the
@@ -143,11 +149,6 @@
   (:method ((object t)) 0)
   (:method ((object array)) (length (array-dimensions object)))
   (:method ((object data-structure)) (dimension (index-space object))))
-
-(defgeneric enqueue (&rest objects)
-  (:documentation
-   "Instruct Petalisp to compute all given OBJECTS asynchronously. Return
-   NIL."))
 
 (defgeneric equal? (a b)
   (:documentation
@@ -274,10 +275,7 @@ function is the identity transformation."))
   (:method :around ((object data-structure)
                     (space index-space)
                     (transformation transformation))
-    (assert (and (= (dimension space) (input-dimension transformation))
-                 #+nil
-                 (subspace? (funcall transformation space)
-                            (index-space object))))
+    (assert (= (dimension space) (input-dimension transformation)))
     (or (optimize-reference object space transformation)
         (call-next-method))))
 
@@ -285,6 +283,13 @@ function is the identity transformation."))
   (:method ((function function) &rest arguments)
     (declare (ignore arguments))
     t))
+
+(defgeneric schedule (&rest objects)
+  (:documentation
+   "Instruct Petalisp to compute all given OBJECTS asynchronously. Return
+   NIL.")
+  (:method :around (&rest objects)
+    (apply #'call-next-method (mapcar #'petalispify objects))))
 
 (defgeneric shallow-copy (object)
   (:documentation
@@ -305,10 +310,6 @@ function is the identity transformation."))
   (:documentation
    "Present OBJECT graphically.")
   (:method ((object t)) (describe object)))
-
-(defgeneric wait-for-completion (&rest objects)
-  (:documentation
-   "Return the computed value of OBJECTS."))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
