@@ -62,6 +62,25 @@
                       (for d from 0)
                       (collect `(let ((,dim ,d)) (range ,@form))))))))))
 
+(defmethod common-broadcast-space ((space strided-array-index-space) &rest more-spaces)
+  (let ((list-of-ranges (list* (ranges space) (mapcar #'ranges more-spaces))))
+    (let ((result-ranges (copy-array (iterate (for ranges in list-of-ranges)
+                                              (finding ranges maximizing (length ranges))))))
+      (iterate (for ranges in list-of-ranges)
+               (for argument from 0)
+               (iterate (for range in-vector ranges)
+                        (for broadcast-range in-vector result-ranges)
+                        (for dimension from 0)
+                        (cond
+                          ((equal? range broadcast-range)) ; NOP
+                          ((unary-range? range)) ; NOP
+                          ((unary-range? broadcast-range)
+                           (setf (aref result-ranges dimension) range))
+                          (t
+                           (error "Illegal broadcasting in dimension ~D of argument ~D."
+                                  dimension argument)))))
+      (make-strided-array-index-space result-ranges))))
+
 (defmethod difference ((space-1 strided-array-index-space)
                        (space-2 strided-array-index-space))
   (if-let ((intersection (intersection space-1 space-2)))

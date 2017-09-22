@@ -5,72 +5,15 @@
 
 (in-package :petalisp)
 
-(defgeneric broadcast-to (object space)
-  (:documentation
-   "Return a broadcasting reference data structure to the elements of
-   OBJECT with the shape of SPACE.")
-  (:method :before ((object data-structure) (space index-space))
-    (assert (<= (dimension object) (dimension space))))
-  (:method ((object strided-array) (space strided-array-index-space))
-    (let ((transformation
-            (let ((input-dimension (dimension space))
-                  (output-dimension (dimension object)))
-              (let ((translation-vector (make-array output-dimension :initial-element 0))
-                    (column-indices (make-array output-dimension :initial-element 0))
-                    (values (make-array output-dimension :initial-element 0)))
-                (iterate (for input-range in-vector (ranges (index-space object)))
-                         (for output-range in-vector (ranges space))
-                         (for index from 0)
-                         (setf (aref column-indices index) index)
-                         (cond ((unary-range? output-range)
-                                (setf (aref translation-vector index) (range-start output-range)))
-                               ((equal? input-range output-range)
-                                (setf (aref values index) 1))))
-                (make-affine-transformation
-                 (make-array input-dimension :initial-element nil)
-                 (scaled-permutation-matrix
-                  output-dimension
-                  input-dimension
-                  column-indices
-                  values)
-                 translation-vector)))))
-      (reference object space transformation))))
-
-(defgeneric broadcast (object &rest more-objects)
-  (:documentation
-   "Return the common broadcast space of the given OBJECTS.")
-  (:method ((object strided-array) &rest more-objects)
-    (let/de ((objects (cons object more-objects)))
-      (let ((dimension (iterate (for object in objects)
-                                (maximize (dimension object)))))
-        (let ((upgraded-ranges (make-array dimension :initial-element nil)))
-          (iterate (for object in objects)
-                   (for arg-index from 0)
-                   (for ranges = (ranges (index-space object)))
-                   (iterate (for range in-vector ranges)
-                            (for upgraded-range in-vector upgraded-ranges)
-                            (for index from 0)
-                            (if (not upgraded-range)
-                                (setf (aref upgraded-ranges index) range)
-                                (if (unary-range? upgraded-range)
-                                    (setf (aref upgraded-ranges index) range)
-                                    (assert (or (unary-range? range)
-                                                (equal? range upgraded-range))
-                                            (object)
-                                            "Illegal broadcasting in dimension ~D of argument ~D."
-                                            index arg-index)))))
-          (let ((index-space (make-strided-array-index-space upgraded-ranges)))
-            (mapcar (λ x (broadcast-to x index-space)) objects)))))))
-
 (defun α (function object &rest more-objects)
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
 for Petalisp data structures. When the dimensions of some of the inputs
 mismatch, the smaller objects are broadcast."
-  (let/de ((objects (cons object more-objects)))
-    (apply #'application
-           function
-           (apply #'broadcast
-                  (mapcar #'petalispify objects)))))
+  (let ((objects (cons (petalispify object) (mapcar #'petalispify more-objects))))
+    (let ((space (apply #'common-broadcast-space (mapcar #'index-space objects))))
+      (apply #'application
+             function
+             (mapcar (λ _ (broadcast _ space)) objects)))))
 
 (defun β (function object)
   "Reduce the last dimension of OBJECT with FUNCTION."
@@ -118,7 +61,7 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
                (index-space
                 (if (or (< (dimension data-structure) (dimension modifier))
                         (subspace? (index-space data-structure) modifier))
-                    (broadcast-to data-structure modifier)
+                    (broadcast data-structure modifier)
                     (reference
                      data-structure
                      (intersection modifier (index-space data-structure))

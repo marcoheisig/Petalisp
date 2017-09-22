@@ -101,6 +101,19 @@
   (:method ((a number) (b number))
     (+ a b)))
 
+(defgeneric broadcast (object space)
+  (:documentation
+   "Return a broadcasting reference to the elements of OBJECT with the
+   shape of SPACE.")
+  (:method :before ((object data-structure) (space index-space))
+    (assert (<= (dimension object) (dimension space)))))
+
+(defgeneric common-broadcast-space (space &rest more-spaces)
+  (:documentation
+   "Return a space such that all objects whose index space is any of the
+   given input spaces can be broadcast to this space. Signal an error if
+   there is no such space."))
+
 (defgeneric composition (g f)
   (:documentation
    "Returns a funcallable object such that its application is equivalent to

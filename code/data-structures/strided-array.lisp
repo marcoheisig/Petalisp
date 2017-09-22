@@ -99,3 +99,28 @@
    :inputs (inputs object)
    :index-space (index-space object)
    :transformation (transformation object)))
+
+(defmethod broadcast ((object strided-array) (space strided-array-index-space))
+  (let ((transformation
+          (let ((input-dimension (dimension space))
+                (output-dimension (dimension object)))
+            (let ((translation-vector (make-array output-dimension :initial-element 0))
+                  (column-indices (make-array output-dimension :initial-element 0))
+                  (values (make-array output-dimension :initial-element 0)))
+              (iterate (for input-range in-vector (ranges (index-space object)))
+                       (for output-range in-vector (ranges space))
+                       (for index from 0)
+                       (setf (aref column-indices index) index)
+                       (cond ((unary-range? output-range)
+                              (setf (aref translation-vector index) (range-start output-range)))
+                             ((equal? input-range output-range)
+                              (setf (aref values index) 1))))
+              (make-affine-transformation
+               (make-array input-dimension :initial-element nil)
+               (scaled-permutation-matrix
+                output-dimension
+                input-dimension
+                column-indices
+                values)
+               translation-vector)))))
+    (reference object space transformation)))
