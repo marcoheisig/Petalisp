@@ -12,7 +12,7 @@
   (lock (make-lock))
   (cvar (make-condition-variable)))
 
-(defun queue-enqueue (queue item)
+(defun enqueue (queue item)
   (let ((new-cons (list item)))
     (with-lock-held ((queue-lock queue))
       (cond ((queue-tail queue)
@@ -24,7 +24,7 @@
              (condition-notify (queue-cvar queue))))
       item)))
 
-(defun queue-dequeue (queue)
+(defun dequeue (queue)
   (with-lock-held ((queue-lock queue))
     (loop :until (queue-head queue)
           :do (condition-wait (queue-cvar queue) (queue-lock queue)))

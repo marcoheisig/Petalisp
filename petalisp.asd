@@ -45,6 +45,8 @@
        (:file "visualization" :depends-on ("strided-array"))))
      (:module "evaluator" :depends-on ("data-structures")
       :components
-      ((:file "scheduler")))
-     (:file "api" :depends-on ("data-structures"))))))
+      ((:file "define-evaluator")
+       (:file "local-evaluator")
+       (:file "global-evaluator")))
+     (:file "api" :depends-on ("evaluator"))))))
 

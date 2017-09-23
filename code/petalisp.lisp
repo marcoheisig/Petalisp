@@ -123,12 +123,6 @@
   (:method :before ((g transformation) (f transformation))
     (assert (= (input-dimension g) (output-dimension f)))))
 
-(defgeneric compute (&rest objects)
-  (:documentation
-   "Return the computed value of OBJECTS.")
-  (:method :around (&rest objects)
-    (apply #'call-next-method (mapcar #'petalispify objects))))
-
 (defgeneric depetalispify (object)
   (:documentation
    "If OBJECT is a Petalisp data structure, return an array with the
@@ -284,13 +278,6 @@ function is the identity transformation."))
     (declare (ignore arguments))
     t))
 
-(defgeneric schedule (&rest objects)
-  (:documentation
-   "Instruct Petalisp to compute all given OBJECTS asynchronously. Return
-   NIL.")
-  (:method :around (&rest objects)
-    (apply #'call-next-method (mapcar #'petalispify objects))))
-
 (defgeneric shallow-copy (object)
   (:documentation
    "Return an object that is EQUAL? to OBJECT, but not EQ."))
@@ -331,8 +318,7 @@ function is the identity transformation."))
 
 (defun input (object)
   "Return the unique input of OBJECT."
-  (ematch (inputs object)
-    ((list first) first)))
+  (destructuring-bind (input) (inputs object) input))
 
 (defun subdivision (object &rest more-objects)
   "Return a list of disjoint objects. Each resulting object is a proper
