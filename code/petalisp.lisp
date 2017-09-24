@@ -22,23 +22,10 @@
    "A data structure of dimension D is a mapping from indices i1,...,iD to
    values of type ELEMENT-TYPE."))
 
-(define-class leaf (data-structure)
-  ((inputs :type null :allocation :class))
+(define-class immediate (data-structure)
+  ((inputs :initform nil :type null :allocation :class))
   (:documentation
-   "A leaf is a data-structure with no inputs."))
-
-(define-class computation (leaf)
-  ((dependencies :initform nil)
-   (recipe :initform nil))
-  (:documentation
-   "An computation is a data structure whose elements are in tho process of
-   being stored directly in memory."))
-
-(define-class immediate (leaf)
-  (data)
-  (:documentation
-   "An immediate is a data structure whose elements are directly stored in
-   memory."))
+   "An immediate is a data structure with no inputs."))
 
 (define-class application (data-structure)
   ((operator :type function))
@@ -110,13 +97,13 @@
 
 (defgeneric common-broadcast-space (space &rest more-spaces)
   (:documentation
-   "Return a space such that all objects whose index space is any of the
-   given input spaces can be broadcast to this space. Signal an error if
-   there is no such space."))
+   "Return a space such that all objects whose index space is SPACE or in
+   MORE-SPACES can be broadcast to this space. Signal an error if there is
+   no such space."))
 
 (defgeneric composition (g f)
   (:documentation
-   "Returns a funcallable object such that its application is equivalent to
+   "Return a funcallable object such that its application is equivalent to
    the application of f, followed by an application of g.")
   (:method ((g function) (f function))
     (alexandria:compose g f))
@@ -273,9 +260,14 @@ function is the identity transformation."))
     (or (optimize-reference object space transformation)
         (call-next-method))))
 
-(defgeneric result-type (function &rest arguments)
-  (:method ((function function) &rest arguments)
-    (declare (ignore arguments))
+(defgeneric result-type (function &rest type-specifiers)
+  (:documentation
+   "Return a type specifier that is a conservative estimate of the return
+   type of FUNCTION, when applied to arguments that are representatives of
+   the given TYPE-SPECIFIERS. A return type of NIL signifies that FUNCTION
+   will never return for the given argument types.")
+  (:method ((function function) &rest type-specifiers)
+    (declare (ignore type-specifiers))
     t))
 
 (defgeneric shallow-copy (object)
@@ -283,8 +275,12 @@ function is the identity transformation."))
    "Return an object that is EQUAL? to OBJECT, but not EQ."))
 
 (defgeneric size (object)
+  (:documentation
+   "The size of a compound object, such as an array or hash-table, is
+   the number of its elements. All other objects have a size of 1.")
   (:method ((object t)) 1)
   (:method ((object array)) (array-total-size object))
+  (:method ((object hash-table)) (hash-table-count object))
   (:method ((object data-structure)) (size (index-space object))))
 
 (defgeneric subspace? (space-1 space-2)

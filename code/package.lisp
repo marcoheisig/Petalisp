@@ -45,4 +45,8 @@
    #:->
    #:τ
    #:σ
-   #:subspace))
+   #:σ*
+   #:subspace
+   #:depetalispify
+   #:schedule
+   #:compute))

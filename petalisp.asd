@@ -46,7 +46,8 @@
      (:module "evaluator" :depends-on ("data-structures")
       :components
       ((:file "define-evaluator")
-       (:file "local-evaluator")
-       (:file "global-evaluator")))
+       (:file "kernel")
+       (:file "local-evaluator" :depends-on ("define-evaluator" "kernel"))
+       (:file "global-evaluator" :depends-on ("define-evaluator" "kernel"))))
      (:file "api" :depends-on ("evaluator"))))))
 

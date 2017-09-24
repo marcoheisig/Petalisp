@@ -11,8 +11,8 @@
   - A function to process the events sequentially, by dispatching on the
     type of each instruction and executing the corresponding BODY
 
-  Finally, a new thread is created, invoking the previously defined event
-  handler."
+  Finally, a new thread is created, invoking the previously defined
+  processing function."
   (let ((queue (symbolicate "*" evaluator-name "-INSTRUCTIONS*"))
         (thread (symbolicate "*" evaluator-name "-THREAD*"))
         (thread-name (format nil "Petalisp ~A thread" evaluator-name))
