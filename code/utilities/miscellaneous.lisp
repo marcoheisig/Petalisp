@@ -91,6 +91,14 @@
         #2a((1 1 1 1) (1 1 1 1) (1 1 1 1) (1 1 1 1))
         #2a((0 1 2 3) (0 1 2 3) (0 1 2 3) (0 1 2 3))))))
 
+(defmacro do-sequence ((var sequence &optional result) &body body)
+  "Iterate over the elements of SEQUENCE."
+  (check-type var symbol)
+  (once-only (sequence)
+    `(block nil
+       (map nil #'(lambda (,var) (tagbody ,@body)) ,sequence)
+       (let ((,var nil)) ,var ,result))))
+
 (defun list-of-symbols (length)
   (loop :for i :below length
         :with abc := #(a b c d e f g h i j k l m n o p q r s t. u v w x y z)
@@ -114,3 +122,22 @@
                     (not (find form (metaenv-variable-like-entries env) :key #'first)))
            (pushnew form result)))))
     result))
+
+(defun successor-table (graph-roots predecessors)
+  "Given a sequence of GRAPH-ROOTS and a function to determine the sequence
+  of predecessors of each graph node, return a hash-table mapping each node
+  to a list of its successors."
+  (let ((table (make-hash-table :test #'eq)))
+    (flet ((push-entry (key hash-table value)
+             (if (consp (gethash key hash-table))
+                 (push value (gethash key hash-table))
+                 (setf (gethash key hash-table) (list value)))))
+      (map nil #'(named-lambda populate-successor-table (node)
+                   (when-let ((predecessors (funcall predecessors node)))
+                     ;; check whether node is visited for the first time
+                     (unless (member node (gethash (first predecessors) table))
+                       (map nil #'(lambda (predecessor)
+                                    (push-entry predecessor table node))
+                            predecessors))))
+           graph-roots)
+      table)))
