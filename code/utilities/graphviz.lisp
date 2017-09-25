@@ -80,7 +80,22 @@
 (defclass <class-hierarchy> (<graph>) ())
 
 (defmethod graphviz-successors ((purpose <class-hierarchy>) (node class))
-  (class-direct-subclasses node))
+  (labels ((visible-class? (class)
+             (or (when-let ((name (class-name class)))
+                   (find-symbol (symbol-name name)))
+                 (some #'visible-class? (class-direct-subclasses class)))))
+    (remove-if-not #'visible-class? (class-direct-subclasses node))))
 
 (defmethod graphviz-node-plist append-plist ((purpose <class-hierarchy>) (node class))
-  (list :label (string (class-name node))))
+  `(:label ,(string (class-name node))
+    :shape "box"
+    ,@(when-let ((name (class-name node)))
+        (cond
+          ((eq (symbol-package name) *package*)
+           `(:style "filled" :fillcolor "aquamarine"))
+          ((subtypep name 'error)
+           `(:style "filled" :fillcolor "lightcoral"))
+          ((subtypep name 'warning)
+           `(:style "filled" :fillcolor "lightsalmon"))
+          ((subtypep name 'condition)
+           `(:style "filled" :fillcolor "lavender"))))))
