@@ -34,4 +34,4 @@ evaluation of the given GRAPH-ROOTS."
                    (t (make-kernel (kernelize-recipe node))))))
              (kernelize-recipe (node)
                (cond ((immediate? node) node)
-                     ()))))))
+                     (t)))))))
