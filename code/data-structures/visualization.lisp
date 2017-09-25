@@ -35,15 +35,8 @@
                        (index-space node))
         :fillcolor "gray"))
 
-(defmethod view ((object data-structure))
-  (with-temporary-file (:stream stream :pathname dotfile :direction :output)
-    (graphviz-draw-graph '<data-flow-graph> (list object) stream)
-    :close-stream
-    (with-temporary-file (:pathname imagefile)
-      (run-program (list "dot" "-Tpdf" "-o"
-                         (native-namestring imagefile)
-                         (native-namestring dotfile)))
-      (run-program (list "evince" (native-namestring imagefile))))))
+(defmethod view ((object data-structure) &optional (purpose '<data-flow-graph>))
+  (call-next-method object purpose))
 
 (defmethod graphviz-draw-graph
     :around ((purpose <data-flow-graph>) graph-roots &optional stream)
