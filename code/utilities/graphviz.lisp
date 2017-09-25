@@ -13,7 +13,7 @@
   (:method ((purpose <graph>) (node t)) nil))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defun plist-append (&rest plists)
+  (defun append-plist (&rest plists)
     (let (result)
       (loop :for (key-1 . rest) :on (apply #'append plists) :by #'cddr :do
         (unless (loop :for (key-2 . nil) :on result :by #'cddr
@@ -21,22 +21,22 @@
           (push (car rest) result)
           (push key-1 result)))
       result))
-  (define-method-combination plist-append :identity-with-one-argument t))
+  (define-method-combination append-plist :identity-with-one-argument t))
 
 (defgeneric graphviz-graph-plist (purpose)
-  (:method-combination plist-append)
-  (:method plist-append ((purpose <graph>))
+  (:method-combination append-plist)
+  (:method append-plist ((purpose <graph>))
     (list)))
 
 (defgeneric graphviz-node-plist (purpose node)
-  (:method-combination plist-append)
-  (:method plist-append ((purpose <graph>) (node t))
+  (:method-combination append-plist)
+  (:method append-plist ((purpose <graph>) (node t))
     (list :label (with-output-to-string (stream)
                    (print-object node stream)))))
 
 (defgeneric graphviz-edge-plist (purpose from to)
-  (:method-combination plist-append)
-  (:method plist-append ((purpose <graph>) (from t) (to t))
+  (:method-combination append-plist)
+  (:method append-plist ((purpose <graph>) (from t) (to t))
     (list :color "black")))
 
 (defgeneric graphviz-draw-graph (purpose graph-roots &optional stream)
