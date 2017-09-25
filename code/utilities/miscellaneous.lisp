@@ -171,21 +171,20 @@
            (pushnew form result)))))
     result))
 
-(defun successor-table (graph-roots predecessors)
+(defun inverse-table (graph-roots children)
   "Given a sequence of GRAPH-ROOTS and a function to determine the sequence
-  of predecessors of each graph node, return a hash-table mapping each node
-  to a list of its successors."
+  of children of each graph node, return a hash-table mapping each child to
+  a list of its parents."
   (let ((table (make-hash-table :test #'eq)))
     (flet ((push-entry (key hash-table value)
              (if (consp (gethash key hash-table))
                  (push value (gethash key hash-table))
                  (setf (gethash key hash-table) (list value)))))
-      (map nil (named-lambda populate-successor-table (node)
-                 (let ((predecessors (funcall predecessors node)))
+      (map nil (named-lambda populate-inverse-table (node)
+                 (if-let ((children (funcall children node)))
                    ;; check whether node is visited for the first time
-                   (unless (member node (gethash (elt predecessors 0) table))
-                     (map nil #'(lambda (predecessor)
-                                  (push-entry predecessor table node))
-                          predecessors))))
+                   (unless (member node (gethash (elt children 0) table))
+                     (do-sequence (child children)
+                       (push-entry child table node)))))
            graph-roots)
       table)))
