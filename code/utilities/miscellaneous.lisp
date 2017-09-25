@@ -91,14 +91,6 @@
         #2a((1 1 1 1) (1 1 1 1) (1 1 1 1) (1 1 1 1))
         #2a((0 1 2 3) (0 1 2 3) (0 1 2 3) (0 1 2 3))))))
 
-(defmacro do-sequence ((var sequence &optional result) &body body)
-  "Iterate over the elements of SEQUENCE."
-  (check-type var symbol)
-  (once-only (sequence)
-    `(block nil
-       (map nil #'(lambda (,var) (tagbody ,@body)) ,sequence)
-       (let ((,var nil)) ,var ,result))))
-
 (defun list-of-symbols (length)
   (loop :for i :below length
         :with abc := #(a b c d e f g h i j k l m n o p q r s t. u v w x y z)
@@ -106,10 +98,66 @@
                      (aref abc i)
                      (format-symbol t "VAR~D" i))))
 
+(defun function-lambda-list (function)
+  "Return one of the following multiple values:
+  (values LAMBDA-LIST T) where LAMBDA-LIST is the lambda list of FUNCTION
+  (values NIL NIL) if the lambda list could not be determined."
+  #+allegro (values (excl:arglist function) t)
+  #+clisp (values (sys::arglist function) t)
+  #+(or cmu scl)
+  (let ((f (coerce function 'function)))
+    (typecase f
+      (standard-generic-function (values (pcl:generic-function-lambda-list f) t))
+      (eval:interpreted-function (values (eval:interpreted-function-arglist f) t))
+      (function (values (read-from-string (kernel:%function-arglist f)) t))
+      (t (values nil nil))))
+  #+cormanlisp (values (ccl:function-lambda-list
+                        (typecase function
+                          (symbol (fdefinition function))
+                          (t function))) t)
+  #+gcl (let ((f (etypecase function
+                   (symbol function)
+                   (function (si:compiled-function-name function)))))
+          (values (get f 'si:debug) t))
+  #+lispworks (values (lw:function-lambda-list function) t)
+  #+lucid (values (lcl:arglist function) t)
+  #+sbcl (values (sb-introspect:function-lambda-list function) t)
+  #-(or allegro clisp cmu scl cormanlisp gcl lispworks lucid sbcl)
+  (values nil nil))
+
 (defun check-arity (function arity)
-  "Signal an error if FUNCTION cannot be called with ARITY arguments."
-  (declare (ignorable function arity))
-  )
+  "Signal a simple-program-error if FUNCTION cannot be called with ARITY arguments."
+  (multiple-value-bind (lambda-list lambda-list?) (function-lambda-list function)
+      (when lambda-list?
+        (let ((mandatory-arguments 0)
+              (max-arguments 0)
+              (upper-bound? t)
+              (mandatory-increment 1)
+              (max-increment 1))
+          (declare (type (integer 0 #.call-arguments-limit) arity
+                         mandatory-arguments max-arguments
+                         mandatory-increment max-increment)
+                   (boolean upper-bound?))
+          (dolist (item lambda-list)
+            (case item
+              (&key      (setf max-increment 2) (setf mandatory-increment 0))
+              (&optional (setf max-increment 1) (setf mandatory-increment 0))
+              (&aux      (setf max-increment 0) (setf mandatory-increment 0))
+              ((&rest &allow-other-keys)
+               (setf max-increment 0)
+               (setf mandatory-increment 0)
+               (setf upper-bound? nil))
+              (t
+               (incf mandatory-arguments mandatory-increment)
+               (incf max-arguments max-increment))))
+          (when (< arity mandatory-arguments)
+            (simple-program-error
+             "Only ~R argument~:P given for a function with ~R mandatory argument~:P."
+             arity mandatory-arguments))
+          (when (and upper-bound? (> arity max-arguments))
+            (simple-program-error
+             "Received ~R argument~:P for a function that accepts at most ~R argument~:P."
+             arity max-arguments))))))
 
 (defun free-variables (form &optional environment)
   (let (result)

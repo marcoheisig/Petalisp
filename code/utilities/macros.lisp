@@ -54,12 +54,10 @@ SLOT-NAME and. Additionally, defines a <NAME>? predicate."
        (defun ,(symbolicate class-name "?") (x)
          (typep x ',class-name)))))
 
-(defmacro zapf (place expr)
-  (multiple-value-bind
-        (temps exprs stores store-expr access-expr)
-      (get-setf-expansion place)
-    `(let* (,@(mapcar #'list temps exprs)
-            (,(car stores)
-              (let ((% ,access-expr))
-                ,expr)))
-       ,store-expr)))
+(defmacro do-sequence ((var sequence &optional result) &body body)
+  "Iterate over the elements of SEQUENCE."
+  (check-type var symbol)
+  (once-only (sequence)
+    `(block nil
+       (map nil #'(lambda (,var) (tagbody ,@body)) ,sequence)
+       (let ((,var nil)) ,var ,result))))
