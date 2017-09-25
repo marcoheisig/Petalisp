@@ -82,7 +82,7 @@
 (defmethod graphviz-successors ((purpose <class-hierarchy>) (node class))
   (labels ((visible-class? (class)
              (or (when-let ((name (class-name class)))
-                   (find-symbol (symbol-name name)))
+                   (eq (find-symbol (symbol-name name)) name))
                  (some #'visible-class? (class-direct-subclasses class)))))
     (remove-if-not #'visible-class? (class-direct-subclasses node))))
 
