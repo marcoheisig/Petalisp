@@ -116,14 +116,14 @@
 
 (defmethod graphviz-node-plist append-plist ((purpose <class-hierarchy>) (node class))
   `(:label ,(string (class-name node))
-    :shape "box"
     ,@(when-let ((name (class-name node)))
         (cond
           ((eq (symbol-package name) *package*)
-           `(:style "filled" :fillcolor "aquamarine"))
+           `(:style "filled" :fillcolor "aquamarine" :shape "note"))
           ((subtypep name 'error)
            `(:style "filled" :fillcolor "lightcoral"))
           ((subtypep name 'warning)
            `(:style "filled" :fillcolor "lightsalmon"))
           ((subtypep name 'condition)
-           `(:style "filled" :fillcolor "lavender"))))))
+           `(:style "filled" :fillcolor "lavender"))))
+    :shape "box"))

@@ -17,7 +17,7 @@
 
 (define-class data-structure ()
   ((element-type :initform t)
-   (inputs :initform nil :type list))
+   (inputs :type list))
   (:documentation
    "A data structure of dimension D is a mapping from indices i1,...,iD to
    values of type ELEMENT-TYPE."))

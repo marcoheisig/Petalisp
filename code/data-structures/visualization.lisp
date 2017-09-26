@@ -4,6 +4,9 @@
 
 (defclass <data-flow-graph> (<graph>) ())
 
+(defmethod graphviz-graph-plist append-plist ((purpose <data-flow-graph>))
+  `(:splines "ortho"))
+
 (defmethod graphviz-successors ((purpose <data-flow-graph>) (node data-structure))
   (inputs node))
 
@@ -34,6 +37,3 @@
                        (transformation node)
                        (index-space node))
         :fillcolor "gray"))
-
-(defmethod view ((object data-structure) &optional (purpose '<data-flow-graph>))
-  (call-next-method object purpose))
