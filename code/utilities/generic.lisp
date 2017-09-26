@@ -14,13 +14,10 @@
   (:documentation
    "The generic method inoked for funcallable objects of two arguments."))
 
-(defclass funcallable-object (standard-object function) ()
+(defclass unary-funcallable-object (funcallable-standard-object) ()
   (:metaclass funcallable-standard-class))
 
-(defclass unary-funcallable-object (funcallable-object) ()
-  (:metaclass funcallable-standard-class))
-
-(defclass binary-funcallable-object (funcallable-object) ()
+(defclass binary-funcallable-object (funcallable-standard-object) ()
   (:metaclass funcallable-standard-class))
 
 (defmethod initialize-instance :after ((object unary-funcallable-object) &key)

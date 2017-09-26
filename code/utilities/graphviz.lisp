@@ -4,8 +4,8 @@
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (defun append-plist (&rest plists)
-    "Merge the given PLISTS. If a key occurs more than once, the leftmost
-    value takes precedence."
+    "Non-destructively merge the given PLISTS. If a key occurs more than
+    once, the leftmost value takes precedence."
     (let (result)
       (loop :for (key-1 . rest) :on (apply #'append plists) :by #'cddr :do
         (unless (loop :for (key-2 . nil) :on result :by #'cddr
@@ -41,17 +41,45 @@
   (:method append-plist ((purpose <graph>) (from t) (to t))
     (list :color "black")))
 
+(defparameter *graphviz-pdf-viewer* "evince")
+
 (defgeneric graphviz-draw-graph (purpose graph-roots &optional stream)
-  (:method ((purpose symbol) graph-roots &optional (stream t))
-    (graphviz-draw-graph (make-instance purpose) graph-roots stream))
-  (:method ((purpose <graph>) graph-roots &optional (stream t))
+  (:documentation
+   "Write object to STREAM in a format suitable for the program
+   Graphviz (www.graphviz.org). If no stream is specified, write the graph
+   to a temporary file and open it with *GRAPHVIZ-PDF-VIEWER*.
+
+   The exact behavior of this method is governed by PURPOSE, which is an
+   instance of a subclass of <graph> (or a symbol, denoting such an
+   instance), and the generic functions GRAPHVIZ-SUCCESSORS,
+   GRAPHVIZ-GRAPH-PLIST, GRAPHVIZ-NODE-PLIST and GRAPHVIZ-EDGE-PLIST.")
+
+  ;; handle the case where STREAM is NIL
+  (:method :around (purpose graph-roots &optional stream)
+    (if stream
+        (call-next-method)
+        (with-temporary-file (:stream stream :pathname dotfile :direction :output)
+          (call-next-method purpose graph-roots stream)
+          :close-stream
+          (with-temporary-file (:pathname imagefile)
+            (run-program (list "dot" "-Tpdf" "-o"
+                               (native-namestring imagefile)
+                               (native-namestring dotfile)))
+            (run-program (list *graphviz-pdf-viewer* (native-namestring imagefile))))))
+    (values))
+
+  ;; the actual graph drawing algorithm
+  (:method (purpose-designator graph-roots &optional stream)
     (let ((table (make-hash-table :test #'eq))
-          (node-id 0)
-          (*print-case* :downcase))
+          (node-counter 0)
+          (*print-case* :downcase)
+          (purpose (if (symbolp purpose-designator)
+                       (make-instance purpose-designator)
+                       purpose-designator)))
       ;; 1. populate node table
       (labels ((populate-node-table (node)
                  (unless (gethash node table)
-                   (setf (gethash node table) (incf node-id))
+                   (setf (gethash node table) (incf node-counter))
                    (dolist (successor (graphviz-successors purpose node))
                      (populate-node-table successor)))))
         (mapc #'populate-node-table (ensure-list graph-roots)))

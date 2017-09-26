@@ -37,8 +37,3 @@
 
 (defmethod view ((object data-structure) &optional (purpose '<data-flow-graph>))
   (call-next-method object purpose))
-
-(defmethod graphviz-draw-graph
-    :around ((purpose <data-flow-graph>) graph-roots &optional stream)
-  (let ((*print-case* :downcase))
-    (call-next-method purpose graph-roots stream)))

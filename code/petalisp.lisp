@@ -289,20 +289,6 @@ function is the identity transformation."))
   (:method ((space-1 t) (space-2 t))
     (equal? space-1 (intersection space-1 space-2))))
 
-(defgeneric view (object &optional purpose)
-  (:documentation "Present OBJECT graphically.")
-  (:method ((object t) &optional (purpose '<graph>))
-    (with-temporary-file (:stream stream :pathname dotfile :direction :output)
-      (graphviz-draw-graph purpose object stream)
-      :close-stream
-      (with-temporary-file (:pathname imagefile)
-        (run-program (list "dot" "-Tpdf" "-o"
-                           (native-namestring imagefile)
-                           (native-namestring dotfile)))
-        (run-program (list "evince" (native-namestring imagefile))))))
-  (:method ((object class) &optional (purpose '<class-hierarchy>))
-    (call-next-method object purpose)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Petalisp Vocabulary - Non-generic Functions
