@@ -3,7 +3,7 @@
 (in-package :petalisp)
 
 (define-class strided-array-immediate (strided-array immediate)
-  ((storage :type array)
+  ((storage :type (or array nil) :initform nil :accessor storage)
    (transformation :type transformation)))
 
 (defmethod petalispify ((array array))
@@ -15,6 +15,12 @@
 
 (defmethod depetalispify ((instance strided-array-immediate))
   (storage instance))
+
+(defmethod print-object ((object strided-array-immediate) stream)
+  (print-unreadable-object (object stream :type t :identity t)
+    (princ (index-space object) stream)
+    (write-char #\space stream)
+    (princ (transformation object) stream)))
 
 (defmethod optimize-reference or ((object strided-array-immediate)
                                   (space strided-array-index-space)
@@ -28,5 +34,6 @@
 (defmethod optimize-application or ((f function) (a1 strided-array-immediate) &rest a2...aN)
   "Constant-fold operations on scalar values."
   (when (and (= 1 (size a1)) (every #'strided-array-immediate? a2...aN))
-    (petalispify (apply f (row-major-aref (storage a1) 0)
-                        (mapcar (λ ak (row-major-aref (storage ak) 0)) a2...aN)))))
+    (let ((value (apply f (row-major-aref (storage a1) 0)
+                        (mapcar (λ ak (row-major-aref (storage ak) 0)) a2...aN))))
+      (broadcast (petalispify value) (index-space a1)))))

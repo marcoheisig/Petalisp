@@ -37,3 +37,14 @@
                        (transformation node)
                        (index-space node))
         :fillcolor "gray"))
+
+(defmethod graphviz-node-plist append-plist ((purpose <data-flow-graph>) (node immediate))
+  (list :label
+        (let ((*print-length* 5)
+              (*print-right-margin* 60))
+          (format nil "~A~%~A~%~A~%~A"
+                  (class-name (class-of node))
+                  (transformation node)
+                  (index-space node)
+                  (storage node)))
+        :fillcolor "gray"))

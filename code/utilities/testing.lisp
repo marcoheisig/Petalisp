@@ -40,3 +40,15 @@ the current package (interned in the current package) as test suite."
   (assert (<= minimum maximum))
   (lambda ()
     (+ minimum (random (1+ (- maximum minimum))))))
+
+(defun array-generator (&key (dimensions '(5 5)) element-generator)
+  (lambda ()
+    (let ((result (make-array dimensions)))
+      (loop :for index :below (array-total-size result) :do
+        (setf (row-major-aref result index) (funcall element-generator)))
+      result)))
+
+(defun random-array (dimension)
+  (funcall (array-generator
+            :dimensions (make-list dimension :initial-element 6)
+            :element-generator (integer-generator 0 9))))

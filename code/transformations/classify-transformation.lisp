@@ -65,10 +65,10 @@
          linear-operator
          translation-vector)))))
 
-;; It is an error to classify a function that is not actually a
-;; referentially transparant function. Furthermore transformations are
-;; constants. This makes it possible to move the classification of many
-;; transformations to load time.
+;; It is an error to classify a function that is not referentially
+;; transparent. Furthermore transformations are immutable. As a result, the
+;; classification of functions without free variables can be preponed to
+;; load time.
 (define-compiler-macro classify-transformation
     (&whole whole &environment env function input-constraints)
   (if (and (constantp input-constraints env)
