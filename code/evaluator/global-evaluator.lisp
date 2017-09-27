@@ -5,4 +5,4 @@
 (define-evaluator global-evaluator
     (evaluate-data-structures
      ((data-structures (vector data-structure)))
-     (print data-structures)))
+     (kernelize data-structures)))

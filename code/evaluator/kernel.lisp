@@ -24,6 +24,10 @@
               :index-space (index-space recipe)
               :element-type (element-type recipe))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; conversion from data flow graphs to kernels
+
 (defvar *kernel-table* (make-hash-table :test #'eq :weakness :key))
 
 (defvar *use-table* nil)
