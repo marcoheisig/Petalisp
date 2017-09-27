@@ -35,8 +35,8 @@
      (:module "transformations" :depends-on ("petalisp")
       :components
       ((:file "identity-transformation")
-       (:file "affine-transformation")
-       (:file "classify-transformation" :depends-on ("identity-transformation" "affine-transformation"))))
+       (:file "affine-transformation" :depends-on ("identity-transformation"))
+       (:file "classify-transformation" :depends-on ("affine-transformation"))))
      (:module "data-structures" :depends-on ("transformations")
       :components
       ((:file "range")

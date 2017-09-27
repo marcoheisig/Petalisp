@@ -9,20 +9,17 @@
   (:method ((space strided-array-index-space)) space)
   (:method ((vector simple-vector))
     (if (every #'range? vector)
-        (make-instance
-         'strided-array-index-space
-         :ranges vector)
+        (make-instance 'strided-array-index-space
+          :ranges vector)
         (call-next-method)))
   (:method ((array array))
-    (make-instance
-     'strided-array-index-space
-     :ranges (map 'vector (λ end (range 0 1 (1- end)))
-                  (array-dimensions array))))
+    (make-instance 'strided-array-index-space
+      :ranges (map 'vector (λ end (range 0 1 (1- end)))
+                   (array-dimensions array))))
   (:method ((range-specifications list))
-    (make-instance
-     'strided-array-index-space
-     :ranges (map 'vector (λ spec (apply #'range spec))
-                  range-specifications))))
+    (make-instance 'strided-array-index-space
+      :ranges (map 'vector (λ spec (apply #'range spec))
+                   range-specifications))))
 
 (defun strided-array-index-space-generator
     (&key (dimension 3) (max-size 30) (max-extent 100) intersecting)
@@ -91,7 +88,7 @@
                         (in outer
                             (collect
                                 (make-instance 'strided-array-index-space
-                                               :ranges ranges))))))
+                                  :ranges ranges))))))
     (list space-1)))
 
 (test |(difference strided-array-index-space)|
@@ -122,14 +119,11 @@
 
 (defmethod intersection ((space-1 strided-array-index-space)
                          (space-2 strided-array-index-space))
-  (make-instance
-   'strided-array-index-space
-   :ranges (map 'vector
-                (lambda (a b)
-                  (or (intersection a b)
-                      (return-from intersection nil)))
-                (ranges space-1)
-                (ranges space-2))))
+  (make-instance 'strided-array-index-space
+    :ranges (map 'vector (λ a b (or (intersection a b)
+                                    (return-from intersection nil)))
+                 (ranges space-1)
+                 (ranges space-2))))
 
 (test |(intersection strided-array-index-space)|
   (flet ((? (a b result)
@@ -213,13 +207,12 @@
              (mapcar
               (lambda (space)
                 (let ((ranges (ranges space)))
-                  (make-instance
-                   'fusion-island
-                   :ranges (subseq ranges 0 1)
-                   :spaces-to-fuse
-                   (list
-                    (make-strided-array-index-space
-                     (subseq ranges 1))))))
+                  (make-instance 'fusion-island
+                    :ranges (subseq ranges 0 1)
+                    :spaces-to-fuse
+                    (list
+                     (make-strided-array-index-space
+                      (subseq ranges 1))))))
               spaces))))
       (let ((results (mapcar ; recurse
                       (composition #'fuse-recursively #'spaces-to-fuse)

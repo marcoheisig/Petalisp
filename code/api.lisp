@@ -1,7 +1,4 @@
 ;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; definitions of externally visible Petalisp symbols
 
 (in-package :petalisp)
 
@@ -13,7 +10,7 @@ mismatch, the smaller objects are broadcast."
     (let ((space (apply #'common-broadcast-space (mapcar #'index-space objects))))
       (apply #'application
              function
-             (mapcar (λ _ (broadcast _ space)) objects)))))
+             (mapcar (λ object (broadcast object space)) objects)))))
 
 (defun β (function object)
   "Reduce the last dimension of OBJECT with FUNCTION."

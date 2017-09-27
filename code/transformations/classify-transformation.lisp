@@ -2,20 +2,6 @@
 
 (in-package :petalisp)
 
-(defun make-affine-transformation (input-constraints A b)
-  (declare (type scaled-permutation-matrix A)
-           (type simple-vector input-constraints b))
-  (if (and (= (length input-constraints) (matrix-n A) (matrix-m A))
-           (every #'null input-constraints)
-           (every #'zerop b)
-           (identity-matrix? A))
-      (make-identity-transformation (length input-constraints))
-      (make-instance
-       'affine-transformation
-       :input-constraints input-constraints
-       :linear-operator A
-       :translation-vector b)))
-
 (defun classify-transformation (f input-constraints)
   (let* ((input-dimension (length input-constraints))
          (args (map 'list
