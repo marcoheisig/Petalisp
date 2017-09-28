@@ -40,11 +40,11 @@
 
 (defmethod graphviz-node-plist append-plist ((purpose <data-flow-graph>) (node immediate))
   (list :label
-        (let ((*print-length* 5)
-              (*print-right-margin* 60))
+        (let ((*print-right-margin* 60))
           (format nil "~A~%~A~%~A~%~A"
                   (class-name (class-of node))
                   (transformation node)
                   (index-space node)
-                  (storage node)))
+                  (let ((*print-length* 8))
+                    (format nil "~A" (storage node)))))
         :fillcolor "gray"))

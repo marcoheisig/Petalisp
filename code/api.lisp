@@ -81,30 +81,3 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
   "Instruct Petalisp to compute all given OBJECTS asynchronously."
   (global-evaluator-evaluate-data-structures (map 'vector #'petalispify objects))
   (values))
-
-(test API
-  (flet ((red-black-gauss-seidel (u rhs iterations)
-           (let ((r1 (σ* u ((+ start 2) 2 (1- end)) ((+ start 2) 2 (1- end)) ((+ start 2) 2 (1- end))))
-                 (r2 (σ* u ((+ start 1) 2 (1- end)) ((+ start 1) 2 (1- end)) ((+ start 2) 2 (1- end))))
-                 (r3 (σ* u ((+ start 2) 2 (1- end)) ((+ start 1) 2 (1- end)) ((+ start 1) 2 (1- end))))
-                 (b1 (σ* u ((+ start 2) 2 (1- end)) ((+ start 1) 2 (1- end)) ((+ start 2) 2 (1- end))))
-                 (b2 (σ* u ((+ start 1) 2 (1- end)) ((+ start 2) 2 (1- end)) ((+ start 2) 2 (1- end))))
-                 (b3 (σ* u ((+ start 2) 2 (1- end)) ((+ start 2) 2 (1- end)) ((+ start 1) 2 (1- end))))
-                 (h (/ (1- (expt (size u) 1/3)))))
-             (labels ((update (u what)
-                        (α #'* (float 1/6)
-                           (α #'+
-                              (-> u (τ (i j k) (1+ i) j k) what)
-                              (-> u (τ (i j k) (1- i) j k) what)
-                              (-> u (τ (i j k) i (1+ j) k) what)
-                              (-> u (τ (i j k) i (1- j) k) what)
-                              (-> u (τ (i j k) i j (1+ k)) what)
-                              (-> u (τ (i j k) i j (1- k)) what)
-                              (-> (α #'* (* h h) rhs) what)))))
-               (iterate (repeat iterations)
-                        (setf u (fuse* u (update u r1) (update u r2) (update u r3)))
-                        (setf u (fuse* u (update u b1) (update u b2) (update u b3))))
-               u))))
-    (red-black-gauss-seidel (-> 0.0 (σ (0 9) (0 9) (0 9)))
-                            (-> 0.0 (σ (0 9) (0 9) (0 9))) 1)))
-

@@ -48,7 +48,7 @@ the current package (interned in the current package) as test suite."
         (setf (row-major-aref result index) (funcall element-generator)))
       result)))
 
-(defun random-array (dimension)
+(defun random-array (&optional (dimension 2) (length 5))
   (funcall (array-generator
-            :dimensions (make-list dimension :initial-element 6)
+            :dimensions (make-list dimension :initial-element length)
             :element-generator (integer-generator 0 9))))
