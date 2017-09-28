@@ -48,6 +48,7 @@
       :components
       ((:file "define-evaluator")
        (:file "kernel")
-       (:file "local-evaluator" :depends-on ("define-evaluator" "kernel"))
-       (:file "global-evaluator" :depends-on ("define-evaluator" "kernel"))))
+       (:file "kernelize" :depends-on ("kernel"))
+       (:file "normalize-kernel" :depends-on ("kernel"))
+       (:file "global-evaluator" :depends-on ("define-evaluator" "kernelize" "normalize-kernel"))))
      (:file "api" :depends-on ("evaluator"))))))

@@ -48,3 +48,6 @@
                   (let ((*print-length* 8))
                     (format nil "~A" (storage node)))))
         :fillcolor "gray"))
+
+(defmethod graphviz-edge-plist append-plist ((purpose <data-flow-graph>) (node-1 t) (node-2 t))
+  `(:dir "back"))
