@@ -6,7 +6,7 @@
                                    (h (/ (1- (expt (size u) (/ (dimension u))))))
                                    (f 0))
   "Iteratively solve the Poisson equation -Δu = f for a given uniform grid
-  with spacing h."
+  with spacing h, using the Red-Black Gauss-Seidel scheme."
   (ecase (dimension u)
     (1 (let ((r (σ* u ((+ start 2) 2 (1- end))))
              (b (σ* u ((+ start 1) 2 (1- end)))))
