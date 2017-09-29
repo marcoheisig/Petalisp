@@ -17,7 +17,7 @@
   (= (dimension a) (dimension b)))
 
 (defmethod generic-unary-funcall ((operator identity-transformation)
-                                  (argument data-structure))
+                                  (argument index-space))
   (assert (= (input-dimension operator) (dimension argument)))
   argument)
 
@@ -29,10 +29,8 @@
   (let ((symbols (list-of-symbols (input-dimension object))))
     (prin1 `(τ ,symbols ,@symbols) stream)))
 
-(defmethod reference ((object data-structure)
-                      (space index-space)
-                      (transformation identity-transformation))
+(defmethod optimize-reference or ((object data-structure)
+                                  (space index-space)
+                                  (transformation identity-transformation))
   "Drop references with no effect."
-  (if (equal? (index-space object) space)
-      object
-      (call-next-method)))
+  (when (equal? (index-space object) space) object))

@@ -80,9 +80,11 @@
       (labels ((populate-node-table (node)
                  (unless (gethash node table)
                    (setf (gethash node table) (incf node-counter))
-                   (dolist (successor (graphviz-successors purpose node))
-                     (populate-node-table successor)))))
-        (mapc #'populate-node-table (ensure-list graph-roots)))
+                   (map nil #'populate-node-table (graphviz-successors purpose node)))))
+        (mapc #'populate-node-table
+              (if (typep graph-roots 'sequence)
+                  graph-roots
+                  (list graph-roots))))
       (format stream "digraph G {~%")
       ;; 2. write graph attributes
       (format stream "~{  ~A=~S~%~}" (graphviz-graph-plist purpose))
@@ -94,11 +96,12 @@
       ;; 4. write edges
       (loop :for from :being :each :hash-key
               :using (:hash-value from-id) :of table :do
-                (dolist (to (graphviz-successors purpose from))
-                  (let ((to-id (gethash to table)))
-                    (format stream "  node~d -> node~d [~{~A=~S~^, ~}]~%"
-                            from-id to-id
-                            (graphviz-edge-plist purpose from to)))))
+                (map nil (lambda (to)
+                           (let ((to-id (gethash to table)))
+                             (format stream "  node~d -> node~d [~{~A=~S~^, ~}]~%"
+                                     from-id to-id
+                                     (graphviz-edge-plist purpose from to))))
+                     (graphviz-successors purpose from)))
       (format stream "}~%"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
