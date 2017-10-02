@@ -22,30 +22,28 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Graphviz visualization of kernel graphs
+;;; Graphviz visualization of graphs containing kernels
 
-(defclass <kernel-graph> (<data-flow-graph>) ())
-
-(defmethod graphviz-successors ((purpose <kernel-graph>) (kernel kernel))
+(defmethod graphviz-successors ((purpose <data-flow-graph>) (kernel kernel))
   (recipes kernel))
 
-(defmethod graphviz-successors ((purpose <kernel-graph>) (list cons))
+(defmethod graphviz-successors ((purpose <data-flow-graph>) (list cons))
   (ecase (car list)
     (application (cddr list))
     (reduction (cddr list))
     (reference (cddr list))))
 
-(defmethod graphviz-node-plist append-plist ((purpose <kernel-graph>) (kernel kernel))
+(defmethod graphviz-node-plist append-plist ((purpose <data-flow-graph>) (kernel kernel))
   `(:label ,(format nil "kernel ~A" (index-space kernel))
     :shape "octagon"
     :fontsize 18))
 
-(defmethod graphviz-node-plist append-plist ((purpose <kernel-graph>) (list cons))
+(defmethod graphviz-node-plist append-plist ((purpose <data-flow-graph>) (list cons))
   (ecase (car list)
     (application `(:label ,(format nil "(α ~A)" (second list)) :fillcolor "indianred1"))
     (reduction `(:label ,(format nil "(β ~A)" (second list)) :fillcolor "indianred3"))
     (reference `(:label ,(format nil "~A" (second list)) :fillcolor "gray"))))
 
-(defmethod graphviz-edge-plist append-plist ((purpose <kernel-graph>) (list list) (kernel kernel))
+(defmethod graphviz-edge-plist append-plist ((purpose <data-flow-graph>) (list list) (kernel kernel))
   `(:style "dashed"))
 

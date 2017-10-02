@@ -2,8 +2,6 @@
 
 (in-package :petalisp)
 
-(define-class strided-array-immediate (strided-array immediate) ())
-
 (define-class strided-array-constant (strided-array-immediate)
   ((storage :type array :initform nil :accessor storage)))
 
