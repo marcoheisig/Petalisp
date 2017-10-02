@@ -2,40 +2,63 @@
 
 (in-package :petalisp)
 
-(defvar *kernel-table* (make-hash-table :test #'eq :weakness :key))
+;;; Kernelization is the process of breaking a data flow specification into
+;;; a set of executable parts. The data flow specification is given by a
+;;; set of graph roots (usually the arguments passed to SCHEDULE) and forms
+;;; a DAG (directed acyclic graph).
+;;;
+;;; The following algorithm cuts such a DAG into as large as possible
+;;; kernels. All inputs of a kernel, up to the beginning of the next
+;;; kernels form a tree, i.e. they have exactly one successor. Later, this
+;;; allows to build a corresponding s-expression to actually evaluate each
+;;; kernel.
+;;;
+;;; The result of kernelization is a set of kernels. The original DAG is
+;;; not mutated in the process.
+;;;
+;;; The first step in the algorithm is the creation of a *USE-TABLE*, a
+;;; hash table mapping each graph node to its successors. It would seem
+;;; more efficient to track the users of each node at DAG construction time
+;;; and avoid this indirection, but we are only interested in those users
+;;; that are reachable via the given graph roots. This way the system
+;;; implicitly eliminates dead code.
+;;;
+;;; Once the *USE-TABLE* is populated, the graph is traversed a second
+;;; time, to generate a kernelized copy of it. A node with more than one
+;;; user triggers the creation of a new kernel. The hash table
+;;; *KERNEL-TABLE* memoizes repeated calls to KERNELIZE-NODE. While
+;;; copying, the system also removes all fusion nodes and lifts all
+;;; reference nodes to the leaves of the kernel recipe.
 
 (defvar *use-table* nil)
 
-(defvar *kernel-bindings* nil)
+(defvar *kernel-table* nil)
 
-(defvar *kernels* nil)
+(defvar *kernel-bindings* nil)
 
 (defun kernelize (graph-roots)
   "Return a list of kernels whose evaluation is equivalent to the
   evaluation of all GRAPH-ROOTS."
   (let ((graph-roots (ensure-list graph-roots)))
     (let ((*use-table* (inverse-table graph-roots #'inputs))
-          (*kernels* nil))
+          (*kernel-table* (make-hash-table :test #'eq)))
       (map nil #'kernelize-node graph-roots)
-      *kernels*)))
+      (hash-table-values *kernel-table*))))
 
 (defun kernelize-node (data-structure)
   "Return a kernel whose evaluation is equivalent to the evaluation of
-  DATA-STRUCTURE. Furthermore, add the kernel to *KERNELS* and the
-  *KERNEL-TABLE*."
-  (cond ((immediate? data-structure) data-structure)
-        ((gethash data-structure *kernel-table*))
-        (t
-         (multiple-value-bind (recipes bindings)
-             (generate-recipes data-structure)
-           (let ((kernel (make-kernel (index-space data-structure) recipes bindings)))
-             (push kernel *kernels*)
-             (setf (gethash data-structure *kernel-table*) kernel)
-             (iterate (for bindings in-vector (bindings kernel))
-                      (iterate (for binding in bindings)
-                               (setf (third binding)
-                                     (kernelize-node (third binding)))))
-             kernel)))))
+  DATA-STRUCTURE. Furthermore, add the kernel to the *KERNEL-TABLE*."
+  (or (gethash data-structure *kernel-table*) ; memoize calls to this function
+      (and (immediate? data-structure) data-structure)
+      (multiple-value-bind (recipes bindings)
+          (generate-recipes data-structure)
+        (let ((kernel (make-kernel (index-space data-structure) recipes bindings)))
+          (setf (gethash data-structure *kernel-table*) kernel)
+          (iterate (for bindings in-vector (bindings kernel))
+                   (iterate (for binding in bindings)
+                            (setf (third binding)
+                                  (kernelize-node (third binding)))))
+          kernel))))
 
 (define-condition iterator-exhausted () ())
 

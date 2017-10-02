@@ -16,12 +16,6 @@ mismatch, the smaller objects are broadcast."
   "Reduce the last dimension of OBJECT with FUNCTION."
   (reduction function (petalispify object)))
 
-(defun compute (&rest objects)
-  "Return the computed value of OBJECTS."
-  (apply #'schedule objects)
-  ;; TODO
-  )
-
 (defun fuse (&rest objects)
   "Combine OBJECTS into a single petalisp data structure. It is an error if
 some of the inputs overlap, or if there exists no suitable data structure
@@ -76,8 +70,3 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
                  (funcall modifier (index-space data-structure))
                  (inverse modifier))))))
     (recurse (petalispify data-structure) modifiers)))
-
-(defun schedule (&rest objects)
-  "Instruct Petalisp to compute all given OBJECTS asynchronously."
-  (global-evaluator-evaluate-data-structures (map 'vector #'petalispify objects))
-  (values))

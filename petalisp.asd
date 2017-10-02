@@ -42,8 +42,8 @@
       ((:file "range")
        (:file "strided-array-index-space" :depends-on ("range"))
        (:file "strided-array" :depends-on ("strided-array-index-space"))
-       (:file "strided-array-immediate" :depends-on ("strided-array"))
-       (:file "visualization" :depends-on ("strided-array-immediate"))))
+       (:file "strided-array-constant" :depends-on ("strided-array"))
+       (:file "visualization" :depends-on ("strided-array-constant"))))
      (:module "evaluator" :depends-on ("data-structures")
       :components
       ((:file "define-evaluator")

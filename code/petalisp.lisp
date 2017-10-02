@@ -270,10 +270,6 @@ function is the identity transformation."))
     (declare (ignore type-specifiers))
     t))
 
-(defgeneric shallow-copy (object)
-  (:documentation
-   "Return an object that is EQUAL? to OBJECT, but not EQ."))
-
 (defgeneric size (object)
   (:documentation
    "The size of a compound object, such as an array or hash-table, is
@@ -326,6 +322,16 @@ arguments."
                     when (intersection particle object) collect it)
               object-w/o-dust))))
     (reduce #'shatter more-objects :initial-value (list object))))
+
+(defun shallow-copy (instance)
+  "Make a copy of INSTANCE that is EQUAL? but not EQ. TODO generate
+  automatically within DEFINE-CLASS."
+  (etypecase instance
+    (immediate instance) ; TODO violates the documentation
+    (application (apply #'application (operator instance) (inputs instance)))
+    (reduction (reduction (operator instance) (input instance)))
+    (fusion (apply #'fusion (inputs instance)))
+    (reference (reference (input instance) (index-space instance) (transformation instance)))))
 
 (defun run-test-suite ()
   (format t "== Testing Petalisp ==~%")
