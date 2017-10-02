@@ -41,9 +41,8 @@
 
 (defmethod graphviz-node-plist append-plist ((purpose <data-flow-graph>) (node strided-array-constant))
   `(:label ,(let ((*print-right-margin* 60))
-              (format nil "~A~%~A~%~A~%~A"
+              (format nil "~A~%~A~%~A"
                       (class-name (class-of node))
-                      (transformation node)
                       (index-space node)
                       (let ((*print-length* 8))
                         (format nil "~A" (storage node)))))

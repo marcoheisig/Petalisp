@@ -87,7 +87,7 @@
                           (let ((operands (map 'list #'funcall input-iterators)))
                             `(application ,(operator node) ,@operands)))))
                    (reference
-                    (mkiter (input node) (composition transformation (transformation node))))
+                    (mkiter (input node) (composition (transformation node) transformation)))
                    (reduction
                     (let ((input-iterator (mkiter (input node) transformation)))
                       (lambda ()

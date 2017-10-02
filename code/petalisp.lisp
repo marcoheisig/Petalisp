@@ -25,7 +25,7 @@
 (define-class immediate (data-structure)
   ((inputs :initform nil :type null :allocation :class))
   (:documentation
-   "An immediate is a data structure with no inputs."))
+   "An immediate is a data structure with zero inputs."))
 
 (define-class application (data-structure)
   ((operator :type function))
