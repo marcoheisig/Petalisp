@@ -29,6 +29,10 @@
 ;;; *KERNEL-TABLE* memoizes repeated calls to KERNELIZE-NODE. While
 ;;; copying, the system also removes all fusion nodes and lifts all
 ;;; reference nodes to the leaves of the kernel recipe.
+;;;
+;;; Each kernel is represented by one kernel target and several kernel
+;;; fragments. The target is eventually bound to some memory, before any of
+;;; the fragments are run.
 
 (defvar *use-table* nil)
 
@@ -50,31 +54,31 @@
   DATA-STRUCTURE. Furthermore, add the kernel to the *KERNEL-TABLE*."
   (or (gethash data-structure *kernel-table*) ; memoize calls to this function
       (and (immediate? data-structure) data-structure)
-      (multiple-value-bind (recipes bindings)
-          (generate-recipes data-structure)
-        (let ((kernel (make-kernel (index-space data-structure) recipes bindings)))
-          (setf (gethash data-structure *kernel-table*) kernel)
-          (iterate (for bindings in-vector (bindings kernel))
-                   (iterate (for binding in bindings)
-                            (setf (third binding)
-                                  (kernelize-node (third binding)))))
-          kernel))))
+      (let ((result (make-instance 'kernel-target
+                      :index-space (index-space data-structure)
+                      :element-type (element-type data-structure)
+                      :fragments (kernel-fragments data-structure))))
+        (setf (gethash data-structure *kernel-table*) result)
+        (iterate (for fragment in (fragments result))
+                 (iterate (for binding in (bindings fragment))
+                          (setf (third binding)
+                                (kernelize-node (third binding)))))
+        result)))
 
 (define-condition iterator-exhausted () ())
 
-(defun generate-recipes (data-structure)
-  "Return a vector of recipes and a vector of bindings."
-  (let ((recipe-iterator (make-recipe-iterator data-structure))
-        (*kernel-bindings* nil)
-        recipes bindings)
+(defun kernel-fragments (data-structure)
+  (let (fragments
+        (recipe-iterator (make-recipe-iterator data-structure)))
     (handler-case
-        (iterate (setf *kernel-bindings* nil)
-                 (for recipe = (funcall recipe-iterator))
-                 (push recipe recipes)
-                 (push *kernel-bindings* bindings))
+        (loop (let* ((*kernel-bindings* nil)
+                     (recipe (funcall recipe-iterator)))
+                (push (make-instance 'kernel-fragment
+                        :recipe recipe
+                        :bindings *kernel-bindings*)
+                      fragments)))
       (iterator-exhausted ()))
-    (values (apply #'vector recipes)
-            (apply #'vector bindings))))
+    fragments))
 
 (defun make-recipe-iterator (data-structure)
   "A recipe iterator is a THUNK that yields upon each iteration either a
