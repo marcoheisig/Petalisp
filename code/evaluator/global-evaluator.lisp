@@ -40,4 +40,6 @@
      ((targets (vector strided-array-computation))
       (recipes (vector data-structure)))
      (assert (= (length targets) (length recipes)))
-     (kernelize recipes)))
+     (let* ((kernels (kernelize recipes))
+            (worklist (remove-if-not #'kernel-ready? kernels)))
+       )))

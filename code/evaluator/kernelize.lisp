@@ -54,12 +54,15 @@
   DATA-STRUCTURE. Furthermore, add the kernel to the *KERNEL-TABLE*."
   (or (gethash data-structure *kernel-table*) ; memoize calls to this function
       (and (immediate? data-structure) data-structure)
-      (let ((result (make-instance 'kernel-target
-                      :index-space (index-space data-structure)
-                      :element-type (element-type data-structure)
-                      :fragments (kernel-fragments data-structure))))
+      (let* ((fragments (kernel-fragments data-structure))
+             (result (make-instance 'kernel-target
+                       :index-space (index-space data-structure)
+                       :element-type (element-type data-structure)
+                       :fragments fragments
+                       :unevaluated-fragment-counter (length fragments))))
         (setf (gethash data-structure *kernel-table*) result)
-        (iterate (for fragment in (fragments result))
+        (iterate (for fragment in fragments)
+                 (setf (target fragment) result)
                  (iterate (for binding in (bindings fragment))
                           (setf (third binding)
                                 (kernelize-node (third binding)))))
@@ -68,14 +71,15 @@
 (define-condition iterator-exhausted () ())
 
 (defun kernel-fragments (data-structure)
-  (let (fragments
-        (recipe-iterator (make-recipe-iterator data-structure)))
+  (let ((recipe-iterator (make-recipe-iterator data-structure))
+        fragments)
     (handler-case
         (loop (let* ((*kernel-bindings* nil)
                      (recipe (funcall recipe-iterator)))
                 (push (make-instance 'kernel-fragment
                         :recipe recipe
-                        :bindings *kernel-bindings*)
+                        :bindings *kernel-bindings*
+                        :index-space (index-space data-structure)) ; TODO wrong
                       fragments)))
       (iterator-exhausted ()))
     fragments))
