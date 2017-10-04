@@ -66,6 +66,7 @@ intersect it (potentially violating MAX-EXTENT)."
 (defmethod difference ((space-1 range) (space-2 range))
   ;; we only care about the part of space-2 that intersects with space-1
   (let ((space-2 (intersection space-1 space-2)))
+    ;; now space-2 is a proper subspace of space-1
     (if (not space-2)
         (list space-1)
         (let ((start-1 (range-start space-1))
@@ -82,25 +83,20 @@ intersect it (potentially violating MAX-EXTENT)."
                      (<= (the positive-integer (/ step-2 step-1))
                          (size space-2)))
                 ;; Case 1: create ranges with step size step-2
-                (let ((include-lowers (> start-1 (- start-2 step-2)))
-                      (include-uppers (< end-1 (+ end-2 step-2))))
-                  ;; process the boundaries
-                  (unless include-lowers
-                    (maybe-push-range start-1 step-1 (- start-2 step-1)))
-                  (unless include-uppers
-                    (maybe-push-range (+ end-2 step-1) step-1 end-1))
-                  ;; process the interior
-                  (iterate (for offset from step-1 by step-1 below step-2)
-                           (for start = (if include-lowers
-                                            (+ start-2 (- step-2) offset)
-                                            (+ start-2 offset)))
-                           (for end = (if include-uppers
-                                          (+ end-2 offset)
-                                          (+ end-2 (- step-2) offset)))
-                           (maybe-push-range
-                            (if (< start start-1) (+ start step-2) start)
-                            step-2
-                            (if (< end-1 end) (- end step-2) end))))
+                (iterate (for offset from step-1 by step-1 below step-2)
+                         (for start = (let ((high (+ start-2 offset))
+                                            (low (+ start-2 (- step-2) offset)))
+                                        (if (>= low start-1) low high)))
+                         (for end = (let ((high (+ end-2 offset))
+                                          (low (+ end-2 (- step-2) offset)))
+                                      (if (<= high end-1) high low)))
+                         (accumulate start by #'min initial-value start-2 into interior-start)
+                         (accumulate end by #'max initial-value end-2 into interior-end)
+                         (maybe-push-range start step-2 end)
+                         ;; process the boundaries
+                         (finally
+                          (maybe-push-range start-1 step-1 (- interior-start step-1))
+                          (maybe-push-range (+ interior-end step-1) step-1 end-1)))
                 ;; Case 2: create ranges with step size step-1
                 (let ((lower-max (- start-2 step-1))
                       (upper-min (+ end-2 step-1)))
@@ -119,8 +115,8 @@ intersect it (potentially violating MAX-EXTENT)."
           result))))
 
 (test |(difference range)|
-  (for-all ((a (range-generator :max-extent 1000)))
-    (for-all ((b (range-generator :max-extent 1000
+  (for-all ((a (range-generator :max-extent 100)))
+    (for-all ((b (range-generator :max-extent 100
                                   :intersecting a)))
       (is (equal? a (apply #'fusion
                            (intersection a b)
