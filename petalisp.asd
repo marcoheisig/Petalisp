@@ -47,7 +47,8 @@
      (:module "evaluator" :depends-on ("data-structures")
       :components
       ((:file "define-evaluator")
-       (:file "kernel")
-       (:file "kernelize" :depends-on ("kernel"))
+       (:file "kernel-fragment")
+       (:file "kernel-target")
+       (:file "kernelize" :depends-on ("kernel-target" "kernel-fragment"))
        (:file "global-evaluator" :depends-on ("define-evaluator" "kernelize"))))
      (:file "api" :depends-on ("evaluator"))))))
