@@ -90,6 +90,16 @@
        linear-operator
        translation-vector))))
 
+
+(defmethod inverse :before ((transformation affine-transformation))
+  (let ((effective-input-dimension
+          (- (input-dimension transformation)
+             (count-if-not #'null (input-constraints transformation))))
+        (effective-output-dimension
+          (- (output-dimension transformation)
+             (count-if #'zerop (spm-values (linear-operator transformation))))))
+    (assert (= effective-input-dimension effective-output-dimension))))
+
 (defmethod inverse ((object affine-transformation))
   ;;    f(x) = (Ax + b)
   ;; f^-1(x) = A^-1(x - b) = A^-1 x - A^-1 b
@@ -117,15 +127,6 @@
        input-constraints
        linear-operator
        translation-vector))))
-
-(defmethod invertible? ((transformation affine-transformation))
-  (let ((effective-input-dimension
-          (- (input-dimension transformation)
-             (count-if-not #'null (input-constraints transformation))))
-        (effective-output-dimension
-          (- (output-dimension transformation)
-             (count-if #'zerop (spm-values (linear-operator transformation))))))
-    (= effective-input-dimension effective-output-dimension)))
 
 (defmethod print-object ((object affine-transformation) stream)
   (let ((inputs

@@ -23,8 +23,6 @@
 
 (defmethod inverse ((transformation identity-transformation)) transformation)
 
-(defmethod invertible? ((transformation identity-transformation)) t)
-
 (defmethod output-dimension ((I identity-transformation)) (input-dimension I))
 
 (defmethod print-object ((object identity-transformation) stream)

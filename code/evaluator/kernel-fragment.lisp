@@ -36,9 +36,9 @@
 (defun make-recipe-iterator (data-structure leaf?)
   "A recipe iterator is a THUNK that yields upon each iteration either a
   new recipe, or NIL, when there are no more recipes."
-  (labels ((mkiter (node transformation backtransformation)
+  (labels ((mkiter (node transformation)
              ;; TRANSFORMATION is a mapping from the iteration space to the
-             ;; current index space, BACKTRANSFORMATION is its inverse
+             ;; current index space
 
              ;; leaf nodes are converted to an iterator over a single value
              (if (or (immediate? node)
@@ -59,7 +59,7 @@
                    (fusion
                     (let ((input-iterators
                             (map 'vector
-                                 (λ input (mkiter input transformation backtransformation))
+                                 (λ input (mkiter input transformation))
                                  (inputs node)))
                           (spaces
                             (map 'vector #'index-space (inputs node)))
@@ -70,9 +70,8 @@
                                (handler-case
                                    (let ((input-index-space (aref spaces index))
                                          (input-iterator (aref input-iterators index)))
-                                     (if backtransformation
-                                         (setf *kernel-fragment-space*
-                                               (funcall backtransformation input-index-space)))
+                                     (setf *kernel-fragment-space*
+                                           (funcall (inverse transformation) input-index-space))
                                      (return (funcall input-iterator)))
                                  (iterator-exhausted ())))
                            (incf index)))))
@@ -80,23 +79,19 @@
                    (application
                     (let ((input-iterators
                             (map 'vector
-                                 (λ x (mkiter x transformation backtransformation))
+                                 (λ x (mkiter x transformation))
                                  (inputs node))))
                       (λ `(application ,(operator node)
                                        ,@(map 'list #'funcall input-iterators)))))
                    ;; reference nodes are eliminated entirely
                    (reference
                     (let ((new-transformation (composition (transformation node) transformation)))
-                      (mkiter (input node)
-                              new-transformation
-                              (when (invertible? new-transformation) ; TODO this is broken
-                                (inverse new-transformation)))))
+                      (mkiter (input node) new-transformation)))
                    ;; reduction nodes
                    (reduction
-                    (let ((input-iterator (mkiter (input node) transformation backtransformation)))
+                    (let ((input-iterator (mkiter (input node) transformation)))
                       (λ `(reduction ,(operator node) ,(funcall input-iterator)))))))))
-    (let ((identity (make-identity-transformation (dimension data-structure))))
-      (mkiter data-structure identity identity))))
+    (mkiter data-structure (make-identity-transformation (dimension data-structure)))))
 
 (defmethod graphviz-node-plist append-plist
     ((purpose <data-flow-graph>) (kernel-fragment kernel-fragment))
