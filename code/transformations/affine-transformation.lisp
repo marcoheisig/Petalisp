@@ -118,6 +118,15 @@
        linear-operator
        translation-vector))))
 
+(defmethod invertible? ((transformation affine-transformation))
+  (let ((effective-input-dimension
+          (- (input-dimension transformation)
+             (count-if-not #'null (input-constraints transformation))))
+        (effective-output-dimension
+          (- (output-dimension transformation)
+             (count-if #'zerop (spm-values (linear-operator transformation))))))
+    (= effective-input-dimension effective-output-dimension)))
+
 (defmethod print-object ((object affine-transformation) stream)
   (let ((inputs
           (iterate (for input-constraint in-vector (input-constraints object))

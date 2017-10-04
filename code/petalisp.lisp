@@ -177,6 +177,10 @@ are the indices of OBJECT.")
    "Return a transformation whose composition with the argument of this
 function is the identity transformation."))
 
+(defgeneric invertible? (transformation)
+  (:documentation
+   "Returns true when TRANSFORMATION is a suitable input to INVERSE."))
+
 (defgeneric optimize-application (f a1 &rest a2...aN)
   (:documentation "Return an optimized data-structure, or NIL.")
   (:method-combination or)
