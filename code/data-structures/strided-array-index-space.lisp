@@ -133,16 +133,12 @@
     (? (σ (1 2 3) (0 3 6)) (σ (1 1 3) (0 2 6)) (σ (1 2 3) (0 6 6)))))
 
 (defmethod print-object ((object strided-array-index-space) stream)
-  (prin1 `(σ ,@(map 'list
-                     (λ range
-                        (if (= 1 (range-step range))
-                            (list (range-start range)
-                                  (range-end range))
-                            (list (range-start range)
-                                  (range-step range)
-                                  (range-end range))))
-                     (ranges object)))
-         stream))
+  (flet ((range-list (range)
+           (list (range-start range)
+                 (range-step range)
+                 (range-end range))))
+    (prin1 `(σ ,@(map 'list #'range-list (ranges object)))
+           stream)))
 
 (defmethod generic-unary-funcall ((transformation affine-transformation)
                                   (object strided-array-index-space))
