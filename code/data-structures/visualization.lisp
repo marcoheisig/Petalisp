@@ -2,7 +2,7 @@
 
 (in-package :petalisp)
 
-(defclass data-flow-graph (<graph>) ())
+(defclass data-flow-graph (graph) ())
 
 (defmethod graphviz-graph-plist append-plist
     ((purpose data-flow-graph))
