@@ -22,7 +22,9 @@
     ((:file "package")
      (:module "utilities" :depends-on ("package")
       :components
-      ((:file "generic")
+      ((:file "check-arity")
+       (:file "extended-euclid" :depends-on ("macros" "testing"))
+       (:file "generic-funcallable-objects")
        (:file "graphviz")
        (:file "introspection")
        (:file "iterate")

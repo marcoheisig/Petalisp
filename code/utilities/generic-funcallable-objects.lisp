@@ -2,10 +2,6 @@
 
 (in-package :petalisp)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; generic funcallable objects
-
 (defgeneric generic-unary-funcall (operator argument)
   (:documentation
    "The generic method invoked for funcallable objects of one argument."))
