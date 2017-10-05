@@ -12,6 +12,15 @@
   (end   nil :type integer          :read-only t))
 
 (defun range (start step-or-end &optional end)
+  "Return a normalized range. If END is specified, STEP-OR-END denotes the
+  step size. If not, the step size defaults to one and STEP-OR-END denotes
+  the interval end. If the specified end is not congruent to start with
+  respect to the step size, it is replaced by the next congruent integer
+  closer to start.
+
+  After normalization, start will be the smallest integer of the range, end
+  the largest integer and step a non-negative integer. If start equals
+  end, step is unconditionally set to one."
   (let ((end (or end step-or-end))
         (step (if end step-or-end 1)))
     (when (and (zerop step) (/= start end))
@@ -79,9 +88,13 @@ intersect it (potentially violating MAX-EXTENT)."
           (flet ((maybe-push-range (start step end)
                    (when (<= start-1 start end end-1)
                      (push (range start step end) result))))
-            (if (and (/= step-2 1)
-                     (<= (the positive-integer (/ step-2 step-1))
-                         (size space-2)))
+            (if (and
+                 ;; by the definition of INTERSECTION, step-2 is now a
+                 ;; multiple of step-1, except when it contains only a
+                 ;; single element, where it is normalized to 1
+                 (/= step-2 1)
+                 (<= (the positive-integer (/ step-2 step-1))
+                     (size space-2)))
                 ;; Case 1: create ranges with step size step-2
                 (iterate (for offset from step-1 by step-1 below step-2)
                          (for start = (let ((high (+ start-2 offset))
@@ -100,17 +113,21 @@ intersect it (potentially violating MAX-EXTENT)."
                 ;; Case 2: create ranges with step size step-1
                 (let ((lower-max (- start-2 step-1))
                       (upper-min (+ end-2 step-1)))
-                  ;; process the boundaries
-                  (cond ((and (= lower-max start-1) (= upper-min end-1))
-                         (maybe-push-range start-1 (- end-1 start-1) end-1))
-                        (t
-                         (maybe-push-range start-1 step-1 lower-max)
-                         (maybe-push-range upper-min step-1 end-1)))
+                  (cond
+                    ;; if there is exactly one upper and lower boundary
+                    ;; element, both can be viewed as a single strided
+                    ;; array with large step size
+                    ((and (= lower-max start-1) (= upper-min end-1))
+                     (maybe-push-range start-1 (- end-1 start-1) end-1))
+                    ;; otherwise, treat both boundaries separately
+                    (t
+                     (maybe-push-range start-1 step-1 lower-max)
+                     (maybe-push-range upper-min step-1 end-1)))
                   (when (> step-2 step-1) ; i.e. there is an interior
                     ;; process the interior
-                    (let ((end-offset (- step-2 step-1 step-1)))
+                    (let ((interval-length (- step-2 (* 2 step-1))))
                       (iterate (for start from (+ start-2 step-1) below end-2 by step-2)
-                               (for end = (+ start end-offset))
+                               (for end = (+ start interval-length))
                                (maybe-push-range start step-1 end)))))))
           result))))
 
@@ -124,35 +141,46 @@ intersect it (potentially violating MAX-EXTENT)."
 
 (defmethod fusion ((range range) &rest more-ranges)
   (let ((ranges (list* range more-ranges)))
-    (iterate (for range in ranges)
-             (sum (size range) into number-of-elements)
-             (maximize (range-end range) into end)
-             (minimize (range-start range) into start)
-             (finally
-              (let ((step (if (= number-of-elements 1) 1
-                              (/ (- end start) (1- number-of-elements)))))
-                (assert (integerp step)
-                        (ranges)
-                        "Unable to fuse ranges:~%~{~A~%~}"
-                        ranges)
-                (return (range start step end)))))))
+    (flet ((fail ()
+             (simple-program-error
+              "Unable to fuse ranges:~%~{~A~%~}" ranges)))
+      ;; another generic method of FUSION asserts that the given ranges are
+      ;; non-overlapping. Relying on this, the only possible fusion is
+      ;; obtained by summing the number of elements, determining the
+      ;; smallest and largest element of all sequences and choosing a step
+      ;; size to yield the correct number of elements.
+      (iterate (for range in ranges)
+               (sum (size range) into number-of-elements)
+               (maximize (range-end range) into end)
+               (minimize (range-start range) into start)
+               (finally
+                (let ((step (if (= number-of-elements 1) 1
+                                (/ (- end start) (1- number-of-elements)))))
+                  (unless (integerp step) (fail))
+                  (let ((fusion (range start step end)))
+                    (when (notevery (λ range (subspace? range fusion)) ranges) (fail))
+                    (return fusion))))))))
 
 (defmethod intersection ((range-1 range) (range-2 range))
   (let ((lb (max (range-start range-1) (range-start range-2)))
-        (ub (min (range-end   range-1) (range-end   range-2)))
-        (a (range-step range-1))
-        (b (range-step range-2))
-        (c (- (range-start range-2) (range-start range-1))))
-    (multiple-value-bind (s gcd)
-        (extended-euclid a b)
-      (when (integerp (/ c gcd))
-        (let ((x (+ (* s (/ c gcd) a)
-                    (range-start range-1)))
-              (lcm (/ (* a b) gcd)))
-          (let ((smallest (+ x (* lcm (ceiling (- lb x) lcm))))
-                (biggest  (+ x (* lcm (floor (- ub x) lcm)))))
-            (when (<= lb smallest biggest ub)
-              (range smallest lcm biggest))))))))
+        (ub (min (range-end   range-1) (range-end   range-2))))
+    (cond
+      ;; picking off some cheap common cases beforehand
+      ((> lb ub) nil)
+      ((= lb ub) (range lb 1 ub))
+      ;; now the common case
+      (t (let ((a (range-step range-1))
+               (b (range-step range-2))
+               (c (- (range-start range-2) (range-start range-1))))
+           (multiple-value-bind (s gcd) (extended-euclid a b)
+             (when (integerp (/ c gcd))
+               (let ((x (+ (* s (/ c gcd) a)
+                           (range-start range-1)))
+                     (lcm (/ (* a b) gcd)))
+                 (let ((start (+ x (* lcm (ceiling (- lb x) lcm))))
+                       (end   (+ x (* lcm (floor   (- ub x) lcm)))))
+                   (when (<= lb start end ub)
+                     (range start lcm end)))))))))))
 
 (test |(intersection range)|
   (let ((fiveam::*num-trials* (ceiling (sqrt fiveam::*num-trials*))))
