@@ -94,9 +94,10 @@
     (mkiter data-structure (make-identity-transformation (dimension data-structure)))))
 
 (defmethod graphviz-node-plist append-plist
-    ((purpose <data-flow-graph>) (kernel-fragment kernel-fragment))
+    ((purpose data-flow-graph) (kernel-fragment kernel-fragment))
   `(:shape "box"
     :fillcolor "skyblue"))
 
-(defmethod graphviz-successors ((purpose <data-flow-graph>) (kernel-fragment kernel-fragment))
+(defmethod graphviz-successors
+    ((purpose data-flow-graph) (kernel-fragment kernel-fragment))
   (list (recipe kernel-fragment)))

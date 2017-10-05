@@ -18,27 +18,27 @@
 ;;; A sequence of root objects can be interpreted as many different
 ;;; graphs. To account for this, all subsequent generic functions accept a
 ;;; "purpose" object as their first argument, which should be an instance
-;;; of a subclass of <graph>. For a simple example on how to add new types
-;;; of graphs, see the bottom of this file.
+;;; of a subclass of graph. For a simple example on how to add new types of
+;;; graphs, see the bottom of this file.
 
-(defclass <graph> () ())
+(defclass graph () ())
 
 (defgeneric graphviz-successors (purpose node)
-  (:method ((purpose <graph>) (node t)) nil))
+  (:method ((purpose graph) (node t)) nil))
 
 (defgeneric graphviz-graph-plist (purpose)
   (:method-combination append-plist)
-  (:method append-plist ((purpose <graph>)) nil))
+  (:method append-plist ((purpose graph)) nil))
 
 (defgeneric graphviz-node-plist (purpose node)
   (:method-combination append-plist)
-  (:method append-plist ((purpose <graph>) (node t))
+  (:method append-plist ((purpose graph) (node t))
     (list :label (with-output-to-string (stream)
                    (print-object node stream)))))
 
 (defgeneric graphviz-edge-plist (purpose from to)
   (:method-combination append-plist)
-  (:method append-plist ((purpose <graph>) (from t) (to t))
+  (:method append-plist ((purpose graph) (from t) (to t))
     (list :color "black")))
 
 (defparameter *graphviz-pdf-viewer* "evince")
@@ -50,7 +50,7 @@
    to a temporary file and open it with *GRAPHVIZ-PDF-VIEWER*.
 
    The exact behavior of this method is governed by PURPOSE, which is an
-   instance of a subclass of <graph> (or a symbol, denoting such an
+   instance of a subclass of graph (or a symbol, denoting such an
    instance), and the generic functions GRAPHVIZ-SUCCESSORS,
    GRAPHVIZ-GRAPH-PLIST, GRAPHVIZ-NODE-PLIST and GRAPHVIZ-EDGE-PLIST.")
 
@@ -108,16 +108,16 @@
 ;;;
 ;;; example: draw the class hierarchy of the current lisp image
 
-(defclass <class-hierarchy> (<graph>) ())
+(defclass class-hierarchy (graph) ())
 
-(defmethod graphviz-successors ((purpose <class-hierarchy>) (node class))
+(defmethod graphviz-successors ((purpose class-hierarchy) (node class))
   (labels ((visible-class? (class)
              (or (when-let ((name (class-name class)))
                    (eq (find-symbol (symbol-name name)) name))
                  (some #'visible-class? (class-direct-subclasses class)))))
     (remove-if-not #'visible-class? (class-direct-subclasses node))))
 
-(defmethod graphviz-node-plist append-plist ((purpose <class-hierarchy>) (node class))
+(defmethod graphviz-node-plist append-plist ((purpose class-hierarchy) (node class))
   `(:label ,(string (class-name node))
     ,@(when-let ((name (class-name node)))
         (cond

@@ -8,10 +8,9 @@
 ;;; a DAG (directed acyclic graph).
 ;;;
 ;;; The following algorithm cuts such a DAG into as large as possible
-;;; kernels. All inputs of a kernel, up to the beginning of the next
-;;; kernels form a tree, i.e. they have exactly one successor. Later, this
-;;; allows to build a corresponding s-expression to actually evaluate each
-;;; kernel.
+;;; kernels. All nodes of a kernel, up to the beginning of the next kernels
+;;; form a tree, i.e. they have exactly one successor. Later, this allows
+;;; to build a corresponding s-expression to actually evaluate each kernel.
 ;;;
 ;;; The result of kernelization is a set of kernels. The original DAG is
 ;;; not mutated in the process.
