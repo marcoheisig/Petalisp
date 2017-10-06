@@ -57,11 +57,16 @@
                          :element-type (element-type data-structure)
                          :fragments fragments
                          :unevaluated-fragment-counter (length fragments))))
+          ;; time for some side-effects!
           (setf (gethash data-structure *kernel-table*) result)
-          (iterate (for fragment in fragments)
-                   (setf (target fragment) result)
-                   (iterate (for binding in (bindings fragment))
-                            (setf (third binding)
-                                  (kernelize-node (third binding)))))
+          (iterate
+            (for fragment in fragments)
+            (setf (target fragment) result)
+            (iterate
+              (for binding in (bindings fragment))
+              (let ((leaf (kernelize-node (third binding))))
+                (setf (third binding) leaf)
+                (when (kernel-target? leaf)
+                  (pushnew result (users leaf))))))
           result))))
 

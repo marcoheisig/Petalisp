@@ -2,24 +2,6 @@
 
 (in-package :petalisp)
 
-(define-class strided-array-computation (strided-array-constant)
-  ((status :initform :scheduled
-           :type (member :scheduled :allocated :finished :deleted)
-           :accessor status)
-   (lock :initform (make-lock))
-   (cvar :initform (make-condition-variable)))
-  (:documentation
-   "A strided array constant under construction."))
-
-(defmethod storage :around ((computation strided-array-computation))
-  (with-lock-held ((lock computation))
-    (loop :until (case (status computation)
-                   (:finished t)
-                   (:deleted
-                    (simple-program-error "Reference to a deleted array.")))
-          :do (condition-wait (cvar computation) (lock computation)))
-    (call-next-method)))
-
 (defun schedule (&rest objects)
   "Instruct Petalisp to compute all given OBJECTS asynchronously."
   (assert (every #'strided-array? objects))
@@ -40,6 +22,5 @@
      ((targets (vector strided-array-computation))
       (recipes (vector data-structure)))
      (assert (= (length targets) (length recipes)))
-     (let* ((kernels (kernelize recipes))
-            (worklist (remove-if-not #'kernel-ready? kernels)))
+     (let* ((kernels (kernelize recipes)))
        )))

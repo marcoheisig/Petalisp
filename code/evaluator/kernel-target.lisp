@@ -2,9 +2,9 @@
 
 (in-package :petalisp)
 
-(define-class kernel-target (strided-array-immediate)
+(define-class kernel-target (strided-array-computation)
   ((fragments :type (vector kernel-fragment))
-   (unevaluated-fragment-counter :type non-negative-integer)))
+   (users :initform nil :type list :accessor users)))
 
 (defun kernel-ready? (kernel-target)
   (zerop (unevaluated-fragment-counter kernel-target)))

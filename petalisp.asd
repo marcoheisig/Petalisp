@@ -48,9 +48,10 @@
        (:file "visualization" :depends-on ("strided-array-constant"))))
      (:module "evaluator" :depends-on ("data-structures")
       :components
-      ((:file "define-evaluator")
+      ((:file "computation")
+       (:file "define-evaluator")
        (:file "kernel-fragment")
-       (:file "kernel-target")
+       (:file "kernel-target" :depends-on ("computation"))
        (:file "kernelize" :depends-on ("kernel-target" "kernel-fragment"))
        (:file "global-evaluator" :depends-on ("define-evaluator" "kernelize"))))
      (:file "api" :depends-on ("evaluator"))))))
