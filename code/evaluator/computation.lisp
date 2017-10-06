@@ -14,9 +14,9 @@
    "Computations are used as sources or targets of computations. Each
    computation runs through four states:
 
-   :scheduled - the initial state
-   :allocated - storage is bound to an uninitialized array
-   :finished  - the storage array contains the results of the computation
+   :scheduled - the initial state, storage is NIL
+   :allocated - storage is non-NIL
+   :finished  - storage contains the results of the computation
    :deleted   - storage is NIL, the computation is not used anymore"))
 
 (defmethod (setf state) :around ((computation computation) new-state)
@@ -50,14 +50,13 @@
         (null
          (unless (eq state :finished)
            (simple-program-error
-            "Tried to remove the storage of an array that is ~A."))
+            "Tried to remove the storage of an array that is ~A." state))
          (call-next-method)
          (setf state :deleted))
         (t
          (unless (eq state :scheduled)
            (simple-program-error
-            "Tried to assign memory to a computation that is already ~A."
-            state))
+            "Tried to assign memory to a computation that is already ~A." state))
          (call-next-method)
          (setf state :allocated))))))
 

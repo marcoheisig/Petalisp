@@ -33,7 +33,8 @@
                                          (collect `(,name nil :type ,type)))))
                   (collect
                       `(defun ,instruction-name ,arguments
-                         (enqueue ,queue (,constructor-name ,@arguments)))))
+                         (enqueue ,queue (,constructor-name ,@arguments))
+                         (values))))
        (defun ,evaluator-name ()
          (let ((,current-instruction (dequeue ,queue)))
            (etypecase ,current-instruction

@@ -41,8 +41,7 @@
   (let ((graph-roots (ensure-list graph-roots)))
     (let ((*use-table* (inverse-table graph-roots #'inputs))
           (*kernel-table* (make-hash-table :test #'eq)))
-      (map nil #'kernelize-node graph-roots)
-      (hash-table-values *kernel-table*))))
+      (map 'vector #'kernelize-node graph-roots))))
 
 (defun kernelize-node (data-structure)
   "Return a kernel whose evaluation is equivalent to the evaluation of
