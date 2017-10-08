@@ -3,7 +3,7 @@
 (in-package :common-lisp-user)
 
 (defpackage :petalisp
-  (:use :closer-common-lisp :alexandria :bordeaux-threads)
+  (:use :closer-common-lisp :alexandria :bordeaux-threads :trivial-garbage)
   ;; shadow CL:INTERSECTION with a generic method
   (:shadow #:intersection)
   ;; support for weak hashtables
