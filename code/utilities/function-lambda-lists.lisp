@@ -55,8 +55,8 @@ implementation has no means to determine the function's lambda list."
          (incf mandatory-arguments mandatory-increment)
          (incf max-arguments max-increment))))
     (if upper-bound?
-        (values mandatory-arguments call-arguments-limit)
-        (values mandatory-arguments max-arguments))))
+        (values mandatory-arguments max-arguments)
+        (values mandatory-arguments call-arguments-limit))))
 
 (defun function-arity (function)
   "Return two values:
@@ -73,7 +73,7 @@ implementation has no means to determine the function's lambda list."
       (simple-program-error
        "Only ~R argument~:P given for a function with ~R mandatory argument~:P."
        number-of-arguments mandatory-arguments))
-    (when (and max-arguments (> number-of-arguments max-arguments))
+    (when (> number-of-arguments max-arguments)
       (simple-program-error
        "Received ~R argument~:P for a function that accepts at most ~R argument~:P."
        number-of-arguments max-arguments))))
