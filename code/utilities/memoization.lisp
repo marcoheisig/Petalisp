@@ -3,18 +3,18 @@
 ;;; Marco Heisig's Memoization Macros
 ;;;
 ;;; There are numerous libraries for memoization, but most of them succumb
-;;; to the temptation to provide a wrapper for DEFUN as primary API. This
-;;; has a number of drawbacks:
+;;; the temptation to provide a wrapper for DEFUN as primary API. This has
+;;; a number of drawbacks:
 ;;;
 ;;; - memoization of subexpressions requires toplevel helper functions
-;;; - in particular combining memoization and generic functions is inconvenient
 ;;; - the memoization key cannot be specified directly
 ;;; - combining memoization with other DEFUN wrappers is difficult
+;;; - in particular, it is inconvenient to use memoization within CLOS
 ;;;
 ;;; To address these problems, this library uses lexical memoization, i.e.
 ;;; WITH-something macros that memoize the result of evaluating their
-;;; body. Furthermore, there are different macros for more or less
-;;; fine-grained control over the memoization strategy.
+;;; body. Furthermore, there are three different memoization macros for
+;;; more or less fine-grained control over the memoization strategy.
 
 (defvar *memoization-tables* (make-hash-table :test #'eq :weakness :key)
   "A mapping from packages to sets of of all implicitly created memoization
@@ -41,16 +41,15 @@ memoization tables, e.g. after the redefinition of a function."
   TEST) as some previously computed key, then BODY is not evaluated and the
   values of the previous computation are returned.
 
+  Note: TEST is evaluated at load time and in a null lexical environment.
+
   If the optional form STORE-KEY is supplied, it is evaluated after any
   evaluation of BODY and its value is used instead of KEY for storing the
   results. This way, KEY can be an object with dynamic extent (to avoid
   consing) and STORE-KEY can create a copy with indefinite extent when
   necessary."
-  (assert (member test '(#'eq #'eql #'equal #'equalp eq eql equal equalp)
-                  :test #'equal)
-          (test)
-          "TEST must be a function designator for one of the functions EQ, ~@
-        EQL, EQUAL, or EQUALP.")
+  (assert (typep test '(or symbol (cons (eql function) (cons symbol nil))))
+          (test) "TEST must be a valid function designator.")
   (once-only (key)
     (with-gensyms (hash-table)
       `(with-hash-table-memoization (,key ,@(when store-key-p (list store-key)))
@@ -88,7 +87,7 @@ memoization tables, e.g. after the redefinition of a function."
 
   LOOKUP must be a function of zero arguments, returning two values:
   1. the potential values of the lookup
-  2. a boolean whether values have been found
+  2. a boolean indicating whether values have been found
 
   STORE must be a function of one argument and with unspecified return
   value.
