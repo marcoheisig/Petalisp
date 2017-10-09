@@ -39,11 +39,10 @@ implementation has no means to determine the function's lambda list."
         (max-increment 1))
     (declare
      (type (integer 0 #.call-arguments-limit)
-           arity
            mandatory-arguments max-arguments
            mandatory-increment max-increment)
      (type boolean upper-bound?))
-    (dolist (item (function-lambda-list function))
+    (dolist (item lambda-list)
       (case item
         (&key      (setf max-increment 2) (setf mandatory-increment 0))
         (&optional (setf max-increment 1) (setf mandatory-increment 0))
@@ -70,11 +69,11 @@ implementation has no means to determine the function's lambda list."
   called with ARITY arguments."
   (multiple-value-bind (mandatory-arguments max-arguments)
       (function-arity function)
-    (when (< arity mandatory-arguments)
+    (when (< number-of-arguments mandatory-arguments)
       (simple-program-error
        "Only ~R argument~:P given for a function with ~R mandatory argument~:P."
-       arity mandatory-arguments))
-    (when (and max-arguments (> arity max-arguments))
+       number-of-arguments mandatory-arguments))
+    (when (and max-arguments (> number-of-arguments max-arguments))
       (simple-program-error
        "Received ~R argument~:P for a function that accepts at most ~R argument~:P."
-       arity max-arguments))))
+       number-of-arguments max-arguments))))

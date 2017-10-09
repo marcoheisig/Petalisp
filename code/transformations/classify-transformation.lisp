@@ -3,11 +3,13 @@
 (in-package :petalisp)
 
 (defun classify-transformation (f &optional input-constraints)
-  (let ((input-dimension (function-arity f)))
-    (assert (= (length input-constraints input-dimension)))
-    (let ((args (map 'list
-                     (λ constraint (or constraint 0))
-                     input-constraints))
+  (let* ((input-dimension (function-arity f))
+         (input-constraints
+           (if input-constraints
+               (prog1 input-constraints
+                 (assert (= (length input-constraints) input-dimension)))
+               (make-array input-dimension :initial-element nil))))
+    (let ((args (map 'list (λ constraint (or constraint 0)) input-constraints))
           ;; F is applied to many slightly different arguments, so we build a
           ;; vector pointing to the individual conses of ARGS for fast random
           ;; access.
