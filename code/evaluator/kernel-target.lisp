@@ -8,9 +8,6 @@
           :type (vector kernel-fragment)
           :accessor users)))
 
-(defun kernel-ready? (kernel-target)
-  (zerop (unevaluated-fragment-counter kernel-target)))
-
 (defmethod graphviz-successors ((purpose data-flow-graph) (kernel-target kernel-target))
   (apply #'concatenate 'list
          (fragments kernel-target)
