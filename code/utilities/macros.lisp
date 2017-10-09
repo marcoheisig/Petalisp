@@ -60,4 +60,4 @@ SLOT-NAME and. Additionally, defines a <NAME>? predicate."
   (once-only (sequence)
     `(block nil
        (map nil #'(lambda (,var) (tagbody ,@body)) ,sequence)
-       (let ((,var nil)) ,var ,result))))
+       (let ((,var nil)) (declare (ignorable var)) ,result))))

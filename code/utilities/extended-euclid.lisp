@@ -23,8 +23,8 @@
     ;; the absolute values of all coefficients in this algorithm are
     ;; bounded by the least common multiple of U and V. Since computing
     ;; the latter is quite expensive, the product of U and V is used
-    ;; instead (To see why (* u v) is unconditionally greater than (lcm u
-    ;; v), consider the prime factors of both numbers).
+    ;; instead. To see why (* u v) is unconditionally greater than (lcm u
+    ;; v), consider the prime factors of both numbers.
     (with-unsafe-optimizations
       (if (<= (* u v) most-positive-fixnum)
           (funcall (typed-euclid fixnum ) 1 u 0 v)

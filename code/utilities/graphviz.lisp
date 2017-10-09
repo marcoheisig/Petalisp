@@ -111,6 +111,8 @@
 (defclass class-hierarchy (graph) ())
 
 (defmethod graphviz-successors ((purpose class-hierarchy) (node class))
+  ;; Show only classes that are accessible in the current package and all
+  ;; their superclasses
   (labels ((visible-class? (class)
              (or (when-let ((name (class-name class)))
                    (eq (find-symbol (symbol-name name)) name))

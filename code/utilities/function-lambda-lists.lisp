@@ -28,9 +28,10 @@ implementation has no means to determine the function's lambda list."
   #-(or allegro clisp cmu scl cormanlisp gcl lispworks lucid sbcl)
   (error "Not implemented."))
 
-(defun check-arity (function arity)
-  "Signal an error of type SIMPLE-PROGRAM-ERROR if FUNCTION cannot be
-  called with ARITY arguments."
+(defun lambda-list-arity (lambda-list)
+  "Return two values:
+   1. the number of mandatory arguments
+   2. the maximal number of permissible arguments"
   (let ((mandatory-arguments 0)
         (max-arguments 0)
         (upper-bound? t)
@@ -54,11 +55,26 @@ implementation has no means to determine the function's lambda list."
         (t
          (incf mandatory-arguments mandatory-increment)
          (incf max-arguments max-increment))))
+    (if upper-bound?
+        (values mandatory-arguments call-arguments-limit)
+        (values mandatory-arguments max-arguments))))
+
+(defun function-arity (function)
+  "Return two values:
+   1. the number of mandatory arguments
+   2. the maximal number of permissible arguments"
+  (lambda-list-arity (function-lambda-list function)))
+
+(defun check-arity (function number-of-arguments)
+  "Signal an error of type SIMPLE-PROGRAM-ERROR if FUNCTION cannot be
+  called with ARITY arguments."
+  (multiple-value-bind (mandatory-arguments max-arguments)
+      (function-arity function)
     (when (< arity mandatory-arguments)
       (simple-program-error
        "Only ~R argument~:P given for a function with ~R mandatory argument~:P."
        arity mandatory-arguments))
-    (when (and upper-bound? (> arity max-arguments))
+    (when (and max-arguments (> arity max-arguments))
       (simple-program-error
        "Received ~R argument~:P for a function that accepts at most ~R argument~:P."
        arity max-arguments))))

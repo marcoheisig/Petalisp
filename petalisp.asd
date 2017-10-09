@@ -22,8 +22,8 @@
     ((:file "package")
      (:module "utilities" :depends-on ("package")
       :components
-      ((:file "check-arity")
-       (:file "extended-euclid" :depends-on ("macros" "testing"))
+      ((:file "extended-euclid" :depends-on ("macros" "testing"))
+       (:file "function-lambda-lists")
        (:file "generic-funcallable-objects")
        (:file "graphviz")
        (:file "introspection")
