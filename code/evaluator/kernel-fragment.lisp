@@ -21,7 +21,7 @@
   (let ((recipe-iterator (make-recipe-iterator data-structure leaf?))
         fragments)
     (handler-case
-        (loop (let* ((*kernel-fragment-bindings* nil)
+        (loop (let* ((*kernel-fragment-bindings* (make-array 6 :fill-pointer 0))
                      (*kernel-fragment-space* (index-space data-structure))
                      (recipe (funcall recipe-iterator)))
                 (push (make-instance 'kernel-fragment
@@ -46,10 +46,11 @@
                           (funcall leaf? node)))
                  (let ((first-visit? t))
                    (λ (if first-visit?
-                          (prog1 (let ((form `(reference ,transformation ,node)))
-                                   (push form *kernel-fragment-bindings*)
-                                   form)
-                            (setf first-visit? nil))
+                          (let ((index
+                                  (or (position node *kernel-fragment-bindings*)
+                                      (vector-push-extend node *kernel-fragment-bindings*))))
+                            (setf first-visit? nil)
+                            `(reference ,transformation ,index))
                           (signal 'iterator-exhausted))))
                  (etypecase node
                    ;; fusion nodes are unconditionally eliminated by path
@@ -101,3 +102,15 @@
 (defmethod graphviz-successors
     ((purpose data-flow-graph) (kernel-fragment kernel-fragment))
   (list (recipe kernel-fragment)))
+
+(defmethod graphviz-successors ((purpose data-flow-graph) (list cons))
+  (ecase (car list)
+    (application (cddr list))
+    (reduction (cddr list))
+    (reference nil)))
+
+(defmethod graphviz-node-plist append-plist ((purpose data-flow-graph) (list cons))
+  (ecase (car list)
+    (application `(:label ,(format nil "(α ~A)" (second list)) :fillcolor "indianred1"))
+    (reduction `(:label ,(format nil "(β ~A)" (second list)) :fillcolor "indianred3"))
+    (reference `(:label ,(format nil "~A" (second list)) :fillcolor "gray"))))

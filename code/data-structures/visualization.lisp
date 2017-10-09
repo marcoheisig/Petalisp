@@ -39,6 +39,13 @@
     :fillcolor "indianred3"))
 
 (defmethod graphviz-node-plist append-plist
+    ((purpose data-flow-graph) (node fusion))
+  `(:label ,(format nil "~A~%~A"
+                    (class-name (class-of node))
+                    (index-space node))
+    :fillcolor "cornflowerblue"))
+
+(defmethod graphviz-node-plist append-plist
     ((purpose data-flow-graph) (node reference))
   `(:label ,(format nil "~A~%~A~%~A"
                     (class-name (class-of node))

@@ -81,10 +81,10 @@
                  (unless (gethash node table)
                    (setf (gethash node table) (incf node-counter))
                    (map nil #'populate-node-table (graphviz-successors purpose node)))))
-        (mapc #'populate-node-table
-              (if (typep graph-roots 'sequence)
-                  graph-roots
-                  (list graph-roots))))
+        (map nil #'populate-node-table
+              (etypecase graph-roots
+                (sequence graph-roots)
+                (t (list graph-roots)))))
       (format stream "digraph G {~%")
       ;; 2. write graph attributes
       (format stream "~{  ~A=~S~%~}" (graphviz-graph-plist purpose))
