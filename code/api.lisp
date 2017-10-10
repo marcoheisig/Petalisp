@@ -77,7 +77,7 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
   (when-let ((relevant-objects (delete-if #'immediate? objects)))
     (let* ((recipes (map 'vector #'shallow-copy
                          relevant-objects))
-           (targets (map 'vector (λ x (change-class x 'strided-array-computation))
+           (targets (map 'vector (λ x (change-class x 'kernel-target))
                          relevant-objects)))
       (global-evaluator-evaluate-data-structures targets recipes))))
 

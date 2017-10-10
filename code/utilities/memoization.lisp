@@ -1,5 +1,7 @@
 ;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
+(in-package :petalisp)
+
 ;;; Marco Heisig's Memoization Macros
 ;;;
 ;;; There are numerous libraries for memoization, but most of them succumb

@@ -2,24 +2,23 @@
 
 (in-package :petalisp)
 
-(defvar *memory-pool* nil)
+(defvar *memory-pool* (make-hash-table :test #'equalp))
 
 (defun bind-memory (kernel-target)
   (let ((array-dimensions
-          (mapcar #'size (ranges (index-space kernel-target))))
+          (map 'list #'size (ranges (index-space kernel-target))))
         (element-type (element-type kernel-target)))
     (setf (storage kernel-target)
-          (or (find-if
-               (λ array
-                  (and
-                   (equal (array-dimensions array) array-dimensions)
-                   (type= (array-element-type array) element-type)))
-               *memory-pool*)
-              (make-array array-dimensions :element-type element-type)))))
+          (or
+           (pop (gethash (cons element-type array-dimensions) *memory-pool*))
+           (make-array array-dimensions :element-type element-type)))))
 
 (defun free-memory (kernel-target)
-  (push (storage kernel-target) *memory-pool*)
-  (setf (storage kernel-target) nil))
+  (let ((array-dimensions
+          (map 'list #'size (ranges (index-space kernel-target))))
+        (element-type (element-type kernel-target)))
+    (push (storage kernel-target)
+          (gethash (cons element-type array-dimensions) *memory-pool*))))
 
 (defun evaluate-kernel-target (kernel-target)
   ;; allocate memory
@@ -28,7 +27,7 @@
         (count-if #'kernel-target? (users kernel-target)))
   ;; compute all fragments
   (iterate
-    (for kernel-fragment in-vector (kernel-fragments kernel-target))
+    (for kernel-fragment in (fragments kernel-target))
     (evaluate-kernel-fragment kernel-fragment)
     ;; potentially free predecessor memory
     (iterate
@@ -39,12 +38,12 @@
 
 (define-evaluator global-evaluator
     (evaluate-data-structures
-     ((targets (vector strided-array-computation))
+     ((targets (vector strided-array-immediate))
       (recipes (vector data-structure)))
      (assert (= (length targets) (length recipes)))
      (labels ((evaluate (kernel-target)
                 (let ((dependencies (remove-if-not (compose #'null #'storage)
                                                    (users kernel-target))))
-                  (mapc #'evaluate dependencies)
+                  (map nil #'evaluate dependencies)
                   (evaluate-kernel-target kernel-target))))
        (map nil #'evaluate (kernelize recipes)))))
