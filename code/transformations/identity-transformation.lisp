@@ -6,8 +6,19 @@
   ((input-dimension :type (integer 0 *)))
   (:metaclass funcallable-standard-class))
 
+(declaim (inline make-identity-transformation))
 (defun make-identity-transformation (dimension)
-  (make-instance 'identity-transformation :input-dimension dimension))
+  (let ((memoization-table
+          (load-time-value
+           (map 'vector
+                (λ dimension
+                   (make-instance 'identity-transformation
+                     :input-dimension dimension))
+                (iota 20))
+           t)))
+    (or (and (< dimension (length memoization-table))
+             (aref memoization-table dimension))
+        (make-instance 'identity-transformation :input-dimension dimension))))
 
 (defmethod composition ((g identity-transformation) (f transformation)) f)
 

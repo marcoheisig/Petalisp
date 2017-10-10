@@ -81,15 +81,16 @@ memoization tables, e.g. after the redefinition of a function."
   (once-only (key hash-table)
     (with-gensyms (values-list)
       `(with-generic-memoization
-           ((lambda ()
-              (gethash ,key ,hash-table))
+           (:lookup
+            (lambda () (gethash ,key ,hash-table))
+            :store
             (lambda (,values-list)
               (setf (gethash ,(if store-key-p store-key key) ,hash-table)
                     ,values-list)))
          ,@body))))
 
 (defmacro with-generic-memoization
-    ((lookup store) &body body)
+    ((&key lookup store) &body body)
   "Memoize the values of BODY.
 
   LOOKUP must be a function of zero arguments, returning two values:
@@ -104,9 +105,10 @@ memoization tables, e.g. after the redefinition of a function."
   are first passed to STORE in some unspecified format and then returned."
   (once-only (lookup store)
     (with-gensyms (values-list present-p)
-      `(multiple-value-bind (,values-list ,present-p) (funcall ,lookup)
+      `(multiple-value-bind (,values-list ,present-p)
+           (and ,lookup (funcall ,lookup))
          (if ,present-p
              (values-list ,values-list)
              (let ((,values-list (multiple-value-list (progn ,@body))))
-               (funcall ,store ,values-list)
+               (and ,store (funcall ,store ,values-list))
                (values-list ,values-list)))))))

@@ -77,7 +77,7 @@
                (linear-operator t2))))
 
 (defmethod composition ((g affine-transformation) (f affine-transformation))
-  ;; A2(A1 x + b1) + b2 = A2 A1 x + A2 b1 + b2
+  ;; A2 (A1 x + b1) + b2 = A2 A1 x + A2 b1 + b2
   (let ((A1 (linear-operator f))
         (A2 (linear-operator g))
         (b1 (translation-vector f))
