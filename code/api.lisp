@@ -70,3 +70,18 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
                  (funcall modifier (index-space data-structure))
                  (inverse modifier))))))
     (recurse (petalispify data-structure) modifiers)))
+
+(defun schedule (&rest objects)
+  "Instruct Petalisp to compute all given OBJECTS asynchronously."
+  (assert (every #'strided-array? objects))
+  (when-let ((relevant-objects (delete-if #'immediate? objects)))
+    (let* ((recipes (map 'vector #'shallow-copy
+                         relevant-objects))
+           (targets (map 'vector (λ x (change-class x 'strided-array-computation))
+                         relevant-objects)))
+      (global-evaluator-evaluate-data-structures targets recipes))))
+
+(defun compute (&rest objects)
+  "Return the computed values of all OBJECTS."
+  (apply #'schedule objects)
+  (apply #'values (mapcar #'depetalispify objects)))

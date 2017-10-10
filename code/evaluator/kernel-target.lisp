@@ -2,11 +2,13 @@
 
 (in-package :petalisp)
 
-(define-class kernel-target (strided-array-computation)
-  ((fragments :type (vector kernel-fragment))
+(define-class kernel-target (strided-array-constant)
+  ((storage :type (or array null) :initform nil)
+   (fragments :type (vector kernel-fragment))
    (users :initform nil
           :type (vector kernel-fragment)
-          :accessor users)))
+          :accessor users)
+   (refcount :accessor refcount)))
 
 (defmethod graphviz-successors ((purpose data-flow-graph) (kernel-target kernel-target))
   (apply #'concatenate 'list

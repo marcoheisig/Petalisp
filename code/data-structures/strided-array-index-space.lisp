@@ -114,8 +114,9 @@
 
 (defmethod fusion ((object strided-array-index-space) &rest more-objects)
   (let ((objects (cons object more-objects)))
-    (make-strided-array-index-space
-     (apply #'vector (fuse-recursively objects)))))
+    (with-memoization ((mapcar #'ranges objects) #'equalp)
+      (make-strided-array-index-space
+       (apply #'vector (fuse-recursively objects))))))
 
 (defmethod intersection ((space-1 strided-array-index-space)
                          (space-2 strided-array-index-space))
@@ -196,7 +197,7 @@
   (spaces-to-fuse))
 
 (defun fuse-recursively (spaces)
-  (unless (every (composition #'zerop #'dimension) spaces)
+  (unless (every (compose #'zerop #'dimension) spaces)
     (let ((islands
             (apply
              #'subdivision

@@ -85,3 +85,9 @@
                        (populate-inverse-table child)))))
            graph-roots)
       table)))
+
+(declaim (inline ensure-sequence))
+(defun ensure-sequence (object)
+  (typecase object
+    (sequence object)
+    (t (list object))))

@@ -5,7 +5,7 @@
 (define-class kernel-fragment (strided-array-immediate)
   ((target :type kernel-target :accessor target)
    (recipe)
-   (bindings)))
+   (bindings :type (vector immediate))))
 
 ;; the iterator should be factored out as a separate utility...
 (define-condition iterator-exhausted () ())

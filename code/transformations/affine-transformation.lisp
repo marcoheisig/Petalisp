@@ -90,7 +90,6 @@
        linear-operator
        translation-vector))))
 
-
 (defmethod inverse :before ((transformation affine-transformation))
   (let ((effective-input-dimension
           (- (input-dimension transformation)

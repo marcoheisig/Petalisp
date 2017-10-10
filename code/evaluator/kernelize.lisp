@@ -38,7 +38,7 @@
 (defun kernelize (graph-roots)
   "Return a list of kernels whose evaluation is equivalent to the
   evaluation of all GRAPH-ROOTS."
-  (let ((graph-roots (ensure-list graph-roots)))
+  (let ((graph-roots (ensure-sequence graph-roots)))
     (let ((*use-table* (inverse-table graph-roots #'inputs))
           (*kernel-table* (make-hash-table :test #'eq)))
       (map 'vector #'kernelize-node graph-roots))))

@@ -55,7 +55,7 @@ memoization tables, e.g. after the redefinition of a function."
   results. This way, KEY can be an object with dynamic extent (to avoid
   consing) and STORE-KEY can create a copy with indefinite extent when
   necessary."
-  (assert (typep test '(or symbol (cons (eql function) (cons symbol nil))))
+  (assert (typep test '(or symbol (cons (eql function) (cons symbol null))))
           (test) "TEST must be a valid function designator.")
   (once-only (key)
     (with-gensyms (hash-table)
