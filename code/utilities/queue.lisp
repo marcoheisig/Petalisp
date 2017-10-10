@@ -13,6 +13,7 @@
   (cvar (make-condition-variable)))
 
 (defun enqueue (queue item)
+  "Enqueue ITEM in QUEUE and return it."
   (let ((new-cons (list item)))
     (with-lock-held ((queue-lock queue))
       (cond ((queue-tail queue)
@@ -25,6 +26,7 @@
       item)))
 
 (defun dequeue (queue)
+  "Block until an item can be taken from QUEUE and return this item."
   (with-lock-held ((queue-lock queue))
     (loop :until (queue-head queue)
           :do (condition-wait (queue-cvar queue) (queue-lock queue)))

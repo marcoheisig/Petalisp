@@ -15,6 +15,13 @@
 ;;; WITH-something macros that memoize the result of evaluating their
 ;;; body. Furthermore, there are three different memoization macros for
 ;;; more or less fine-grained control over the memoization strategy.
+;;;
+;;; Thread safety is deliberately neglected. Unconditional thread safety is
+;;; relatively expensive (but please, run your own benchmarks) and other
+;;; solutions are necessarily application specific. One could even state
+;;; that thread-safety is an ill-defined term, because in an application
+;;; where only one thread calls a particular memoizing function, this
+;;; library IS thread safe.
 
 (defvar *memoization-tables* (make-hash-table :test #'eq :weakness :key)
   "A mapping from packages to sets of of all implicitly created memoization

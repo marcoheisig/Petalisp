@@ -34,8 +34,9 @@ WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
      ,@body))
 
 (defmacro define-class (class-name superclass-names slot-specifiers &rest class-options)
-  "Defines a class using DEFCLASS, but defaulting to a :READER of
-SLOT-NAME and. Additionally, defines a <NAME>? predicate."
+  "Defines a class using DEFCLASS, but defaulting to a :READER of SLOT-NAME
+  and an :INITARG of :SLOT-NAME. Additionally, defines a CLASS-NAME?
+  predicate."
   (flet ((extend-slot-specifier (slot-specifier)
            (destructuring-bind (slot-name &rest plist)
                (ensure-list slot-specifier)

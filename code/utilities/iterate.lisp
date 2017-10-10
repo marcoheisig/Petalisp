@@ -3,7 +3,7 @@
 (in-package :petalisp)
 
 (defmacro iterate (&body body)
-  "ITERATE with variable declarations"
+  "ITERATE with type declarations enabled."
   `(iterate:iterate
      ,@(if (symbolp (first body))
            (list* (first body)

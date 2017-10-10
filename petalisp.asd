@@ -22,7 +22,8 @@
     ((:file "package")
      (:module "utilities" :depends-on ("package")
       :components
-      ((:file "extended-euclid" :depends-on ("macros" "testing"))
+      ((:file "code-statistics")
+       (:file "extended-euclid" :depends-on ("macros" "testing"))
        (:file "function-lambda-lists")
        (:file "generic-funcallable-objects")
        (:file "graphviz")
@@ -31,7 +32,6 @@
        (:file "matrix" :depends-on ("macros" "testing"))
        (:file "miscellaneous" :depends-on ("macros" "testing"))
        (:file "queue")
-       (:file "source-code-statistics")
        (:file "testing")))
      (:file "petalisp" :depends-on ("utilities"))
      (:module "transformations" :depends-on ("petalisp")

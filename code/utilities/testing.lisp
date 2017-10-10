@@ -4,7 +4,8 @@
 
 (defmacro test (name &body body)
   "A thin wrapper around FIVEAM:TEST that automatically uses the name of
-the current package (interned in the current package) as test suite."
+  the current package (interned in the current package) as test suite
+  identifier."
   `(progn
      (fiveam:in-suite* ,(intern (package-name *package*)))
      (fiveam:test ,name ,@body)))
