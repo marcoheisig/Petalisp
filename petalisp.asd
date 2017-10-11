@@ -49,7 +49,7 @@
        (:file "visualization" :depends-on ("strided-array-constant"))))
      (:module "evaluator" :depends-on ("data-structures")
       :components
-      ((:file "compiler" :depends-on ("kernel-target" "kernel-fragment"))
+      ((:file "compiler")
        (:file "define-evaluator")
        (:file "kernel-fragment")
        (:file "kernel-target")

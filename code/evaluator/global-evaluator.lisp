@@ -36,14 +36,33 @@
         (when (= 0 (decf (refcount binding)))
           (free-memory binding))))))
 
+(defun evaluate-kernel-fragment (kernel-fragment)
+  (let* ((binding-symbols
+           (iterate (for index below (length (bindings kernel-fragment)))
+                    (collect (binding-symbol index))))
+         (dest (storage (target kernel-fragment)))
+         (srcs (map 'list #'storage (bindings kernel-fragment)))
+         (form
+           `(lambda (target ,@binding-symbols)
+              (%for ,(ranges (index-space kernel-fragment))
+                ,(recipe kernel-fragment)))))
+    (print (index-space (target kernel-fragment)))
+    (print (macroexpand-all form))
+    (apply (compile nil form) dest srcs)))
+
 (define-evaluator global-evaluator
     (evaluate-data-structures
      ((targets (vector strided-array-immediate))
       (recipes (vector data-structure)))
      (assert (= (length targets) (length recipes)))
      (labels ((evaluate (kernel-target)
-                (let ((dependencies (remove-if-not (compose #'null #'storage)
-                                                   (users kernel-target))))
-                  (map nil #'evaluate dependencies)
-                  (evaluate-kernel-target kernel-target))))
-       (map nil #'evaluate (kernelize recipes)))))
+                (iterate
+                  (for fragment in (fragments kernel-target))
+                  (iterate (for binding in-vector (bindings fragment))
+                           (when (and (kernel-target? binding)
+                                      (not (storage binding)))
+                             (evaluate binding))))
+                (evaluate-kernel-target kernel-target)))
+       (graphviz-draw-graph 'data-flow-graph (kernelize recipes))
+       ;(map nil #'evaluate (kernelize recipes))
+       (values))))

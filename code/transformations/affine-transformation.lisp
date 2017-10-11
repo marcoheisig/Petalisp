@@ -127,16 +127,20 @@
        linear-operator
        translation-vector))))
 
+(defmethod generic-unary-funcall ((transformation affine-transformation)
+                                  (s-expressions list))
+  (map 'list (λ Ax b (cond ((eql Ax 0) b)
+                           ((numberp Ax) (+ Ax b))
+                           ((eql b 0) Ax)
+                           (t `(+ ,Ax ,b))))
+       (matrix-product (linear-operator transformation) s-expressions)
+       (translation-vector transformation)))
+
 (defmethod print-object ((object affine-transformation) stream)
   (let ((inputs
           (iterate (for input-constraint in-vector (input-constraints object))
                    (for symbol in (list-of-symbols (input-dimension object)))
                    (collect (or input-constraint symbol)))))
-    (prin1 `(τ ,inputs ,@(map 'list (λ Ax b (cond ((eql Ax 0) b)
-                                                  ((numberp Ax) (+ Ax b))
-                                                  ((eql b 0) Ax)
-                                                  (t `(+ ,Ax ,b))))
-                              (matrix-product (linear-operator object) inputs)
-                              (translation-vector object)))
+    (prin1 `(τ ,inputs ,@(funcall object inputs))
            stream)))
 

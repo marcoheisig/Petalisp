@@ -41,16 +41,15 @@
              ;; current index space
 
              ;; leaf nodes are converted to an iterator over a single value
-             (if (or (immediate? node)
-                     (and (not (eq node data-structure))
-                          (funcall leaf? node)))
+             (if (or (strided-array-constant? node)
+                     (funcall leaf? node))
                  (let ((first-visit? t))
                    (λ (if first-visit?
                           (let ((index
                                   (or (position node *kernel-fragment-bindings*)
                                       (vector-push-extend node *kernel-fragment-bindings*))))
                             (setf first-visit? nil)
-                            `(reference ,transformation ,index))
+                            `(%reference ,transformation ,index))
                           (signal 'iterator-exhausted))))
                  (etypecase node
                    ;; fusion nodes are unconditionally eliminated by path
@@ -82,8 +81,8 @@
                             (map 'vector
                                  (λ x (mkiter x transformation))
                                  (inputs node))))
-                      (λ `(application ,(operator node)
-                                       ,@(map 'list #'funcall input-iterators)))))
+                      (λ `(%application ,(operator node)
+                                        ,@(map 'list #'funcall input-iterators)))))
                    ;; reference nodes are eliminated entirely
                    (reference
                     (let ((new-transformation (composition (transformation node) transformation)))
@@ -91,7 +90,7 @@
                    ;; reduction nodes
                    (reduction
                     (let ((input-iterator (mkiter (input node) transformation)))
-                      (λ `(reduction ,(operator node) ,(funcall input-iterator)))))))))
+                      (λ `(%reduction ,(operator node) ,(funcall input-iterator)))))))))
     (mkiter data-structure (make-identity-transformation (dimension data-structure)))))
 
 (defmethod graphviz-node-plist append-plist
@@ -105,12 +104,12 @@
 
 (defmethod graphviz-successors ((purpose data-flow-graph) (list cons))
   (ecase (car list)
-    (application (cddr list))
-    (reduction (cddr list))
-    (reference nil)))
+    (%application (cddr list))
+    (%reduction (cddr list))
+    (%reference nil)))
 
 (defmethod graphviz-node-plist append-plist ((purpose data-flow-graph) (list cons))
   (ecase (car list)
-    (application `(:label ,(format nil "(α ~A)" (second list)) :fillcolor "indianred1"))
-    (reduction `(:label ,(format nil "(β ~A)" (second list)) :fillcolor "indianred3"))
-    (reference `(:label ,(format nil "~A" (second list)) :fillcolor "gray"))))
+    (%application `(:label ,(format nil "(α ~A)" (second list)) :fillcolor "indianred1"))
+    (%reduction `(:label ,(format nil "(β ~A)" (second list)) :fillcolor "indianred3"))
+    (%reference `(:label ,(format nil "~A" (second list)) :fillcolor "gray"))))

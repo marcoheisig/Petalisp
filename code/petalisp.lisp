@@ -128,8 +128,10 @@
   (:documentation
    "Return the number of dimensions of OBJECT.")
   (:method ((object t)) 0)
-  (:method ((object array)) (length (array-dimensions object)))
-  (:method ((object data-structure)) (dimension (index-space object))))
+  (:method ((list list)) (length list))
+  (:method ((array array)) (length (array-dimensions array)))
+  (:method ((data-structure data-structure))
+    (dimension (index-space data-structure))))
 
 (defgeneric equal? (a b)
   (:documentation

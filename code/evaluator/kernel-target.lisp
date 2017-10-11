@@ -8,7 +8,7 @@
    (users :initform nil
           :type (vector kernel-fragment)
           :accessor users)
-   (refcount :accessor refcount)))
+   (refcount :accessor refcount :initform nil)))
 
 (defmethod graphviz-successors ((purpose data-flow-graph) (kernel-target kernel-target))
   (apply #'concatenate 'list

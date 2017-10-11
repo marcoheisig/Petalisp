@@ -46,11 +46,12 @@
 (defun kernelize-node (data-structure)
   "Return a kernel whose evaluation is equivalent to the evaluation of
   DATA-STRUCTURE. Furthermore, add the kernel to the *KERNEL-TABLE*."
-  (flet ((leaf? (node) (or (immediate? data-structure)
-                           (> (length (gethash node *use-table*)) 1))))
+  (flet ((leaf? (node) (and (not (eq node data-structure))
+                            (/= (length (gethash node *use-table*)) 1))))
     (or (gethash data-structure *kernel-table*) ; memoize calls to this function
         (and (immediate? data-structure) data-structure)
-        (let* ((fragments (kernel-fragments data-structure #'leaf?))
+        (let* ((fragments
+                 (kernel-fragments data-structure #'leaf?))
                (result (make-instance 'kernel-target
                          :index-space (index-space data-structure)
                          :element-type (element-type data-structure)

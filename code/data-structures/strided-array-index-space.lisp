@@ -197,7 +197,7 @@
   (spaces-to-fuse))
 
 (defun fuse-recursively (spaces)
-  (unless (every (compose #'zerop #'dimension) spaces)
+  (unless (every (composition #'zerop #'dimension) spaces)
     (let ((islands
             (apply
              #'subdivision

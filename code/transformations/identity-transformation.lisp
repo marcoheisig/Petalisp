@@ -28,8 +28,7 @@
   (= (dimension a) (dimension b)))
 
 (defmethod generic-unary-funcall ((operator identity-transformation)
-                                  (argument index-space))
-  (assert (= (input-dimension operator) (dimension argument)))
+                                  (argument t))
   argument)
 
 (defmethod inverse ((transformation identity-transformation)) transformation)
