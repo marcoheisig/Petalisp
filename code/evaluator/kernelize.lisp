@@ -12,8 +12,8 @@
 ;;; form a tree, i.e. they have exactly one successor. Later, this allows
 ;;; to build a corresponding s-expression to actually evaluate each kernel.
 ;;;
-;;; The result of kernelization is a set of kernels. The original DAG is
-;;; not mutated in the process.
+;;; The result of kernelization is a set of intermediate results, linked by
+;;; kernels. The original DAG is not mutated in the process.
 ;;;
 ;;; The first step in the algorithm is the creation of a *USE-TABLE*, a
 ;;; hash table mapping each graph node to its successors. It would seem
@@ -24,12 +24,9 @@
 ;;;
 ;;; Once the *USE-TABLE* is populated, the graph is traversed a second
 ;;; time, to generate a kernelized copy of it. A node with more than one
-;;; user triggers the creation of a new kernel. The hash table
-;;; *KERNEL-TABLE* memoizes repeated calls to KERNELIZE-NODE.
-;;;
-;;; Each kernel is represented by one kernel target and several kernel
-;;; fragments. The target is eventually bound to some memory, before any of
-;;; the fragments are run.
+;;; user triggers the creation of a new intermediate result and one or more
+;;; kernels. The hash table *KERNEL-TABLE* memoizes repeated calls to
+;;; KERNELIZE-NODE.
 
 (defvar *use-table* nil)
 
@@ -50,21 +47,21 @@
                             (/= (length (gethash node *use-table*)) 1))))
     (or (gethash data-structure *kernel-table*) ; memoize calls to this function
         (and (immediate? data-structure) data-structure)
-        (let* ((fragments (kernel-fragments data-structure #'leaf?))
-               (result (make-instance 'kernel-target
+        (let* ((kernels (generate-kernels data-structure #'leaf?))
+               (result (make-instance 'intermediate-result
                          :index-space (index-space data-structure)
                          :element-type (element-type data-structure)
-                         :fragments fragments)))
+                         :kernels kernels)))
           ;; time for some side-effects!
           (setf (gethash data-structure *kernel-table*) result)
           (iterate
-            (for fragment in fragments)
-            (setf (target fragment) result)
-            (let ((bindings (bindings fragment)))
+            (for kernel in kernels)
+            (setf (target kernel) result)
+            (let ((bindings (bindings kernel)))
               (map-into bindings #'kernelize-node bindings)
               (map nil (λ binding
-                          (if (kernel-target? binding)
-                              (pushnew fragment (users binding))))
+                          (if (intermediate-result? binding)
+                              (pushnew kernel (users binding))))
                    bindings)))
           result))))
 

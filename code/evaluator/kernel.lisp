@@ -2,37 +2,37 @@
 
 (in-package :petalisp)
 
-(define-class kernel-fragment (strided-array-immediate)
-  ((target :type kernel-target :accessor target)
+(define-class kernel (strided-array-immediate)
+  ((target :type intermediate-result :accessor target)
    (recipe)
    (bindings :type (vector immediate))))
 
 ;; the iterator should be factored out as a separate utility...
 (define-condition iterator-exhausted () ())
 
-(defvar *kernel-fragment-bindings* nil)
+(defvar *kernel-bindings* nil)
 
-(defvar *kernel-fragment-space* nil)
+(defvar *kernel-space* nil)
 
-(defun kernel-fragments (data-structure leaf?)
-  "Return a list of kernel fragments to compute DATA-STRUCTURE. The recipe
-  of each fragment is a tree of applications and reductions, whose leaves
-  are references to objects that satisfy LEAF?."
+(defun generate-kernels (data-structure leaf?)
+  "Return a list of kernels to compute DATA-STRUCTURE. The recipe of each
+  kernel is a tree of applications and reductions, whose leaves are
+  references to objects that satisfy LEAF?."
   (let ((recipe-iterator (make-recipe-iterator data-structure leaf?))
-        fragments)
+        kernels)
     (handler-case
-        (loop (let* ((*kernel-fragment-bindings* (make-array 6 :fill-pointer 0))
-                     (*kernel-fragment-space* (index-space data-structure))
+        (loop (let* ((*kernel-bindings* (make-array 6 :fill-pointer 0))
+                     (*kernel-space* (index-space data-structure))
                      (recipe (funcall recipe-iterator)))
-                (when *kernel-fragment-space*
-                  (push (make-instance 'kernel-fragment
+                (when *kernel-space*
+                  (push (make-instance 'kernel
                           :recipe recipe
-                          :bindings *kernel-fragment-bindings*
-                          :index-space *kernel-fragment-space*
+                          :bindings *kernel-bindings*
+                          :index-space *kernel-space*
                           :element-type (element-type data-structure))
-                        fragments))))
+                        kernels))))
       (iterator-exhausted ()))
-    fragments))
+    kernels))
 
 (defun zero-based-transformation (data-structure)
   (let* ((ranges (ranges (index-space data-structure)))
@@ -58,8 +58,8 @@
                  (let ((first-visit? t))
                    (λ (if first-visit?
                           (let ((index
-                                  (or (position node *kernel-fragment-bindings*)
-                                      (vector-push-extend node *kernel-fragment-bindings*))))
+                                  (or (position node *kernel-bindings*)
+                                      (vector-push-extend node *kernel-bindings*))))
                             (setf first-visit? nil)
                             `(%reference
                               ,(composition
@@ -91,7 +91,7 @@
                                                  (funcall (inverse transformation)
                                                           (aref spaces index)))))
                                      (when space
-                                       (setf *kernel-fragment-space* space)
+                                       (setf *kernel-space* space)
                                        (return (funcall input-iterator))))
                                  (iterator-exhausted ())))
                            (incf index)))))
@@ -121,13 +121,13 @@
      (make-identity-transformation (dimension data-structure)))))
 
 (defmethod graphviz-node-plist append-plist
-    ((purpose data-flow-graph) (kernel-fragment kernel-fragment))
+    ((purpose data-flow-graph) (kernel kernel))
   `(:shape "box"
     :fillcolor "skyblue"))
 
 (defmethod graphviz-successors
-    ((purpose data-flow-graph) (kernel-fragment kernel-fragment))
-  (list* (recipe kernel-fragment) (map 'list #'identity (bindings kernel-fragment))))
+    ((purpose data-flow-graph) (kernel kernel))
+  (list* (recipe kernel) (map 'list #'identity (bindings kernel))))
 
 (defmethod graphviz-successors ((purpose data-flow-graph) (list cons))
   (ecase (car list)

@@ -51,8 +51,8 @@
       :components
       ((:file "compiler")
        (:file "define-evaluator")
-       (:file "kernel-fragment")
-       (:file "kernel-target")
-       (:file "kernelize" :depends-on ("kernel-target" "kernel-fragment"))
+       (:file "kernel")
+       (:file "intermediate-result")
+       (:file "kernelize" :depends-on ("kernel" "intermediate-result"))
        (:file "global-evaluator" :depends-on ("define-evaluator" "kernelize"))))
      (:file "api" :depends-on ("evaluator"))))))
