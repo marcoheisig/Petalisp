@@ -50,8 +50,7 @@
                             (/= (length (gethash node *use-table*)) 1))))
     (or (gethash data-structure *kernel-table*) ; memoize calls to this function
         (and (immediate? data-structure) data-structure)
-        (let* ((fragments
-                 (kernel-fragments data-structure #'leaf?))
+        (let* ((fragments (kernel-fragments data-structure #'leaf?))
                (result (make-instance 'kernel-target
                          :index-space (index-space data-structure)
                          :element-type (element-type data-structure)

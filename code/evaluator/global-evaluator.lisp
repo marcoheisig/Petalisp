@@ -44,11 +44,13 @@
          (srcs (map 'list #'storage (bindings kernel-fragment)))
          (form
            `(lambda (target ,@binding-symbols)
-              (%for ,(ranges (index-space kernel-fragment))
-                ,(recipe kernel-fragment)))))
-    (print (index-space (target kernel-fragment)))
-    (print (macroexpand-all form))
-    (apply (compile nil form) dest srcs)))
+              (%for ,(ranges
+                      (funcall
+                       (inverse (zero-based-transformation (target kernel-fragment)))
+                       (index-space kernel-fragment)))
+                  ,(recipe kernel-fragment)))))
+    (apply (compile nil form) dest srcs)
+    (print dest)))
 
 (define-evaluator global-evaluator
     (evaluate-data-structures
@@ -63,6 +65,6 @@
                                       (not (storage binding)))
                              (evaluate binding))))
                 (evaluate-kernel-target kernel-target)))
-       (graphviz-draw-graph 'data-flow-graph (kernelize recipes))
-       ;(map nil #'evaluate (kernelize recipes))
+       ;(graphviz-draw-graph 'data-flow-graph (kernelize recipes))
+       (map nil #'evaluate (kernelize recipes))
        (values))))

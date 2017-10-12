@@ -22,16 +22,6 @@
                           binding-symbol-vector))
     (aref binding-symbol-vector n)))
 
-(defun zero-based-transformation (ranges)
-  (let ((dimension (length ranges)))
-    (make-affine-transformation
-     (make-array dimension :initial-element nil)
-     (scaled-permutation-matrix
-      dimension dimension
-      (apply #'vector (iota dimension))
-      (map 'vector #'range-step ranges))
-     (map 'vector #'range-start ranges))))
-
 (defmacro %for (ranges body)
   (let* ((indices (iterate (for index below (length ranges))
                            (collect (index-symbol index))))

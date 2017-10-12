@@ -14,7 +14,8 @@
                                (α #'+
                                   (-> u (τ (i) (1+ i)) interior)
                                   (-> u (τ (i) (1- i)) interior)
-                                  (-> (α #'* (* h h) f) interior)))))) u))
+                                  (-> (α #'* (* h h) f) interior))))))
+         u))
     (2 (let ((interior (σ* u ((+ start 1) step (- end 1))
                            ((+ start 1) step (- end 1)))))
          (loop repeat iterations do
@@ -24,7 +25,8 @@
                                   (-> u (τ (i j) (1- i) j) interior)
                                   (-> u (τ (i j) i (1+ j)) interior)
                                   (-> u (τ (i j) i (1- j)) interior)
-                                  (-> (α #'* (* h h) f) interior)))))) u))
+                                  (-> (α #'* (* h h) f) interior))))))
+         u))
     (3 (let ((interior (σ* u ((+ start 1) step (- end 1))
                            ((+ start 1) step (- end 1))
                            ((+ start 1) step (- end 1)))))
@@ -37,4 +39,5 @@
                                   (-> u (τ (i j k) i (1- j) k) interior)
                                   (-> u (τ (i j k) i j (1+ k)) interior)
                                   (-> u (τ (i j k) i j (1- k)) interior)
-                                  (-> (α #'* (* h h) f) interior)))))) u))))
+                                  (-> (α #'* (* h h) f) interior))))))
+         u))))

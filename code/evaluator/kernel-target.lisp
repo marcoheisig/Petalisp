@@ -11,15 +11,13 @@
    (refcount :accessor refcount :initform nil)))
 
 (defmethod graphviz-successors ((purpose data-flow-graph) (kernel-target kernel-target))
-  (apply #'concatenate 'list
-         (fragments kernel-target)
-         (mapcar #'bindings (fragments kernel-target))))
+  (fragments kernel-target))
 
 (defmethod graphviz-node-plist append-plist ((purpose data-flow-graph) (kernel-target kernel-target))
   `(:shape "octagon"
     :fillcolor "cornflowerblue"))
 
 (defmethod graphviz-edge-plist append-plist
-    ((purpose data-flow-graph) (a kernel-target) (b kernel-target))
+    ((purpose data-flow-graph) (a kernel-fragment) (b immediate))
   `(:style "dashed"))
 
