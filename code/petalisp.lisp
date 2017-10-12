@@ -208,15 +208,7 @@ function is the identity transformation."))
     it ensures there will never be two consecutive references."
     (reference (input object)
                space
-               (composition (transformation object) transformation)))
-  (:method or ((object fusion) (space index-space) (transformation transformation))
-    "Permit references to fusions that affect only a single input of
-    this fuison to skip the fusion entirely, potentially leading to further
-    optimization."
-    (if-let ((unique-input (find space (inputs object)
-                                       :test #'subspace?
-                                       :key #'index-space)))
-      (reference unique-input space transformation))))
+               (composition (transformation object) transformation))))
 
 (defgeneric output-dimension (transformation)
   (:documentation
