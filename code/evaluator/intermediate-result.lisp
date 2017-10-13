@@ -11,7 +11,7 @@
    (refcount :accessor refcount :initform nil)))
 
 (defmethod graphviz-successors ((purpose data-flow-graph) (intermediate-result intermediate-result))
-  (fragments intermediate-result))
+  (kernels intermediate-result))
 
 (defmethod graphviz-node-plist append-plist ((purpose data-flow-graph) (intermediate-result intermediate-result))
   `(:shape "octagon"

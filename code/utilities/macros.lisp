@@ -62,3 +62,20 @@ WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
     `(block nil
        (map nil #'(lambda (,var) (tagbody ,@body)) ,sequence)
        (let ((,var nil)) (declare (ignorable var)) ,result))))
+
+(defmacro define-symbol-pool (name prefix)
+  (check-type prefix string)
+  (check-type name symbol)
+  `(let ((pool (load-time-value (make-array 0 :fill-pointer 0))))
+     (declare (type (vector symbol) pool))
+     (defun ,name (n)
+       (iterate (for i from (fill-pointer pool) to n)
+                (vector-push-extend
+                 (intern (format nil "~A~D" ,prefix i))
+                 pool))
+       (aref pool n))
+     (defun ,(symbolicate name "-LIST") (length)
+       (iterate (for index from (1- length) downto 0)
+                (collect (,name index) at beginning)))))
+
+(define-symbol-pool index-symbol "I")
