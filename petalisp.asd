@@ -50,8 +50,9 @@
      (:module "evaluator" :depends-on ("data-structures")
       :components
       ((:file "compiler")
-       (:file "kernel")
        (:file "intermediate-result")
        (:file "kernelize" :depends-on ("kernel" "intermediate-result"))
-       (:file "global-evaluator" :depends-on ("kernelize"))))
+       (:file "kernel")
+       (:file "memory-pool" :depends-on ("intermediate-result"))
+       (:file "scheduler" :depends-on ("kernelize" "memory-pool"))))
      (:file "api" :depends-on ("evaluator"))))))
