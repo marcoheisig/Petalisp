@@ -66,16 +66,21 @@ WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
 (defmacro define-symbol-pool (name prefix)
   (check-type prefix string)
   (check-type name symbol)
-  `(let ((pool (load-time-value (make-array 0 :fill-pointer 0))))
-     (declare (type (vector symbol) pool))
-     (defun ,name (n)
-       (iterate (for i from (fill-pointer pool) to n)
-                (vector-push-extend
-                 (intern (format nil "~A~D" ,prefix i))
-                 pool))
-       (aref pool n))
-     (defun ,(symbolicate name "-LIST") (length)
-       (iterate (for index from (1- length) downto 0)
-                (collect (,name index) at beginning)))))
+  `(progn
+     (let ((pool (make-array 0 :fill-pointer 0)))
+       (defun ,name (n)
+         (iterate (for index from (fill-pointer pool) to n)
+                  (vector-push-extend
+                   (intern (format nil "~A~D" ,prefix index))
+                   pool))
+         (aref pool n)))
+     (let ((pool (make-array 0 :fill-pointer 0)))
+       (defun ,(symbolicate name "-LIST") (length)
+         (iterate (for index from (fill-pointer pool) to length)
+                  (vector-push-extend
+                   (iterate (for n from (1- index) downto 0)
+                            (collect (,name n) at beginning))
+                   pool))
+         (aref pool length)))))
 
 (define-symbol-pool index-symbol "I")
