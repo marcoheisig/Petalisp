@@ -73,26 +73,9 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
 
 (defun schedule (&rest objects)
   "Instruct Petalisp to compute all given OBJECTS asynchronously."
-  (assert (every #'strided-array? objects))
-  (when-let ((relevant-objects (delete-if #'immediate? objects)))
-    (let* ((recipes (map 'vector #'shallow-copy
-                         relevant-objects))
-           (targets (map 'vector (λ x (change-class x 'intermediate-result))
-                         relevant-objects)))
-      (run-in-global-evaluator-thread
-       (λ
-        (labels ((evaluate (intermediate-result)
-                   (iterate
-                     (for kernel in (kernels intermediate-result))
-                     (iterate (for binding in-vector (bindings kernel))
-                              (when (and (intermediate-result? binding)
-                                         (not (storage binding)))
-                                (evaluate binding))))
-                   (evaluate-intermediate-result intermediate-result)))
-          (graphviz-draw-graph 'data-flow-graph (kernelize recipes))
-          (map nil #'evaluate (kernelize recipes))))))))
+  (schedule-items objects))
 
 (defun compute (&rest objects)
   "Return the computed values of all OBJECTS."
-  (apply #'schedule objects)
+  (schedule-items objects)
   (apply #'values (mapcar #'depetalispify objects)))

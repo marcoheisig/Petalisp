@@ -91,17 +91,17 @@ WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
       :report "Ignore the problem and continue.")))
 
 (defmacro define-task-queue (thread-name)
-  (check-type thread-name string-designator)
-  `(progn
-     (defvar ,thread-name nil)
-     (let ((queue (make-queue)) thread)
+  (check-type thread-name symbol)
+  (let ((queue-name (symbolicate thread-name "-TASK-QUEUE")))
+    `(progn
+       (defvar ,thread-name
+         (make-thread
+          (λ (loop
+               (ignore-errors
+                (maybe-ignore-errors
+                  (funcall (dequeue ,queue-name))))))
+          :name ,(string thread-name)))
+       (defvar ,queue-name (make-queue))
        (defun ,(symbolicate "RUN-IN-" thread-name) (thunk)
-         (unless (and (threadp thread) (thread-alive-p thread))
-           (setf ,thread-name
-                 (make-thread
-                  (λ (loop
-                       (maybe-ignore-errors
-                         (funcall (dequeue queue)))))
-                  :name ,(string thread-name))))
-         (enqueue thunk queue)
+         (enqueue thunk ,queue-name)
          (values)))))
