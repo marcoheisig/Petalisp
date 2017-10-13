@@ -48,13 +48,6 @@
         #2a((1 1 1 1) (1 1 1 1) (1 1 1 1) (1 1 1 1))
         #2a((0 1 2 3) (0 1 2 3) (0 1 2 3) (0 1 2 3))))))
 
-(defun list-of-symbols (length)
-  (loop :for i :below length
-        :with abc := #(a b c d e f g h i j k l m n o p q r s t. u v w x y z)
-        :collect (if (< i (length abc))
-                     (aref abc i)
-                     (format-symbol t "VAR~D" i))))
-
 (defun free-variables (form &optional environment)
   (let (result)
     (walk-form

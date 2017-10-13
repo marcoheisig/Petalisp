@@ -12,7 +12,7 @@
   (lock (make-lock))
   (cvar (make-condition-variable)))
 
-(defun enqueue (queue item)
+(defun enqueue (item queue)
   "Enqueue ITEM in QUEUE and return it."
   (let ((new-cons (list item)))
     (with-lock-held ((queue-lock queue))

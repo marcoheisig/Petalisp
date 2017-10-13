@@ -34,7 +34,9 @@
       (for binding in-vector (bindings kernel))
       (when (intermediate-result? binding)
         (when (= 0 (decf (refcount binding)))
-          (free-memory binding))))))
+          (free-memory binding)))))
+  #+nil
+  (print (storage intermediate-result)))
 
 (defun evaluate-kernel (kernel)
   (let* ((binding-symbols
@@ -51,19 +53,4 @@
            (storage (target kernel))
            (map 'list #'storage (bindings kernel)))))
 
-(define-evaluator global-evaluator
-    (evaluate-data-structures
-     ((targets (vector strided-array-immediate))
-      (recipes (vector data-structure)))
-     (assert (= (length targets) (length recipes)))
-     (labels ((evaluate (intermediate-result)
-                (iterate
-                  (for kernel in (kernels intermediate-result))
-                  (iterate (for binding in-vector (bindings kernel))
-                           (when (and (intermediate-result? binding)
-                                      (not (storage binding)))
-                             (evaluate binding))))
-                (evaluate-intermediate-result intermediate-result)))
-       ;(graphviz-draw-graph 'data-flow-graph (kernelize recipes))
-       (map nil #'evaluate (kernelize recipes))
-       (values))))
+(define-task-queue global-evaluator-thread)

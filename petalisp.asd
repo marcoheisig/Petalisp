@@ -50,9 +50,8 @@
      (:module "evaluator" :depends-on ("data-structures")
       :components
       ((:file "compiler")
-       (:file "define-evaluator")
        (:file "kernel")
        (:file "intermediate-result")
        (:file "kernelize" :depends-on ("kernel" "intermediate-result"))
-       (:file "global-evaluator" :depends-on ("define-evaluator" "kernelize"))))
+       (:file "global-evaluator" :depends-on ("kernelize"))))
      (:file "api" :depends-on ("evaluator"))))))

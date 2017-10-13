@@ -84,3 +84,24 @@ WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
          (aref pool length)))))
 
 (define-symbol-pool index-symbol "I")
+
+(defmacro maybe-ignore-errors (&body forms)
+  `(restart-case (progn ,@forms)
+    (ignore ()
+      :report "Ignore the problem and continue.")))
+
+(defmacro define-task-queue (thread-name)
+  (check-type thread-name string-designator)
+  `(progn
+     (defvar ,thread-name nil)
+     (let ((queue (make-queue)) thread)
+       (defun ,(symbolicate "RUN-IN-" thread-name) (thunk)
+         (unless (and (threadp thread) (thread-alive-p thread))
+           (setf ,thread-name
+                 (make-thread
+                  (λ (loop
+                       (maybe-ignore-errors
+                         (funcall (dequeue queue)))))
+                  :name ,(string thread-name))))
+         (enqueue thunk queue)
+         (values)))))
