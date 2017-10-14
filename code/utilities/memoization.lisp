@@ -45,12 +45,14 @@ memoization tables, e.g. after the redefinition of a function."
           do (clrhash memoization-table)))
 
 (defmacro with-memoization
-    ((key test &optional (store-key nil store-key-p)) &body body)
+    ((key &key (test #'eql) (store-key nil store-key-p) (multiple-values t))
+     &body body)
   "Memoize the values of BODY. If KEY has the same value (with respect to
   TEST) as some previously computed key, then BODY is not evaluated and the
   values of the previous computation are returned.
 
-  Note: TEST is evaluated at load time and in a null lexical environment.
+  Note: TEST is evaluated at load time in a null lexical environment and
+  must be a suitable hash table test.
 
   If the optional form STORE-KEY is supplied, it is evaluated after any
   evaluation of BODY and its value is used instead of KEY for storing the
@@ -59,9 +61,12 @@ memoization tables, e.g. after the redefinition of a function."
   necessary."
   (assert (typep test '(or symbol (cons (eql function) (cons symbol null))))
           (test) "TEST must be a valid function designator.")
+  (check-type multiple-values boolean)
   (once-only (key)
     (with-gensyms (hash-table)
-      `(with-hash-table-memoization (,key ,@(when store-key-p (list store-key)))
+      `(with-hash-table-memoization
+           (,key ,@(when store-key-p (list :store-key store-key))
+                 :multiple-values ,multiple-values)
            (load-time-value
             (let ((,hash-table (make-hash-table :test ,test)))
               (setf (gethash ,hash-table (package-memoization-tables)) nil)
@@ -69,7 +74,8 @@ memoization tables, e.g. after the redefinition of a function."
          ,@body))))
 
 (defmacro with-hash-table-memoization
-    ((key &optional (store-key nil store-key-p)) hash-table &body body)
+    ((key &key (store-key nil store-key-p) (multiple-values t))
+     hash-table &body body)
   "Memoize the values of BODY. If KEY is found in HASH-TABLE, BODY is not
   evaluated and the corresponding values are returned. Otherwise, BODY is
   evaluated and its values are first stored as the HASH-TABLE entry of KEY
@@ -80,37 +86,42 @@ memoization tables, e.g. after the redefinition of a function."
   results. This way, KEY can be an object with dynamic extent (to avoid
   consing) and STORE-KEY can create a copy with indefinite extent when
   necessary."
+  (check-type multiple-values boolean)
   (once-only (key hash-table)
-    (with-gensyms (values-list)
-      `(with-generic-memoization
-           (:lookup
-            (lambda () (gethash ,key ,hash-table))
-            :store
-            (lambda (,values-list)
-              (setf (gethash ,(if store-key-p store-key key) ,hash-table)
-                    ,values-list)))
-         ,@body))))
+    (let ((place `(gethash ,(if store-key-p store-key key) ,hash-table)))
+      (if multiple-values
+          (with-gensyms (list-of-values)
+            `(values-list
+              (with-generic-memoization (gethash ,key ,hash-table)
+                (let ((,list-of-values (multiple-value-list (progn ,@body))))
+                  (setf ,place ,list-of-values)))))
+          (with-gensyms (value)
+            `(with-generic-memoization (gethash ,key ,hash-table)
+               (let ((,value (progn ,@body)))
+                 (setf ,place ,value))))))))
 
 (defmacro with-generic-memoization
-    ((&key lookup store) &body body)
-  "Memoize the values of BODY.
+    (lookup-form &body body)
+  "When the second value of LOOKUP-FORM is true, return its first value.
+   Otherwise, evaluate BODY and return its value."
+  (with-gensyms (value present-p)
+    `(multiple-value-bind (,value ,present-p) ,lookup-form
+       (if ,present-p ,value (progn ,@body)))))
 
-  LOOKUP must be a function of zero arguments, returning two values:
-  1. the potential values of the lookup
-  2. a boolean indicating whether values have been found
+(defmacro with-vector-memoization
+    ((var &key (type t)) &body body)
+  "Memoize the value of BODY for VAR being a relatively small integer and
+   BODY returning single values of type TYPE."
+  (check-type var symbol)
+  (with-gensyms (pool limit)
+    `(let ((,pool
+             (load-time-value
+              (make-array 0 :fill-pointer 0 :element-type ',type)))
+           (,limit ,var))
+       (declare (type array-index ,var ,limit)
+                (type (vector ,type) ,pool))
+       (iterate
+         (for ,var from (fill-pointer ,pool) to ,limit)
+         (vector-push-extend (progn ,@body) ,pool))
+       (aref ,pool ,limit))))
 
-  STORE must be a function of one argument and with unspecified return
-  value.
-
-  This macro uses LOOKUP to determine whether memoized values exist. If so,
-  these values are returned. Otherwise, BODY is evaluated and its values
-  are first passed to STORE in some unspecified format and then returned."
-  (once-only (lookup store)
-    (with-gensyms (values-list present-p)
-      `(multiple-value-bind (,values-list ,present-p)
-           (and ,lookup (funcall ,lookup))
-         (if ,present-p
-             (values-list ,values-list)
-             (let ((,values-list (multiple-value-list (progn ,@body))))
-               (and ,store (funcall ,store ,values-list))
-               (values-list ,values-list)))))))

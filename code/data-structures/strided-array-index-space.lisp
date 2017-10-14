@@ -114,7 +114,7 @@
 
 (defmethod fusion ((object strided-array-index-space) &rest more-objects)
   (let ((objects (cons object more-objects)))
-    (with-memoization ((mapcar #'ranges objects) #'equalp)
+    (with-memoization ((mapcar #'ranges objects) :test #'equalp)
       (make-strided-array-index-space
        (apply #'vector (fuse-recursively objects))))))
 

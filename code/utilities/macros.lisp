@@ -67,21 +67,13 @@ WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
   (check-type prefix string)
   (check-type name symbol)
   `(progn
-     (let ((pool (make-array 0 :fill-pointer 0)))
-       (defun ,name (n)
-         (iterate (for index from (fill-pointer pool) to n)
-                  (vector-push-extend
-                   (intern (format nil "~A~D" ,prefix index))
-                   pool))
-         (aref pool n)))
-     (let ((pool (make-array 0 :fill-pointer 0)))
+     (defun ,name (n)
+       (with-vector-memoization (n :type symbol)
+         (intern (format nil "~A~D" ,prefix n)))
        (defun ,(symbolicate name "-LIST") (length)
-         (iterate (for index from (fill-pointer pool) to length)
-                  (vector-push-extend
-                   (iterate (for n from (1- index) downto 0)
-                            (collect (,name n) at beginning))
-                   pool))
-         (aref pool length)))))
+         (with-vector-memoization (length :type list)
+           (iterate (for n from (1- length) downto 0)
+                    (collect (,name n) at beginning)))))))
 
 (define-symbol-pool index-symbol "I")
 
