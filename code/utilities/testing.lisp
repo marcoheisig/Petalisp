@@ -42,9 +42,9 @@
   (lambda ()
     (+ minimum (random (1+ (- maximum minimum))))))
 
-(defun array-generator (&key (dimensions '(5 5)) element-generator)
+(defun array-generator (&key (dimensions '(5 5)) element-generator element-type)
   (lambda ()
-    (let ((result (make-array dimensions)))
+    (let ((result (make-array dimensions :element-type element-type)))
       (loop :for index :below (array-total-size result) :do
         (setf (row-major-aref result index) (funcall element-generator)))
       result)))
@@ -52,4 +52,5 @@
 (defun random-array (&optional (dimension 2) (length 5))
   (funcall (array-generator
             :dimensions (make-list dimension :initial-element length)
-            :element-generator (integer-generator 0 9))))
+            :element-type 'double-float
+            :element-generator (double-float-generator))))

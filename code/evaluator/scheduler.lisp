@@ -45,19 +45,3 @@
           (free-memory binding)))))
   intermediate-result)
 
-(defun evaluate-kernel (kernel)
-  (let* ((binding-symbols
-           (iterate (for index below (length (bindings kernel)))
-                    (collect (binding-symbol index))))
-         (form
-           `(lambda (target ,@binding-symbols)
-              (%for ,(ranges
-                      (funcall
-                       (inverse (zero-based-transformation (target kernel)))
-                       (index-space kernel)))
-                    ,(recipe kernel)))))
-    (apply
-      (compile-form form)
-      (storage (target kernel))
-      (map 'list #'storage (bindings kernel)))))
-
