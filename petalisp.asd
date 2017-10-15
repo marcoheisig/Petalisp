@@ -33,6 +33,7 @@
        (:file "memoization")
        (:file "miscellaneous" :depends-on ("macros" "testing"))
        (:file "queue")
+       (:file "request")
        (:file "testing")))
      (:file "petalisp" :depends-on ("utilities"))
      (:module "transformations" :depends-on ("petalisp")

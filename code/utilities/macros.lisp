@@ -69,11 +69,11 @@ WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
   `(progn
      (defun ,name (n)
        (with-vector-memoization (n :type symbol)
-         (intern (format nil "~A~D" ,prefix n)))
-       (defun ,(symbolicate name "-LIST") (length)
-         (with-vector-memoization (length :type list)
-           (iterate (for n from (1- length) downto 0)
-                    (collect (,name n) at beginning)))))))
+         (intern (format nil "~A~D" ,prefix n))))
+     (defun ,(symbolicate name "-LIST") (length)
+       (with-vector-memoization (length :type list)
+         (iterate (for n from (1- length) downto 0)
+                  (collect (,name n) at beginning))))))
 
 (define-symbol-pool index-symbol "I")
 

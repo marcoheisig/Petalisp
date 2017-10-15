@@ -8,7 +8,7 @@
   (declare (non-negative-integer u v))
   (macrolet
       ((typed-euclid (type)
-         (let ((fname (symbolicate type "-EUKLID")))
+         (let ((fname (symbolicate type "-EUCLID")))
            ;; This algorithm is a variant of Knuth's Algorithm X from
            ;; TAOCP, Volume 2, but using tail recursion instead of
            ;; iteration and dropping the redundant computation of u2

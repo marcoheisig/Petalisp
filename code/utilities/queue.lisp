@@ -21,9 +21,9 @@
              (setf (queue-tail queue) (cdr (queue-tail queue))))
             (t
              (setf (queue-head queue) new-cons)
-             (setf (queue-tail queue) new-cons)
-             (condition-notify (queue-cvar queue))))
-      item)))
+             (setf (queue-tail queue) new-cons))))
+    (condition-notify (queue-cvar queue))
+    item))
 
 (defun dequeue (queue)
   "Block until an item can be taken from QUEUE and return this item."

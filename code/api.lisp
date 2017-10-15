@@ -73,9 +73,10 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
 
 (defun schedule (&rest objects)
   "Instruct Petalisp to compute all given OBJECTS asynchronously."
-  (schedule-items objects))
+  (schedule-asynchronously objects)
+  (values))
 
 (defun compute (&rest objects)
   "Return the computed values of all OBJECTS."
-  (schedule-items objects)
-  (apply #'values (mapcar #'depetalispify objects)))
+  (wait (schedule-asynchronously objects))
+  (values-list (mapcar #'depetalispify objects)))

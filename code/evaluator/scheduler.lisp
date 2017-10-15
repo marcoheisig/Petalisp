@@ -4,12 +4,13 @@
 
 (define-task-queue global-evaluator-thread)
 
-(defun schedule-items (list-of-items)
-  (assert (every #'strided-array? list-of-items))
-  (when-let ((relevant-items (delete-if #'immediate? list-of-items)))
+(defun schedule-asynchronously (sequence)
+  (assert (every #'strided-array? sequence))
+  (when-let ((relevant-items (delete-if #'immediate? sequence)))
     (let* ((recipes (map 'vector #'shallow-copy relevant-items))
            (targets (map 'vector (λ x (change-class x 'intermediate-result))
-                         relevant-items)))
+                         relevant-items))
+           (request (make-request)))
       (run-in-global-evaluator-thread
        (λ
         (labels ((evaluate (intermediate-result)
@@ -20,8 +21,12 @@
                                          (not (storage binding)))
                                 (evaluate binding))))
                    (evaluate-intermediate-result intermediate-result)))
-          ;;(graphviz-draw-graph 'data-flow-graph (kernelize recipes))
-          (map nil #'evaluate (kernelize recipes))))))))
+          (iterate (for item in-sequence (kernelize recipes))
+                   (for index from 0)
+                   (setf (storage (aref targets index))
+                         (storage (evaluate item))))
+          (complete request))))
+      request)))
 
 (defun evaluate-intermediate-result (intermediate-result)
   ;; allocate memory
@@ -38,8 +43,7 @@
       (when (intermediate-result? binding)
         (when (= 0 (decf (refcount binding)))
           (free-memory binding)))))
-  #+nil
-  (print (storage intermediate-result)))
+  intermediate-result)
 
 (defun evaluate-kernel (kernel)
   (let* ((binding-symbols
