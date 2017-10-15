@@ -17,7 +17,3 @@
   `(:shape "octagon"
     :fillcolor "cornflowerblue"))
 
-(defmethod graphviz-edge-plist append-plist
-    ((purpose data-flow-graph) (a kernel) (b immediate))
-  `(:style "dashed"))
-

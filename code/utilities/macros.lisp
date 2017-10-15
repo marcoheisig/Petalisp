@@ -75,8 +75,6 @@ WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
          (iterate (for n from (1- length) downto 0)
                   (collect (,name n) at beginning))))))
 
-(define-symbol-pool index-symbol "I")
-
 (defmacro maybe-ignore-errors (&body forms)
   `(restart-case (progn ,@forms)
     (ignore ()
@@ -86,6 +84,7 @@ WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
   (check-type thread-name symbol)
   (let ((queue-name (symbolicate thread-name "-TASK-QUEUE")))
     `(progn
+       (defvar ,queue-name (make-queue))
        (defvar ,thread-name
          (make-thread
           (λ (loop
@@ -93,7 +92,6 @@ WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
                 (maybe-ignore-errors
                   (funcall (dequeue ,queue-name))))))
           :name ,(string thread-name)))
-       (defvar ,queue-name (make-queue))
        (defun ,(symbolicate "RUN-IN-" thread-name) (thunk)
          (enqueue thunk ,queue-name)
          (values)))))

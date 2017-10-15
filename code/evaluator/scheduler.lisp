@@ -55,8 +55,9 @@
                       (funcall
                        (inverse (zero-based-transformation (target kernel)))
                        (index-space kernel)))
-                  ,(recipe kernel)))))
-    (apply (compile nil form)
-           (storage (target kernel))
-           (map 'list #'storage (bindings kernel)))))
+                    ,(recipe kernel)))))
+    (apply
+      (compile-form form)
+      (storage (target kernel))
+      (map 'list #'storage (bindings kernel)))))
 

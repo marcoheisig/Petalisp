@@ -19,12 +19,18 @@
                       ,result)))
     result))
 
-(defmacro %application (operator &rest arguments)
-  `(funcall ,operator ,@arguments))
-
 (defmacro %reference (transformation binding-index)
   (let ((indices
           (iterate (for index below (input-dimension transformation))
                    (collect (index-symbol index)))))
     `(aref ,(binding-symbol binding-index)
            ,@(funcall transformation indices))))
+
+(defparameter *compile-cache* (make-hash-table :test #'equalp))
+
+(defun compile-form (form)
+  (with-hash-table-memoization (form :multiple-values nil)
+      *compile-cache*
+    (print "Cache miss!")
+    (print form)
+    (compile nil form)))

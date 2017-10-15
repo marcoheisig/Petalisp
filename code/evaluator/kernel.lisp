@@ -59,15 +59,19 @@
                    (λ (if first-visit?
                           (let ((index
                                   (or (position node *kernel-bindings*)
-                                      (vector-push-extend node *kernel-bindings*))))
+                                      (vector-push-extend node *kernel-bindings*)))
+                                (transformation
+                                  (composition
+                                   (inverse (zero-based-transformation node))
+                                   (composition
+                                    transformation
+                                    (zero-based-transformation data-structure)))))
                             (setf first-visit? nil)
-                            `(%reference
-                              ,(composition
-                                (inverse (zero-based-transformation node))
-                                (composition
-                                 transformation
-                                 (zero-based-transformation data-structure)))
-                              ,index))
+                            `(aref ,(binding-symbol index)
+                                   ,@(funcall
+                                      transformation
+                                      (index-symbol-list
+                                       (input-dimension transformation)))))
                           (signal 'iterator-exhausted))))
                  (etypecase node
                    ;; unconditionally eliminate fusion nodes by path
@@ -101,8 +105,8 @@
                             (map 'vector
                                  (λ x (mkiter x space transformation))
                                  (inputs node))))
-                      (λ `(%application ,(operator node)
-                                        ,@(map 'list #'funcall input-iterators)))))
+                      (λ `(funcall ,(operator node)
+                                   ,@(map 'list #'funcall input-iterators)))))
                    ;; eliminate reference nodes entirely
                    (reference
                     (let ((new-transformation (composition (transformation node) transformation))
@@ -140,3 +144,7 @@
     (%application `(:label ,(format nil "(α ~A)" (second list)) :fillcolor "indianred1"))
     (%reduction `(:label ,(format nil "(β ~A)" (second list)) :fillcolor "indianred3"))
     (%reference `(:label ,(format nil "~A" (second list)) :fillcolor "gray"))))
+
+(defmethod graphviz-edge-plist append-plist
+    ((purpose data-flow-graph) (a kernel) (b immediate))
+  `(:style "dashed"))

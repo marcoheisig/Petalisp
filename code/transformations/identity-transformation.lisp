@@ -25,6 +25,8 @@
 
 (defmethod output-dimension ((I identity-transformation)) (input-dimension I))
 
+(define-symbol-pool index-symbol "I")
+
 (defmethod print-object ((object identity-transformation) stream)
   (let ((index-symbols (index-symbol-list (input-dimension object))))
     (prin1 `(τ ,index-symbols ,@index-symbols) stream)))
