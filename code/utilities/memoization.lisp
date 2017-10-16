@@ -108,10 +108,14 @@ memoization tables, e.g. after the redefinition of a function."
     `(multiple-value-bind (,value ,present-p) ,lookup-form
        (if ,present-p ,value (progn ,@body)))))
 
+;;; This macro is much more specialized than the previous ones. It does not
+;;; handle multiple values and permits only a single integer as key. On the
+;;; other hand, unless key becomes large, it offers blazingly fast
+;;; memoization.
 (defmacro with-vector-memoization
     ((var &key (type t)) &body body)
   "Memoize the value of BODY for VAR being a relatively small integer and
-   BODY returning single values of type TYPE."
+   BODY returning a single value of type TYPE."
   (check-type var symbol)
   (with-gensyms (pool limit)
     `(let ((,pool
