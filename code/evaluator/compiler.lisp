@@ -4,12 +4,12 @@
 
 (defun evaluate-kernel (kernel)
   (let* ((binding-symbols
-           (iterate (for index below (length (bindings kernel)))
+           (iterate (for index below (length (sources kernel)))
                     (collect (binding-symbol index))))
          (target-declaration-specifier
            `(type ,(type-of (storage (target kernel))) target))
          (binding-declaration-specifiers
-           (iterate (for binding in-vector (bindings kernel)
+           (iterate (for binding in-vector (sources kernel)
                          with-index index downto 0)
                     (collect
                         `(type ,(type-of (storage binding))
@@ -27,7 +27,7 @@
                   (index-space kernel)))
                ,(recipe kernel))))
       (storage (target kernel))
-      (map 'list #'storage (bindings kernel)))))
+      (map 'list #'storage (sources kernel)))))
 
 (defparameter *compile-cache* (make-hash-table :test #'equalp))
 

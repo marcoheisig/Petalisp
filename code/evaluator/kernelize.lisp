@@ -59,12 +59,12 @@
           (iterate
             (for kernel in kernels)
             (setf (target kernel) result)
-            (let ((bindings (bindings kernel)))
-              (map-into bindings #'kernelize-node bindings)
-              (map nil (λ binding
-                          (if (intermediate-result? binding)
-                              (pushnew kernel (users binding))))
-                   bindings)))
+            (let ((sources (sources kernel)))
+              (map-into sources #'kernelize-node sources)
+              (map nil (λ source
+                          (if (intermediate-result? source)
+                              (pushnew kernel (users source))))
+                   sources)))
           result))))
 
 (defun make-kernels (data-structure &optional (leaf? #'immediate?))
@@ -73,11 +73,11 @@
   references to objects that satisfy LEAF?."
   (let (kernels)
     (map-recipes
-     (lambda (recipe index-space bindings)
+     (lambda (recipe index-space sources)
        (push (make-instance 'kernel
                :recipe recipe
                :index-space index-space
-               :bindings bindings
+               :sources sources
                :element-type (element-type data-structure))
              kernels))
      data-structure :leaf-test leaf?)

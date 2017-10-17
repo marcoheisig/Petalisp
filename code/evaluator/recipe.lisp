@@ -85,7 +85,7 @@
 ;; the iterator should be factored out as a separate utility...
 (define-condition iterator-exhausted () ())
 
-(defvar *recipe-bindings* nil)
+(defvar *recipe-sources* nil)
 
 (defvar *recipe-space* nil)
 
@@ -104,8 +104,8 @@
              (let ((first-visit? t))
                (λ (if first-visit?
                       (let ((index
-                              (or (position node *recipe-bindings*)
-                                  (vector-push-extend node *recipe-bindings*)))
+                              (or (position node *recipe-sources*)
+                                  (vector-push-extend node *recipe-sources*)))
                             (transformation
                               (composition
                                (inverse (zero-based-transformation (index-space node)))
@@ -171,10 +171,10 @@
                     (dimension data-structure))))
       (handler-case
           (loop
-            (let ((*recipe-bindings* (make-array 6 :fill-pointer 0))
+            (let ((*recipe-sources* (make-array 6 :fill-pointer 0))
                   (*recipe-space* (index-space data-structure)))
               (funcall function
                        (funcall recipe-iterator)
                        *recipe-space*
-                       *recipe-bindings*)))
+                       *recipe-sources*)))
         (iterator-exhausted () (values))))))

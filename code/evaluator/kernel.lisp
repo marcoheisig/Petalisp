@@ -9,7 +9,7 @@
 (define-class kernel (strided-array-immediate)
   ((target :type intermediate-result :accessor target)
    (recipe :type hcons)
-   (bindings :type (vector immediate))))
+   (sources :type (vector immediate))))
 
 (defmethod graphviz-node-plist append-plist
     ((purpose data-flow-graph) (kernel kernel))
@@ -18,7 +18,7 @@
 
 (defmethod graphviz-successors
     ((purpose data-flow-graph) (kernel kernel))
-  (bindings kernel))
+  (sources kernel))
 
 (defmethod graphviz-edge-plist append-plist
     ((purpose data-flow-graph) (a kernel) (b immediate))
