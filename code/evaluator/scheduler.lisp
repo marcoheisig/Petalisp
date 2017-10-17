@@ -4,29 +4,27 @@
 
 (define-task-queue global-evaluator-thread)
 
-(defun schedule-asynchronously (sequence)
-  (assert (every #'strided-array? sequence))
-  (when-let ((relevant-items (delete-if #'immediate? sequence)))
-    (let* ((recipes (map 'vector #'shallow-copy relevant-items))
-           (targets (map 'vector (λ x (change-class x 'intermediate-result))
-                         relevant-items))
-           (request (make-request)))
-      (run-in-global-evaluator-thread
-       (λ
-        (labels ((evaluate (intermediate-result)
-                   (iterate
-                     (for kernel in (kernels intermediate-result))
-                     (iterate (for binding in-vector (bindings kernel))
-                              (when (and (intermediate-result? binding)
-                                         (not (storage binding)))
-                                (evaluate binding))))
-                   (evaluate-intermediate-result intermediate-result)))
-          (iterate (for item in-sequence (kernelize recipes))
-                   (for index from 0)
-                   (setf (storage (aref targets index))
-                         (storage (evaluate item))))
-          (complete request))))
-      request)))
+(defun schedule-asynchronously (data-structures)
+  (assert (every #'strided-array? data-structures))
+  (let* ((recipes (map 'vector #'shallow-copy data-structures))
+         (targets (map 'vector (λ x (change-class x 'intermediate-result)) data-structures))
+         (request (make-request)))
+    (run-in-global-evaluator-thread
+     (λ
+      (labels ((evaluate (intermediate-result)
+                 (iterate
+                   (for kernel in (kernels intermediate-result))
+                   (iterate (for binding in-vector (bindings kernel))
+                            (when (and (intermediate-result? binding)
+                                       (not (storage binding)))
+                              (evaluate binding))))
+                 (evaluate-intermediate-result intermediate-result)))
+        (iterate (for item in-sequence (kernelize recipes))
+                 (for index from 0)
+                 (setf (storage (aref targets index))
+                       (storage (evaluate item))))
+        (complete request))))
+    request))
 
 (defun evaluate-intermediate-result (intermediate-result)
   ;; allocate memory

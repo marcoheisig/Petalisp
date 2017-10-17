@@ -15,7 +15,7 @@
 
 (declaim (inline hcons))
 (defun hcons (car cdr)
-  "Return the unique hcons whose car and cdr are EQUAL to the given CAR and CDR,
+  "Return the unique hcons whose car and cdr are EQL to the given CAR and CDR,
    respectively."
   (with-unsafe-optimizations
     (flet ((hash (x)
@@ -31,8 +31,8 @@
       (let ((key (mix (hash car) (hash cdr))))
         (if-let ((lookup (find-if (lambda (hcons)
                                     (declare (hcons hcons))
-                                    (and (equal car (hcons-car hcons))
-                                         (equal cdr (hcons-cdr hcons))))
+                                    (and (eql car (hcons-car hcons))
+                                         (eql cdr (hcons-cdr hcons))))
                                   (the list (gethash key *hcons-table*)))))
           (values lookup nil)
           (let ((new-hcons (%make-hcons car cdr key)))
@@ -42,6 +42,17 @@
 (defun hlist (&rest args)
   (declare (dynamic-extent args))
   (reduce #'hcons args :from-end t :initial-value nil))
+
+(defun hlist* (first &rest rest)
+  (declare (dynamic-extent rest))
+  (labels ((%hlist* (first rest)
+             (if (null rest)
+                 (progn (check-type first (or hcons null)) first)
+                 (hcons first (%hlist* (car rest) (cdr rest))))))
+    (%hlist* first rest)))
+
+(defun hlength (hlist)
+  (loop while hlist count t do (setf hlist (hcons-cdr hlist))))
 
 (defmethod print-object ((hcons hcons) stream)
   (prog1 hcons

@@ -73,7 +73,8 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
 
 (defun schedule (&rest objects)
   "Instruct Petalisp to compute all given OBJECTS asynchronously."
-  (schedule-asynchronously objects)
+  (when-let ((relevant-objects (delete-if #'immediate? objects)))
+    (schedule-asynchronously relevant-objects))
   (values))
 
 (defun compute (&rest objects)

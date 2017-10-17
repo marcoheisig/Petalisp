@@ -29,23 +29,6 @@
       (storage (target kernel))
       (map 'list #'storage (bindings kernel)))))
 
-(define-symbol-pool binding-symbol "A")
-
-(defmacro %for (ranges body)
-  (let* ((indices (iterate (for index below (length ranges))
-                           (collect (index-symbol index))))
-         (result `(setf (aref target ,@indices) ,body)))
-    (iterate
-      (for range in-vector ranges)
-      (for index from 0)
-      (setf result
-            `(iterate (for (the fixnum ,(index-symbol index))
-                           from ,(range-start range)
-                           by   ,(range-step range)
-                           to   ,(range-end range))
-                      ,result)))
-    result))
-
 (defparameter *compile-cache* (make-hash-table :test #'equalp))
 
 (defun compile-form (form)

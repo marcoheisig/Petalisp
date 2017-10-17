@@ -2,33 +2,50 @@
 
 (in-package :petalisp)
 
+;;; Each Petalisp kernel consists of several input data structures, a
+;;; single output data structure (WIP: support multiple values) and a
+;;; recipe.
+
 (define-class kernel (strided-array-immediate)
   ((target :type intermediate-result :accessor target)
-   (recipe)
+   (recipe :type hcons)
    (bindings :type (vector immediate))))
+
+(defmethod graphviz-node-plist append-plist
+    ((purpose data-flow-graph) (kernel kernel))
+  `(:shape "box"
+    :fillcolor "skyblue"))
+
+(defmethod graphviz-successors
+    ((purpose data-flow-graph) (kernel kernel))
+  (bindings kernel))
+
+(defmethod graphviz-edge-plist append-plist
+    ((purpose data-flow-graph) (a kernel) (b immediate))
+  `(:style "dashed"))
 
 ;; the iterator should be factored out as a separate utility...
 (define-condition iterator-exhausted () ())
 
-(defvar *kernel-bindings* nil)
+(defvar *recipe-bindings* nil)
 
-(defvar *kernel-space* nil)
+(defvar *recipe-space* nil)
 
-(defun generate-kernels (data-structure leaf?)
+(defun make-kernels (data-structure &optional (leaf? #'immediate?))
   "Return a list of kernels to compute DATA-STRUCTURE. The recipe of each
   kernel is a tree of applications and reductions, whose leaves are
   references to objects that satisfy LEAF?."
   (let ((recipe-iterator (make-recipe-iterator data-structure leaf?))
         kernels)
     (handler-case
-        (loop (let* ((*kernel-bindings* (make-array 6 :fill-pointer 0))
-                     (*kernel-space* (index-space data-structure))
+        (loop (let* ((*recipe-bindings* (make-array 6 :fill-pointer 0))
+                     (*recipe-space* (index-space data-structure))
                      (recipe (funcall recipe-iterator)))
-                (when *kernel-space*
+                (when *recipe-space*
                   (push (make-instance 'kernel
                           :recipe recipe
-                          :bindings *kernel-bindings*
-                          :index-space *kernel-space*
+                          :bindings *recipe-bindings*
+                          :index-space *recipe-space*
                           :element-type (element-type data-structure))
                         kernels))))
       (iterator-exhausted ()))
@@ -48,18 +65,15 @@
 (defun make-recipe-iterator (data-structure leaf?)
   "A recipe iterator is a THUNK that yields upon each iteration either a
   new recipe, or NIL, when there are no more recipes."
-  (labels ((mkiter (node space transformation)
-             ;; TRANSFORMATION is a mapping from the iteration space to the
-             ;; current index space
-
+  (labels ((mkiter (node space transformation depth)
              ;; convert leaf nodes to an iterator with a single value
              (if (or (strided-array-constant? node)
                      (funcall leaf? node))
                  (let ((first-visit? t))
                    (λ (if first-visit?
                           (let ((index
-                                  (or (position node *kernel-bindings*)
-                                      (vector-push-extend node *kernel-bindings*)))
+                                  (or (position node *recipe-bindings*)
+                                      (vector-push-extend node *recipe-bindings*)))
                                 (transformation
                                   (composition
                                    (inverse (zero-based-transformation node))
@@ -67,11 +81,7 @@
                                     transformation
                                     (zero-based-transformation data-structure)))))
                             (setf first-visit? nil)
-                            `(aref ,(binding-symbol index)
-                                   ,@(funcall
-                                      transformation
-                                      (index-symbol-list
-                                       (input-dimension transformation)))))
+                            (%reference (%source index) (%indices transformation)))
                           (signal 'iterator-exhausted))))
                  (etypecase node
                    ;; unconditionally eliminate fusion nodes by path
@@ -81,7 +91,7 @@
                    (fusion
                     (let ((input-iterators
                             (map 'vector
-                                 (λ input (mkiter input (index-space input) transformation))
+                                 (λ input (mkiter input (index-space input) transformation depth))
                                  (inputs node)))
                           (spaces (map 'vector #'index-space (inputs node)))
                           (index 0))
@@ -95,7 +105,7 @@
                                                  (funcall (inverse transformation)
                                                           (aref spaces index)))))
                                      (when space
-                                       (setf *kernel-space* space)
+                                       (setf *recipe-space* space)
                                        (return (funcall input-iterator))))
                                  (iterator-exhausted ())))
                            (incf index)))))
@@ -103,10 +113,13 @@
                    (application
                     (let ((input-iterators
                             (map 'vector
-                                 (λ x (mkiter x space transformation))
+                                 (λ x (mkiter x space transformation depth))
                                  (inputs node))))
-                      (λ `(funcall ,(operator node)
-                                   ,@(map 'list #'funcall input-iterators)))))
+                      (λ
+                       (let (args)
+                         (iterate (for input-iterator in-vector input-iterators downto 0)
+                                  (setf args (hcons (funcall input-iterator) args)))
+                         (%call (operator node) args)))))
                    ;; eliminate reference nodes entirely
                    (reference
                     (let ((new-transformation (composition (transformation node) transformation))
@@ -114,37 +127,13 @@
                                   space
                                   (funcall (inverse transformation)
                                            (index-space node)))))
-                      (mkiter (input node) space new-transformation)))
+                      (mkiter (input node) space new-transformation depth)))
                    ;; reduction nodes
                    (reduction
-                    (let ((input-iterator (mkiter (input node) space transformation)))
-                      (λ `(%reduction ,(operator node) ,(funcall input-iterator)))))))))
+                    (let ((input-iterator (mkiter (input node) space transformation (1+ depth))))
+                      (λ (%reduce (%range depth) (operator node) (funcall input-iterator)))))))))
     (mkiter
      data-structure
      (index-space data-structure)
-     (make-identity-transformation (dimension data-structure)))))
-
-(defmethod graphviz-node-plist append-plist
-    ((purpose data-flow-graph) (kernel kernel))
-  `(:shape "box"
-    :fillcolor "skyblue"))
-
-(defmethod graphviz-successors
-    ((purpose data-flow-graph) (kernel kernel))
-  (list* (recipe kernel) (map 'list #'identity (bindings kernel))))
-
-(defmethod graphviz-successors ((purpose data-flow-graph) (list cons))
-  (ecase (car list)
-    (%application (cddr list))
-    (%reduction (cddr list))
-    (%reference nil)))
-
-(defmethod graphviz-node-plist append-plist ((purpose data-flow-graph) (list cons))
-  (ecase (car list)
-    (%application `(:label ,(format nil "(α ~A)" (second list)) :fillcolor "indianred1"))
-    (%reduction `(:label ,(format nil "(β ~A)" (second list)) :fillcolor "indianred3"))
-    (%reference `(:label ,(format nil "~A" (second list)) :fillcolor "gray"))))
-
-(defmethod graphviz-edge-plist append-plist
-    ((purpose data-flow-graph) (a kernel) (b immediate))
-  `(:style "dashed"))
+     (make-identity-transformation (dimension data-structure))
+     (dimension data-structure))))
