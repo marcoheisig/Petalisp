@@ -114,26 +114,25 @@
                ;; reason why we use tree iterators. A fusion node with
                ;; N inputs returns an iterator returning N recipes.
                (fusion
-                (let ((input-iterators
-                        (map 'vector
-                             (λ input (mkiter input (index-space input) transformation depth))
-                             (inputs node)))
-                      (spaces (map 'vector #'index-space (inputs node)))
-                      (index 0))
+                (let* ((max-size (length (inputs node)))
+                       (input-iterators (make-array max-size :fill-pointer 0))
+                       (iteration-spaces (make-array max-size :fill-pointer 0)))
+                  (iterate
+                    (for input in-sequence (inputs node))
+                    (for subspace = (index-space input))
+                    (when-let ((relevant-space (intersection space subspace)))
+                      (vector-push (funcall (inverse transformation) relevant-space)
+                                   iteration-spaces)
+                      (vector-push (mkiter input relevant-space transformation depth)
+                                   input-iterators)))
                   (λ (loop
-                       (if (= index (length input-iterators))
+                       (if (= 0 (fill-pointer input-iterators))
                            (signal 'iterator-exhausted)
                            (handler-case
-                               (let ((input-iterator (aref input-iterators index))
-                                     (space (intersection
-                                             space
-                                             (funcall (inverse transformation)
-                                                      (aref spaces index)))))
-                                 (when space
-                                   (setf *recipe-space* space)
-                                   (return (funcall input-iterator))))
-                             (iterator-exhausted ())))
-                       (incf index)))))
+                               (progn
+                                 (setf *recipe-space* (vector-pop iteration-spaces))
+                                 (return (funcall (vector-pop input-iterators))))
+                             (iterator-exhausted ())))))))
                ;; application nodes simply call the iterator of each input
                (application
                 (let ((input-iterators
