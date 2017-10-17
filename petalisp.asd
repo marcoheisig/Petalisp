@@ -27,6 +27,7 @@
        (:file "function-lambda-lists")
        (:file "generic-funcallable-objects")
        (:file "graphviz")
+       (:file "hcons")
        (:file "iterate")
        (:file "macros")
        (:file "matrix" :depends-on ("macros" "testing"))

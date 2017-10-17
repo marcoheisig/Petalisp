@@ -43,8 +43,10 @@
 (defun kernelize-node (data-structure)
   "Return a kernel whose evaluation is equivalent to the evaluation of
   DATA-STRUCTURE. Furthermore, add the kernel to the *KERNEL-TABLE*."
-  (flet ((leaf? (node) (and (not (eq node data-structure))
-                            (/= (length (gethash node *use-table*)) 1))))
+  (flet ((leaf? (node)
+           (or (immediate? node)
+               (and (not (eq node data-structure))
+                    (/= (length (gethash node *use-table*)) 1)))))
     (or (gethash data-structure *kernel-table*) ; memoize calls to this function
         (and (immediate? data-structure) data-structure)
         (let* ((kernels (make-kernels data-structure #'leaf?))
@@ -65,3 +67,18 @@
                    bindings)))
           result))))
 
+(defun make-kernels (data-structure &optional (leaf? #'immediate?))
+  "Return a list of kernels to compute DATA-STRUCTURE. The recipe of each
+  kernel is a tree of applications and reductions, whose leaves are
+  references to objects that satisfy LEAF?."
+  (let (kernels)
+    (map-recipes
+     (lambda (recipe index-space bindings)
+       (push (make-instance 'kernel
+               :recipe recipe
+               :index-space index-space
+               :bindings bindings
+               :element-type (element-type data-structure))
+             kernels))
+     data-structure :leaf-test leaf?)
+    kernels))
