@@ -7,8 +7,7 @@
 ;;; function has already been generated and compiled. The latter case is
 ;;; expected to be far more frequent, so the primary purpose of a recipe is
 ;;; to select an existing function as fast as possible and without
-;;; consing. To achieve this, the recipe is stored as a tree of hash
-;;; conses.
+;;; consing.
 
 (defmacro define-recipe-grammar (&body definitions)
   `(progn
@@ -21,11 +20,11 @@
                (collect
                    `(defun ,name ,lambda-list
                       ,(if variadic?
-                           `(hlist* ',name ,@lambda-list)
-                           `(hlist ',name ,@lambda-list))))
+                           `(list* ',name ,@lambda-list)
+                           `(list ',name ,@lambda-list))))
                (collect
                    `(defun ,(symbolicate name "?") (x)
-                      (and (hconsp x) (eq (hcons-car x) ',name))))))))))
+                      (and (consp x) (eq (car x) ',name))))))))))
 
 ;;; The grammar of a recipe is:
 
@@ -37,12 +36,12 @@
   (%reduce     := (%range operator expression))
   (%accumulate := (%range operator initial-value expression))
   (%for        := (%range expression))
-  (%index      :? (symbol rational rational))
-  (%source     :? (symbol))
-  (%target     :? (symbol))
-  (%range      :? (symbol))
+  (%index      :? (cons symbol (cons rational (cons rational null))))
+  (%source     :? symbol)
+  (%target     :? symbol)
+  (%range      :? symbol)
   (expression  :? (or %reference %store %call %reduce %accumulate %for))
-  (range-info  :? (hlist min-size max-size step))
+  (range-info  :? (cons (integer 0 *) (cons (integer 0 *) (cons (integer 1 *) null))))
   (target-info :? petalisp-type-specifier)
   (source-info :? petalisp-type-specifier))
 
@@ -54,21 +53,17 @@
 (defgeneric %indices (transformation)
   (:method ((transformation identity-transformation))
     (let ((dimension (input-dimension transformation))
-          (zeros (load-time-value (hlist 0 0))))
+          (zeros '(0 0)))
       (with-vector-memoization (dimension)
-        (let (result)
-          (iterate
-            (for index from (1- dimension) downto 0)
-            (setf result (hcons (hcons (%index index) zeros) result)))
-          result))))
+        (iterate
+          (for index from (1- dimension) downto 0)
+          (collect (cons (%index index) zeros) at beginning)))))
   (:method ((transformation affine-transformation))
-    (let (result)
-      (iterate
-        (for column in-vector (spm-column-indices (linear-operator transformation)) downto 0)
-        (for value in-vector (spm-values (linear-operator transformation)) downto 0)
-        (for offset in-vector (translation-vector transformation) downto 0)
-        (setf result (hcons (hlist (%index column) value offset) result)))
-      result)))
+    (iterate
+      (for column in-vector (spm-column-indices (linear-operator transformation)) downto 0)
+      (for value in-vector (spm-values (linear-operator transformation)) downto 0)
+      (for offset in-vector (translation-vector transformation) downto 0)
+      (collect (list (%index column) value offset) at beginning))))
 
 ;; ugly
 (defun zero-based-transformation (index-space)
@@ -90,8 +85,8 @@
 (defvar *recipe-space* nil)
 
 (defun map-recipes (function data-structure &key (leaf-test #'immediate?))
-  "Apply FUNCTION to all recipes that compute values of DATA-STRUCTURE
-   and reference data-structures that satisfy LEAF-TEST.
+  "Invoke FUNCTION for every recipe that computes values of DATA-STRUCTURE
+   and references data-structures that satisfy LEAF-TEST.
 
    For every recipe, FUNCTION receives the following arguments:
    1. the recipe
@@ -109,9 +104,7 @@
                             (transformation
                               (composition
                                (inverse (zero-based-transformation (index-space node)))
-                               (composition
-                                transformation
-                                (zero-based-transformation (index-space data-structure))))))
+                               transformation)))
                         (setf first-visit? nil)
                         (%reference (%source index) (%indices transformation)))
                       (signal 'iterator-exhausted))))
@@ -150,7 +143,7 @@
                   (λ
                    (let (args)
                      (iterate (for input-iterator in-vector input-iterators downto 0)
-                              (setf args (hcons (funcall input-iterator) args)))
+                              (setf args (cons (funcall input-iterator) args)))
                      (%call (operator node) args)))))
                ;; eliminate reference nodes entirely
                (reference
@@ -167,7 +160,7 @@
     (let ((recipe-iterator
             (mkiter data-structure
                     (index-space data-structure)
-                    (make-identity-transformation (dimension data-structure))
+                    (zero-based-transformation (index-space data-structure))
                     (dimension data-structure))))
       (handler-case
           (loop
