@@ -11,6 +11,7 @@
    :fiveam
    :iterate
    :optima
+   :the-cost-of-nothing
    :trivial-garbage
    :uiop)
 
