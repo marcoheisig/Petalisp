@@ -49,7 +49,7 @@
         (setf (row-major-aref result index) (funcall element-generator)))
       result)))
 
-(defun random-array (&optional (dimension 2) (length 5))
+(defun random-array (&optional (dimension 2) (length 9))
   (funcall (array-generator
             :dimensions (make-list dimension :initial-element length)
             :element-type 'double-float

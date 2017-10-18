@@ -73,7 +73,7 @@
   references to objects that satisfy LEAF?."
   (let (kernels)
     (map-recipes
-     (lambda (recipe index-space sources)
+     (lambda (recipe index-space ranges sources)
        (push (make-instance 'kernel
                :recipe recipe
                :index-space index-space
