@@ -43,10 +43,11 @@
            (every #'zerop b)
            (identity-matrix? A))
       (make-identity-transformation (length input-constraints))
-      (make-instance 'affine-transformation
-        :input-constraints input-constraints
-        :linear-operator A
-        :translation-vector b)))
+      (with-memoization ((list input-constraints A b) :test #'equalp)
+        (make-instance 'affine-transformation
+          :input-constraints input-constraints
+          :linear-operator A
+          :translation-vector b))))
 
 (defmethod input-dimension ((instance affine-transformation))
   (length (input-constraints instance)))
@@ -76,6 +77,10 @@
        (equal? (linear-operator t1)
                (linear-operator t2))))
 
+(defmethod composition :around ((g affine-transformation) (f affine-transformation))
+  (with-memoization ((cons f g) :test #'equal)
+    (call-next-method)))
+
 (defmethod composition ((g affine-transformation) (f affine-transformation))
   ;; A2 (A1 x + b1) + b2 = A2 A1 x + A2 b1 + b2
   (let ((A1 (linear-operator f))
@@ -89,6 +94,10 @@
        input-constraints
        linear-operator
        translation-vector))))
+
+(defmethod inverse :around ((transformation affine-transformation))
+  (with-memoization (transformation :test #'eq)
+    (call-next-method)))
 
 (defmethod inverse :before ((transformation affine-transformation))
   (let ((effective-input-dimension
