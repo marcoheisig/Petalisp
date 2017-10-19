@@ -14,10 +14,10 @@
       (labels ((evaluate (intermediate-result)
                  (iterate
                    (for kernel in (kernels intermediate-result))
-                   (iterate (for binding in-vector (bindings kernel))
-                            (when (and (intermediate-result? binding)
-                                       (not (storage binding)))
-                              (evaluate binding))))
+                   (iterate (for source in-vector (sources kernel))
+                            (when (and (intermediate-result? source)
+                                       (not (storage source)))
+                              (evaluate source))))
                  (evaluate-intermediate-result intermediate-result)))
         (iterate (for item in-sequence (kernelize recipes))
                  (for index from 0)
@@ -37,9 +37,9 @@
     (evaluate-kernel kernel)
     ;; potentially free predecessor memory
     (iterate
-      (for binding in-vector (bindings kernel))
-      (when (intermediate-result? binding)
-        (when (= 0 (decf (refcount binding)))
-          (free-memory binding)))))
+      (for source in-vector (sources kernel))
+      (when (intermediate-result? source)
+        (when (= 0 (decf (refcount source)))
+          (free-memory source)))))
   intermediate-result)
 

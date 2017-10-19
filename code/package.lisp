@@ -10,6 +10,8 @@
   (:shadowing-import-from :trivial-garbage #:make-hash-table)
   ;; portable OS interface
   (:import-from :uiop #:run-program #:with-temporary-file #:native-namestring)
+  ;; benchmark utilities
+  (:import-from :the-cost-of-nothing #:bench #:nbench #:benchmark)
   ;; everyone needs a code walker
   (:import-from :agnostic-lizard
                 #:macroexpand-all #:walk-form

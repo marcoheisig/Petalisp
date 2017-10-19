@@ -3,24 +3,24 @@
 (in-package :petalisp)
 
 (defun evaluate-kernel (kernel)
-  (let* ((binding-symbols
+  (let* ((source-symbols
            (iterate (for index below (length (sources kernel)))
-                    (collect (binding-symbol index))))
+                    (collect (%source index))))
          (target-declaration-specifier
            `(type ,(type-of (storage (target kernel))) target))
-         (binding-declaration-specifiers
-           (iterate (for binding in-vector (sources kernel)
+         (source-declaration-specifiers
+           (iterate (for source in-vector (sources kernel)
                          with-index index downto 0)
                     (collect
-                        `(type ,(type-of (storage binding))
-                               ,(binding-symbol index))
+                        `(type ,(type-of (storage source))
+                               ,(%source index))
                       at beginning))))
     (apply
      (compile-form
-      `(lambda (target ,@binding-symbols)
+      `(lambda (target ,@source-symbols)
          (declare
           ,target-declaration-specifier
-          ,@binding-declaration-specifiers)
+          ,@source-declaration-specifiers)
          (%for ,(ranges
                  (funcall
                   (inverse (zero-based-transformation (target kernel)))
