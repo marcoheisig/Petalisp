@@ -21,24 +21,24 @@
 ;;; of a subclass of graph. For a simple example on how to add new types of
 ;;; graphs, see the bottom of this file.
 
-(defclass graph () ())
+(defclass graphviz-graph () ())
 
 (defgeneric graphviz-successors (purpose node)
-  (:method ((purpose graph) (node t)) nil))
+  (:method ((purpose graphviz-graph) (node t)) nil))
 
 (defgeneric graphviz-graph-plist (purpose)
   (:method-combination append-plist)
-  (:method append-plist ((purpose graph)) nil))
+  (:method append-plist ((purpose graphviz-graph)) nil))
 
 (defgeneric graphviz-node-plist (purpose node)
   (:method-combination append-plist)
-  (:method append-plist ((purpose graph) (node t))
+  (:method append-plist ((purpose graphviz-graph) (node t))
     (list :label (with-output-to-string (stream)
                    (print-object node stream)))))
 
 (defgeneric graphviz-edge-plist (purpose from to)
   (:method-combination append-plist)
-  (:method append-plist ((purpose graph) (from t) (to t))
+  (:method append-plist ((purpose graphviz-graph) (from t) (to t))
     (list :color "black")))
 
 (defparameter *graphviz-pdf-viewer* "evince")
@@ -60,6 +60,7 @@
         (call-next-method)
         (with-temporary-file (:stream stream :pathname dotfile :direction :output)
           (call-next-method purpose graph-roots stream)
+          (finish-output stream)
           :close-stream
           (with-temporary-file (:pathname imagefile)
             (run-program (list "dot" "-Tpdf" "-o"
@@ -108,7 +109,7 @@
 ;;;
 ;;; example: draw the class hierarchy of the current lisp image
 
-(defclass class-hierarchy (graph) ())
+(defclass class-hierarchy (graphviz-graph) ())
 
 (defmethod graphviz-successors ((purpose class-hierarchy) (node class))
   ;; Show only classes that are accessible in the current package and all
