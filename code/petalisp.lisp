@@ -17,10 +17,14 @@
 
 (define-class data-structure ()
   ((element-type :initform t)
-   (inputs :type list))
+   (inputs :type list :initform nil)
+   (refcount :type non-negative-fixnum :initform 0 :accessor refcount))
   (:documentation
    "A data structure of dimension D is a mapping from indices i1,...,iD to
    values of type ELEMENT-TYPE."))
+
+(defmethod initialize-instance :after ((instance data-structure) &key &allow-other-keys)
+  (map nil (λ input (incf (refcount input))) (inputs instance)))
 
 (define-class immediate (data-structure)
   ((inputs :initform nil :type null :allocation :class))

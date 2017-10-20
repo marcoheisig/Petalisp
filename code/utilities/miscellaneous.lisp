@@ -84,7 +84,3 @@
   (typecase object
     (sequence object)
     (t (list object))))
-
-(defmacro benchmark (form)
-  `(the-cost-of-nothing::as-time
-    (the-cost-of-nothing:benchmark ,form)))
