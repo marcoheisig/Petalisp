@@ -27,6 +27,12 @@
   (is-true (identical '(1 2.0 6/2 4d0) :key #'numberp :test #'eq))
   (is-true (identical "aaaAaa" :test #'char= :key #'char-upcase)))
 
+(declaim (inline ensure-sequence))
+(defun ensure-sequence (object)
+  (typecase object
+    (sequence object)
+    (t (list object))))
+
 (defun array-map (function result &rest arrays)
   (check-type function function)
   (assert (identical (cons result arrays) :key #'array-dimensions :test #'equal)
@@ -78,9 +84,3 @@
                        (populate-inverse-table child)))))
            graph-roots)
       table)))
-
-(declaim (inline ensure-sequence))
-(defun ensure-sequence (object)
-  (typecase object
-    (sequence object)
-    (t (list object))))

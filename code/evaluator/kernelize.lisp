@@ -28,35 +28,15 @@
 ;;; kernels. The hash table *KERNEL-TABLE* memoizes repeated calls to
 ;;; KERNELIZE-NODE.
 
-(defun from-storage-transformation (index-space)
-  (let ((ranges (ranges index-space))
-        (dimension (dimension index-space)))
-    (make-affine-transformation
-     (make-array dimension :initial-element nil)
-     (scaled-permutation-matrix
-      dimension dimension
-      (apply #'vector (iota dimension))
-      (map 'vector #'range-step ranges))
-     (map 'vector #'range-start ranges))))
-
-(defgeneric make-corresponding-immediate (data-structure)
-  (:method ((immediate immediate)) immediate)
-  (:method ((strided-array strided-array))
-    (let* ((space (index-space strided-array))
-           (from-storage (from-storage-transformation space))
-           (to-storage (inverse from-storage)))
-      (make-instance 'strided-array-immediate
-        :element-type (element-type strided-array)
-        :index-space (index-space strided-array)
-        :to-storage to-storage
-        :from-storage from-storage))))
-
-(defun corresponding-immediate-function (graph-roots)
-  "Given a data flow graph specified by the given GRAPH-ROOTS, return a
-  function that maps each node to its corresponding immediate, or to NIL,
-  when the node has only a single user and is not itself an immediate."
-  (let ((table (make-hash-table :test #'eq)))
-    (labels ((traverse (node)
+(defun build-dependency-graph (graph-roots)
+  (let ((table (make-hash-table :test #'eq))
+        (roots (ensure-sequence graph-roots)))
+    ;; step 1 - define a mapping from nodes to immediate values
+    (labels ((register (node)
+               (setf (gethash node table)
+                     (corresponding-immediate node))
+               (values))
+             (traverse (node)
                (if (or (< (refcount node) 2)
                        (immediate? node))
                    (traverse-inputs node)
@@ -66,17 +46,35 @@
                             (setf (gethash node table) nil)
                             (traverse-inputs node))
                            ((and recurring (not value))
-                            (setf (gethash node table)
-                                  (make-corresponding-immediate node))
-                            (values))))))
+                            (register node))))))
              (traverse-inputs (node)
                (dolist (input (inputs node))
                  (traverse input))))
-      (map nil #'traverse (ensure-sequence graph-roots))
-      (lambda (node)
-        (cond ((< (refcount node) 2) nil)
-              ((immediate? node) node)
-              (t (values (gethash node table))))))))
+      (map nil #'register roots)
+      (map nil #'traverse roots))
+    ;; step 2 - determine the users and dependencies of each immediate
+    (labels
+        ((corresponding-immediate (node)
+           (cond ((< (refcount node) 2) nil)
+                 ((immediate? node) node)
+                 (t (values (gethash node table)))))
+         (register-edge (user dependency)
+           (fvector-pushnew user (users dependency))
+           (fvector-pushnew dependency (dependencies user)))
+         (determine-dependencies (root)
+           (when root
+             (let ((target (corresponding-immediate root)))
+               (labels ((traverse (node)
+                          (if-let ((dependency (corresponding-immediate node)))
+                            (register-edge target dependency)
+                            (traverse-inputs node)))
+                        (traverse-inputs (node)
+                          (dolist (input (inputs node))
+                            (traverse input))))
+                 (traverse-inputs root))))))
+      (maphash-values #'determine-dependencies table))
+    ;; step 3 - determine the kernels of each immediate
+    ))
 
 (defvar *use-table* nil)
 
