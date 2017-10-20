@@ -2,33 +2,6 @@
 
 (in-package :petalisp)
 
-(defun evaluate-kernel (kernel)
-  (let* ((source-symbols
-           (iterate (for index below (length (sources kernel)))
-                    (collect (%source index))))
-         (target-declaration-specifier
-           `(type ,(type-of (storage (target kernel))) target))
-         (source-declaration-specifiers
-           (iterate (for source in-vector (sources kernel)
-                         with-index index downto 0)
-                    (collect
-                        `(type ,(type-of (storage source))
-                               ,(%source index))
-                      at beginning))))
-    (apply
-     (compile-form
-      `(lambda (target ,@source-symbols)
-         (declare
-          ,target-declaration-specifier
-          ,@source-declaration-specifiers)
-         (%for ,(ranges
-                 (funcall
-                  (inverse (zero-based-transformation (target kernel)))
-                  (index-space kernel)))
-               ,(recipe kernel))))
-      (storage (target kernel))
-      (map 'list #'storage (sources kernel)))))
-
 (defparameter *compile-cache* (make-hash-table :test #'equalp))
 
 (defun compile-form (form)

@@ -52,8 +52,6 @@
     :index-space space
     :transformation transformation))
 
-(define-class strided-array-immediate (strided-array immediate) ())
-
 (defmethod broadcast ((object strided-array) (space strided-array-index-space))
   (let ((transformation
           (let ((input-dimension (dimension space))

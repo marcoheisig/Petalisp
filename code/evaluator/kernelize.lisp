@@ -61,10 +61,8 @@
             (setf (target kernel) result)
             (let ((sources (sources kernel)))
               (map-into sources #'kernelize-node sources)
-              (map nil (λ source
-                          (if (intermediate-result? source)
-                              (pushnew kernel (users source))))
-                   sources)))
+              ;(map nil (λ source (if (immediate? source) (fvector-pushnew kernel (users source)))) sources)
+              ))
           result))))
 
 (defun make-kernels (data-structure &optional (leaf? #'immediate?))

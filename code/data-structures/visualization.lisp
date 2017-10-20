@@ -23,6 +23,19 @@
                     (index-space node))))
 
 (defmethod graphviz-node-plist append-plist
+    ((purpose data-flow-graph) (node strided-array-immediate))
+  `(:shape "octagon"
+    :fillcolor "cornflowerblue"
+    ,@(when-let ((storage (storage node)))
+        (let ((*print-right-margin* 60))
+          `(:label
+            ,(format nil "~A~%~A~%~A"
+                     (class-name (class-of node))
+                     (index-space node)
+                     (let ((*print-length* 8))
+                       (format nil "~A" (storage node)))))))))
+
+(defmethod graphviz-node-plist append-plist
     ((purpose data-flow-graph) (node application))
   `(:label ,(format nil "~A~%~A~%~A"
                     (class-name (class-of node))
@@ -40,10 +53,7 @@
 
 (defmethod graphviz-node-plist append-plist
     ((purpose data-flow-graph) (node fusion))
-  `(:label ,(format nil "~A~%~A"
-                    (class-name (class-of node))
-                    (index-space node))
-    :fillcolor "cornflowerblue"))
+  `(:fillcolor "cyan3"))
 
 (defmethod graphviz-node-plist append-plist
     ((purpose data-flow-graph) (node reference))
@@ -53,18 +63,8 @@
                     (index-space node))
     :fillcolor "gray"))
 
-(defmethod graphviz-node-plist append-plist
-    ((purpose data-flow-graph) (node strided-array-constant))
-  `(:label ,(let ((*print-right-margin* 60))
-              (format nil "~A~%~A~%~A"
-                      (class-name (class-of node))
-                      (index-space node)
-                      (let ((*print-length* 8))
-                        (format nil "~A" (storage node)))))
-    :fillcolor "gray55"))
-
 (defmethod graphviz-edge-plist append-plist
-    ((purpose data-flow-graph) (node-1 t) (node-2 t))
+    ((purpose data-flow-graph) (node-1 data-structure) (node-2 data-structure))
   `(:dir "back"))
 
 ;;; Graphviz plots of Petalisp data flow graphs are often obfuscated by a
@@ -75,4 +75,4 @@
 
 (defmethod graphviz-successors :around
     ((purpose simplified-data-flow-graph) (node t))
-  (remove-if #'strided-array-constant? (call-next-method)))
+  (remove-if #'strided-array-immediate? (call-next-method)))

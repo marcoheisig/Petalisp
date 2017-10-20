@@ -129,7 +129,7 @@
    "Return the number of dimensions of OBJECT.")
   (:method ((object t)) 0)
   (:method ((list list)) (length list))
-  (:method ((array array)) (length (array-dimensions array)))
+  (:method ((array array)) (array-rank array))
   (:method ((data-structure data-structure))
     (dimension (index-space data-structure))))
 
