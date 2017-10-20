@@ -65,18 +65,6 @@
       (for offset in-vector (translation-vector transformation) downto 0)
       (collect (list (%index column) value offset) at beginning))))
 
-;; ugly
-(defun zero-based-transformation (index-space)
-  (let* ((ranges (ranges index-space))
-         (dimension (length ranges)))
-    (make-affine-transformation
-     (make-array dimension :initial-element nil)
-     (scaled-permutation-matrix
-      dimension dimension
-      (apply #'vector (iota dimension))
-      (map 'vector #'range-step ranges))
-     (map 'vector #'range-start ranges))))
-
 (defun range-information (range)
   (let ((min-size (size range))
         (max-size (size range))

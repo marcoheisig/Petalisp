@@ -7,12 +7,12 @@
 ;;; set of graph roots (usually the arguments passed to SCHEDULE) and forms
 ;;; a DAG (directed acyclic graph).
 ;;;
-;;; The following algorithm cuts such a DAG into as large as possible
+;;; The following algorithm partitions such a DAG into as large as possible
 ;;; kernels. All nodes of a kernel, up to the beginning of the next kernels
 ;;; form a tree, i.e. they have exactly one successor. Later, this allows
 ;;; to build a corresponding s-expression to actually evaluate each kernel.
 ;;;
-;;; The result of kernelization is a set of intermediate results, linked by
+;;; The result of kernelization is a set of immediate results, linked by
 ;;; kernels. The original DAG is not mutated in the process.
 ;;;
 ;;; The first step in the algorithm is the creation of a *USE-TABLE*, a
@@ -27,6 +27,56 @@
 ;;; user triggers the creation of a new intermediate result and one or more
 ;;; kernels. The hash table *KERNEL-TABLE* memoizes repeated calls to
 ;;; KERNELIZE-NODE.
+
+(defun from-storage-transformation (index-space)
+  (let ((ranges (ranges index-space))
+        (dimension (dimension index-space)))
+    (make-affine-transformation
+     (make-array dimension :initial-element nil)
+     (scaled-permutation-matrix
+      dimension dimension
+      (apply #'vector (iota dimension))
+      (map 'vector #'range-step ranges))
+     (map 'vector #'range-start ranges))))
+
+(defgeneric make-corresponding-immediate (data-structure)
+  (:method ((immediate immediate)) immediate)
+  (:method ((strided-array strided-array))
+    (let* ((space (index-space strided-array))
+           (from-storage (from-storage-transformation space))
+           (to-storage (inverse from-storage)))
+      (make-instance 'strided-array-immediate
+        :element-type (element-type strided-array)
+        :index-space (index-space strided-array)
+        :to-storage to-storage
+        :from-storage from-storage))))
+
+(defun corresponding-immediate-function (graph-roots)
+  "Given a data flow graph specified by the given GRAPH-ROOTS, return a
+  function that maps each node to its corresponding immediate, or to NIL,
+  when the node has only a single user and is not itself an immediate."
+  (let ((table (make-hash-table :test #'eq)))
+    (labels ((traverse (node)
+               (if (or (< (refcount node) 2)
+                       (immediate? node))
+                   (traverse-inputs node)
+                   (multiple-value-bind (value recurring)
+                       (gethash node table)
+                     (cond ((not recurring)
+                            (setf (gethash node table) nil)
+                            (traverse-inputs node))
+                           ((and recurring (not value))
+                            (setf (gethash node table)
+                                  (make-corresponding-immediate node))
+                            (values))))))
+             (traverse-inputs (node)
+               (dolist (input (inputs node))
+                 (traverse input))))
+      (map nil #'traverse (ensure-sequence graph-roots))
+      (lambda (node)
+        (cond ((< (refcount node) 2) nil)
+              ((immediate? node) node)
+              (t (values (gethash node table))))))))
 
 (defvar *use-table* nil)
 

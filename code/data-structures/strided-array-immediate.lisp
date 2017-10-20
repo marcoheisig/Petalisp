@@ -6,7 +6,7 @@
   ((storage      :type (or array null) :initform nil :accessor storage)
    (to-storage   :type transformation)
    (from-storage :type transformation)
-   (dependencies :type vector :initform #())
+   (dependencies :type vector :initform #()) ; TODO
    (kernels      :type vector :initform #())
    (users        :type vector :initform #())))
 
