@@ -26,6 +26,7 @@
       ((:file "code-statistics")
        (:file "extended-euclid" :depends-on ("macros" "testing"))
        (:file "function-lambda-lists")
+       (:file "fvector")
        (:file "generic-funcallable-objects")
        (:file "graphviz")
        (:file "hcons")
