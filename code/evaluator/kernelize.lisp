@@ -52,15 +52,18 @@
                  (traverse input))))
       (map nil #'register roots)
       (map nil #'traverse roots))
-    ;; step 2 - determine the users and dependencies of each immediate
+    ;; step 2 - determine the dependencies of each immediate
     (labels
         ((corresponding-immediate (node)
            (cond ((< (refcount node) 2) nil)
                  ((immediate? node) node)
                  (t (values (gethash node table)))))
          (register-edge (user dependency)
-           (fvector-pushnew user (users dependency))
-           (fvector-pushnew dependency (dependencies user)))
+           (let ((dependencies (dependencies user)))
+             (declare (fvector dependencies))
+             (unless (find dependency dependencies :test #'eq)
+               (fvector-push dependency dependencies)
+               (incf (refcount dependency)))))
          (determine-dependencies (root target)
            (when target
              (labels ((traverse (node)

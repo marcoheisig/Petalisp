@@ -7,8 +7,7 @@
    (to-storage   :type transformation)
    (from-storage :type transformation)
    (dependencies :type vector :initform (fvector))
-   (kernels      :type vector :initform (fvector))
-   (users        :type vector :initform (fvector))))
+   (kernels      :type vector :initform (fvector))))
 
 (defmethod petalispify ((array array))
   (let ((dimension (dimension array)))

@@ -2,7 +2,7 @@
 
 (in-package :petalisp)
 
-(defclass data-flow-graph (graph) ())
+(defclass data-flow-graph (graphviz-graph) ())
 
 (defmethod graphviz-graph-plist append-plist
     ((purpose data-flow-graph))
@@ -11,6 +11,10 @@
 (defmethod graphviz-successors
     ((purpose data-flow-graph) (node data-structure))
   (inputs node))
+
+(defmethod graphviz-successors
+    ((purpose data-flow-graph) (node immediate))
+  (dependencies node))
 
 (defmethod graphviz-node-plist append-plist
     ((purpose data-flow-graph) (node t))
@@ -66,13 +70,3 @@
 (defmethod graphviz-edge-plist append-plist
     ((purpose data-flow-graph) (node-1 data-structure) (node-2 data-structure))
   `(:dir "back"))
-
-;;; Graphviz plots of Petalisp data flow graphs are often obfuscated by a
-;;; small number of constants with edges to almost every other node. So
-;;; we define a subtype of graphs where constants are omitted.
-
-(defclass simplified-data-flow-graph (data-flow-graph) ())
-
-(defmethod graphviz-successors :around
-    ((purpose simplified-data-flow-graph) (node t))
-  (remove-if #'strided-array-immediate? (call-next-method)))
