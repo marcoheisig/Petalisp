@@ -28,9 +28,10 @@
 ;;; kernels. The hash table *KERNEL-TABLE* memoizes repeated calls to
 ;;; KERNELIZE-NODE.
 
-(defun build-dependency-graph (graph-roots)
+(defun kernelize-graph (graph-roots)
   (let ((table (make-hash-table :test #'eq))
-        (roots (ensure-sequence graph-roots)))
+        (roots (ensure-sequence graph-roots))
+        (immediates (fvector)))
     ;; step 1 - define a mapping from nodes to immediate values
     (labels ((register (node)
                (setf (gethash node table)
@@ -52,82 +53,33 @@
                  (traverse input))))
       (map nil #'register roots)
       (map nil #'traverse roots))
-    ;; step 2 - determine the dependencies of each immediate
+    ;; step 2 - derive the kernels of each immediate
     (labels
-        ((corresponding-immediate (node)
-           (cond ((< (refcount node) 2) nil)
-                 ((immediate? node) node)
-                 (t (values (gethash node table)))))
-         (register-edge (user dependency)
-           (let ((dependencies (dependencies user)))
-             (declare (fvector dependencies))
-             (unless (find dependency dependencies :test #'eq)
-               (fvector-push dependency dependencies)
-               (incf (refcount dependency)))))
-         (determine-dependencies (root target)
+        ((kernelize-hash-table-entry (graph-root target)
            (when target
-             (labels ((traverse (node)
-                        (if-let ((dependency (corresponding-immediate node)))
-                          (register-edge target dependency)
-                          (traverse-inputs node)))
-                      (traverse-inputs (node)
-                        (dolist (input (inputs node))
-                          (traverse input))))
-               (traverse-inputs root)))))
-      (maphash #'determine-dependencies table))
-    (remove nil (hash-table-values table))
-    ;; step 3 - determine the kernels of each immediate
-    ))
+             (flet ((leaf-function (node)
+                      (cond
+                        ((eq node graph-root) nil)
+                        ((immediate? node) node)
+                        ((< (refcount node) 2) nil)
+                        (t (values (gethash node table))))))
+               (let ((kernels (kernelize-tree target graph-root #'leaf-function)))
+                 (setf (kernels target) kernels)
+                 (fvector-push target immediates))))))
+      (maphash #'kernelize-hash-table-entry table))
+    ;; step 3 - determine the dependencies of each immediate
+    immediates))
 
-(defvar *use-table* nil)
-
-(defvar *kernel-table* nil)
-
-(defun kernelize (graph-roots)
-  "Return a list of kernels whose evaluation is equivalent to the
-  evaluation of all GRAPH-ROOTS."
-  (let ((graph-roots (ensure-sequence graph-roots)))
-    (let ((*use-table* (inverse-table graph-roots #'inputs))
-          (*kernel-table* (make-hash-table :test #'eq)))
-      (map 'vector #'kernelize-node graph-roots))))
-
-(defun kernelize-node (data-structure)
-  "Return a kernel whose evaluation is equivalent to the evaluation of
-  DATA-STRUCTURE. Furthermore, add the kernel to the *KERNEL-TABLE*."
-  (flet ((leaf? (node)
-           (or (immediate? node)
-               (and (not (eq node data-structure))
-                    (/= (length (gethash node *use-table*)) 1)))))
-    (or (gethash data-structure *kernel-table*) ; memoize calls to this function
-        (and (immediate? data-structure) data-structure)
-        (let* ((kernels (make-kernels data-structure #'leaf?))
-               (result (make-instance 'intermediate-result
-                         :index-space (index-space data-structure)
-                         :element-type (element-type data-structure)
-                         :kernels kernels)))
-          ;; time for some side-effects!
-          (setf (gethash data-structure *kernel-table*) result)
-          (iterate
-            (for kernel in kernels)
-            (setf (target kernel) result)
-            (let ((sources (sources kernel)))
-              (map-into sources #'kernelize-node sources)
-              ;(map nil (λ source (if (immediate? source) (fvector-pushnew kernel (users source)))) sources)
-              ))
-          result))))
-
-(defun make-kernels (data-structure &optional (leaf? #'immediate?))
-  "Return a list of kernels to compute DATA-STRUCTURE. The recipe of each
-  kernel is a tree of applications and reductions, whose leaves are
-  references to objects that satisfy LEAF?."
+(defun kernelize-tree (target graph-root leaf-function)
   (let (kernels)
     (map-recipes
-     (lambda (recipe index-space ranges sources)
+     (lambda (recipe iteration-space ranges sources)
        (push (make-instance 'kernel
+               :iteration-space iteration-space
                :recipe recipe
-               :index-space index-space
-               :sources sources
-               :element-type (element-type data-structure))
+               :target target
+               :sources sources)
              kernels))
-     data-structure :leaf-test leaf?)
+     graph-root
+     :leaf-function leaf-function)
     kernels))

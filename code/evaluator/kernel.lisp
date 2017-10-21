@@ -6,10 +6,15 @@
 ;;; single output data structure (WIP: support multiple values) and a
 ;;; recipe.
 
-(define-class kernel (strided-array-immediate)
+(define-class kernel ()
   ((target :type intermediate-result :accessor target)
-   (recipe :type hcons)
+   (recipe :type t)
+   (iteration-space :type index-space)
    (sources :type (vector immediate))))
+
+(defmethod print-object ((object kernel) stream)
+  (print-unreadable-object (object stream :type t :identity t)
+    (princ (iteration-space object) stream)))
 
 (defmethod graphviz-node-plist append-plist
     ((purpose data-flow-graph) (kernel kernel))

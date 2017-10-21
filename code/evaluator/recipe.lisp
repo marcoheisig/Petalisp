@@ -71,9 +71,9 @@
         (step (range-step range)))
     (list min-size max-size step)))
 
-(defun map-recipes (function data-structure &key (leaf-test #'immediate?))
+(defun map-recipes (function data-structure &key leaf-function)
   "Invoke FUNCTION for every recipe that computes values of DATA-STRUCTURE
-   and references data-structures that satisfy LEAF-TEST.
+   and references the data structures returned by LEAF-FUNCTION.
 
    For every recipe, FUNCTION receives the following arguments:
    1. the recipe
@@ -82,7 +82,7 @@
    4. a vector of all referenced data-structures"
   (let ((recipe-iterator
           (recipe-iterator
-           leaf-test
+           leaf-function
            data-structure
            (index-space data-structure)
            (make-identity-transformation (dimension data-structure)))))
@@ -97,8 +97,8 @@
 (defvar *recipe-ranges* nil)
 (defvar *recipe-sources* nil)
 
-(defun recipe-iterator (leaf-test node relevant-space transformation)
-  (let ((body-iterator (recipe-body-iterator leaf-test node relevant-space transformation)))
+(defun recipe-iterator (leaf-function node relevant-space transformation)
+  (let ((body-iterator (recipe-body-iterator leaf-function node relevant-space transformation)))
     (λ (let ((*recipe-iteration-space* (index-space node))
              (*recipe-ranges*  (copy-array (ranges relevant-space) :fill-pointer t))
              (*recipe-sources* (make-array 6 :fill-pointer 0)))
@@ -116,53 +116,54 @@
             *recipe-ranges*
             *recipe-sources*))))))
 
-(defun recipe-body-iterator (leaf-test node relevant-space transformation)
-  (cond
+(defun recipe-body-iterator (leaf-function node relevant-space transformation)
+  (if-let ((leaf (funcall leaf-function node)))
     ;; convert leaf nodes to an iterator with a single value
-    ((funcall leaf-test node)
-     (let ((first-visit? t))
-       (λ (if first-visit?
-              (let ((source
-                      (%source (or (position node *recipe-sources*)
-                                   (vector-push-extend node *recipe-sources*)))))
-                (setf first-visit? nil)
-                (%reference source (%indices transformation)))
-              (signal 'iterator-exhausted)))))
-    ;; application nodes simply call the iterator of each input
-    ((application? node)
-     (let ((input-iterators
-             (map 'vector
-                  (λ input (recipe-body-iterator leaf-test input relevant-space transformation))
-                  (inputs node))))
-       (λ `(%call ,(operator node) ,@(map 'list #'funcall input-iterators)))))
-    ;; reference nodes are eliminated entirely
-    ((reference? node)
-     (let* ((new-transformation (composition (transformation node) transformation))
-            (new-relevant-space (intersection relevant-space (index-space node))))
-       (recipe-body-iterator leaf-test (input node) new-relevant-space new-transformation)))
-    ((reduction? node)
-     (error "TODO"))
-    ;; fusion nodes are eliminated by path replication. This replication
-    ;; process is the only reason why we use tree iterators. A fusion node
-    ;; with N inputs returns an iterator returning N recipes.
-    ((fusion? node)
-     (let* ((max-size (length (inputs node)))
-            (iteration-spaces (make-array max-size :fill-pointer 0))
-            (input-iterators (make-array max-size :fill-pointer 0)))
-       (iterate
-         (for input in-sequence (inputs node))
-         (for subspace = (index-space input))
-         (when-let ((relevant-subspace (intersection relevant-space subspace)))
-           (vector-push (funcall (inverse transformation) relevant-subspace)
-                        iteration-spaces)
-           (vector-push (recipe-body-iterator leaf-test input relevant-subspace transformation)
-                        input-iterators)))
-       (λ (loop
-            (if (= 0 (fill-pointer input-iterators))
-                (signal 'iterator-exhausted)
-                (handler-case
-                    (progn
-                      (setf *recipe-iteration-space* (vector-pop iteration-spaces))
-                      (return (funcall (vector-pop input-iterators))))
-                  (iterator-exhausted ())))))))))
+    (let ((first-visit? t))
+      (λ (if first-visit?
+             (let ((source
+                     (%source (or (position leaf *recipe-sources*)
+                                  (vector-push-extend leaf *recipe-sources*)))))
+               (setf first-visit? nil)
+               (%reference source (%indices transformation)))
+             (signal 'iterator-exhausted))))
+    (etypecase node
+      ;; application nodes simply call the iterator of each input
+      (application
+       (let ((input-iterators
+               (map 'vector
+                    (λ input (recipe-body-iterator leaf-function input relevant-space transformation))
+                    (inputs node))))
+         (λ `(%call ,(operator node) ,@(map 'list #'funcall input-iterators)))))
+      ;; reference nodes are eliminated entirely
+      (reference
+       (let* ((new-transformation (composition (transformation node) transformation))
+              (new-relevant-space (intersection relevant-space (index-space node))))
+         (recipe-body-iterator leaf-function (input node) new-relevant-space new-transformation)))
+      ;; reduction nodes introduce a new iteration range
+      (reduction
+       (error "TODO"))
+      ;; fusion nodes are eliminated by path replication. This replication
+      ;; process is the only reason why we use tree iterators. A fusion node
+      ;; with N inputs returns an iterator returning N recipes.
+      (fusion
+       (let* ((max-size (length (inputs node)))
+              (iteration-spaces (make-array max-size :fill-pointer 0))
+              (input-iterators (make-array max-size :fill-pointer 0)))
+         (iterate
+           (for input in-sequence (inputs node))
+           (for subspace = (index-space input))
+           (when-let ((relevant-subspace (intersection relevant-space subspace)))
+             (vector-push (funcall (inverse transformation) relevant-subspace)
+                          iteration-spaces)
+             (vector-push (recipe-body-iterator leaf-function input relevant-subspace transformation)
+                          input-iterators)))
+         (λ (loop
+              (if (= 0 (fill-pointer input-iterators))
+                  (signal 'iterator-exhausted)
+                  (handler-case
+                      (progn
+                        (setf *recipe-iteration-space* (vector-pop iteration-spaces))
+                        (return (funcall (vector-pop input-iterators))))
+                    (iterator-exhausted ()))))))))))
 
