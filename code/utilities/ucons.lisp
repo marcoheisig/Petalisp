@@ -15,6 +15,23 @@
   ;; TABLE tracks all uconses whose cdr is this cons
   (table nil :type (or list hash-table) :read-only nil))
 
+(macrolet
+    ((define-ucxr-accessors ()
+       (let (ucxr-forms)
+         (flet ((add-ucxr-form (&rest characters)
+                  (let ((name (intern (format nil "UC~{~C~}R" characters)))
+                        (body 'x))
+                    (dolist (char (reverse characters))
+                      (ecase char
+                        (#\A (setf body `(ucons-car ,body)))
+                        (#\D (setf body `(ucons-cdr ,body)))))
+                    (push `(defun ,name (x) ,body) ucxr-forms))))
+           (map-product #'add-ucxr-form #1='(#\A #\D))
+           (map-product #'add-ucxr-form #1# #1#)
+           (map-product #'add-ucxr-form #1# #1# #1#))
+         `(progn ,@ucxr-forms))))
+  (define-ucxr-accessors))
+
 (declaim (hash-table *ucons-root-table*))
 (defvar *ucons-root-table* (make-hash-table :test #'eql))
 
