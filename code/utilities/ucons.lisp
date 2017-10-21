@@ -25,7 +25,8 @@
    all future and past invocation of this function with the same
    arguments."
   (declare (type (or null ucons) cdr)
-           (type ucons-car car))
+           (type ucons-car car)
+           (values ucons))
   (flet ((hash-table-lookup (hash-table)
            (declare (hash-table hash-table))
            (or (gethash car hash-table)
@@ -35,38 +36,41 @@
            (declare (list alist))
            (or (cdr (assoc car alist))
                (let ((ucons (%ucons car cdr)))
-                 (cond
-                   ((> (length alist) 5)
-                    (setf (ucons-table cdr)
-                          (alist-hash-table alist :test #'eql :size 16))
-                    (setf (gethash car (ucons-table cdr)) ucons))
-                   (t
-                    (push (cons car ucons)
-                          (ucons-table cdr))))
-                 ucons))))
+                 (prog1 ucons
+                   (cond
+                     ((> (length alist) 5)
+                      (setf (ucons-table cdr)
+                            (alist-hash-table alist :test #'eql :size 16))
+                      (setf (gethash car (ucons-table cdr)) ucons))
+                     (t
+                      (push (cons car ucons)
+                            (ucons-table cdr)))))))))
     (if (null cdr)
         (hash-table-lookup *ucons-root-table*)
         (let ((table (ucons-table cdr)))
           (etypecase table
             (list (alist-lookup table))
             (hash-table (hash-table-lookup table)))))))
+(declaim (notinline ucons))
 
 (defun ulist (&rest args)
   "Return the ulist associated with the supplied arguments."
-  (declare (dynamic-extent args))
-  (labels ((%list (first rest)
+  (declare (dynamic-extent args)
+           (inline ucons))
+  (labels ((%ulist (first rest)
              (if (null rest)
                  (ucons first nil)
-                 (ucons first (%list (car rest) (cdr rest))))))
-    (%list (first args) (rest args))))
+                 (ucons first (%ulist (car rest) (cdr rest))))))
+    (%ulist (first args) (rest args))))
 
 (define-compiler-macro ulist (&whole whole &rest arg-forms)
-  (if (> (length arg-forms) 15)
+  (if (> (length arg-forms) 9)
       whole
       (let ((gensyms
               (loop for arg-form in arg-forms
                     collect (gensym "ARG"))))
         `(let* ,(mapcar #'list gensyms arg-forms)
+           (declare (inline ucons))
            ,(let (form)
               (loop for gensym in (reverse gensyms)
                     do (setf form `(ucons ,gensym ,form)))
@@ -75,7 +79,8 @@
 (defun ulist* (&rest args)
   "Return the ulist associated with the supplied arguments, but using the
    last argument as the tail of the constructed ulist."
-  (declare (dynamic-extent args))
+  (declare (dynamic-extent args)
+           (inline ucons))
   (labels ((%hlist* (first rest)
              (if (null rest)
                  (prog1 first
@@ -84,7 +89,7 @@
     (%hlist* (first args) (rest args))))
 
 (define-compiler-macro ulist* (&whole whole &rest arg-forms)
-  (if (> (length arg-forms) 15)
+  (if (> (length arg-forms) 9)
       whole
       (let ((gensyms
               (loop for arg-form in arg-forms
@@ -94,6 +99,7 @@
                    (form `(prog1 ,(car rgensyms)
                             (check-type ,(car rgensyms)
                                         (or ucons null)))))
+              (declare (inline ucons))
               (loop for gensym in (cdr rgensyms)
                     do (setf form `(ucons ,gensym ,form)))
               form)))))
@@ -103,3 +109,32 @@
   (declare (ulist ulist) (optimize speed))
   (loop while ulist count t
         do (setf ulist (ucons-cdr ulist))))
+
+(defun ulist-shallow-copy (ulist)
+  (declare (ulist ulist))
+  (loop while ulist
+        collect (ucons-car ulist)
+        do (setf ulist (ucons-cdr ulist))))
+
+(defun ulist-deep-copy (ulist)
+  (declare (ulist ulist))
+  (loop while ulist
+        collect (let ((car (ucons-car ulist)))
+                  (if (uconsp car)
+                      (ulist-deep-copy car)
+                      car))
+        do (setf ulist (ucons-cdr ulist))))
+
+(defmethod print-object ((ulist ucons) stream)
+  (cond (*print-pretty*
+         (let ((list (ulist-shallow-copy ulist)))
+           (pprint-logical-block (stream list :prefix "[" :suffix "]")
+             (pprint-fill stream list nil))))
+        (t
+         (write-string "[" stream)
+         (loop while ulist do
+           (write (ucons-car ulist) :stream stream)
+           (when (ucons-cdr ulist)
+             (write-string " " stream))
+           (setf ulist (ucons-cdr ulist)))
+         (write-string "]" stream))))
