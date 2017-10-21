@@ -29,7 +29,6 @@
        (:file "fvector")
        (:file "generic-funcallable-objects")
        (:file "graphviz")
-       (:file "hcons")
        (:file "iterate")
        (:file "macros")
        (:file "matrix" :depends-on ("macros" "testing"))
@@ -37,7 +36,8 @@
        (:file "miscellaneous" :depends-on ("macros" "testing"))
        (:file "queue")
        (:file "request")
-       (:file "testing")))
+       (:file "testing")
+       (:file "ucons")))
      (:file "petalisp" :depends-on ("utilities"))
      (:module "transformations" :depends-on ("petalisp")
       :components
