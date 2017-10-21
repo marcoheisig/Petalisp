@@ -29,6 +29,9 @@
 ;;; KERNELIZE-NODE.
 
 (defun kernelize-graph (graph-roots)
+  "Convert the data flow graph defined by GRAPH-ROOTS to an executable
+   specification. Return a sequence of immediate values, each with a
+   (possibly empty) set of kernels and dependencies."
   (let ((table (make-hash-table :test #'eq))
         (roots (ensure-sequence graph-roots))
         (immediates (fvector)))
@@ -63,6 +66,7 @@
                         ((immediate? node) node)
                         ((< (refcount node) 2) nil)
                         (t (values (gethash node table))))))
+               (declare (dynamic-extent #'leaf-function))
                (let ((kernels (kernelize-tree target graph-root #'leaf-function)))
                  (setf (kernels target) kernels)
                  (fvector-push target immediates))))))
@@ -70,7 +74,12 @@
     ;; step 3 - determine the dependencies of each immediate
     immediates))
 
-(defun kernelize-tree (target graph-root leaf-function)
+(defun kernelize-tree (target tree-root leaf-function)
+  "Return a list of kernels that compute the immediate value TARGET,
+   according to the data flow tree defined by TREE-ROOT and
+   LEAF-FUNCTION. The former is a data flow graph node with one or more
+   inputs and the latter is a function returning NIL for inner tree nodes
+   and the a nodes corresponding IMMEDIATE for all leaves."
   (let (kernels)
     (map-recipes
      (lambda (recipe iteration-space ranges sources)
@@ -80,6 +89,6 @@
                :target target
                :sources sources)
              kernels))
-     graph-root
+     tree-root
      :leaf-function leaf-function)
     kernels))

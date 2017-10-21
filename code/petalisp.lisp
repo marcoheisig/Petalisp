@@ -6,7 +6,6 @@
 ;;;
 ;;; Petalisp Vocabulary - Classes
 
-
 (define-class index-space () ()
   (:documentation
    "An index space of dimension D is a set of D-tuples i1,...,iD."))
