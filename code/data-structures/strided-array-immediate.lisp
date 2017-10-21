@@ -3,11 +3,9 @@
 (in-package :petalisp)
 
 (define-class strided-array-immediate (strided-array immediate)
-  ((storage      :type (or array null) :initform nil :accessor storage)
-   (to-storage   :type transformation)
-   (from-storage :type transformation)
-   (dependencies :type vector :initform (fvector))
-   (kernels      :type vector :initform (fvector))))
+  ((storage      :type (or array null))
+   (dependencies :type fvector :initform (fvector))
+   (kernels      :type fvector :initform (fvector))))
 
 (defmethod petalispify ((array array))
   (let ((dimension (dimension array)))
@@ -21,6 +19,16 @@
 (defmethod depetalispify ((instance strided-array-immediate))
   (storage instance))
 
+(defmethod corresponding-immediate ((strided-array strided-array))
+  (let* ((space (index-space strided-array))
+         (from-storage (from-storage-transformation space))
+         (to-storage (inverse from-storage)))
+    (make-instance 'strided-array-immediate
+      :element-type (element-type strided-array)
+      :index-space (index-space strided-array)
+      :to-storage to-storage
+      :from-storage from-storage)))
+
 (defun from-storage-transformation (index-space)
   "Return a non-permuting, affine transformation from a zero based array
    with step size one to the given INDEX-SPACE."
@@ -33,21 +41,6 @@
       (apply #'vector (iota dimension))
       (map 'vector #'range-step ranges))
      (map 'vector #'range-start ranges))))
-
-(defgeneric corresponding-immediate (data-structure)
-  (:documentation
-   "Return an immediate with the same shape and element type as
-   DATA-STRUCTURE.")
-  (:method ((immediate immediate)) immediate)
-  (:method ((strided-array strided-array))
-    (let* ((space (index-space strided-array))
-           (from-storage (from-storage-transformation space))
-           (to-storage (inverse from-storage)))
-      (make-instance 'strided-array-immediate
-        :element-type (element-type strided-array)
-        :index-space (index-space strided-array)
-        :to-storage to-storage
-        :from-storage from-storage))))
 
 (defmethod optimize-application or ((f function) (a1 strided-array-immediate) &rest a2...aN)
   "Constant-fold operations on scalar values."

@@ -2,6 +2,8 @@
 
 (in-package :petalisp)
 
+(deftype type-specifier () '(or symbol cons))
+
 (defun identical (sequence &key (test #'eql) (key #'identity))
   "Check whether the KEYs of SEQUENCE are identical with respect to TEST."
   (etypecase sequence

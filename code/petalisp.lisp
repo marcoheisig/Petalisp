@@ -1,9 +1,11 @@
 ;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
+
+(in-package :petalisp)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Petalisp Vocabulary - Classes
 
-(in-package :petalisp)
 
 (define-class index-space () ()
   (:documentation
@@ -16,20 +18,27 @@
    indices."))
 
 (define-class data-structure ()
-  ((element-type :initform t)
-   (inputs :type list :initform nil)
-   (refcount :type non-negative-fixnum :initform 0 :accessor refcount))
+  ((element-type :type type-specifier      :initform t)
+   (index-space  :type index-space)
+   (inputs       :type list                :initform nil)
+   (refcount     :type non-negative-fixnum :initform 0 :accessor refcount))
   (:documentation
-   "A data structure of dimension D is a mapping from indices i1,...,iD to
-   values of type ELEMENT-TYPE."))
+   "A data structure of dimension D is a mapping from elements of
+   INDEX-SPACE to values of type ELEMENT-TYPE."))
 
 (defmethod initialize-instance :after ((instance data-structure) &key &allow-other-keys)
   (map nil (λ input (incf (refcount input))) (inputs instance)))
 
 (define-class immediate (data-structure)
-  ((inputs :initform nil :type null :allocation :class))
+  ((storage      :type t :initform nil :accessor storage)
+   (to-storage   :type transformation)
+   (from-storage :type transformation))
   (:documentation
-   "An immediate is a data structure with zero inputs."))
+   "An immediate is a data structure whose elements can be referenced in
+    constant time. It has a STORAGE slot that contains its elements in some
+    unspecified format. The transformation TO-STORAGE maps indices
+    referencing the immediate to indices referencing STORAGE. The
+    transformation FROM-STORAGE is the inverse of TO-STORAGE."))
 
 (define-class application (data-structure)
   ((operator :type function))
@@ -113,6 +122,12 @@
     (alexandria:compose g f))
   (:method :before ((g transformation) (f transformation))
     (assert (= (input-dimension g) (output-dimension f)))))
+
+(defgeneric corresponding-immediate (data-structure)
+  (:documentation
+   "Return an immediate with the same shape and element type as
+   DATA-STRUCTURE.")
+  (:method ((immediate immediate)) immediate))
 
 (defgeneric depetalispify (object)
   (:documentation

@@ -2,8 +2,7 @@
 
 (in-package :petalisp)
 
-(define-class strided-array (data-structure)
-  (index-space))
+(define-class strided-array (data-structure) ())
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
