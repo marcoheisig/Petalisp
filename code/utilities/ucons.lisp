@@ -2,7 +2,7 @@
 
 (in-package :petalisp)
 
-(deftype ucons-car () '(or fixnum symbol character ucons))
+(deftype ucons-car () '(or fixnum symbol function character ucons))
 
 (deftype ulist () '(or ucons null))
 

@@ -9,9 +9,9 @@
   (macrolet
       ((typed-euclid (type)
          (let ((fname (symbolicate type "-EUCLID")))
-           ;; This algorithm is a variant of Knuth's Algorithm X from
-           ;; TAOCP, Volume 2, but using tail recursion instead of
-           ;; iteration and dropping the redundant computation of u2
+           ;; This is a variant of Knuth's Algorithm X from TAOCP Volume 2,
+           ;; but using tail recursion instead of iteration and dropping
+           ;; the redundant computation of u2
            `(named-lambda ,fname (u1 u3 v1 v3)
               (declare (type ,type u1 u3 v1 v3))
               (if (zerop v3)

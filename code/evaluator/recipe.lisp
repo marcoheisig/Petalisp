@@ -20,11 +20,11 @@
                (collect
                    `(defun ,name ,lambda-list
                       ,(if variadic?
-                           `(list* ',name ,@lambda-list)
-                           `(list ',name ,@lambda-list))))
+                           `(ulist* ',name ,@lambda-list)
+                           `(ulist ',name ,@lambda-list))))
                (collect
                    `(defun ,(symbolicate name "?") (x)
-                      (and (consp x) (eq (car x) ',name))))))))))
+                      (and (uconsp x) (eq (ucons-car x) ',name))))))))))
 
 ;;; The grammar of a recipe is:
 
@@ -53,23 +53,26 @@
 (defgeneric %indices (transformation)
   (:method ((transformation identity-transformation))
     (let ((dimension (input-dimension transformation))
-          (zeros '(0 0)))
+          (zeros (load-time-value (ulist 0 0))))
       (with-vector-memoization (dimension)
-        (iterate
-          (for index from (1- dimension) downto 0)
-          (collect (cons (%index index) zeros) at beginning)))))
+        (let (result)
+          (iterate
+            (for index from (1- dimension) downto 0)
+            (setf result (ucons (%index index) zeros)))
+          result))))
   (:method ((transformation affine-transformation))
-    (iterate
-      (for column in-vector (spm-column-indices (linear-operator transformation)) downto 0)
-      (for value in-vector (spm-values (linear-operator transformation)) downto 0)
-      (for offset in-vector (translation-vector transformation) downto 0)
-      (collect (list (%index column) value offset) at beginning))))
+    (let (result)
+      (iterate
+        (for column in-vector (spm-column-indices (linear-operator transformation)) downto 0)
+        (for value in-vector (spm-values (linear-operator transformation)) downto 0)
+        (for offset in-vector (translation-vector transformation) downto 0)
+        (setf result (ulist* (ulist (%index column) value offset) result))))))
 
 (defun range-information (range)
   (let ((min-size (size range))
         (max-size (size range))
         (step (range-step range)))
-    (list min-size max-size step)))
+    (ulist min-size max-size step)))
 
 (defun map-recipes (function data-structure &key leaf-function)
   "Invoke FUNCTION for every recipe that computes values of DATA-STRUCTURE
@@ -105,13 +108,15 @@
          (let ((body (funcall body-iterator)))
            (iterate
              (for index from (1- (length *recipe-ranges*)) downto 0)
-             (setf body (%for (%range index) body)))
+             (setf body (ulist '%for (%range index) body)))
            (values
-            (%recipe
-             (map 'vector #'range-information *recipe-ranges*)
-             (vector (element-type node))
-             (map 'vector #'element-type *recipe-sources*)
-             body)
+            (ulist '%recipe
+                   ;;(map 'vector #'range-information *recipe-ranges*)
+                   nil
+                   (ulist (element-type node))
+                   ;;(map 'vector #'element-type *recipe-sources*)
+                   nil
+                   body)
             *recipe-iteration-space*
             *recipe-ranges*
             *recipe-sources*))))))
@@ -134,7 +139,11 @@
                (map 'vector
                     (λ input (recipe-body-iterator leaf-function input relevant-space transformation))
                     (inputs node))))
-         (λ `(%call ,(operator node) ,@(map 'list #'funcall input-iterators)))))
+         (λ (ulist* '%call (operator node)
+                    (let (args)
+                      (iterate (for input-iterator in-vector input-iterators downto 0)
+                               (setf args (ulist* (funcall input-iterator) args)))
+                      args)))))
       ;; reference nodes are eliminated entirely
       (reference
        (let* ((new-transformation (composition (transformation node) transformation))

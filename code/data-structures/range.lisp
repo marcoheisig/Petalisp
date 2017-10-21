@@ -168,7 +168,7 @@ intersect it (potentially violating MAX-EXTENT)."
       ;; picking off some cheap common cases beforehand
       ((> lb ub) nil)
       ((= lb ub) (range lb 1 ub))
-      ;; now the common case
+      ;; now the general case
       (t (let ((a (range-step range-1))
                (b (range-step range-2))
                (c (- (range-start range-2) (range-start range-1))))

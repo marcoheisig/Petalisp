@@ -19,7 +19,7 @@
                                        (not (storage source)))
                               (evaluate source))))
                  (evaluate strided-array-immediate)))
-        (iterate (for item in-sequence (kernelize recipes))
+        (iterate (for item in-sequence (kernelize-graph recipes))
                  (for index from 0)
                  (setf (storage (aref targets index))
                        (storage (evaluate item))))
