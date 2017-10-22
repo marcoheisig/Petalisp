@@ -25,7 +25,8 @@
                       (ecase char
                         (#\A (setf body `(ucons-car ,body)))
                         (#\D (setf body `(ucons-cdr ,body)))))
-                    (push `(defun ,name (x) ,body) ucxr-forms))))
+                    (push `(defun ,name (x) (declare (ucons x)) ,body) ucxr-forms)
+                    (push `(declaim (inline ,name)) ucxr-forms))))
            (map-product #'add-ucxr-form #1='(#\A #\D))
            (map-product #'add-ucxr-form #1# #1#)
            (map-product #'add-ucxr-form #1# #1# #1#))

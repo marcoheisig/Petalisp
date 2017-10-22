@@ -41,8 +41,7 @@
 
 (defgeneric graphviz-edge-plist (purpose from to)
   (:method-combination plist-union)
-  (:method plist-union ((purpose graphviz-graph) (from t) (to t))
-    (list :color "black")))
+  (:method plist-union ((purpose graphviz-graph) (from t) (to t)) nil))
 
 (defparameter *graphviz-pdf-viewer* "evince")
 
@@ -53,7 +52,7 @@
    to a temporary file and open it with *GRAPHVIZ-PDF-VIEWER*.
 
    The exact behavior of this method is governed by PURPOSE, which is an
-   instance of a subclass of graph (or a symbol, denoting such an
+   instance of a subclass of graphviz-graph (or a symbol, denoting such an
    instance), and the generic functions GRAPHVIZ-SUCCESSORS,
    GRAPHVIZ-GRAPH-PLIST, GRAPHVIZ-NODE-PLIST and GRAPHVIZ-EDGE-PLIST.")
 
@@ -80,33 +79,30 @@
           (purpose (if (symbolp purpose-designator)
                        (make-instance purpose-designator)
                        purpose-designator)))
-      ;; 1. populate node table
-      (labels ((populate-node-table (node)
-                 (unless (gethash node table)
-                   (setf (gethash node table) (incf node-counter))
-                   (map nil #'populate-node-table (graphviz-successors purpose node)))))
-        (map nil #'populate-node-table
-              (etypecase graph-roots
-                (sequence graph-roots)
-                (t (list graph-roots)))))
-      (format stream "digraph G {~%")
-      ;; 2. write graph attributes
-      (format stream "~{  ~A=~S~%~}" (graphviz-graph-plist purpose))
-      ;; 3. write nodes
-      (loop :for node :being :each :hash-key
-              :using (:hash-value node-id) :of table :do
-                (format stream "  node~d [~{~A=~S~^, ~}]~%"
-                        node-id (graphviz-node-plist purpose node)))
-      ;; 4. write edges
-      (loop :for from :being :each :hash-key
-              :using (:hash-value from-id) :of table :do
-                (map nil (lambda (to)
-                           (let ((to-id (gethash to table)))
-                             (format stream "  node~d -> node~d [~{~A=~S~^, ~}]~%"
-                                     from-id to-id
-                                     (graphviz-edge-plist purpose from to))))
-                     (graphviz-successors purpose from)))
-      (format stream "}~%"))))
+      (labels
+          ((populate-node-table (node)
+             (unless (gethash node table)
+               (setf (gethash node table) (incf node-counter))
+               (map nil #'populate-node-table (graphviz-successors purpose node))))
+           (write-node (node id)
+             (format stream "  node~d [~{~A=~S~^, ~}]~%" id
+                     (graphviz-node-plist purpose node)))
+           (write-edges (from from-id)
+             (map nil
+                  (lambda (to)
+                    (let ((to-id (gethash to table)))
+                      (format stream "  node~d -> node~d [~{~A=~S~^, ~}]~%"
+                              from-id to-id
+                              (graphviz-edge-plist purpose from to))))
+                  (graphviz-successors purpose from))))
+        (etypecase graph-roots
+          (sequence (map nil #'populate-node-table graph-roots))
+          (t (populate-node-table graph-roots)))
+        (format stream "digraph G {~%")
+        (format stream "~{  ~A=~S~%~}" (graphviz-graph-plist purpose))
+        (maphash #'write-node table)
+        (maphash #'write-edges table)
+        (format stream "}~%")))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
