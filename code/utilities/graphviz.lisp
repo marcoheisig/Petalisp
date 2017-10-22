@@ -3,23 +3,26 @@
 (in-package :petalisp)
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (defun append-plist (&rest plists)
-    "Non-destructively merge the given PLISTS. If a key occurs more than
-    once, the leftmost value takes precedence."
+  (defun plist-union (&rest plists)
+    "Return a plist containing each key that appears in any of the supplied
+    PLISTS and its corresponding value. If a key occurs multiple times,
+    only the corresponding value of the leftmost entry is used and all
+    others are discarded."
+    (declare (dynamic-extent plists))
     (let (result)
-      (loop :for (key-1 . rest) :on (apply #'append plists) :by #'cddr :do
-        (unless (loop :for (key-2 . nil) :on result :by #'cddr
-                        :thereis (eq key-1 key-2))
-          (push (car rest) result)
-          (push key-1 result)))
-      result))
-  (define-method-combination append-plist :identity-with-one-argument t))
+      (dolist (plist plists (nreverse result))
+        (doplist (key-1 val-1 plist)
+          (unless (loop for rest on (cdr result) by #'cddr
+                          thereis (eq key-1 (car rest)))
+            (push key-1 result)
+            (push val-1 result))))))
+  (define-method-combination plist-union))
 
 ;;; A sequence of root objects can be interpreted as many different
 ;;; graphs. To account for this, all subsequent generic functions accept a
 ;;; "purpose" object as their first argument, which should be an instance
-;;; of a subclass of graph. For a simple example on how to add new types of
-;;; graphs, see the bottom of this file.
+;;; of a subclass of graphviz-graph. For a simple example on how to add new
+;;; types of graphs, see the bottom of this file.
 
 (defclass graphviz-graph () ())
 
@@ -27,18 +30,18 @@
   (:method ((purpose graphviz-graph) (node t)) nil))
 
 (defgeneric graphviz-graph-plist (purpose)
-  (:method-combination append-plist)
-  (:method append-plist ((purpose graphviz-graph)) nil))
+  (:method-combination plist-union)
+  (:method plist-union ((purpose graphviz-graph)) nil))
 
 (defgeneric graphviz-node-plist (purpose node)
-  (:method-combination append-plist)
-  (:method append-plist ((purpose graphviz-graph) (node t))
+  (:method-combination plist-union)
+  (:method plist-union ((purpose graphviz-graph) (node t))
     (list :label (with-output-to-string (stream)
                    (print-object node stream)))))
 
 (defgeneric graphviz-edge-plist (purpose from to)
-  (:method-combination append-plist)
-  (:method append-plist ((purpose graphviz-graph) (from t) (to t))
+  (:method-combination plist-union)
+  (:method plist-union ((purpose graphviz-graph) (from t) (to t))
     (list :color "black")))
 
 (defparameter *graphviz-pdf-viewer* "evince")
@@ -120,7 +123,7 @@
                  (some #'visible-class? (class-direct-subclasses class)))))
     (remove-if-not #'visible-class? (class-direct-subclasses node))))
 
-(defmethod graphviz-node-plist append-plist ((purpose class-hierarchy) (node class))
+(defmethod graphviz-node-plist plist-union ((purpose class-hierarchy) (node class))
   `(:label ,(string (class-name node))
     ,@(when-let ((name (class-name node)))
         (cond

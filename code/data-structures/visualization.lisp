@@ -4,7 +4,7 @@
 
 (defclass data-flow-graph (graphviz-graph) ())
 
-(defmethod graphviz-graph-plist append-plist
+(defmethod graphviz-graph-plist plist-union
     ((purpose data-flow-graph))
   `(:splines "ortho"))
 
@@ -16,17 +16,17 @@
     ((purpose data-flow-graph) (node immediate))
   (dependencies node))
 
-(defmethod graphviz-node-plist append-plist
+(defmethod graphviz-node-plist plist-union
     ((purpose data-flow-graph) (node t))
   `(:shape "box" :style "filled"))
 
-(defmethod graphviz-node-plist append-plist
+(defmethod graphviz-node-plist plist-union
     ((purpose data-flow-graph) (node data-structure))
   `(:label ,(format nil "~A~%~A"
                     (class-name (class-of node))
                     (index-space node))))
 
-(defmethod graphviz-node-plist append-plist
+(defmethod graphviz-node-plist plist-union
     ((purpose data-flow-graph) (node strided-array-immediate))
   `(:shape "octagon"
     :fillcolor "cornflowerblue"
@@ -39,7 +39,7 @@
                      (let ((*print-length* 8))
                        (format nil "~A" (storage node)))))))))
 
-(defmethod graphviz-node-plist append-plist
+(defmethod graphviz-node-plist plist-union
     ((purpose data-flow-graph) (node application))
   `(:label ,(format nil "~A~%~A~%~A"
                     (class-name (class-of node))
@@ -47,7 +47,7 @@
                     (index-space node))
     :fillcolor "indianred1"))
 
-(defmethod graphviz-node-plist append-plist
+(defmethod graphviz-node-plist plist-union
     ((purpose data-flow-graph) (node reduction))
   `(:label ,(format nil "~A~%~A~%~A"
                     (class-name (class-of node))
@@ -55,11 +55,11 @@
                     (index-space node))
     :fillcolor "indianred3"))
 
-(defmethod graphviz-node-plist append-plist
+(defmethod graphviz-node-plist plist-union
     ((purpose data-flow-graph) (node fusion))
   `(:fillcolor "cyan3"))
 
-(defmethod graphviz-node-plist append-plist
+(defmethod graphviz-node-plist plist-union
     ((purpose data-flow-graph) (node reference))
   `(:label ,(format nil "~A~%~A~%~A"
                     (class-name (class-of node))
@@ -67,6 +67,6 @@
                     (index-space node))
     :fillcolor "gray"))
 
-(defmethod graphviz-edge-plist append-plist
+(defmethod graphviz-edge-plist plist-union
     ((purpose data-flow-graph) (node-1 data-structure) (node-2 data-structure))
   `(:dir "back"))

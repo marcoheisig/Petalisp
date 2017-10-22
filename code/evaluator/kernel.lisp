@@ -16,7 +16,7 @@
   (print-unreadable-object (object stream :type t :identity t)
     (princ (iteration-space object) stream)))
 
-(defmethod graphviz-node-plist append-plist
+(defmethod graphviz-node-plist plist-union
     ((purpose data-flow-graph) (kernel kernel))
   `(:shape "box"
     :fillcolor "skyblue"))
@@ -25,6 +25,6 @@
     ((purpose data-flow-graph) (kernel kernel))
   (sources kernel))
 
-(defmethod graphviz-edge-plist append-plist
+(defmethod graphviz-edge-plist plist-union
     ((purpose data-flow-graph) (a kernel) (b immediate))
   `(:style "dashed"))
