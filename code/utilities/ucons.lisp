@@ -2,6 +2,8 @@
 
 (in-package :petalisp)
 
+;;; ucons - unique conses
+
 (deftype ucons-car () '(or fixnum symbol function character ucons))
 
 (deftype ulist () '(or ucons null))
