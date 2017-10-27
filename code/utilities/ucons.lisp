@@ -122,6 +122,10 @@
             (hash-table (hash-table-lookup table)))))))
 (declaim (notinline ucons))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; ulist creation
+
 (defun ulist (&rest args)
   "Return the ulist associated with the supplied arguments."
   (declare (dynamic-extent args)
@@ -173,11 +177,117 @@
                     do (setf form `(ucons ,gensym ,form)))
               form)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; ulist iteration
+
+(defmacro do-ulist ((var ulist &optional result) &body body)
+  (check-type var symbol)
+  (multiple-value-bind (forms decls)
+      (parse-body body)
+    (once-only (ulist)
+      (with-gensyms (start)
+        `(block nil
+           (tagbody
+              ,start
+              (when ,ulist
+                (let ((,var (ucar ,ulist)))
+                  ,@decls
+                  (tagbody ,@forms))
+                (setf ,ulist (ucdr ,ulist))
+                (go ,start)))
+           (let ((,var nil))
+             (declare (ignorable ,var))
+             ,result))))))
+
+(defmacro-driver (FOR var IN-ULIST u &optional BY (step ''ucdr))
+  "All the elements of a ulist."
+  (with-gensyms (ulist)
+    `(progn
+       (with ,ulist = ,u)
+       (,(if generate 'generate 'for)
+        ,var next
+        (progn
+          (if (not ,ulist)
+              (terminate)
+              (prog1 (ucar ,ulist)
+                (setf ,ulist
+                      (funcall-form ,step ,ulist)))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; structured ulists
+
+(defvar *ustruct-lambda-lists* (make-hash-table :test #'eq))
+
+(defun parse-ustruct-lamba-list (ustruct-lambda-list)
+  (let ((variadic? (find '&rest ustruct-lambda-list))
+        slot-names slot-types)
+    (dolist (element (remove '&rest ustruct-lambda-list))
+      (etypecase element
+        (symbol
+         (push element slot-names)
+         (push 'ucar   slot-types))
+        (cons
+         (assert (= 2 (length element)))
+         (assert (symbolp (car element)))
+         (push (first element) slot-names)
+         (push (second element) slot-types))))
+    (values (nreverse slot-names)
+            (nreverse slot-types)
+            variadic?)))
+
+(defmacro define-ustruct (name &body ustruct-lambda-list)
+  (multiple-value-bind (slot-names slot-types variadic?)
+      (parse-ustruct-lamba-list ustruct-lambda-list)
+    `(progn
+       (eval-when (:compile-toplevel :load-toplevel :execute)
+         (setf (gethash ',name *ustruct-lambda-lists*)
+               ',ustruct-lambda-list))
+       (declaim (inline ,name))
+       (defun ,name ,slot-names
+         (declare ,@(loop for slot-name in slot-names
+                          for slot-type in slot-types
+                          collect `(type ,slot-type ,slot-name)))
+         (,(if variadic? 'ulist* 'ulist) ',name ,@slot-names)))))
+
+(defmacro with-ustruct-accessors ((ustruct-name &key (prefix "")) ustruct &body body)
+  (check-type ustruct-name symbol)
+  (once-only (ustruct)
+    (multiple-value-bind (ustruct-lambda-list ustruct-known?)
+        (gethash ustruct-name *ustruct-lambda-lists*)
+      (unless ustruct-known?
+        (error "Not a ustruct name: ~A" ustruct-name))
+      (multiple-value-bind (slot-names slot-types variadic?)
+          (parse-ustruct-lamba-list ustruct-lambda-list)
+        (let ((prefixed-names
+                (loop for slot-name in slot-names
+                      collect (symbolicate prefix slot-name)))
+              (typedecls (loop for slot-name in slot-names
+                               for slot-type in slot-types
+                               collect `(type ,slot-type ,slot-name))))
+          (if variadic?
+              `(let* ,(loop for prefixed-name in (butlast prefixed-names)
+                            collect `(,prefixed-name (ucar ,ustruct))
+                            collect `(,ustruct (ucdr ,ustruct)))
+                 (let ((,(last-elt prefixed-names) ,ustruct))
+                   (declare ,typedecls)
+                   ,@body))
+              `(let* ,(loop for prefixed-name in prefixed-names
+                            collect `(,prefixed-name (ucar ,ustruct))
+                            collect `(,ustruct (ucdr ,ustruct)))
+                 (declare ,typedecls)
+                 ,@body)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; other ulist utilities
+
 (defun ulength (ulist)
   "Return the length of the given ulist."
   (declare (ulist ulist) (optimize speed))
-  (loop while ulist count t
-        do (setf ulist (ucons-cdr ulist))))
+  (iterate (for elt in-ulist ulist)
+           (counting t)))
 
 (defun ulist-shallow-copy (ulist)
   "Return a list of the elements of ULIST."

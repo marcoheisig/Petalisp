@@ -95,3 +95,9 @@ WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
        (defun ,(symbolicate "RUN-IN-" thread-name) (thunk)
          (enqueue thunk ,queue-name)
          (values)))))
+
+(defmacro funcall-form (function-designator &rest arguments)
+  (if (and (consp function-designator)
+           (eq (car function-designator) 'quote))
+      `(,(cadr function-designator) ,@arguments)
+      `(funcall ,function-designator ,@arguments)))

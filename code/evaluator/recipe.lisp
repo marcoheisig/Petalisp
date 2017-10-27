@@ -9,41 +9,38 @@
 ;;; to select an existing function as fast as possible and without
 ;;; consing.
 
-(defmacro define-recipe-grammar (&body definitions)
-  `(progn
-     ,@(iterate
-         (for definition in definitions)
-         (destructuring-bind (name &key ((:= lambda-list)) &allow-other-keys) definition
-           (when lambda-list
-             (let* ((variadic? (eq (last-elt lambda-list) '*))
-                    (lambda-list (if variadic? (butlast lambda-list) lambda-list)))
-               (collect
-                   `(defun ,name ,lambda-list
-                      ,(if variadic?
-                           `(ulist* ',name ,@lambda-list)
-                           `(ulist ',name ,@lambda-list))))
-               (collect
-                   `(defun ,(symbolicate name "?") (x)
-                      (and (uconsp x) (eq (ucons-car x) ',name))))))))))
+(define-ustruct %recipe
+  (range-info  ulist)
+  (target-info ulist)
+  (source-info ulist)
+  (expression  ulist))
 
-;;; The grammar of a recipe is:
+(define-ustruct %reference
+  (storage symbol)
+  &rest indices)
 
-(define-recipe-grammar
-  (%recipe     := (range-info* target-info* source-info* expression))
-  (%reference  := (%source-or-%target %index *))
-  (%store      := (%reference expression))
-  (%call       := (operator expression *))
-  (%reduce     := (%range operator expression))
-  (%accumulate := (%range operator initial-value expression))
-  (%for        := (%range expression))
-  (%index      :? (cons symbol (cons rational (cons rational null))))
-  (%source     :? symbol)
-  (%target     :? symbol)
-  (%range      :? symbol)
-  (expression  :? (or %reference %store %call %reduce %accumulate %for))
-  (range-info  :? (cons (integer 0 *) (cons (integer 0 *) (cons (integer 1 *) null))))
-  (target-info :? petalisp-type-specifier)
-  (source-info :? petalisp-type-specifier))
+(define-ustruct %store
+  (reference ulist)
+  (expression ulist))
+
+(define-ustruct %call
+  operator
+  &rest expressions)
+
+(define-ustruct %reduce
+  (range symbol)
+  operator
+  (expression ulist))
+
+(define-ustruct %accumulate
+  (range symbol)
+  operator
+  initial-value
+  (expression ulist))
+
+(define-ustruct %for
+  (range symbol)
+  (expression ulist))
 
 (define-symbol-pool %source "S")
 (define-symbol-pool %target "T")
@@ -52,13 +49,12 @@
 
 (defgeneric %indices (transformation)
   (:method ((transformation identity-transformation))
-    (let ((dimension (input-dimension transformation))
-          (zeros (load-time-value (ulist 0 0))))
+    (let ((dimension (input-dimension transformation)))
       (with-vector-memoization (dimension)
         (let (result)
           (iterate
             (for index from (1- dimension) downto 0)
-            (setf result (ucons (%index index) zeros)))
+            (setf result (ulist (%index index) 0 0)))
           result))))
   (:method ((transformation affine-transformation))
     (let (result)
