@@ -260,23 +260,25 @@
         (error "Not a ustruct name: ~A" ustruct-name))
       (multiple-value-bind (slot-names slot-types variadic?)
           (parse-ustruct-lamba-list ustruct-lambda-list)
-        (let ((prefixed-names
-                (loop for slot-name in slot-names
-                      collect (symbolicate prefix slot-name)))
-              (typedecls (loop for slot-name in slot-names
-                               for slot-type in slot-types
-                               collect `(type ,slot-type ,slot-name))))
+        (let* ((prefixed-names
+                 (loop for slot-name in slot-names
+                       collect (symbolicate prefix slot-name)))
+               (typedecls (loop for slot-name in prefixed-names
+                                for slot-type in slot-types
+                                collect `(type ,slot-type ,slot-name))))
           (if variadic?
               `(let* ,(loop for prefixed-name in (butlast prefixed-names)
                             collect `(,prefixed-name (ucar ,ustruct))
                             collect `(,ustruct (ucdr ,ustruct)))
+                 (declare (ignorable ,@(butlast prefixed-names)))
                  (let ((,(last-elt prefixed-names) ,ustruct))
-                   (declare ,typedecls)
+                   (declare (ignorable ,(last-elt prefixed-names))
+                            ,@typedecls)
                    ,@body))
               `(let* ,(loop for prefixed-name in prefixed-names
                             collect `(,prefixed-name (ucar ,ustruct))
                             collect `(,ustruct (ucdr ,ustruct)))
-                 (declare ,typedecls)
+                 (declare (ignorable ,@prefixed-names) ,@typedecls)
                  ,@body)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
