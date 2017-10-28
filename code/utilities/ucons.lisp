@@ -32,7 +32,7 @@
 ;;; well supported throughout the standard library. Uconses lack this
 ;;; integration and require a completely new set of library functions.
 ;;; Furthermore it must be noted that uconses are --- except if one
-;;; eventually clears the *UCONS-ROOT-TABLE* --- a permanent memory leak.
+;;; explicitly clears the *UCONS-LEAF-TABLE* --- a permanent memory leak.
 ;;;
 ;;; Yet if you are willing to accept these trade-offs, uconses offer some
 ;;; unique benefits:
@@ -45,9 +45,16 @@
 ;;;
 ;;; - checks for structural similarity can be done in constant time. Two
 ;;;   ucons trees are equal if and only if their root uconses are EQ.
+;;;
+;;; Benchmarks:
+;;; (SBCL 1.3.20, X86-64 Intel i7-5500U CPU @ 2.40GHz)
+;;;
+;;; (bench  (list 1 2 3 4 5 6 7 8)) -> 25.77 nanoseconds
+;;; (bench (ulist 1 2 3 4 5 6 7 8)) -> 38.18 nanoseconds
 
 (deftype ucar ()
   "The type of all elements that may appear as the UCAR of a UCONS."
+  ;; the type of things you can reasonably compare with EQ
   '(or fixnum symbol function character ucons))
 
 (deftype ulist ()
@@ -81,42 +88,50 @@
          `(progn ,@ucxr-forms))))
   (define-ucxr-accessors))
 
-(declaim (hash-table *ucons-root-table*))
-(defvar *ucons-root-table* (make-hash-table :test #'eql)
+(declaim (hash-table *ucons-leaf-table*))
+(defvar *ucons-leaf-table* (make-hash-table :test #'eq)
   "The table of all uconses whose cdr is NIL.")
 
-(declaim (inline ucons))
+(declaim (inline ucons)
+         (notinline ucons--slow)
+         (ftype (function (ucar ulist) ucons) ucons--slow))
 (defun ucons (car cdr)
   "Given a suitable CAR and CDR, return a UCONS that is EQ to all future
    and past invocation of this function with the same arguments."
   (declare (type (or null ucons) cdr)
            (type ucar car)
            (values ucons))
-  (flet ((hash-table-lookup (hash-table)
-           (declare (hash-table hash-table))
-           (or (gethash car hash-table)
-               (setf (gethash car hash-table)
-                     (make-fresh-ucons car cdr))))
-         (alist-lookup (alist)
-           (declare (list alist))
-           (or (cdr (assoc car alist))
-               (let ((ucons (make-fresh-ucons car cdr)))
-                 (prog1 ucons
-                   (cond
-                     ((> (length alist) 5)
-                      (setf (ucons-table cdr)
-                            (alist-hash-table alist :test #'eql :size 16))
-                      (setf (gethash car (ucons-table cdr)) ucons))
-                     (t
-                      (push (cons car ucons)
-                            (ucons-table cdr)))))))))
-    (if (null cdr)
-        (hash-table-lookup *ucons-root-table*)
-        (let ((table (ucons-table cdr)))
-          (etypecase table
-            (list (alist-lookup table))
-            (hash-table (hash-table-lookup table)))))))
-(declaim (notinline ucons))
+  (let ((alist (and cdr
+                    (listp (ucons-table cdr))
+                    (ucons-table cdr))))
+    (or
+     (loop for cons in alist
+           do (when (eq (car cons) car)
+                (return (cdr cons))))
+     (ucons--slow car cdr))))
+
+(defun ucons--slow (car cdr)
+  "Helper function of UCONS. Invoked when the UCONS-TABLE of CDR is not a
+   list, or is a list but does not contain an entry for CAR."
+  (declare (type (or ucons null) cdr)
+           (type ucar car)
+           (values ucons))
+  (if (null cdr)
+      (values (ensure-gethash car *ucons-leaf-table* (make-fresh-ucons car cdr)))
+      (let ((table (ucons-table cdr)))
+        (etypecase table
+          (hash-table
+           (values (ensure-gethash car table (make-fresh-ucons car cdr))))
+          (list
+           (let ((ucons (make-fresh-ucons car cdr)))
+             (prog1 ucons
+               (cond
+                 ((> (length table) 8)
+                  (setf (ucons-table cdr)
+                        (alist-hash-table table :test #'eql :size 16))
+                  (setf (gethash car (ucons-table cdr)) ucons))
+                 (t
+                  (push (cons car ucons) (ucons-table cdr)))))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

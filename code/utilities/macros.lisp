@@ -15,7 +15,7 @@ Examples:
 (defmacro with-unsafe-optimizations* (&body body)
   "Optimize the heck out of BODY. Use with caution!"
   (let ((settings '((speed 3) (space 0) (debug 0) (safety 0) (compilation-speed 0))))
-    `(locally (declare (optimize ,settings))
+    `(locally (declare (optimize ,@settings))
        ,@body)))
 
 (defmacro with-unsafe-optimizations (&body body)

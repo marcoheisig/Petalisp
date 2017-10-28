@@ -15,7 +15,7 @@
   "Wait until REQUEST is completed."
   (prog1 request
     (with-lock-held ((request-lock request))
-      (loop until (eq (request-status request) completed)
+      (loop until (eq (request-status request) :completed)
             do (condition-wait (request-cvar request)
                                (request-lock request))))))
 
@@ -23,5 +23,5 @@
   "Signal the completion of REQUEST to whom it may concern."
   (prog1 request
     (with-lock-held ((request-lock request))
-      (setf (request-status request) completed)
+      (setf (request-status request) :completed)
       (condition-notify (request-cvar request)))))

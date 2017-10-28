@@ -6,8 +6,11 @@
 ;;; performance-critical function and as a key to search whether such a
 ;;; function has already been generated and compiled. The latter case is
 ;;; expected to be far more frequent, so the primary purpose of a recipe is
-;;; to select an existing function as fast as possible and without
-;;; consing.
+;;; to select an existing function as fast as possible and without consing.
+;;;
+;;; To achieve this, each recipe is built from uconses. Furthermore, the
+;;; recipe grammar has been chosen to maximize structural sharing and to
+;;; avoid unnecessary uconses.
 
 (define-ustruct %recipe
   (range-info  ulist)
