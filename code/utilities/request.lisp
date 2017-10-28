@@ -13,15 +13,15 @@
 
 (defun wait (request)
   "Wait until REQUEST is completed."
-  (with-lock-held ((request-lock request))
-    (loop :until (eq (request-status request) :completed)
-          :do (condition-wait (request-cvar request)
-                              (request-lock request))))
-  request)
+  (prog1 request
+    (with-lock-held ((request-lock request))
+      (loop until (eq (request-status request) completed)
+            do (condition-wait (request-cvar request)
+                               (request-lock request))))))
 
 (defun complete (request)
   "Signal the completion of REQUEST to whom it may concern."
-  (with-lock-held ((request-lock request))
-    (setf (request-status request) :completed))
-  (condition-notify (request-cvar request))
-  request)
+  (prog1 request
+    (with-lock-held ((request-lock request))
+      (setf (request-status request) completed)
+      (condition-notify (request-cvar request)))))

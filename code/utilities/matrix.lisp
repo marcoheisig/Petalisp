@@ -45,11 +45,11 @@ per row and column."
             (n column-indices)
             "Some of the column indices in~%  ~S~%exceed the matrix width of ~D.~%"
             column-indices n)
-    (assert (loop :for row-index :below m
-                  :never
+    (assert (loop for row-index below m
+                  never
                   (and (/= 0 (elt values row-index))
-                       (loop :for search-index :from (1+ row-index) :below m
-                               :thereis
+                       (loop for search-index from (1+ row-index) below m
+                               thereis
                                (and (/= 0 (elt values search-index))
                                     (= (elt column-indices row-index)
                                        (elt column-indices search-index))))))
@@ -152,10 +152,10 @@ function returns the m-vector that is the dot product of SPM and VEC."
                                  :initial-element 0)))
       (dotimes (row-index m)
         (let ((column-index
-                (loop :for column :across original-column-indices
-                      :for value :across original-values
-                      :for position :from 0
-                        :thereis (and (/= 0 value) (= column row-index) position))))
+                (loop for column across original-column-indices
+                      for value  across original-values
+                      for position from 0
+                        thereis (and (/= 0 value) (= column row-index) position))))
           (when column-index
             (setf (aref column-indices row-index) column-index)
             (let ((value (aref original-values column-index)))
@@ -172,10 +172,10 @@ function returns the m-vector that is the dot product of SPM and VEC."
 (defun identity-matrix? (spm)
   (let ((m (matrix-m spm)) (n (matrix-n spm)))
     (and (= m n)
-         (loop :for row-index :below m
-               :for value :across (spm-values spm)
-               :for column-index :across (spm-column-indices spm)
-               :always (and (= column-index row-index)
+         (loop for row-index below m
+               for value across (spm-values spm)
+               for column-index across (spm-column-indices spm)
+               always (and (= column-index row-index)
                             (= value 1))))))
 
 (test |(identity-matrix? scaled-permutation-matrix)|

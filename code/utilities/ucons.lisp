@@ -14,40 +14,37 @@
 ;;; expensive. To achieve such near-optimal speed, this implementation does
 ;;; not actually provide conses, but uconses. A ucons has not only a car
 ;;; and a cdr, but also a table of past users. Furthermore, the cdr of each
-;;; ucons is restricted and may only contain other uconses or NIL. As a
-;;; consequence, all lists of uconses are proper lists and data structures
-;;; of uconses are always trees. This setup has several advantages:
+;;; ucons is restricted to other uconses or NIL. This setup has several
+;;; advantages:
 ;;;
-;;; - the check whether a certain ucons already exists is a single lookup
-;;;   of its car in the table of its cdr
+;;; - The check whether a certain ucons already exists is a single lookup
+;;;   of its car in the table of its cdr.
 ;;;
-;;; - the immutability of the car and cdr of a ucons is enforced by the
-;;;   defstruct definition of ucar
+;;; - The immutability of the car and cdr of a ucons is enforced by the
+;;;   defstruct definition of ucar.
 ;;;
-;;; - a compiler has reliable type information of the slots of a ucons
+;;; - A compiler has reliable type information of the slots of a ucons.
+;;;
+;;; - Lists of uconses are neither circular, nor improper.
 ;;;
 ;;; Unfortunately there is also a painful downside of this
 ;;; approach. Traditional cons cells are a fundamental Lisp data type and
 ;;; well supported throughout the standard library. Uconses lack this
-;;; integration, e.g. it is not possible to treat them as a sequence. As a
-;;; result, many utility functions have to be reimplemented specifically
-;;; for uconses.
+;;; integration and require a completely new set of library functions.
+;;; Furthermore it must be noted that uconses are --- except if one
+;;; eventually clears the *UCONS-ROOT-TABLE* --- a permanent memory leak.
 ;;;
-;;; Finally, it must be noted that uconses are --- except if one eventually
-;;; clears the *UCONS-ROOT-TABLE* --- a permanent memory leak. But if you
-;;; are willing to accept these trade-offs, uconses offer some unique
-;;; benefits:
+;;; Yet if you are willing to accept these trade-offs, uconses offer some
+;;; unique benefits:
 ;;;
 ;;; - their usage is little more expensive than a call to CONS. If you
 ;;;   include GC time, they can even be much faster.
 ;;;
 ;;; - given enough potential for structural sharing, uconses can decrease
-;;;   the memory consumption of an application by orders of
-;;;   magnitude. Often, this results in vastly improved cache utilization.
+;;;   the memory consumption of an application by orders of magnitude.
 ;;;
 ;;; - checks for structural similarity can be done in constant time. Two
-;;;   ucons-expressions are equal if and only if their head uconses are EQ.
-
+;;;   ucons trees are equal if and only if their root uconses are EQ.
 
 (deftype ucar ()
   "The type of all elements that may appear as the UCAR of a UCONS."
@@ -63,7 +60,6 @@
             (:predicate uconsp))
   (cdr   nil :type ulist :read-only t)
   (car   nil :type ucar  :read-only t)
-  ;; TABLE tracks all UCONSes whose UCDR is this cons
   (table nil :type (or list hash-table) :read-only nil))
 
 ;;; provide classical slot readers like UCAR and UCADDR

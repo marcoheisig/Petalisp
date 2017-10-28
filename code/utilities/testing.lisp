@@ -45,7 +45,7 @@
 (defun array-generator (&key (dimensions '(5 5)) element-generator element-type)
   (lambda ()
     (let ((result (make-array dimensions :element-type element-type)))
-      (loop :for index :below (array-total-size result) :do
+      (loop for index below (array-total-size result) do
         (setf (row-major-aref result index) (funcall element-generator)))
       result)))
 
