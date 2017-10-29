@@ -75,6 +75,17 @@
    reference of A by ΩB and T is a strided array that maps each index tuple
    k \in ΩB to A(T(k))."))
 
+(define-class kernel ()
+  ((target :type immediate :accessor target)
+   (recipe :type t)
+   (iteration-space :type index-space)
+   (sources :type (vector immediate)))
+  (:documentation
+   "A kernel is the fundamental unit of work in Petalisp. It's RECIPE
+   describes how elements of the storage of TARGET can be computed by using
+   elements of the storage of SOURCES. ITERATION-SPACE is a subspace of the
+   index space of the storage of TARGET."))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Petalisp Vocabulary - Generic Functions
@@ -250,6 +261,10 @@ function is the identity transformation."))
 (defmethod print-object ((object data-structure) stream)
   (print-unreadable-object (object stream :type t :identity t)
     (princ (index-space object) stream)))
+
+(defmethod print-object ((object kernel) stream)
+  (print-unreadable-object (object stream :type t :identity t)
+    (princ (iteration-space object) stream)))
 
 (defgeneric reduction (f a)
   (:documentation

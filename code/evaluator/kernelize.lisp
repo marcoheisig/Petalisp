@@ -83,6 +83,7 @@
   (let (kernels)
     (map-recipes
      (lambda (recipe iteration-space ranges sources)
+       (declare (ignorable ranges))
        (push (make-instance 'kernel
                :iteration-space iteration-space
                :recipe recipe
