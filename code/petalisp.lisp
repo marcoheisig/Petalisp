@@ -25,7 +25,8 @@
    "A data structure of dimension D is a mapping from elements of
    INDEX-SPACE to values of type ELEMENT-TYPE."))
 
-(defmethod initialize-instance :after ((instance data-structure) &key &allow-other-keys)
+(defmethod initialize-instance :after ; reference counting
+    ((instance data-structure) &key &allow-other-keys)
   (map nil (λ input (incf (refcount input))) (inputs instance)))
 
 (define-class immediate (data-structure)
@@ -85,6 +86,13 @@
    describes how elements of the storage of TARGET can be computed by using
    elements of the storage of SOURCES. ITERATION-SPACE is a subspace of the
    index space of the storage of TARGET."))
+
+(define-class execution-context ()
+  (:documentation
+   "An execution context is an abstraction over a set of hardware
+   resources. All handling of kernels --- such as performance analysis,
+   compilation and execution --- is done in a particular execution
+   context."))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -308,7 +316,7 @@ function is the identity transformation."))
 
 (defgeneric subspace? (space-1 space-2)
   (:documentation
-   "Return true if every index in SPACE-1 occurs also in SPACE-2.")
+   "Return true if every index in SPACE-1 also occurs in SPACE-2.")
   (:method ((space-1 t) (space-2 t))
     (equal? space-1 (intersection space-1 space-2))))
 
