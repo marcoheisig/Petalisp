@@ -14,7 +14,7 @@
 
 (define-ustruct %recipe
   (range-info ulist)
-  (data-info ulist)
+  (storage-info ulist)
   (expression ulist))
 
 (define-ustruct %reference
@@ -51,7 +51,7 @@
         (let (result)
           (iterate
             (for index from (1- dimension) downto 0)
-            (setf result (ulist index 0 0)))
+            (setf result (ulist* (ulist index 1 0) result)))
           result))))
   (:method ((transformation affine-transformation))
     (let (result)
@@ -59,7 +59,8 @@
         (for column in-vector (spm-column-indices (linear-operator transformation)) downto 0)
         (for value in-vector (spm-values (linear-operator transformation)) downto 0)
         (for offset in-vector (translation-vector transformation) downto 0)
-        (setf result (ulist* (ulist column value offset) result))))))
+        (setf result (ulist* (ulist column value offset) result)))
+      result)))
 
 (defun recipe-range-information-ulist (ranges)
   (let (result)

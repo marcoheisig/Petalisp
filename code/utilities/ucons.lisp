@@ -278,20 +278,23 @@
                (typedecls (loop for extended-name in extended-names
                                 for slot-type in slot-types
                                 collect `(type ,slot-type ,extended-name))))
-          (if variadic?
-              `(let* ,(loop for extended-name in (butlast extended-names)
-                            collect `(,extended-name (ucar ,ustruct))
-                            collect `(,ustruct (ucdr ,ustruct)))
-                 (declare (ignorable ,ustruct ,@(butlast extended-names)))
-                 (let ((,(last-elt extended-names) ,ustruct))
-                   (declare (ignorable ,(last-elt extended-names))
-                            ,@typedecls)
-                   ,@body))
-              `(let* ,(loop for extended-name in extended-names
-                            collect `(,extended-name (ucar ,ustruct))
-                            collect `(,ustruct (ucdr ,ustruct)))
-                 (declare (ignorable ,ustruct ,@extended-names) ,@typedecls)
-                 ,@body)))))))
+          `(progn
+             (assert (eq (ucar ,ustruct) ',ustruct-name))
+             (let ((,ustruct (ucdr ,ustruct)))
+               ,(if variadic?
+                    `(let* ,(loop for extended-name in (butlast extended-names)
+                                  collect `(,extended-name (ucar ,ustruct))
+                                  collect `(,ustruct (ucdr ,ustruct)))
+                       (declare (ignorable ,ustruct ,@(butlast extended-names)))
+                       (let ((,(last-elt extended-names) ,ustruct))
+                         (declare (ignorable ,(last-elt extended-names))
+                                  ,@typedecls)
+                         ,@body))
+                    `(let* ,(loop for extended-name in extended-names
+                                  collect `(,extended-name (ucar ,ustruct))
+                                  collect `(,ustruct (ucdr ,ustruct)))
+                       (declare (ignorable ,ustruct ,@extended-names) ,@typedecls)
+                       ,@body)))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

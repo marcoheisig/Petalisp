@@ -16,7 +16,7 @@
 
 (defgeneric vm-free-memory (virtual-machine immediate))
 
-(defgeneric vm-compile (virtual-machine kernel))
+(defgeneric vm-compile (virtual-machine recipe))
 
 (defgeneric vm-execute (virtual-machine kernel))
 
@@ -26,8 +26,8 @@
 (defun vm/free-memory (immediate)
   (vm-free-memory *virtual-machine* immediate))
 
-(defun vm/compile (kernel)
-  (vm-compile *virtual-machine* kernel))
+(defun vm/compile (recipe)
+  (vm-compile *virtual-machine* recipe))
 
 (defun vm/execute (kernel)
   (vm-execute *virtual-machine* kernel))

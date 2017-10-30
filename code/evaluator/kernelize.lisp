@@ -33,8 +33,7 @@
    specification. Return a sequence of immediate values, each with a
    (possibly empty) set of kernels and dependencies."
   (let ((table (make-hash-table :test #'eq))
-        (graph-roots (ensure-sequence graph-roots))
-        (immediates (fvector)))
+        (graph-roots (ensure-sequence graph-roots)))
     ;; step 1 - define a mapping from nodes to immediate values
     (labels ((register (node)
                (setf (gethash node table)
@@ -79,11 +78,9 @@
                         (t (values (gethash node table))))))
                (declare (dynamic-extent #'leaf-function))
                (let ((kernels (kernelize-tree target tree-root #'leaf-function)))
-                 (setf (kernels target) kernels)
-                 (fvector-push target immediates))))))
+                 (setf (kernels target) kernels))))))
       (maphash #'kernelize-hash-table-entry table))
-    ;; step 3 - determine the dependencies of each immediate
-    immediates))
+    (map 'vector (λ node (gethash node table)) graph-roots)))
 
 (defun kernelize-tree (target tree-root leaf-function)
   "Return a list of kernels that compute the immediate value TARGET,

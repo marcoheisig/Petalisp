@@ -10,7 +10,7 @@
 
 (defmethod graphviz-successors
     ((purpose data-flow-graph) (node immediate))
-  (dependencies node))
+  (kernels node))
 
 (defmethod graphviz-successors
     ((purpose data-flow-graph) (kernel kernel))

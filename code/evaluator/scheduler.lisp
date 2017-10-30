@@ -36,7 +36,7 @@
         (iterate
           (for source in-vector (sources kernel))
           (pushnew source dependencies)))
-      (map nil #'evaluate (dependencies immediate)))
+      (map nil #'evaluate dependencies))
     ;; allocate memory
     (vm/bind-memory immediate)
     ;; compute all kernels
