@@ -88,6 +88,7 @@
    index space of the storage of TARGET."))
 
 (define-class execution-context ()
+  ()
   (:documentation
    "An execution context is an abstraction over a set of hardware
    resources. All handling of kernels --- such as performance analysis,
@@ -134,8 +135,9 @@
 
 (defgeneric composition (g f)
   (:documentation
-   "Return a funcallable object such that its application is equivalent to
-   the application of f, followed by an application of g.")
+   "Return g ∘ f, i.e. return a function whose application to some
+   arguments is equivalent to the application of g to the result of the
+   application of f to these arguments.")
   (:method ((g function) (f function))
     (alexandria:compose g f))
   (:method :before ((g transformation) (f transformation))

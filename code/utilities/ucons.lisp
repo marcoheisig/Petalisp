@@ -94,28 +94,28 @@
 
 (declaim (inline ucons)
          (notinline ucons--slow)
+         (ftype (function (ucar ulist) ucons) ucons)
          (ftype (function (ucar ulist) ucons) ucons--slow))
 (defun ucons (car cdr)
   "Given a suitable CAR and CDR, return a UCONS that is EQ to all future
    and past invocation of this function with the same arguments."
   (declare (type (or null ucons) cdr)
-           (type ucar car)
-           (values ucons))
+           (type ucar car))
   (let ((alist (and cdr
                     (listp (ucons-table cdr))
                     (ucons-table cdr))))
-    (or
-     (loop for cons in alist
-           do (when (eq (car cons) car)
-                (return (cdr cons))))
-     (ucons--slow car cdr))))
+    (the ucons
+         (or
+          (loop for cons of-type (cons ucar ulist) in alist
+                do (when (eq (car cons) car)
+                     (return (cdr cons))))
+          (ucons--slow car cdr)))))
 
 (defun ucons--slow (car cdr)
   "Helper function of UCONS. Invoked when the UCONS-TABLE of CDR is not a
    list, or is a list but does not contain an entry for CAR."
   (declare (type (or ucons null) cdr)
-           (type ucar car)
-           (values ucons))
+           (type ucar car))
   (if (null cdr)
       (values (ensure-gethash car *ucons-leaf-table* (make-fresh-ucons car cdr)))
       (let ((table (ucons-table cdr)))
@@ -139,13 +139,13 @@
 
 (defun ulist (&rest args)
   "Return the ulist associated with the supplied arguments."
-  (declare (dynamic-extent args)
-           (inline ucons))
+  (declare (dynamic-extent args))
   (labels ((%ulist (first rest)
              (if (null rest)
                  (ucons first nil)
                  (ucons first (%ulist (car rest) (cdr rest))))))
-    (%ulist (first args) (rest args))))
+    (unless (null args)
+      (%ulist (first args) (rest args)))))
 
 (define-compiler-macro ulist (&whole whole &rest arg-forms)
   (if (> (length arg-forms) 9)
@@ -154,20 +154,18 @@
               (loop for arg-form in arg-forms
                     collect (gensym "ARG"))))
         `(let* ,(mapcar #'list gensyms arg-forms)
-           (declare (inline ucons))
-           ,(let (form)
+           ,(let (result-form)
               (loop for gensym in (reverse gensyms)
-                    do (setf form `(ucons ,gensym ,form)))
-              form)))))
+                    do (setf result-form `(ucons ,gensym ,result-form)))
+              result-form)))))
 
 (defun ulist* (&rest args)
   "Return the ulist associated with the supplied arguments, but using the
    last argument as the tail of the constructed ulist."
-  (declare (dynamic-extent args)
-           (inline ucons))
+  (declare (dynamic-extent args))
   (labels ((%hlist* (first rest)
              (if (null rest)
-                 (prog1 first
+                 (prog1 (the ulist first)
                    (check-type first (or ucons null)))
                  (ucons first (%hlist* (car rest) (cdr rest))))))
     (%hlist* (first args) (rest args))))
@@ -180,13 +178,13 @@
                     collect (gensym "ARG"))))
         `(let* ,(mapcar #'list gensyms arg-forms)
            ,(let* ((rgensyms (reverse gensyms))
-                   (form `(prog1 ,(car rgensyms)
-                            (check-type ,(car rgensyms)
-                                        (or ucons null)))))
-              (declare (inline ucons))
+                   (result-form
+                     `(prog1 ,(car rgensyms)
+                        (check-type ,(car rgensyms)
+                                    (or ucons null)))))
               (loop for gensym in (cdr rgensyms)
-                    do (setf form `(ucons ,gensym ,form)))
-              form)))))
+                    do (setf result-form `(ucons ,gensym ,result-form)))
+              result-form)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
