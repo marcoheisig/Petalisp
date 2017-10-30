@@ -67,11 +67,24 @@
         (for offset in-vector (translation-vector transformation) downto 0)
         (setf result (ulist* (ulist (%index column) value offset) result))))))
 
-(defun range-information (range)
-  (let ((min-size (size range))
-        (max-size (size range))
-        (step (range-step range)))
-    (ulist min-size max-size step)))
+(defun recipe-range-information-ulist (ranges)
+  (let (result)
+    (iterate
+      (for range in-vector ranges downto 0)
+      (let ((min-size (size range))
+            (max-size (size range))
+            (step (range-step range)))
+        (setf result (ucons
+                      (ulist min-size max-size step)
+                      result))))
+    result))
+
+(defun recipe-sources-ulist (immediates)
+  (let (result)
+    (iterate
+      (for immediate in-vector immediates downto 0)
+      (setf result (ucons (element-type immediate) result)))
+    result))
 
 (defun map-recipes (function data-structure &key leaf-function)
   "Invoke FUNCTION for every recipe that computes values of DATA-STRUCTURE
@@ -110,11 +123,9 @@
              (setf body (ulist '%for (%range index) body)))
            (values
             (ulist '%recipe
-                   ;;(map 'vector #'range-information *recipe-ranges*)
-                   nil
+                   (recipe-range-information-ulist *recipe-ranges*)
                    (ulist (element-type node))
-                   ;;(map 'vector #'element-type *recipe-sources*)
-                   nil
+                   (recipe-sources-ulist *recipe-sources*)
                    body)
             *recipe-iteration-space*
             *recipe-ranges*
