@@ -112,7 +112,8 @@
     (λ (let ((*recipe-iteration-space* (index-space node))
              (*recipe-ranges*  (copy-array (ranges relevant-space) :fill-pointer t))
              (*recipe-sources* (make-array 6 :fill-pointer 0)))
-         (let ((body (funcall body-iterator)))
+         (let ((body (%store (%reference 0 (%indices transformation))
+                             (funcall body-iterator))))
            (iterate
              (for index from (1- (length *recipe-ranges*)) downto 0)
              (setf body (ulist '%for index body)))

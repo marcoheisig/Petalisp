@@ -41,7 +41,6 @@
       (print "Cache miss!")
       (print code)
       (finish-output)
-      #+nil
       (compile nil code))))
 
 (defmethod vm-execute
@@ -82,6 +81,7 @@
     (%for
      (with-ustruct-accessors (%for) uexpression
        `(loop for ,(index-symbol depth)
+              of-type fixnum
               from ,(range-start-symbol range)
               by ,(aref range-steps depth)
                 to ,(range-end-symbol range)
