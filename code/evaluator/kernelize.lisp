@@ -98,6 +98,7 @@
                :target target
                :sources sources)
              kernels))
+     target
      tree-root
      :leaf-function leaf-function)
     kernels))

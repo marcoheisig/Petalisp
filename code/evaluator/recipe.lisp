@@ -81,9 +81,9 @@
       (setf result (ucons (element-type immediate) result)))
     result))
 
-(defun map-recipes (function data-structure &key leaf-function)
-  "Invoke FUNCTION for every recipe that computes values of DATA-STRUCTURE
-   and references the data structures returned by LEAF-FUNCTION.
+(defun map-recipes (function target data-structure &key leaf-function)
+  "Invoke FUNCTION for every recipe that computes values of TARGET as
+   prescribed by DATA-STRUCTURE and LEAF-FUNCTION.
 
    For every recipe, FUNCTION receives the following arguments:
    1. the recipe
@@ -95,7 +95,7 @@
            leaf-function
            data-structure
            (index-space data-structure)
-           (make-identity-transformation (dimension data-structure)))))
+           (to-storage target))))
     (handler-case
         (loop (multiple-value-call function (funcall recipe-iterator)))
       (iterator-exhausted () (values)))))
