@@ -23,22 +23,35 @@
    (refcount     :type non-negative-fixnum :initform 0 :accessor refcount))
   (:documentation
    "A data structure of dimension D is a mapping from elements of
-   INDEX-SPACE to values of type ELEMENT-TYPE."))
+   INDEX-SPACE to values of type ELEMENT-TYPE.
+
+   INPUTS is a list of data structures on which the definition of this data
+   structure depends on.
+
+   REFCOUNT is an implementation detail. For ordinary data structures it
+   tracks how many times the data structure appears as an input of another
+   data structure. For immediate data structures, it tracks how many times
+   the data structure appears as the source of a kernel."))
 
 (defmethod initialize-instance :after ; reference counting
     ((instance data-structure) &key &allow-other-keys)
   (map nil (λ input (incf (refcount input))) (inputs instance)))
 
 (define-class immediate (data-structure)
-  ((storage      :type t :initform nil :accessor storage)
+  ((inputs       :type null :initform nil)
+   (storage      :type t :initform nil :accessor storage)
    (to-storage   :type transformation)
-   (from-storage :type transformation))
+   (from-storage :type transformation)
+   (kernels      :type list :accessor kernels))
   (:documentation
    "An immediate is a data structure whose elements can be referenced in
     constant time. It has a STORAGE slot that contains its elements in some
     unspecified format. The transformation TO-STORAGE maps indices
     referencing the immediate to indices referencing STORAGE. The
-    transformation FROM-STORAGE is the inverse of TO-STORAGE."))
+    transformation FROM-STORAGE is the inverse of TO-STORAGE.
+
+    If KERNELS is a non-empty sequence, it denotes the set of kernels that
+    must be executed before the immediate is fully initialized."))
 
 (define-class application (data-structure)
   ((operator :type function))
@@ -77,7 +90,7 @@
    k \in ΩB to A(T(k))."))
 
 (define-class kernel ()
-  ((target :type immediate :accessor target)
+  ((target :type immediate)
    (recipe :type t)
    (iteration-space :type index-space)
    (sources :type (vector immediate)))
@@ -87,13 +100,9 @@
    elements of the storage of SOURCES. ITERATION-SPACE is a subspace of the
    index space of the storage of TARGET."))
 
-(define-class virtual-machine ()
-  ()
-  (:documentation
-   "A virtual machine is an abstraction over a set of hardware
-   resources. All handling of kernels --- such as performance analysis,
-   compilation and execution --- is done in the context of a particular
-   virtual machine."))
+(defmethod initialize-instance :after ; reference counting
+    ((kernel kernel) &key &allow-other-keys)
+  (incf (refcount (target kernel))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -321,14 +330,6 @@ function is the identity transformation."))
    "Return true if every index in SPACE-1 also occurs in SPACE-2.")
   (:method ((space-1 t) (space-2 t))
     (equal? space-1 (intersection space-1 space-2))))
-
-(defgeneric vm/bind-memory (virtual-machine immediate))
-
-(defgeneric vm/free-memory (virtual-machine immediate))
-
-(defgeneric vm/compile (virtual-machine kernel))
-
-(defgeneric vm/execute (virtual-machine kernel))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

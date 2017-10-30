@@ -2,6 +2,8 @@
 
 (in-package :petalisp)
 
+(defparameter *virtual-machine* (make-instance 'common-lisp-virtual-machine))
+
 (defun α (function object &rest more-objects)
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
 for Petalisp data structures. When the dimensions of some of the inputs
@@ -74,10 +76,10 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
 (defun schedule (&rest objects)
   "Instruct Petalisp to compute all given OBJECTS asynchronously."
   (when-let ((relevant-objects (delete-if #'immediate? objects)))
-    (schedule-asynchronously relevant-objects))
+    (schedule-asynchronously *virtual-machine* relevant-objects))
   (values))
 
 (defun compute (&rest objects)
   "Return the computed values of all OBJECTS."
-  (wait (schedule-asynchronously objects))
+  (wait (schedule-asynchronously *virtual-machine* objects))
   (values-list (mapcar #'depetalispify objects)))

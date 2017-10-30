@@ -6,7 +6,7 @@
   ((compile-cache :initform (make-hash-table :test #'eq))
    (memory-pool :initform (make-hash-table :test #'equalp))))
 
-(defmethod vm/bind-memory
+(defmethod vm-bind-memory
     ((virtual-machine common-lisp-virtual-machine)
      (immediate strided-array-immediate))
   (let ((array-dimensions
@@ -18,7 +18,7 @@
                          (memory-pool virtual-machine)))
            (make-array array-dimensions :element-type element-type)))))
 
-(defmethod vm/free-memory
+(defmethod vm-free-memory
     ((virtual-machine common-lisp-virtual-machine)
      (immediate strided-array-immediate))
   (let ((array-dimensions
@@ -34,7 +34,7 @@
              (collect nil))
     `(lambda () ())))
 
-(defmethod vm/compile
+(defmethod vm-compile
     ((virtual-machine common-lisp-virtual-machine)
      (kernel kernel))
   (let ((recipe (recipe kernel)))

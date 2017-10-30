@@ -33,7 +33,7 @@
    specification. Return a sequence of immediate values, each with a
    (possibly empty) set of kernels and dependencies."
   (let ((table (make-hash-table :test #'eq))
-        (roots (ensure-sequence graph-roots))
+        (graph-roots (ensure-sequence graph-roots))
         (immediates (fvector)))
     ;; step 1 - define a mapping from nodes to immediate values
     (labels ((register (node)
@@ -54,20 +54,31 @@
              (traverse-inputs (node)
                (dolist (input (inputs node))
                  (traverse input))))
-      (map nil #'register roots)
-      (map nil #'traverse roots))
+      ;; explicitly register all graph roots, because they are tree roots
+      ;; regardless of their type or refcount
+      (map nil #'register graph-roots)
+      ;; now process the entire graph recursively
+      (map nil #'traverse graph-roots))
     ;; step 2 - derive the kernels of each immediate
     (labels
-        ((kernelize-hash-table-entry (graph-root target)
+        ((kernelize-hash-table-entry (tree-root target)
+           ;; TABLE has an entry for all nodes that are potential kernel
+           ;; targets (i.e. their refcount is bigger than 1). But only
+           ;; those nodes with a non-NIL target actually need to be
+           ;; kernelized, the rest is skipped
            (when target
              (flet ((leaf-function (node)
                       (cond
-                        ((eq node graph-root) nil)
+                        ;; the root is never a leaf
+                        ((eq node tree-root) nil)
+                        ;; all immediates are leaves
                         ((immediate? node) node)
+                        ;; skip the table lookup when the refcount is small
                         ((< (refcount node) 2) nil)
+                        ;; otherwise check the table
                         (t (values (gethash node table))))))
                (declare (dynamic-extent #'leaf-function))
-               (let ((kernels (kernelize-tree target graph-root #'leaf-function)))
+               (let ((kernels (kernelize-tree target tree-root #'leaf-function)))
                  (setf (kernels target) kernels)
                  (fvector-push target immediates))))))
       (maphash #'kernelize-hash-table-entry table))

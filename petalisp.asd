@@ -57,6 +57,7 @@
        (:file "scheduler" :depends-on ("kernelize"))))
      (:module "virtual-machines" :depends-on ("data-structures")
       :components
-      ((:file "common-lisp-virtual-machine")))
+      ((:file "virtual-machine")
+       (:file "common-lisp-virtual-machine" :depends-on ("virtual-machine"))))
      (:file "visualization" :depends-on ("evaluator" "virtual-machines"))
      (:file "api" :depends-on ("evaluator" "virtual-machines"))))))

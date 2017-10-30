@@ -3,9 +3,7 @@
 (in-package :petalisp)
 
 (define-class strided-array-immediate (strided-array immediate)
-  ((storage      :type (or array null))
-   (dependencies :type fvector :initform (fvector) :accessor dependencies)
-   (kernels      :type fvector :initform (fvector) :accessor kernels)))
+  ((storage :type (or array null))))
 
 (defmethod petalispify ((array array))
   (let ((dimension (dimension array)))
