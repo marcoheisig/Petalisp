@@ -260,8 +260,11 @@
                           collect `(type ,slot-type ,slot-name)))
          (,(if variadic? 'ulist* 'ulist) ',name ,@slot-names)))))
 
-(defmacro with-ustruct-accessors ((ustruct-name &key (prefix "")) ustruct &body body)
+(defmacro with-ustruct-accessors
+    ((ustruct-name &key (prefix "") (suffix "")) ustruct &body body)
   (check-type ustruct-name symbol)
+  (check-type prefix string-designator)
+  (check-type suffix string-designator)
   (once-only (ustruct)
     (multiple-value-bind (ustruct-lambda-list ustruct-known?)
         (gethash ustruct-name *ustruct-lambda-lists*)
@@ -269,25 +272,25 @@
         (error "Not a ustruct name: ~A" ustruct-name))
       (multiple-value-bind (slot-names slot-types variadic?)
           (parse-ustruct-lamba-list ustruct-lambda-list)
-        (let* ((prefixed-names
+        (let* ((extended-names
                  (loop for slot-name in slot-names
-                       collect (symbolicate prefix slot-name)))
-               (typedecls (loop for slot-name in prefixed-names
+                       collect (symbolicate prefix slot-name suffix)))
+               (typedecls (loop for extended-name in extended-names
                                 for slot-type in slot-types
-                                collect `(type ,slot-type ,slot-name))))
+                                collect `(type ,slot-type ,extended-name))))
           (if variadic?
-              `(let* ,(loop for prefixed-name in (butlast prefixed-names)
-                            collect `(,prefixed-name (ucar ,ustruct))
+              `(let* ,(loop for extended-name in (butlast extended-names)
+                            collect `(,extended-name (ucar ,ustruct))
                             collect `(,ustruct (ucdr ,ustruct)))
-                 (declare (ignorable ,@(butlast prefixed-names)))
-                 (let ((,(last-elt prefixed-names) ,ustruct))
-                   (declare (ignorable ,(last-elt prefixed-names))
+                 (declare (ignorable ,ustruct ,@(butlast extended-names)))
+                 (let ((,(last-elt extended-names) ,ustruct))
+                   (declare (ignorable ,(last-elt extended-names))
                             ,@typedecls)
                    ,@body))
-              `(let* ,(loop for prefixed-name in prefixed-names
-                            collect `(,prefixed-name (ucar ,ustruct))
+              `(let* ,(loop for extended-name in extended-names
+                            collect `(,extended-name (ucar ,ustruct))
                             collect `(,ustruct (ucdr ,ustruct)))
-                 (declare (ignorable ,@prefixed-names) ,@typedecls)
+                 (declare (ignorable ,ustruct ,@extended-names) ,@typedecls)
                  ,@body)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -52,10 +52,11 @@
        (:file "strided-array-immediate" :depends-on ("strided-array"))))
      (:module "evaluator" :depends-on ("data-structures")
       :components
-      ((:file "compiler")
-       (:file "kernelize")
-       (:file "memory-pool")
+      ((:file "kernelize")
        (:file "recipe")
-       (:file "scheduler" :depends-on ("kernelize" "memory-pool"))))
-     (:file "visualization" :depends-on ("evaluator"))
-     (:file "api" :depends-on ("evaluator"))))))
+       (:file "scheduler" :depends-on ("kernelize"))))
+     (:module "virtual-machines" :depends-on ("data-structures")
+      :components
+      ((:file "common-lisp-virtual-machine")))
+     (:file "visualization" :depends-on ("evaluator" "virtual-machines"))
+     (:file "api" :depends-on ("evaluator" "virtual-machines"))))))

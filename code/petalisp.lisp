@@ -87,13 +87,13 @@
    elements of the storage of SOURCES. ITERATION-SPACE is a subspace of the
    index space of the storage of TARGET."))
 
-(define-class execution-context ()
+(define-class virtual-machine ()
   ()
   (:documentation
-   "An execution context is an abstraction over a set of hardware
+   "A virtual machine is an abstraction over a set of hardware
    resources. All handling of kernels --- such as performance analysis,
-   compilation and execution --- is done in a particular execution
-   context."))
+   compilation and execution --- is done in the context of a particular
+   virtual machine."))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -321,6 +321,14 @@ function is the identity transformation."))
    "Return true if every index in SPACE-1 also occurs in SPACE-2.")
   (:method ((space-1 t) (space-2 t))
     (equal? space-1 (intersection space-1 space-2))))
+
+(defgeneric vm/bind-memory (virtual-machine immediate))
+
+(defgeneric vm/free-memory (virtual-machine immediate))
+
+(defgeneric vm/compile (virtual-machine kernel))
+
+(defgeneric vm/execute (virtual-machine kernel))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

@@ -13,13 +13,12 @@
 ;;; avoid unnecessary uconses.
 
 (define-ustruct %recipe
-  (range-info  ulist)
-  (target-info ulist)
-  (source-info ulist)
-  (expression  ulist))
+  (range-info ulist)
+  (data-info ulist)
+  (expression ulist))
 
 (define-ustruct %reference
-  (storage symbol)
+  (storage non-negative-fixnum)
   &rest indices)
 
 (define-ustruct %store
@@ -31,24 +30,19 @@
   &rest expressions)
 
 (define-ustruct %reduce
-  (range symbol)
+  (range non-negative-fixnum)
   operator
   (expression ulist))
 
 (define-ustruct %accumulate
-  (range symbol)
+  (range non-negative-fixnum)
   operator
   initial-value
   (expression ulist))
 
 (define-ustruct %for
-  (range symbol)
+  (range non-negative-fixnum)
   (expression ulist))
-
-(define-symbol-pool %source "S")
-(define-symbol-pool %target "T")
-(define-symbol-pool %index  "I")
-(define-symbol-pool %range  "R")
 
 (defgeneric %indices (transformation)
   (:method ((transformation identity-transformation))
@@ -57,7 +51,7 @@
         (let (result)
           (iterate
             (for index from (1- dimension) downto 0)
-            (setf result (ulist (%index index) 0 0)))
+            (setf result (ulist index 0 0)))
           result))))
   (:method ((transformation affine-transformation))
     (let (result)
@@ -65,7 +59,7 @@
         (for column in-vector (spm-column-indices (linear-operator transformation)) downto 0)
         (for value in-vector (spm-values (linear-operator transformation)) downto 0)
         (for offset in-vector (translation-vector transformation) downto 0)
-        (setf result (ulist* (ulist (%index column) value offset) result))))))
+        (setf result (ulist* (ulist column value offset) result))))))
 
 (defun recipe-range-information-ulist (ranges)
   (let (result)
@@ -120,12 +114,12 @@
          (let ((body (funcall body-iterator)))
            (iterate
              (for index from (1- (length *recipe-ranges*)) downto 0)
-             (setf body (ulist '%for (%range index) body)))
+             (setf body (ulist '%for index body)))
            (values
             (ulist '%recipe
                    (recipe-range-information-ulist *recipe-ranges*)
-                   (ulist (element-type node))
-                   (recipe-sources-ulist *recipe-sources*)
+                   (ucons (element-type node)
+                          (recipe-sources-ulist *recipe-sources*))
                    body)
             *recipe-iteration-space*
             *recipe-ranges*
@@ -137,8 +131,9 @@
     (let ((first-visit? t))
       (λ (if first-visit?
              (let ((source
-                     (%source (or (position leaf *recipe-sources*)
-                                  (vector-push-extend leaf *recipe-sources*)))))
+                     ;; reserve ID 0 for the target
+                     (1+ (or (position leaf *recipe-sources*)
+                             (vector-push-extend leaf *recipe-sources*)))))
                (setf first-visit? nil)
                (%reference source (%indices transformation)))
              (signal 'iterator-exhausted))))
