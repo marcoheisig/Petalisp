@@ -5,6 +5,12 @@
 (define-class strided-array-immediate (strided-array immediate)
   ((storage :type (or array null))))
 
+(defmethod shared-initialize :after
+    ((instance strided-array-immediate) slot-names &key &allow-other-keys)
+  (let ((from-storage (from-storage-transformation (index-space instance))))
+    (setf (slot-value instance 'from-storage) from-storage)
+    (setf (slot-value instance 'to-storage) (inverse from-storage))))
+
 (defmethod petalispify ((array array))
   (let ((dimension (dimension array)))
     (make-instance 'strided-array-immediate
@@ -18,14 +24,9 @@
   (storage instance))
 
 (defmethod corresponding-immediate ((strided-array strided-array))
-  (let* ((space (index-space strided-array))
-         (from-storage (from-storage-transformation space))
-         (to-storage (inverse from-storage)))
-    (make-instance 'strided-array-immediate
-      :element-type (element-type strided-array)
-      :index-space (index-space strided-array)
-      :to-storage to-storage
-      :from-storage from-storage)))
+  (make-instance 'strided-array-immediate
+    :element-type (element-type strided-array)
+    :index-space (index-space strided-array)))
 
 (defun from-storage-transformation (index-space)
   "Return a non-permuting, affine transformation from a zero based array

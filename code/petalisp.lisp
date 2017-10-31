@@ -38,7 +38,7 @@
   (map nil (λ input (incf (refcount input))) (inputs instance)))
 
 (define-class immediate (data-structure)
-  ((inputs       :type null :initform nil)
+  ((inputs       :type null)
    (storage      :type t :initform nil :accessor storage)
    (to-storage   :type transformation)
    (from-storage :type transformation)
@@ -52,6 +52,10 @@
 
     If KERNELS is a non-empty sequence, it denotes the set of kernels that
     must be executed before the immediate is fully initialized."))
+
+(defmethod shared-initialize :before
+    ((instance immediate) slot-names &key &allow-other-keys)
+  (setf (slot-value instance 'inputs) nil))
 
 (define-class application (data-structure)
   ((operator :type function))
