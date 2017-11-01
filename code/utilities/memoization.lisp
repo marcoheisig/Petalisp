@@ -25,7 +25,7 @@
 ;;; where only one thread calls a particular memoizing function, this
 ;;; library IS thread safe.
 
-(defvar *memoization-tables* (make-hash-table :test #'eq :weakness :key)
+(defvar *memoization-tables* (make-weak-hash-table :test #'eq :weakness :key)
   "A mapping from packages to sets of of all implicitly created memoization
 tables in that package.")
 
@@ -36,7 +36,7 @@ memoization tables. This permits the garbage collector to reclaim unused
 memoization tables, e.g. after the redefinition of a function."
   (or (gethash package *memoization-tables*)
       (setf (gethash package *memoization-tables*)
-            (make-hash-table :test #'eq :weakness :key))))
+            (make-weak-hash-table :test #'eq :weakness :key))))
 
 (defun clear-memoization-tables (&optional (package *package*))
   "Clear all memoization tables in PACKAGE."

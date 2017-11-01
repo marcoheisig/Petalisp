@@ -6,8 +6,6 @@
   (:use :closer-common-lisp :alexandria :bordeaux-threads :trivial-garbage)
   ;; shadow CL:INTERSECTION with a generic method
   (:shadow #:intersection)
-  ;; support for weak hash tables
-  (:shadowing-import-from :trivial-garbage #:make-hash-table)
   ;; portable OS interface
   (:import-from :uiop #:run-program #:with-temporary-file #:native-namestring)
   ;; benchmark utilities

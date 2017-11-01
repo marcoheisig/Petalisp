@@ -12,11 +12,10 @@
     (setf (slot-value instance 'to-storage) (inverse from-storage))))
 
 (defmethod petalispify ((array array))
-  (let ((dimension (dimension array)))
-    (make-instance 'strided-array-immediate
-      :element-type (array-element-type array)
-      :index-space (make-strided-array-index-space array)
-      :storage array)))
+  (make-instance 'strided-array-immediate
+    :element-type (array-element-type array)
+    :index-space (make-strided-array-index-space array)
+    :storage array))
 
 (defmethod depetalispify ((instance strided-array-immediate))
   (storage instance))

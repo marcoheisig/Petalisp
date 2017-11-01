@@ -15,13 +15,14 @@
    :trivial-garbage
    :uiop)
 
-  :perform (test-op (o c) (uiop:symbol-call "PETALISP" "RUN-TEST-SUITE"))
+  :perform (test-op (o c) (symbol-call "PETALISP" "RUN-TEST-SUITE"))
 
   :components
   ((:module "code"
+    :serial t
     :components
     ((:file "package")
-     (:module "utilities" :depends-on ("package")
+     (:module "utilities"
       :components
       ((:file "code-statistics")
        (:file "extended-euclid" :depends-on ("macros" "testing"))
@@ -38,26 +39,26 @@
        (:file "request")
        (:file "testing")
        (:file "ucons")))
-     (:file "petalisp" :depends-on ("utilities"))
-     (:module "transformations" :depends-on ("petalisp")
+     (:file "petalisp")
+     (:module "transformations"
       :components
       ((:file "identity-transformation")
        (:file "affine-transformation" :depends-on ("identity-transformation"))
        (:file "classify-transformation" :depends-on ("affine-transformation"))))
-     (:module "data-structures" :depends-on ("transformations")
+     (:module "data-structures"
       :components
       ((:file "range")
        (:file "strided-array-index-space" :depends-on ("range"))
        (:file "strided-array" :depends-on ("strided-array-index-space"))
        (:file "strided-array-immediate" :depends-on ("strided-array"))))
-     (:module "scheduler" :depends-on ("data-structures")
+     (:module "scheduler"
       :components
       ((:file "kernelize")
        (:file "recipe")
        (:file "scheduler" :depends-on ("kernelize"))))
-     (:module "virtual-machines" :depends-on ("data-structures")
+     (:module "virtual-machines"
       :components
       ((:file "virtual-machine")
        (:file "common-lisp-virtual-machine" :depends-on ("virtual-machine"))))
-     (:file "visualization" :depends-on ("evaluator" "virtual-machines"))
-     (:file "api" :depends-on ("evaluator" "virtual-machines"))))))
+     (:file "visualization" :depends-on ("scheduler" "virtual-machines"))
+     (:file "api" :depends-on ("scheduler" "virtual-machines"))))))
