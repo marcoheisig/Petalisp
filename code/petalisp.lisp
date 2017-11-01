@@ -35,7 +35,7 @@
 
 (defmethod initialize-instance :after ; reference counting
     ((instance data-structure) &key &allow-other-keys)
-  (map nil (λ input (incf (refcount input))) (inputs instance)))
+  (mapc (λ input (incf (refcount input))) (inputs instance)))
 
 (define-class immediate (data-structure)
   ((inputs       :type null)
@@ -95,7 +95,7 @@
 
 (define-class kernel ()
   ((target :type immediate)
-   (recipe :type t)
+   (recipe :type ulist)
    (iteration-space :type index-space)
    (sources :type (vector immediate)))
   (:documentation
@@ -122,16 +122,6 @@
       (assert (identical a1...aN :test #'equal? :key #'index-space)))
     (or (apply #'optimize-application f a1 a2...aN)
         (call-next-method))))
-
-(defgeneric binary-product (object-1 object-2)
-  (:documentation "The generic function invoked by PRODUCT.")
-  (:method ((a number) (b number))
-    (* a b)))
-
-(defgeneric binary-sum (object-1 object-2)
-  (:documentation "The generic function invoked by SUM.")
-  (:method ((a number) (b number))
-    (+ a b)))
 
 (defgeneric broadcast (object space)
   (:documentation
@@ -338,20 +328,6 @@ function is the identity transformation."))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Petalisp Vocabulary - Non-generic Functions
-
-(declaim (inline sum product))
-
-(defun sum (object &rest more-objects)
-  "Returns the sum of the given objects, as computed by BINARY-SUM."
-  (if (null more-objects)
-      object
-      (reduce #'binary-sum more-objects :initial-value object)))
-
-(defun product (object &rest more-objects)
-  "Returns the product of the given objects, as computed by BINARY-PRODUCT."
-  (if (null more-objects)
-      object
-      (reduce #'binary-product more-objects :initial-value object)))
 
 (defun input (object)
   "Return the unique input of OBJECT."

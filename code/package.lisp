@@ -22,8 +22,6 @@
                 #:metaenv-ensure-names-from-environment)
   ;; Petalisp imports only a small subset of fiveam functionality
   (:import-from :fiveam #:is #:is-true #:is-false #:signals #:for-all)
-  ;; support for pattern matching
-  (:import-from :optima #:match #:ematch #:cmatch)
   ;; LOOP no more
   (:import-from :iterate #:display-iterate-clauses
                 #:defsynonym #:dsetq #:declare-variables
