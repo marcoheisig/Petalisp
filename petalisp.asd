@@ -50,7 +50,7 @@
        (:file "strided-array-index-space" :depends-on ("range"))
        (:file "strided-array" :depends-on ("strided-array-index-space"))
        (:file "strided-array-immediate" :depends-on ("strided-array"))))
-     (:module "evaluator" :depends-on ("data-structures")
+     (:module "scheduler" :depends-on ("data-structures")
       :components
       ((:file "kernelize")
        (:file "recipe")

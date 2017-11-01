@@ -16,9 +16,7 @@
     (make-instance 'strided-array-immediate
       :element-type (array-element-type array)
       :index-space (make-strided-array-index-space array)
-      :storage array
-      :to-storage (make-identity-transformation dimension)
-      :from-storage (make-identity-transformation dimension))))
+      :storage array)))
 
 (defmethod depetalispify ((instance strided-array-immediate))
   (storage instance))
