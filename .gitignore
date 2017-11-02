@@ -5,6 +5,7 @@
 # limit the number of subdirectories
 !/*/
 !/*/*/
+!/*/*/*/
 # Lisp related files
 !*.lisp
 !*.asd

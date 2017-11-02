@@ -75,11 +75,10 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
 
 (defun schedule (&rest objects)
   "Instruct Petalisp to compute all given OBJECTS asynchronously."
-  (when-let ((relevant-objects (delete-if #'immediate? objects)))
-    (schedule-asynchronously *virtual-machine* relevant-objects))
+  (vm/schedule *virtual-machine* objects)
   (values))
 
 (defun compute (&rest objects)
   "Return the computed values of all OBJECTS."
-  (wait (schedule-asynchronously *virtual-machine* objects))
+  (wait (vm/schedule *virtual-machine* objects))
   (values-list (mapcar #'depetalispify objects)))

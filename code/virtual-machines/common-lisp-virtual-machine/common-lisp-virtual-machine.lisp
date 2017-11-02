@@ -2,11 +2,9 @@
 
 (in-package :petalisp)
 
-(define-class common-lisp-virtual-machine (virtual-machine)
-  ((compile-cache :initform (make-hash-table :test #'eq))
-   (memory-pool :initform (make-hash-table :test #'equalp))))
+(define-class common-lisp-virtual-machine (standard-virtual-machine) ())
 
-(defmethod vm-bind-memory
+(defmethod vm/bind-memory
     ((virtual-machine common-lisp-virtual-machine)
      (immediate strided-array-immediate))
   (let ((array-dimensions
@@ -18,7 +16,7 @@
                          (memory-pool virtual-machine)))
            (make-array array-dimensions :element-type element-type)))))
 
-(defmethod vm-free-memory
+(defmethod vm/free-memory
     ((virtual-machine common-lisp-virtual-machine)
      (immediate strided-array-immediate))
   (let ((array-dimensions
@@ -32,7 +30,7 @@
 (define-symbol-pool range-end-symbol "RANGE-END-")
 (define-symbol-pool storage-symbol "STORAGE-")
 
-(defmethod vm-compile
+(defmethod vm/compile
     ((virtual-machine common-lisp-virtual-machine)
      (recipe ucons))
   (with-hash-table-memoization (recipe :multiple-values nil)
@@ -43,10 +41,10 @@
       (finish-output)
       (compile nil code))))
 
-(defmethod vm-execute
+(defmethod vm/execute
   ((virtual-machine common-lisp-virtual-machine)
    (kernel kernel))
-  (vm-compile virtual-machine (recipe kernel)))
+  (vm/compile virtual-machine (recipe kernel)))
 
 (defun translate-recipe-to-lambda (recipe)
   (with-ustruct-accessors (%recipe) recipe

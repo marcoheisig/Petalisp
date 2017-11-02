@@ -108,6 +108,13 @@
     ((kernel kernel) &key &allow-other-keys)
   (incf (refcount (target kernel))))
 
+(define-class virtual-machine () ()
+  (:documentation
+   "A virtual machine is an abstraction over a set of hardware
+   resources. All handling of kernels --- such as performance analysis,
+   compilation and execution --- is done in the context of a particular
+   virtual machine."))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Petalisp Vocabulary - Generic Functions
@@ -222,27 +229,31 @@ are the indices of OBJECT.")
 function is the identity transformation."))
 
 (defgeneric optimize-application (f a1 &rest a2...aN)
-  (:documentation "Return an optimized data-structure, or NIL.")
+  (:documentation
+   "Return an optimized data-structure, or NIL.")
   (:method-combination or)
   (:method or ((f function) (a1 data-structure) &rest a2...aN)
     (when (and (eq f #'identity) (null a2...aN)) a1)))
 
 (defgeneric optimize-fusion (a1 &rest a2...aN)
-  (:documentation "Return an optimized data-structure, or NIL.")
+  (:documentation
+   "Return an optimized data-structure, or NIL.")
   (:method-combination or)
   (:method or ((a1 data-structure) &rest a2...aN)
     "One-argument fusions are equivalent to that argument."
     (unless a2...aN a1)))
 
 (defgeneric optimize-reduction (f a)
-  (:documentation "Return an optimized data-structure, or NIL.")
+  (:documentation
+   "Return an optimized data-structure, or NIL.")
   (:method-combination or)
   (:method or ((f function) (a data-structure))
     (declare (ignore f a))
     nil))
 
 (defgeneric optimize-reference (object space transformation)
-  (:documentation "Return an optimized data-structure, or NIL.")
+  (:documentation
+   "Return an optimized data-structure, or NIL.")
   (:method-combination or)
   (:method or ((object data-structure) (space index-space) (transformation transformation)) nil)
   (:method or ((object reference) (space index-space) (transformation transformation))
@@ -324,6 +335,38 @@ function is the identity transformation."))
    "Return true if every index in SPACE-1 also occurs in SPACE-2.")
   (:method ((space-1 t) (space-2 t))
     (equal? space-1 (intersection space-1 space-2))))
+
+(defgeneric vm/bind-memory (virtual-machine immediate)
+  (:documentation
+   "Instruct VIRTUAL-MACHINE to suitably set the STORAGE slot of
+   IMMEDIATE."))
+
+(defgeneric vm/compile (virtual-machine recipe)
+  (:documentation
+   "Instruct VIRTUAL-MACHINE to prepare the given RECIPE for execution."))
+
+(defgeneric vm/compute (virtual-machine graph-roots)
+  (:documentation
+   "Instruct VIRTUAL-MACHINE to compute the sequence of data structures
+   GRAPH-ROOTS. Return the computed values of all GRAPH-ROOTS."))
+
+(defgeneric vm/execute (virtual-machine kernel)
+  (:documentation
+   "Instruct VIRTUAL-MACHINE to execute the given KERNEL, assuming that all
+   its sources and targets have already been allocated and computed."))
+
+(defgeneric vm/free-memory (virtual-machine immediate)
+  (:documentation
+   "Instruct VIRTUAL-MACHINE to reclaim the STORAGE of IMMEDIATE and set
+   the STORAGE slot of IMMEDIATE to NIL."))
+
+(defgeneric vm/schedule (virtual-machine graph-roots)
+  (:documentation
+   "Instruct VIRTUAL-MACHINE to compute all given GRAPH-ROOTS
+   asynchronously. Return an object of type REQUEST that can be used to
+   block until the task is complete.")
+  (:method :before ((virtual-machine virtual-machine) graph-roots)
+    (assert (every #'data-structure? graph-roots))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

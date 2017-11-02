@@ -50,14 +50,13 @@
        (:file "strided-array-index-space" :depends-on ("range"))
        (:file "strided-array" :depends-on ("strided-array-index-space"))
        (:file "strided-array-immediate" :depends-on ("strided-array"))))
-     (:module "scheduler"
+     (:module "virtual-machines"
       :components
       ((:file "kernelize")
        (:file "recipe")
-       (:file "scheduler" :depends-on ("kernelize"))))
-     (:module "virtual-machines"
-      :components
-      ((:file "virtual-machine")
-       (:file "common-lisp-virtual-machine" :depends-on ("virtual-machine"))))
-     (:file "visualization" :depends-on ("scheduler" "virtual-machines"))
-     (:file "api" :depends-on ("scheduler" "virtual-machines"))))))
+       (:file "evaluate-naively")
+       (:file "standard-virtual-machine" :depends-on ("kernelize" "recipe" "evaluate-naively"))
+       (:module "common-lisp-virtual-machine" :depends-on ("standard-virtual-machine")
+        :components ((:file "common-lisp-virtual-machine")))))
+     (:file "visualization")
+     (:file "api")))))
