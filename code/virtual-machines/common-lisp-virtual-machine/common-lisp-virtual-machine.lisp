@@ -2,7 +2,7 @@
 
 (in-package :petalisp)
 
-(define-class common-lisp-virtual-machine (standard-virtual-machine) ())
+(define-class common-lisp-virtual-machine (virtual-machine) ())
 
 (defmethod vm/bind-memory
     ((virtual-machine common-lisp-virtual-machine)

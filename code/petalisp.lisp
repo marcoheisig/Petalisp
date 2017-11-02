@@ -108,13 +108,6 @@
     ((kernel kernel) &key &allow-other-keys)
   (incf (refcount (target kernel))))
 
-(define-class virtual-machine () ()
-  (:documentation
-   "A virtual machine is an abstraction over a set of hardware
-   resources. All handling of kernels --- such as performance analysis,
-   compilation and execution --- is done in the context of a particular
-   virtual machine."))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Petalisp Vocabulary - Generic Functions
@@ -364,9 +357,7 @@ function is the identity transformation."))
   (:documentation
    "Instruct VIRTUAL-MACHINE to compute all given GRAPH-ROOTS
    asynchronously. Return an object of type REQUEST that can be used to
-   block until the task is complete.")
-  (:method :before ((virtual-machine virtual-machine) graph-roots)
-    (assert (every #'data-structure? graph-roots))))
+   block until the task is complete."))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
