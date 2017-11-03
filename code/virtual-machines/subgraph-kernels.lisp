@@ -43,9 +43,9 @@
 
 (defun subgraph-iteration-spaces (root leaf-function)
   "Return a partitioning of the index space of ROOT, whose elements
-   describe the maximal fusion-free paths through the sub graph from ROOT
-   to some leaves, as determined by the supplied LEAF-FUNCTION."
-  (let (preimages)
+   describe the maximal fusion-free paths through the subgraph from ROOT to
+   some leaves, as determined by the supplied LEAF-FUNCTION."
+  (let (iteration-spaces)
     (labels ((traverse (node relevant-space transformation)
                (cond
                  ((funcall leaf-function node))
@@ -53,19 +53,24 @@
                   (loop for input in (inputs node) do
                     (when-let ((relevant-space (intersection relevant-space (index-space input))))
                       (traverse input relevant-space transformation)
-                      (let ((preimage (funcall (inverse transformation) relevant-space)))
-                        (pushnew preimage preimages :test #'subspace?)))))
+                      (let ((iteration-space (funcall (inverse transformation) relevant-space)))
+                        ;; it is important that the attempt to push happens
+                        ;; after all inputs have been processed, such that
+                        ;; smaller spaces take precedence over larger ones
+                        ;; and we end up with maximal granularity
+                        (unless (some (λ s (subspace? s iteration-space)) iteration-spaces)
+                          (pushnew iteration-space iteration-spaces :test #'subspace?))))))
                  ((reference? node)
                   (when-let ((relevant-space (intersection relevant-space (index-space node))))
                     (traverse
                      (input node)
                      relevant-space
                      (composition (transformation node) transformation))))
-                 ((or (application? node) (reduction? node))
+                 (t
                   (loop for input in (inputs node) do
                     (traverse input relevant-space transformation))))))
       (traverse root (index-space root) (make-identity-transformation (dimension root))))
-    preimages))
+    iteration-spaces))
 
 (defun subgraph-kernel (target iteration-space root leaf-function)
   "Return the kernel that computes the ITERATION-SPACE of TARGET, according
@@ -87,10 +92,29 @@
         :ranges ranges
         :sources sources))))
 
-(defgeneric recipe-body-builder
-    (node leaf-function relevant-space backtransformation)
-  (:documentation
-   "Return as values:
+(defun recipe-body-builder (node leaf-function transformation)
+  "Return as values:
     1. the recipe-body
     2. all iteration ranges
-    3. all sources"))
+    3. all sources"
+  (labels ((traverse (node relevant-space transformation)
+             (if-let ((immediate (funcall leaf-function node)))
+               (%reference (position immediate sources)
+                           (%indices (composition (to-storage immediate) transformation)))
+               (etypecase node
+                 (reference
+                  (traverse
+                   (input node)
+                   relevant-space
+                   (composition (transformation node) transformation)))
+                 (fusion
+                  (traverse
+                   (find-if (λ input (subspace relevant-space (index-space input))) (inputs node))
+                   relevant-space
+                   transformation))
+                 (application
+                  (labels ((expr-ulist (list)
+                             ))
+                    (%call (operator node)
+                           (expr-ulist (inputs node)))))))))))
+

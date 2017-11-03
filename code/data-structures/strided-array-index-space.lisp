@@ -247,7 +247,7 @@
 
 (test |(subdivide strided-array-index-space)|
   (flet ((? (&rest args)
-           (let ((result (apply #'subdivision args)))
+           (let ((result (subdivision args)))
              ;; check for disjointness
              (let (intersections)
                (map-combinations
