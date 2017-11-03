@@ -77,28 +77,7 @@
                         ;; otherwise check the table
                         (t (values (gethash node table))))))
                (declare (dynamic-extent #'leaf-function))
-               (let ((kernels (kernelize-tree target tree-root #'leaf-function)))
+               (let ((kernels (subgraph-kernels target tree-root #'leaf-function)))
                  (setf (kernels target) kernels))))))
       (maphash #'kernelize-hash-table-entry table))
     (map 'vector (λ node (gethash node table)) graph-roots)))
-
-(defun kernelize-tree (target tree-root leaf-function)
-  "Return a list of kernels that compute the immediate value TARGET,
-   according to the data flow tree defined by TREE-ROOT and
-   LEAF-FUNCTION. The former is a data flow graph node with one or more
-   inputs and the latter is a function returning NIL for inner tree nodes
-   and the a nodes corresponding IMMEDIATE for all leaves."
-  (let (kernels)
-    (map-recipes
-     (lambda (recipe iteration-space ranges sources)
-       (declare (ignorable ranges))
-       (push (make-instance 'kernel
-               :iteration-space iteration-space
-               :recipe recipe
-               :target target
-               :sources sources)
-             kernels))
-     target
-     tree-root
-     :leaf-function leaf-function)
-    kernels))

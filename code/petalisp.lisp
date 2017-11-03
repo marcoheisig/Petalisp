@@ -96,8 +96,8 @@
 (define-class kernel ()
   ((target :type immediate)
    (recipe :type ulist)
-   (iteration-space :type index-space)
-   (sources :type (vector immediate)))
+   (ranges :type list)
+   (sources :type list))
   (:documentation
    "A kernel is the fundamental unit of work in Petalisp. It's RECIPE
    describes how elements of the storage of TARGET can be computed by using
@@ -281,7 +281,7 @@ function is the identity transformation."))
 
 (defmethod print-object ((object kernel) stream)
   (print-unreadable-object (object stream :type t :identity t)
-    (princ (iteration-space object) stream)))
+    (princ (ranges object) stream)))
 
 (defgeneric reduction (f a)
   (:documentation
@@ -367,7 +367,7 @@ function is the identity transformation."))
   "Return the unique input of OBJECT."
   (destructuring-bind (input) (inputs object) input))
 
-(defun subdivision (object &rest more-objects)
+(defun subdivision (objects)
   "Return a list of disjoint objects. Each resulting object is a proper
 subspace of one or more of the arguments and their fusion covers all
 arguments."
@@ -381,7 +381,10 @@ arguments."
                     append (difference particle object)
                     when (intersection particle object) collect it)
               object-w/o-dust))))
-    (reduce #'shatter more-objects :initial-value (list object))))
+    (cond ((emptyp objects) nil)
+          ((= 1 (length objects)) objects)
+          (t (reduce #'shatter (rest objects)
+                     :initial-value (list (first objects)))))))
 
 (defun shallow-copy (instance)
   "Make a copy of INSTANCE that is EQUAL? but not EQ. TODO generate

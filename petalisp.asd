@@ -52,8 +52,9 @@
        (:file "strided-array-immediate" :depends-on ("strided-array"))))
      (:module "virtual-machines"
       :components
-      ((:file "kernelize")
+      ((:file "kernelize" :depends-on ("subgraph-kernels"))
        (:file "recipe")
+       (:file "subgraph-kernels" :depends-on ("recipe"))
        (:file "evaluate-naively")
        (:file "virtual-machine" :depends-on ("kernelize" "recipe" "evaluate-naively"))
        (:module "common-lisp-virtual-machine" :depends-on ("virtual-machine")

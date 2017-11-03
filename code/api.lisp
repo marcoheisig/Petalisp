@@ -28,7 +28,7 @@ to represent the fusion."
   "Combine OBJECTS into a single petalisp data structure. When some OBJECTS
 overlap partially, the value of the rightmost object is used."
   (let ((objects (mapcar #'petalispify objects)))
-    (let ((pieces (apply #'subdivision (mapcar #'index-space objects))))
+    (let ((pieces (subdivision (mapcar #'index-space objects))))
       (flet ((reference-origin (piece)
                (reference
                 (find piece objects :from-end t :key #'index-space :test #'subspace?)

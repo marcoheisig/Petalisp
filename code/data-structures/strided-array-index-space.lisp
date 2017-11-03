@@ -199,8 +199,7 @@
 (defun fuse-recursively (spaces)
   (unless (every (composition #'zerop #'dimension) spaces)
     (let ((islands
-            (apply
-             #'subdivision
+            (subdivision
              (mapcar
               (lambda (space)
                 (let ((ranges (ranges space)))
