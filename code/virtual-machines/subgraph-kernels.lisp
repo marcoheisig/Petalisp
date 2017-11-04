@@ -48,18 +48,19 @@
   (let (iteration-spaces)
     (labels ((traverse (node relevant-space transformation)
                (cond
-                 ((funcall leaf-function node))
+                 ((funcall leaf-function node)
+                  (values))
                  ((fusion? node)
                   (loop for input in (inputs node) do
                     (when-let ((relevant-space (intersection relevant-space (index-space input))))
                       (traverse input relevant-space transformation)
+                      ;; it is important that the attempt to push happens
+                      ;; after all inputs have been processed, such that
+                      ;; smaller spaces take precedence over larger ones
+                      ;; and we end up with maximal granularity
                       (let ((iteration-space (funcall (inverse transformation) relevant-space)))
-                        ;; it is important that the attempt to push happens
-                        ;; after all inputs have been processed, such that
-                        ;; smaller spaces take precedence over larger ones
-                        ;; and we end up with maximal granularity
                         (unless (some (λ s (subspace? s iteration-space)) iteration-spaces)
-                          (pushnew iteration-space iteration-spaces :test #'subspace?))))))
+                          (push iteration-space iteration-spaces))))))
                  ((reference? node)
                   (when-let ((relevant-space (intersection relevant-space (index-space node))))
                     (traverse
@@ -71,6 +72,17 @@
                     (traverse input relevant-space transformation))))))
       (traverse root (index-space root) (make-identity-transformation (dimension root))))
     iteration-spaces))
+
+(defun subgraph-sources (root leaf-function)
+  "Return all the leaves reachable from ROOT and determined by the supplied
+  LEAF-FUNCTION."
+  (let ((sources (fvector)))
+    (prog1 sources
+      (funcall (named-lambda traverse (node)
+                 (if-let ((leaf (funcall leaf-function node)))
+                   (fvector-pushnew leaf sources :test #'eq)
+                   (mapc #'traverse (inputs node))))
+               root))))
 
 (defun subgraph-kernel (target iteration-space root leaf-function)
   "Return the kernel that computes the ITERATION-SPACE of TARGET, according
