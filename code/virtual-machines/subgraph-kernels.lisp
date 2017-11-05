@@ -41,41 +41,79 @@
          (subgraph-kernel target root leaf-function iteration-space))
        (subgraph-iteration-spaces root leaf-function)))
 
+(defun subgraph-kernel (target iteration-space root leaf-function)
+  "Return the kernel that computes the ITERATION-SPACE of TARGET, according
+   to the data flow graph prescribed by ROOT and LEAF-FUNCTION."
+  (let ((sources (subgraph-sources root leaf-function)))
+    (multiple-value-bind (recipe-body ranges)
+        (recipe-body-builder root leaf-function iteration-space (from-storage target))
+      (let* ((dimension (dimension root))
+             (recipe
+               (funcall
+                (named-lambda build-recipe (range-id)
+                  (if (= range-id 0)
+                      (%store (%reference 0 (%indices (make-identity-transformation dimension)))
+                              recipe-body)
+                      (%for range-id (build-recipe (1+ range-id)))))
+                (dimension root))))
+        (make-instance 'kernel
+          :target target
+          :recipe recipe
+          :ranges ranges
+          :sources sources)))))
+
 (defun subgraph-iteration-spaces (root leaf-function)
   "Return a partitioning of the index space of ROOT, whose elements
    describe the maximal fusion-free paths through the subgraph from ROOT to
    some leaves, as determined by the supplied LEAF-FUNCTION."
-  (let (iteration-spaces)
-    (labels ((traverse (node relevant-space transformation)
-               (cond
-                 ((funcall leaf-function node)
-                  (values))
-                 ((fusion? node)
-                  (loop for input in (inputs node) do
-                    (when-let ((relevant-space (intersection relevant-space (index-space input))))
-                      (traverse input relevant-space transformation)
-                      ;; it is important that the attempt to push happens
-                      ;; after all inputs have been processed, such that
-                      ;; smaller spaces take precedence over larger ones
-                      ;; and we end up with maximal granularity
-                      (let ((iteration-space (funcall (inverse transformation) relevant-space)))
-                        (unless (some (λ s (subspace? s iteration-space)) iteration-spaces)
-                          (push iteration-space iteration-spaces))))))
-                 ((reference? node)
-                  (when-let ((relevant-space (intersection relevant-space (index-space node))))
-                    (traverse
-                     (input node)
-                     relevant-space
-                     (composition (transformation node) transformation))))
-                 (t
-                  (loop for input in (inputs node) do
-                    (traverse input relevant-space transformation))))))
-      (traverse root (index-space root) (make-identity-transformation (dimension root))))
-    iteration-spaces))
+  (let ((iteration-spaces ())
+        (hairy-fusions? nil))
+    (labels
+        ((traverse/fusion-tree? (node relevant-space transformation)
+           ;; register iteration spaces and return whether a fusion node
+           ;; appeared in this subtree
+           (cond
+             ((funcall leaf-function node) nil)
+             ((fusion? node)
+              (prog1 t
+                (loop for input in (inputs node) do
+                  (when-let ((relevant-space (intersection relevant-space (index-space input))))
+                    (traverse/fusion-tree? input relevant-space transformation)
+                    ;; it is important that the attempt to push happens
+                    ;; after all inputs have been processed, such that
+                    ;; smaller spaces take precedence over larger ones
+                    ;; and we end up with maximal granularity
+                    (let ((iteration-space (funcall (inverse transformation) relevant-space)))
+                      (unless (some (λ s (subspace? s iteration-space)) iteration-spaces)
+                        (push iteration-space iteration-spaces)))))))
+             ((reference? node)
+              (when-let ((relevant-space (intersection relevant-space (index-space node))))
+                (traverse/fusion-tree?
+                 (input node)
+                 relevant-space
+                 (composition (transformation node) transformation))))
+             ((reduction? node)
+              (traverse/fusion-tree? (input node) relevant-space transformation))
+             (t
+              (let ((number-of-fusing-subtrees
+                      (loop for input in (inputs node)
+                            count (traverse/fusion-tree? input relevant-space transformation))))
+                (case number-of-fusing-subtrees
+                  (0 nil)
+                  (1 t)
+                  (otherwise (setf hairy-fusions? t))))))))
+      (traverse/fusion-tree? root (index-space root) (make-identity-transformation (dimension root))))
+    ;; one case that has not yet been accounted for is when fusions appear
+    ;; in more than one input of an application. In this case, iteration
+    ;; spaces can overlap and it is necessary to subdivide all spaces
+    ;; afterwards.
+    (if hairy-fusions?
+        (subdivision iteration-spaces)
+        iteration-spaces)))
 
 (defun subgraph-sources (root leaf-function)
-  "Return all the leaves reachable from ROOT and determined by the supplied
-  LEAF-FUNCTION."
+  "Return a vector of the sources reachable from ROOT, as determined by the
+  supplied LEAF-FUNCTION."
   (let ((sources (fvector)))
     (prog1 sources
       (funcall (named-lambda traverse (node)
@@ -84,31 +122,10 @@
                    (mapc #'traverse (inputs node))))
                root))))
 
-(defun subgraph-kernel (target iteration-space root leaf-function)
-  "Return the kernel that computes the ITERATION-SPACE of TARGET, according
-   to the data flow graph prescribed by ROOT and LEAF-FUNCTION."
-  (multiple-value-bind (recipe-body ranges sources)
-      (recipe-body-builder root leaf-function iteration-space (from-storage target))
-    (let* ((dimension (dimension root))
-           (recipe
-             (funcall
-              (named-lambda build-recipe (range-id)
-                (if (= range-id 0)
-                    (%store (%reference 0 (%indices (make-identity-transformation dimension)))
-                            recipe-body)
-                    (%for range-id (build-recipe (1+ range-id)))))
-              (dimension root))))
-      (make-instance 'kernel
-        :target target
-        :recipe recipe
-        :ranges ranges
-        :sources sources))))
-
-(defun recipe-body-builder (node leaf-function transformation)
+(defun subgraph-recipe-body (node leaf-function transformation)
   "Return as values:
     1. the recipe-body
-    2. all iteration ranges
-    3. all sources"
+    2. all iteration ranges"
   (labels ((traverse (node relevant-space transformation)
              (if-let ((immediate (funcall leaf-function node)))
                (%reference (position immediate sources)
