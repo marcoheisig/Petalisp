@@ -66,50 +66,28 @@
   "Return a partitioning of the index space of ROOT, whose elements
    describe the maximal fusion-free paths through the subgraph from ROOT to
    some leaves, as determined by the supplied LEAF-FUNCTION."
-  (let ((iteration-spaces ())
-        (hairy-fusions? nil))
-    (labels
-        ((traverse/fusion-tree? (node relevant-space transformation)
-           ;; register iteration spaces and return whether a fusion node
-           ;; appeared in this subtree
-           (cond
-             ((funcall leaf-function node) nil)
-             ((fusion? node)
-              (prog1 t
-                (loop for input in (inputs node) do
-                  (when-let ((relevant-space (intersection relevant-space (index-space input))))
-                    (traverse/fusion-tree? input relevant-space transformation)
-                    ;; it is important that the attempt to push happens
-                    ;; after all inputs have been processed, such that
-                    ;; smaller spaces take precedence over larger ones
-                    ;; and we end up with maximal granularity
-                    (let ((iteration-space (funcall (inverse transformation) relevant-space)))
-                      (unless (some (λ s (subspace? s iteration-space)) iteration-spaces)
-                        (push iteration-space iteration-spaces)))))))
-             ((reference? node)
-              (when-let ((relevant-space (intersection relevant-space (index-space node))))
-                (traverse/fusion-tree?
-                 (input node)
-                 relevant-space
-                 (composition (transformation node) transformation))))
-             ((reduction? node)
-              (traverse/fusion-tree? (input node) relevant-space transformation))
-             (t
-              (let ((number-of-fusing-subtrees
-                      (loop for input in (inputs node)
-                            count (traverse/fusion-tree? input relevant-space transformation))))
-                (case number-of-fusing-subtrees
-                  (0 nil)
-                  (1 t)
-                  (otherwise (setf hairy-fusions? t))))))))
-      (traverse/fusion-tree? root (index-space root) (make-identity-transformation (dimension root))))
-    ;; one case that has not yet been accounted for is when fusions appear
-    ;; in more than one input of an application. In this case, iteration
-    ;; spaces can overlap and it is necessary to subdivide all spaces
-    ;; afterwards.
-    (if hairy-fusions?
-        (subdivision iteration-spaces)
-        iteration-spaces)))
+  (labels
+      ((iteration-spaces (node relevant-space transformation)
+         (cond
+           ((funcall leaf-function node) nil)
+           ((fusion? node)
+            (iterate
+              (for input in (inputs node))
+              (when-let ((subspace (intersection relevant-space (index-space input))))
+                (nconcing (or (iteration-spaces input subspace transformation)
+                              (list (funcall (inverse transformation) subspace)))))))
+           ((reference? node)
+            (when-let ((subspace (intersection relevant-space (index-space node))))
+              (iteration-spaces (input node) subspace
+                                (composition (transformation node) transformation))))
+           ((reduction? node)
+            (iteration-spaces (input node) relevant-space transformation))
+           ((application? node)
+            (iterate
+              (for input in (inputs node))
+              (when-let ((spaces (iteration-spaces input relevant-space transformation)))
+                (nconcing spaces)))))))
+    (iteration-spaces root (index-space root) (make-identity-transformation (dimension root)))))
 
 (defun subgraph-sources (root leaf-function)
   "Return a vector of the sources reachable from ROOT, as determined by the

@@ -382,9 +382,8 @@ arguments."
                     when (intersection particle object) collect it)
               object-w/o-dust))))
     (cond ((emptyp objects) nil)
-          ((= 1 (length objects)) objects)
-          (t (reduce #'shatter (rest objects)
-                     :initial-value (list (first objects)))))))
+          ((= 1 (length objects)) (list (elt objects 0)))
+          (t (reduce #'shatter objects :initial-value nil)))))
 
 (defun shallow-copy (instance)
   "Make a copy of INSTANCE that is EQUAL? but not EQ. TODO generate
