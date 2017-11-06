@@ -39,7 +39,7 @@
     ;; evaluate all dependencies
     (let (dependencies)
       (iterate
-        (for kernel in (kernels immediate))
+        (for kernel in-sequence (kernels immediate))
         (iterate
           (for source in-vector (sources kernel))
           (pushnew source dependencies)))
@@ -48,7 +48,7 @@
     (vm/bind-memory vm immediate)
     ;; compute all kernels
     (iterate
-      (for kernel in (kernels immediate))
+      (for kernel in-sequence (kernels immediate))
       (vm/execute vm kernel)
       ;; potentially release resources
       (iterate

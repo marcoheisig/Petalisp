@@ -41,26 +41,71 @@
          (subgraph-kernel target root leaf-function iteration-space))
        (subgraph-iteration-spaces root leaf-function)))
 
-(defun subgraph-kernel (target iteration-space root leaf-function)
+(defun range-info (ranges)
+  (flet ((range-info-fn (range)
+           (ulist (size range)
+                  (range-step range)
+                  (size range))))
+    (map-ulist #'range-info-fn ranges)))
+
+(defun storage-info (target sources)
+  (flet ((storage-info-fn (immediate)
+           (element-type immediate)))
+    (ulist* (storage-info-fn target)
+            (map-ulist #'storage-info-fn sources))))
+
+(defun subgraph-kernel (target root leaf-function iteration-space)
   "Return the kernel that computes the ITERATION-SPACE of TARGET, according
    to the data flow graph prescribed by ROOT and LEAF-FUNCTION."
-  (let ((sources (subgraph-sources root leaf-function)))
-    (multiple-value-bind (recipe-body ranges)
-        (recipe-body-builder root leaf-function iteration-space (from-storage target))
-      (let* ((dimension (dimension root))
-             (recipe
-               (funcall
-                (named-lambda build-recipe (range-id)
-                  (if (= range-id 0)
-                      (%store (%reference 0 (%indices (make-identity-transformation dimension)))
-                              recipe-body)
-                      (%for range-id (build-recipe (1+ range-id)))))
-                (dimension root))))
-        (make-instance 'kernel
-          :target target
-          :recipe recipe
-          :ranges ranges
-          :sources sources)))))
+  (let ((dimension (dimension root)))
+    (multiple-value-bind (ranges sources)
+        (subgraph-ranges-and-sources root leaf-function iteration-space)
+      (make-instance 'kernel
+        :target target
+        :ranges ranges
+        :sources sources
+        :recipe
+        (%recipe
+         (range-info ranges)
+         (storage-info target sources)
+         (funcall
+          (named-lambda build-recipe (range-id)
+            (if (= range-id dimension)
+                (%store (%reference 0 (%indices (make-identity-transformation dimension)))
+                        (subgraph-recipe-body
+                         root leaf-function sources iteration-space (from-storage target)))
+                (%for range-id (build-recipe (1+ range-id)))))
+          0))))))
+
+(defun subgraph-ranges-and-sources (root leaf-function iteration-space)
+  "Return as multiple values a vector of the ranges and a vector of the
+  sources reachable from ROOT, as determined by the supplied
+  LEAF-FUNCTION."
+  (let ((ranges (ranges iteration-space)) ;; TODO
+        (sources (fvector)))
+    (labels
+        ((traverse (node relevant-space)
+           (when relevant-space
+             (if-let ((leaf (funcall leaf-function node)))
+               (fvector-pushnew leaf sources :test #'eq)
+               (etypecase node
+                 (application
+                  (map nil
+                       (λ input (traverse input relevant-space))
+                       (inputs node)))
+                 (reduction
+                  (traverse (input node) relevant-space))
+                 (fusion
+                  (map nil
+                       (λ input (traverse input (intersection (index-space input) relevant-space)))
+                       (inputs node)))
+                 (reference
+                  (traverse (input node)
+                            (intersection
+                             (index-space (input node))
+                             (funcall (transformation node) relevant-space)))))))))
+      (traverse root iteration-space))
+    (values ranges sources)))
 
 (defun subgraph-iteration-spaces (root leaf-function)
   "Return a partitioning of the index space of ROOT, whose elements
@@ -95,24 +140,10 @@
                   index-spaces))))))
     (iteration-spaces root (index-space root) (make-identity-transformation (dimension root)))))
 
-(defun subgraph-sources (root leaf-function)
-  "Return a vector of the sources reachable from ROOT, as determined by the
-  supplied LEAF-FUNCTION."
-  (let ((sources (fvector)))
-    (prog1 sources
-      (funcall (named-lambda traverse (node)
-                 (if-let ((leaf (funcall leaf-function node)))
-                   (fvector-pushnew leaf sources :test #'eq)
-                   (mapc #'traverse (inputs node))))
-               root))))
-
-(defun subgraph-recipe-body (node leaf-function transformation)
-  "Return as values:
-    1. the recipe-body
-    2. all iteration ranges"
+(defun subgraph-recipe-body (node leaf-function sources iteration-space transformation)
   (labels ((traverse (node relevant-space transformation)
              (if-let ((immediate (funcall leaf-function node)))
-               (%reference (position immediate sources)
+               (%reference (1+ (position immediate sources))
                            (%indices (composition (to-storage immediate) transformation)))
                (etypecase node
                  (reference
@@ -122,12 +153,13 @@
                    (composition (transformation node) transformation)))
                  (fusion
                   (traverse
-                   (find-if (λ input (subspace relevant-space (index-space input))) (inputs node))
+                   (find-if (λ input (subspace? relevant-space (index-space input)))
+                            (inputs node))
                    relevant-space
                    transformation))
                  (application
-                  (labels ((expr-ulist (list)
-                             ))
-                    (%call (operator node)
-                           (expr-ulist (inputs node)))))))))))
+                  (%call (operator node)
+                         (map-ulist (λ input (traverse input relevant-space transformation))
+                                    (inputs node))))))))
+    (traverse node iteration-space transformation)))
 

@@ -223,6 +223,14 @@
                 (setf ,ulist
                       (funcall-form ,step ,ulist)))))))))
 
+(declaim (inline map-ulist))
+(defun map-ulist (function sequence)
+  (declare (function function))
+  (reduce #'ucons sequence
+          :key function
+          :from-end t
+          :initial-value nil))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; structured ulists
