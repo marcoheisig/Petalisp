@@ -372,15 +372,15 @@ function is the identity transformation."))
 subspace of one or more of the arguments and their fusion covers all
 arguments."
   (flet ((shatter (dust object) ; dust is a list of disjoint objects
-           (let ((object-w/o-dust (list object)))
-             (nconc
-              (loop for particle in dust do
-                (setf object-w/o-dust
-                      (loop for x in object-w/o-dust
-                            append (difference x particle)))
-                    append (difference particle object)
-                    when (intersection particle object) collect it)
-              object-w/o-dust))))
+           (let* ((object-w/o-dust (list object))
+                  (new-dust
+                    (loop for particle in dust do
+                      (setf object-w/o-dust
+                            (loop for x in object-w/o-dust
+                                  append (difference x particle)))
+                          append (difference particle object)
+                          when (intersection particle object) collect it)))
+             (append object-w/o-dust new-dust))))
     (cond ((emptyp objects) nil)
           ((= 1 (length objects)) (list (elt objects 0)))
           (t (reduce #'shatter objects :initial-value nil)))))
