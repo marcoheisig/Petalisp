@@ -83,10 +83,16 @@
            ((reduction? node)
             (iteration-spaces (input node) relevant-space transformation))
            ((application? node)
-            (iterate
-              (for input in (inputs node))
-              (when-let ((spaces (iteration-spaces input relevant-space transformation)))
-                (nconcing spaces)))))))
+            (let* ((number-of-fusing-subtrees 0)
+                   (index-spaces
+                     (iterate
+                       (for input in (inputs node))
+                       (when-let ((spaces (iteration-spaces input relevant-space transformation)))
+                         (incf number-of-fusing-subtrees)
+                         (nconcing spaces)))))
+              (if (> number-of-fusing-subtrees 1)
+                  (subdivision index-spaces)
+                  index-spaces))))))
     (iteration-spaces root (index-space root) (make-identity-transformation (dimension root)))))
 
 (defun subgraph-sources (root leaf-function)
