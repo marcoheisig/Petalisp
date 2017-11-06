@@ -2,19 +2,9 @@
 
 (in-package :petalisp)
 
-(define-class virtual-machine ()
-  ((compile-cache :type hash-table :initform (make-hash-table :test #'eq))
-   (memory-pool :type hash-table :initform (make-hash-table :test #'equalp))
-   (scheduler-queue :type queue :initform (make-queue))
-   (scheduler-thread :initform nil))
-  (:documentation
-   "A virtual machine is an abstraction over a set of hardware
-   resources. All handling of kernels --- such as performance analysis,
-   compilation and execution --- is done in the context of a particular
-   virtual machine."))
-
-(defmethod vm/schedule :before ((vm virtual-machine) (graph-roots sequence))
-  (assert (every #'data-structure? graph-roots)))
+(define-class default-scheduler-mixin ()
+  ((scheduler-queue :type queue :initform (make-queue))
+   (scheduler-thread :initform nil)))
 
 (defmethod vm/schedule ((vm virtual-machine) graph-roots)
   (let* ((target-graphs
@@ -42,3 +32,27 @@
     (prog1 request
       (run-in-global-evaluator-thread
        (λ (%schedule virtual-machine targets blueprints request))))))
+
+(defun evaluate-naively (vm immediate)
+  ;; only evaluate once
+  (unless (storage immediate)
+    ;; evaluate all dependencies
+    (let (dependencies)
+      (iterate
+        (for kernel in (kernels immediate))
+        (iterate
+          (for source in-vector (sources kernel))
+          (pushnew source dependencies)))
+      (map nil (λ dependency (evaluate-naively vm dependency)) dependencies))
+    ;; allocate memory
+    (vm/bind-memory vm immediate)
+    ;; compute all kernels
+    (iterate
+      (for kernel in (kernels immediate))
+      (vm/execute vm kernel)
+      ;; potentially release resources
+      (iterate
+        (for source in-vector (sources kernel))
+        (when (zerop (decf (refcount source)))
+          (vm/free-memory vm source))))
+    immediate))

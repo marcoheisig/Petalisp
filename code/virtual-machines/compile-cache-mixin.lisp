@@ -1,0 +1,13 @@
+;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
+
+(in-package :petalisp)
+
+(define-class compile-cache-mixin ()
+  ((compile-cache :type hash-table :initform (make-hash-table :test #'eq))))
+
+(defmethod vm/compile :around
+    ((virtual-machine compile-cache-mixin)
+     (recipe ucons))
+  (with-hash-table-memoization (recipe :multiple-values nil)
+      (compile-cache virtual-machine)
+    (call-next-method)))

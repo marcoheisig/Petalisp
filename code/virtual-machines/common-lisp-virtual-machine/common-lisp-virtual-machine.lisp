@@ -2,7 +2,9 @@
 
 (in-package :petalisp)
 
-(define-class common-lisp-virtual-machine (virtual-machine) ())
+(define-class common-lisp-virtual-machine
+    (virtual-machine default-scheduler-mixin compile-cache-mixin)
+  ((memory-pool :type hash-table :initform (make-hash-table :test #'equalp))))
 
 (defmethod vm/bind-memory
     ((virtual-machine common-lisp-virtual-machine)
@@ -31,15 +33,12 @@
 (define-symbol-pool storage-symbol "STORAGE-")
 
 (defmethod vm/compile
-    ((virtual-machine common-lisp-virtual-machine)
-     (recipe ucons))
-  (with-hash-table-memoization (recipe :multiple-values nil)
-      (compile-cache virtual-machine)
-    (let ((code (translate-recipe-to-lambda recipe)))
-      (print "Cache miss!")
-      (print code)
-      (finish-output)
-      (compile nil code))))
+    ((virtual-machine common-lisp-virtual-machine) (recipe ucons))
+  (let ((code (translate-recipe-to-lambda recipe)))
+    (print "Cache miss!")
+    (print code)
+    (finish-output)
+    (compile nil code)))
 
 (defmethod vm/execute
   ((virtual-machine common-lisp-virtual-machine)
