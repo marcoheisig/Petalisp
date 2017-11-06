@@ -43,9 +43,10 @@
 
 (defun range-info (ranges)
   (flet ((range-info-fn (range)
-           (ulist (size range)
-                  (range-step range)
-                  (size range))))
+           (let ((lb (log (size range) 2)))
+             (ulist (expt (floor lb) 2)
+                    (expt (ceiling lb) 2)
+                    (range-step range)))))
     (map-ulist #'range-info-fn ranges)))
 
 (defun storage-info (target sources)

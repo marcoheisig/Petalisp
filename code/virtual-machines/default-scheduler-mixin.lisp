@@ -6,7 +6,7 @@
   ((scheduler-queue :type queue :initform (make-queue))
    (scheduler-thread :initform nil)))
 
-(defmethod vm/schedule ((vm virtual-machine) graph-roots)
+(defmethod vm/schedule ((vm default-scheduler-mixin) graph-roots)
   (let* ((target-graphs
            (map 'vector
                 (lambda (root)
