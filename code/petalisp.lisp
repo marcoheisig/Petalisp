@@ -159,6 +159,14 @@
    DATA-STRUCTURE.")
   (:method ((immediate immediate)) immediate))
 
+(defgeneric make-immediate! (data-structure)
+  (:documentation
+   "Change the class of DATA-STRUCTURE to a subclass of immediate.")
+  (:method ((immediate immediate))
+    immediate)
+  (:method ((data-structure data-structure))
+    (change-class data-structure 'immediate)))
+
 (defgeneric depetalispify (object)
   (:documentation
    "If OBJECT is a Petalisp data structure, return an array with the
@@ -321,6 +329,19 @@ function is the identity transformation."))
     (declare (ignore type-specifiers))
     t))
 
+(defgeneric shallow-copy (instance)
+  "Make a copy of INSTANCE that is EQUAL? but not EQ to it."
+  (:method ((immediate immediate))
+    immediate) ;; TODO violates the documentation
+  (:method ((application application))
+    (apply #'application (operator instance) (inputs instance)))
+  (:method ((reduction reduction))
+    (reduction (operator instance) (input instance)))
+  (:method ((fusion fusion))
+    (apply #'fusion (inputs instance)))
+  (:method ((reference reference))
+    (reference (input instance) (index-space instance) (transformation instance))))
+
 (defgeneric size (object)
   (:documentation
    "The size of a compound object, such as an array or hash-table, is
@@ -360,13 +381,14 @@ function is the identity transformation."))
    "Instruct VIRTUAL-MACHINE to reclaim the STORAGE of IMMEDIATE and set
    the STORAGE slot of IMMEDIATE to NIL."))
 
-(defgeneric vm/schedule (virtual-machine graph-roots)
+(defgeneric vm/schedule (virtual-machine targets recipes &optional request)
   (:documentation
    "Instruct VIRTUAL-MACHINE to compute all given GRAPH-ROOTS
    asynchronously. Return an object of type REQUEST that can be used to
    block until the task is complete.")
-  (:method :before ((virtual-machine virtual-machine) (graph-roots sequence))
-    (assert (every #'data-structure? graph-roots))))
+  (:method :before ((virtual-machine virtual-machine) (targets sequence) (recipes sequence))
+    (assert (every #'immediate? targets))
+    (assert (every #'data-structure? recipes))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -393,16 +415,6 @@ arguments."
     (cond ((emptyp objects) nil)
           ((= 1 (length objects)) (list (elt objects 0)))
           (t (reduce #'shatter objects :initial-value nil)))))
-
-(defun shallow-copy (instance)
-  "Make a copy of INSTANCE that is EQUAL? but not EQ. TODO generate
-  automatically within DEFINE-CLASS."
-  (etypecase instance
-    (immediate instance) ; TODO violates the documentation
-    (application (apply #'application (operator instance) (inputs instance)))
-    (reduction (reduction (operator instance) (input instance)))
-    (fusion (apply #'fusion (inputs instance)))
-    (reference (reference (input instance) (index-space instance) (transformation instance)))))
 
 (defun run-test-suite ()
   (format t "== Testing Petalisp ==~%")

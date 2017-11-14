@@ -8,19 +8,9 @@
 
 (defmethod vm/schedule ((vm default-scheduler-mixin) graph-roots)
   (let* ((target-graphs
-           (map 'vector
-                (lambda (root)
-                  (etypecase root
-                    (immediate nil)
-                    (data-structure (shallow-copy root))))
-                graph-roots))
+           )
          (targets
-           (map 'vector
-                (lambda (root)
-                  (etypecase root
-                    (immediate root)
-                    (strided-array (change-class root 'strided-array-immediate))))
-                graph-roots))
+           )
          (request (make-request)))
     ;; TODO currently schedules synchronously for easier debugging
     (iterate (for immediate in-sequence (kernelize-graph target-graphs))
