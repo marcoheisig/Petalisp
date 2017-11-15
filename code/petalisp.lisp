@@ -161,7 +161,8 @@
 
 (defgeneric make-immediate! (data-structure)
   (:documentation
-   "Change the class of DATA-STRUCTURE to a subclass of immediate.")
+   "Change the class of DATA-STRUCTURE to a suitable subclass of
+    immediate.")
   (:method ((immediate immediate))
     immediate)
   (:method ((data-structure data-structure))
@@ -330,17 +331,18 @@ function is the identity transformation."))
     t))
 
 (defgeneric shallow-copy (instance)
-  "Make a copy of INSTANCE that is EQUAL? but not EQ to it."
+  (:documentation
+   "Make a copy of INSTANCE that is EQUAL? but not EQ to it.")
   (:method ((immediate immediate))
     immediate) ;; TODO violates the documentation
   (:method ((application application))
-    (apply #'application (operator instance) (inputs instance)))
+    (apply #'application (operator application) (inputs application)))
   (:method ((reduction reduction))
-    (reduction (operator instance) (input instance)))
+    (reduction (operator reduction) (input reduction)))
   (:method ((fusion fusion))
-    (apply #'fusion (inputs instance)))
+    (apply #'fusion (inputs fusion)))
   (:method ((reference reference))
-    (reference (input instance) (index-space instance) (transformation instance))))
+    (reference (input reference) (index-space reference) (transformation reference))))
 
 (defgeneric size (object)
   (:documentation
@@ -381,7 +383,7 @@ function is the identity transformation."))
    "Instruct VIRTUAL-MACHINE to reclaim the STORAGE of IMMEDIATE and set
    the STORAGE slot of IMMEDIATE to NIL."))
 
-(defgeneric vm/schedule (virtual-machine targets recipes &optional request)
+(defgeneric vm/schedule (virtual-machine targets recipes)
   (:documentation
    "Instruct VIRTUAL-MACHINE to compute all given GRAPH-ROOTS
    asynchronously. Return an object of type REQUEST that can be used to

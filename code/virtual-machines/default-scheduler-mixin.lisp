@@ -6,14 +6,10 @@
   ((scheduler-queue :type queue :initform (make-queue))
    (scheduler-thread :initform nil)))
 
-(defmethod vm/schedule ((vm default-scheduler-mixin) graph-roots)
-  (let* ((target-graphs
-           )
-         (targets
-           )
-         (request (make-request)))
+(defmethod vm/schedule ((vm default-scheduler-mixin) targets recipes)
+  (let ((request (make-request)))
     ;; TODO currently schedules synchronously for easier debugging
-    (iterate (for immediate in-sequence (kernelize-graph target-graphs))
+    (iterate (for immediate in-sequence (kernelize-graph recipes))
              (for index from 0)
              (setf (storage (aref targets index))
                    (storage (evaluate-naively vm immediate))))

@@ -83,8 +83,6 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
 (defun compute (&rest objects)
   "Return the computed values of all OBJECTS."
   (let* ((recipes (map 'vector #'shallow-copy objects))
-         (targets (map 'vector #'make-immediate! objects))
-         (request (make-request)))
-    (vm/schedule *virtual-machine* targets recipes request)
-    (wait request)
+         (targets (map 'vector #'make-immediate! objects)))
+    (wait (vm/schedule *virtual-machine* targets recipes))
     (values-list (map 'list #'depetalispify targets))))

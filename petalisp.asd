@@ -56,6 +56,7 @@
        (:file "default-scheduler-mixin" :depends-on ("kernelize"))
        (:file "kernelize" :depends-on ("subgraph-kernels"))
        (:file "recipe")
+       (:file "reference-virtual-machine")
        (:file "subgraph-kernels" :depends-on ("recipe"))
        (:module "common-lisp-virtual-machine"
         :depends-on ("default-scheduler-mixin"
