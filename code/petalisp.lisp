@@ -390,7 +390,9 @@ function is the identity transformation."))
   (:documentation
    "Instruct VIRTUAL-MACHINE to compute all given GRAPH-ROOTS
    asynchronously. Return an object of type REQUEST that can be used to
-   block until the task is complete.")
+   block until the task is complete.
+
+   This function is the only mandatory virtual machine instruction.")
   (:method :before ((virtual-machine virtual-machine) (targets sequence) (recipes sequence))
     (assert (every #'immediate? targets))
     (assert (every #'data-structure? recipes))))
