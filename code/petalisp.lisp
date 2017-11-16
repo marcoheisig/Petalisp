@@ -164,9 +164,7 @@
    "Change the class of DATA-STRUCTURE to a suitable subclass of
     immediate.")
   (:method ((immediate immediate))
-    immediate)
-  (:method ((data-structure data-structure))
-    (change-class data-structure 'immediate)))
+    immediate))
 
 (defgeneric depetalispify (object)
   (:documentation

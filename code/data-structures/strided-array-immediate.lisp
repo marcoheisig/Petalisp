@@ -38,6 +38,9 @@
       (map 'vector #'range-step ranges))
      (map 'vector #'range-start ranges))))
 
+(defmethod make-immediate! ((strided-array strided-array))
+  (change-class strided-array 'strided-array-immediate))
+
 (defmethod optimize-application or ((f function) (a1 strided-array-immediate) &rest a2...aN)
   "Constant-fold operations on scalar values."
   (when (and (= 1 (size a1)) (every #'strided-array-immediate? a2...aN))

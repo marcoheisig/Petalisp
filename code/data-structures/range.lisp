@@ -72,13 +72,6 @@ intersect it (potentially violating MAX-EXTENT)."
       (is (<= (abs (range-end range)) max-extent))
       (is (<= (size range) max-size)))))
 
-(defmethod depetalispify ((range range))
-  (loop for i
-        from (range-start range)
-          by (range-step range)
-          to (range-end range)
-        collect i))
-
 (defmethod difference ((space-1 range) (space-2 range))
   ;; we only care about the part of space-2 that intersects with space-1
   (let ((space-2 (intersection space-1 space-2)))

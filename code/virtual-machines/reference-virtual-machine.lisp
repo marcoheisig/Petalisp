@@ -2,6 +2,14 @@
 
 (in-package :petalisp)
 
+;;; The purpose of the reference virtual machine is to compute reference
+;;; solutions for automated testing. It is totally acceptable if this
+;;; implementation is slow or eagerly consing, as long as it is obviously
+;;; correct.
+;;;
+;;; Internally, all evaluated arrays are represented as a list of conses of
+;;; the form (indices . value), where indices is a list of integers.
+
 (define-class reference-virtual-machine (virtual-machine)
   ((evaluated-nodes :type hash-table :initform (make-hash-table :test #'eq))))
 
@@ -10,20 +18,18 @@
     (for target in-sequence targets)
     (for recipe in-sequence recipes)
     (setf (storage target)
-          (storage (reference-vm/evaluate-node vm recipe))))
+          (make-array
+           (map 'list #'size (ranges (index-space target)))
+           :element-type (element-type target)))
+    (reference-vm/copy
+     (reference-vm/evaluate-node vm recipe)
+     target))
   (clrhash (evaluated-nodes vm))
   (complete (make-request)))
 
-(defgeneric reference-vm/evaluate-node (virtual-machine node)
-  (:documentation
-   "Return a list whose elements are of the form
-    (value index-0 ... index-N)")
-  (:method :around ((vm reference-virtual-machine) (node data-structure))
-    (with-hash-table-memoization (node)
-        (evaluated-nodes vm)
-      (call-next-method))))
-
-(defun reference-vm/normalize-result (result)
+(defun reference-vm/normalize (result)
+  "Assert that RESULT satisfies the reference virtual machine array
+   representation and ensure the canonical ordering of indices."
   (let ((dimension (length (car (first result)))))
     (loop for (indices . value) in result do
       (assert (= (length indices) dimension))))
@@ -34,41 +40,92 @@
                       (return (< element-1 element-2))))))
     (sort result #'list-lessp :key #'first)))
 
+(defgeneric reference-vm/represent (immediate)
+  (:method ((strided-array-index-space strided-array-index-space))
+    (if (= 0 (dimension strided-array-index-space))
+        (list ())
+        (apply #'map-product #'list
+               (map 'list #'reference-vm/represent
+                    (ranges strided-array-index-space)))))
+  (:method ((range range))
+    (loop for i
+          from (range-start range)
+            by (range-step range)
+            to (range-end range)
+          collect i)))
+
+(defgeneric reference-vm/copy (from to)
+  (:method ((internal-representation list)
+            (strided-array-immediate strided-array-immediate))
+    (loop for (indices . value) in internal-representation do
+      (setf (apply #'aref (storage strided-array-immediate)
+                   (funcall (to-storage strided-array-immediate) indices))
+            value))))
+
+(defgeneric reference-vm/evaluate-node (virtual-machine node)
+  (:documentation
+   "Return a list of elements of the form (indices . values).")
+  (:method :around ((vm reference-virtual-machine) (node data-structure))
+    (with-hash-table-memoization (node)
+        (evaluated-nodes vm)
+      (reference-vm/normalize
+       (call-next-method)))))
+
 (defmethod reference-vm/evaluate-node
     ((vm reference-virtual-machine) (node immediate))
-  (let ((list-of-indices
-          (apply #'map-product #'list
-                 (map 'list #'depetalispify
-                      (ranges (index-space node))))))
-    (reference-vm/normalize-result
-     (loop for indices in list-of-indices
-           collect
-           (cons
-            indices
-            (apply #'aref (storage node)
-                   (funcall (to-storage node) indices)))))))
+  (let ((list-of-indices (reference-vm/represent (index-space node))))
+    (loop for indices in list-of-indices
+          collect
+          (cons
+           indices
+           (apply #'aref (storage node)
+                  (funcall (to-storage node) indices))))))
 
 (defmethod reference-vm/evaluate-node
     ((vm reference-virtual-machine) (node application))
-  (let ((operator (operator node))
-        (inputs (mapcar #'reference-vm/evaluate-node (inputs node))))
-    (apply #'mapcar
-           (lambda (&rest inputs)
-             (apply #'mapcar inputs)
-             (assert (identical inputs :test #'equal :key #'car))
-             (cons
-              (car (first inputs))
-              (apply operator (mapcar #'cdr inputs))))
-           inputs)))
+  (flet ((indices (input) (car input))
+         (value (input) (cdr input))
+         (evaluate (node)
+           (reference-vm/evaluate-node vm node)))
+    (let ((operator (operator node)))
+      (apply #'mapcar
+             (lambda (&rest inputs)
+               (assert (identical inputs :test #'equal :key #'indices))
+               (cons
+                (indices (first inputs))
+                (apply operator (mapcar #'value inputs))))
+             (mapcar #'evaluate (inputs node))))))
 
 (defmethod reference-vm/evaluate-node
     ((vm reference-virtual-machine) (node reduction))
-  )
+  (let ((input (reference-vm/evaluate-node vm (input node)))
+        (operator (operator node))
+        result)
+    (loop for (indices . value) in input do
+      (let ((new-indices (butlast indices)))
+        (if-let ((found (assoc new-indices result :test #'equal)))
+          (setf (cdr found)
+                (funcall operator (cdr found) value))
+          (push (cons new-indices value) result))))
+    result))
 
 (defmethod reference-vm/evaluate-node
     ((vm reference-virtual-machine) (node fusion))
-  )
+  (flet ((evaluate (node)
+           (reference-vm/evaluate-node vm node)))
+    (apply #'append (mapcar #'evaluate (inputs node)))))
 
 (defmethod reference-vm/evaluate-node
     ((vm reference-virtual-machine) (node reference))
-  )
+  (let ((list-of-indices (reference-vm/represent (index-space node)))
+        (input (reference-vm/evaluate-node vm (input node))))
+    (loop for indices in list-of-indices
+          collect
+          (flet ((indices (input) (car input))
+                 (value (input) (cdr input)))
+            (cons indices
+                  (value
+                   (find (funcall (transformation node) indices)
+                         input
+                         :test #'equal
+                         :key #'indices)))))))
