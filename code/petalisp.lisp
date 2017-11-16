@@ -371,6 +371,11 @@ function is the identity transformation."))
    "Instruct VIRTUAL-MACHINE to compute the sequence of data structures
    GRAPH-ROOTS. Return the computed values of all GRAPH-ROOTS."))
 
+(defgeneric vm/evaluate (virtual-machine data-structure)
+  (:documentation
+   "Instruct VIRTUAL-MACHINE to evaluate the given data structure. The
+   exact semantics of this operation differ on each virtual machine."))
+
 (defgeneric vm/execute (virtual-machine kernel)
   (:documentation
    "Instruct VIRTUAL-MACHINE to execute the given KERNEL, assuming that all

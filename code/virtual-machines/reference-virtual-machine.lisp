@@ -22,7 +22,7 @@
            (map 'list #'size (ranges (index-space target)))
            :element-type (element-type target)))
     (reference-vm/copy
-     (reference-vm/evaluate-node vm recipe)
+     (vm/evaluate vm recipe)
      target))
   (clrhash (evaluated-nodes vm))
   (complete (make-request)))
@@ -62,16 +62,14 @@
                    (funcall (to-storage strided-array-immediate) indices))
             value))))
 
-(defgeneric reference-vm/evaluate-node (virtual-machine node)
-  (:documentation
-   "Return a list of elements of the form (indices . values).")
-  (:method :around ((vm reference-virtual-machine) (node data-structure))
-    (with-hash-table-memoization (node)
-        (evaluated-nodes vm)
-      (reference-vm/normalize
-       (call-next-method)))))
+(defmethod vm/evaluate :around
+    ((vm reference-virtual-machine) (node data-structure))
+  (with-hash-table-memoization (node)
+      (evaluated-nodes vm)
+    (reference-vm/normalize
+     (call-next-method))))
 
-(defmethod reference-vm/evaluate-node
+(defmethod vm/evaluate
     ((vm reference-virtual-machine) (node immediate))
   (let ((list-of-indices (reference-vm/represent (index-space node))))
     (loop for indices in list-of-indices
@@ -81,12 +79,12 @@
            (apply #'aref (storage node)
                   (funcall (to-storage node) indices))))))
 
-(defmethod reference-vm/evaluate-node
+(defmethod vm/evaluate
     ((vm reference-virtual-machine) (node application))
   (flet ((indices (input) (car input))
          (value (input) (cdr input))
          (evaluate (node)
-           (reference-vm/evaluate-node vm node)))
+           (vm/evaluate vm node)))
     (let ((operator (operator node)))
       (apply #'mapcar
              (lambda (&rest inputs)
@@ -96,9 +94,9 @@
                 (apply operator (mapcar #'value inputs))))
              (mapcar #'evaluate (inputs node))))))
 
-(defmethod reference-vm/evaluate-node
+(defmethod vm/evaluate
     ((vm reference-virtual-machine) (node reduction))
-  (let ((input (reference-vm/evaluate-node vm (input node)))
+  (let ((input (vm/evaluate vm (input node)))
         (operator (operator node))
         result)
     (loop for (indices . value) in input do
@@ -109,16 +107,16 @@
           (push (cons new-indices value) result))))
     result))
 
-(defmethod reference-vm/evaluate-node
+(defmethod vm/evaluate
     ((vm reference-virtual-machine) (node fusion))
   (flet ((evaluate (node)
-           (reference-vm/evaluate-node vm node)))
+           (vm/evaluate vm node)))
     (apply #'append (mapcar #'evaluate (inputs node)))))
 
-(defmethod reference-vm/evaluate-node
+(defmethod vm/evaluate
     ((vm reference-virtual-machine) (node reference))
   (let ((list-of-indices (reference-vm/represent (index-space node)))
-        (input (reference-vm/evaluate-node vm (input node))))
+        (input (vm/evaluate vm (input node))))
     (loop for indices in list-of-indices
           collect
           (flet ((indices (input) (car input))
