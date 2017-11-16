@@ -94,12 +94,12 @@
    k \in ΩB to A(T(k))."))
 
 (define-class kernel ()
-  ((target :type immediate)
-   (recipe :type ulist)
-   (ranges :type list)
-   (sources :type list))
+  ((target    :type immediate)
+   (blueprint :type ulist)
+   (ranges    :type list)
+   (sources   :type list))
   (:documentation
-   "A kernel is the fundamental unit of work in Petalisp. It's RECIPE
+   "A kernel is the fundamental unit of work in Petalisp. It's BLUEPRINT
    describes how elements of the storage of TARGET can be computed by using
    elements of the storage of SOURCES. ITERATION-SPACE is a subspace of the
    index space of the storage of TARGET."))
@@ -362,9 +362,9 @@ function is the identity transformation."))
    "Instruct VIRTUAL-MACHINE to suitably set the STORAGE slot of
    IMMEDIATE."))
 
-(defgeneric vm/compile (virtual-machine recipe)
+(defgeneric vm/compile (virtual-machine blueprint)
   (:documentation
-   "Instruct VIRTUAL-MACHINE to prepare the given RECIPE for execution."))
+   "Instruct VIRTUAL-MACHINE to prepare the given BLUEPRINT for execution."))
 
 (defgeneric vm/compute (virtual-machine graph-roots)
   (:documentation

@@ -2,17 +2,18 @@
 
 (in-package :petalisp)
 
-;;; The recipe of a kernel is used both as a blueprint of some
+;;; The blueprint of a kernel is used to construct some
 ;;; performance-critical function and as a key to search whether such a
 ;;; function has already been generated and compiled. The latter case is
-;;; expected to be far more frequent, so the primary purpose of a recipe is
-;;; to select an existing function as fast as possible and without consing.
+;;; expected to be far more frequent, so the primary purpose of a blueprint
+;;; is to select an existing function as fast as possible and without
+;;; consing.
 ;;;
-;;; To achieve this, each recipe is built from uconses. Furthermore, the
-;;; recipe grammar has been chosen to maximize structural sharing and to
+;;; To achieve this, each blueprint is built from uconses. Furthermore, the
+;;; blueprint grammar has been chosen to maximize structural sharing and to
 ;;; avoid unnecessary uconses.
 
-(define-ustruct %recipe
+(define-ustruct %blueprint
   (range-info ulist)
   (storage-info ulist)
   (expression ulist))
@@ -62,7 +63,7 @@
         (setf result (ulist* (ulist column value offset) result)))
       result)))
 
-(defun recipe-range-information-ulist (ranges)
+(defun blueprint-range-information-ulist (ranges)
   (let (result)
     (iterate
       (for range in-vector ranges downto 0)
@@ -74,7 +75,7 @@
                       result))))
     result))
 
-(defun recipe-sources-ulist (immediates)
+(defun blueprint-sources-ulist (immediates)
   (let (result)
     (iterate
       (for immediate in-vector immediates downto 0)

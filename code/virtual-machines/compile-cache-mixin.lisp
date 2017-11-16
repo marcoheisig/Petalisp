@@ -7,7 +7,7 @@
 
 (defmethod vm/compile :around
     ((virtual-machine compile-cache-mixin)
-     (recipe ucons))
-  (with-hash-table-memoization (recipe :multiple-values nil)
+     (blueprint ucons))
+  (with-hash-table-memoization (blueprint :multiple-values nil)
       (compile-cache virtual-machine)
     (call-next-method)))

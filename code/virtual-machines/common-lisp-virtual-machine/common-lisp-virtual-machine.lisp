@@ -33,8 +33,8 @@
 (define-symbol-pool storage-symbol "STORAGE-")
 
 (defmethod vm/compile
-    ((virtual-machine common-lisp-virtual-machine) (recipe ucons))
-  (let ((code (translate-recipe-to-lambda recipe)))
+    ((virtual-machine common-lisp-virtual-machine) (blueprint ucons))
+  (let ((code (translate-blueprint-to-lambda blueprint)))
     (print "Cache miss!")
     (print code)
     (finish-output)
@@ -43,10 +43,10 @@
 (defmethod vm/execute
   ((virtual-machine common-lisp-virtual-machine)
    (kernel kernel))
-  (vm/compile virtual-machine (recipe kernel)))
+  (vm/compile virtual-machine (blueprint kernel)))
 
-(defun translate-recipe-to-lambda (recipe)
-  (with-ustruct-accessors (%recipe) recipe
+(defun translate-blueprint-to-lambda (blueprint)
+  (with-ustruct-accessors (%blueprint) blueprint
     (let ((range-steps (fvector))
           declarations
           lambda-list)
@@ -63,9 +63,9 @@
                      declarations))
       `(lambda ,(nreverse lambda-list)
          (declare ,@declarations)
-         ,(translate-recipe-form expression range-steps 0)))))
+         ,(translate-blueprint-form expression range-steps 0)))))
 
-(defun translate-recipe-form (uexpression range-steps depth)
+(defun translate-blueprint-form (uexpression range-steps depth)
   (ecase (ucar uexpression)
     (%reference
      (with-ustruct-accessors (%reference) uexpression
@@ -82,16 +82,16 @@
               from ,(range-start-symbol range)
               by ,(aref range-steps depth)
                 to ,(range-end-symbol range)
-              do ,(translate-recipe-form expression range-steps (1+ depth)))))
+              do ,(translate-blueprint-form expression range-steps (1+ depth)))))
     (%store
      (with-ustruct-accessors (%store) uexpression
        `(setf
-         ,(translate-recipe-form reference range-steps depth)
-         ,(translate-recipe-form expression range-steps depth))))
+         ,(translate-blueprint-form reference range-steps depth)
+         ,(translate-blueprint-form expression range-steps depth))))
     (%call
      (with-ustruct-accessors (%call) uexpression
        `(funcall
          ,operator
          ,@(iterate (for expression in-ulist expressions)
                     (collect
-                        (translate-recipe-form expression range-steps depth))))))))
+                        (translate-blueprint-form expression range-steps depth))))))))

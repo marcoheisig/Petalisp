@@ -11,12 +11,12 @@
 ;;; corresponding immediate of each leaf node and NIL for all other nodes.
 ;;;
 ;;; Most importantly, it is necessary to generate, for each kernel, a
-;;; recipe that describes how it should be computed. It is crucial that
-;;; this recipe is normalized, i.e. similar operations should lead to
-;;; identical recipes. This makes it possible to efficiently cache and
-;;; compile these recipes. In particular, the recipe must not depend on the
-;;; absolute index space of any of the involved immediates. Instead, each
-;;; recipe works directly on their storage.
+;;; blueprint that describes how it should be computed. It is crucial that
+;;; this blueprint is normalized, i.e. similar operations should lead to
+;;; identical blueprints. This makes it possible to efficiently cache and
+;;; compile these blueprints. In particular, a blueprint must not depend on
+;;; the absolute index space of any of the involved immediates and instead
+;;; work directly on their storage.
 ;;;
 ;;; Another normalization is obtained by observing that, since the
 ;;; subgraphs are now much smaller than the original data flow graph, it is
@@ -65,17 +65,17 @@
         :target target
         :ranges ranges
         :sources sources
-        :recipe
-        (%recipe
+        :blueprint
+        (%blueprint
          (range-info ranges)
          (storage-info target sources)
          (funcall
-          (named-lambda build-recipe (range-id)
+          (named-lambda build-blueprint (range-id)
             (if (= range-id dimension)
                 (%store (%reference 0 (%indices (make-identity-transformation dimension)))
-                        (subgraph-recipe-body
+                        (subgraph-blueprint-body
                          root leaf-function sources iteration-space (from-storage target)))
-                (%for range-id (build-recipe (1+ range-id)))))
+                (%for range-id (build-blueprint (1+ range-id)))))
           0))))))
 
 (defun subgraph-ranges-and-sources (root leaf-function iteration-space)
@@ -141,7 +141,7 @@
                   index-spaces))))))
     (iteration-spaces root (index-space root) (make-identity-transformation (dimension root)))))
 
-(defun subgraph-recipe-body (node leaf-function sources iteration-space transformation)
+(defun subgraph-blueprint-body (node leaf-function sources iteration-space transformation)
   (labels ((traverse (node relevant-space transformation)
              (if-let ((immediate (funcall leaf-function node)))
                (%reference (1+ (position immediate sources))
