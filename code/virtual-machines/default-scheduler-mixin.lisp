@@ -40,5 +40,5 @@
       (iterate
         (for source in-vector (sources kernel))
         (when (zerop (decf (refcount source)))
-          (vm/free-memory vm source))))
-    immediate))
+          (vm/free-memory vm source)))))
+  immediate)

@@ -37,7 +37,7 @@
       :operator operator
       :element-type (element-type object)
       :inputs (list object)
-      :index-space (make-strided-array-index-space
+      :index-space (index-space
                     (subseq ranges 0 (1- (length ranges)))))))
 
 (define-class strided-array-reference (strided-array reference) ())
@@ -76,3 +76,6 @@
                translation-vector)))))
     (reference object space transformation)))
 
+(defmethod equal? ((a strided-array) (b strided-array))
+  (and (equal? (index-space a) (index-space b))
+       (equalp (storage a) (storage b))))

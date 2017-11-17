@@ -194,6 +194,7 @@
    "Two objects are EQUAL? if their use in Petalisp will always result in
   identical behavior.")
   (:method ((a t) (b t)) (eql a b))
+  (:method ((a sequence) (b sequence)) (every #'equal? a b))
   (:method ((a structure-object) (b structure-object)) (equalp a b)))
 
 (defgeneric fusion (a1 &rest a2...aN)
@@ -209,6 +210,21 @@
 (defmethod generic-unary-funcall :before ((transformation transformation)
                                           (object index-space))
   (assert (= (input-dimension transformation) (dimension object))))
+
+(defgeneric immediate (object &optional from-storage)
+  (:documentation
+   "Convert object to a Petalisp immediate with the same dimension, element
+   type and contents. If OBJECT is already a Petalisp data structure,
+   return OBJECT. Otherwise return a zero-dimensional Petalisp data
+   structure with OBJECT as its sole element.")
+  (:method ((object data-structure) &optional from-storage)
+    (assert (not from-storage))
+    object)
+  (:method ((object t) &optional from-storage)
+    (assert (not from-storage))
+    (immediate
+     (make-array () :initial-element object
+                    :element-type (type-of object)))))
 
 (defgeneric index-space (object)
   (:documentation
@@ -276,19 +292,6 @@ function is the identity transformation."))
    TRANSFORMATION.")
   (:method ((A matrix)) (matrix-m A)))
 
-(defgeneric petalispify (object)
-  (:documentation
-   "If OBJECT is a Lisp array, convert it to a Petalisp data structure with
-   the same dimension, element type and contents. If OBJECT is already a
-   Petalisp data structure, return OBJECT. Otherwise return a
-   zero-dimensional Petalisp data structure with OBJECT as its sole
-   element.")
-  (:method ((object data-structure)) object)
-  (:method ((object t))
-    (petalispify
-     (make-array '() :initial-element object
-                     :element-type (type-of object)))))
-
 (defmethod print-object ((object data-structure) stream)
   (print-unreadable-object (object stream :type t :identity t)
     (princ (index-space object) stream)))
@@ -332,7 +335,7 @@ function is the identity transformation."))
   (:documentation
    "Make a copy of INSTANCE that is EQUAL? but not EQ to it.")
   (:method ((immediate immediate))
-    immediate) ;; TODO violates the documentation
+    (immediate (storage immediate) (from-storage immediate)))
   (:method ((application application))
     (apply #'application (operator application) (inputs application)))
   (:method ((reduction reduction))

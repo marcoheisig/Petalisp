@@ -11,11 +11,18 @@
     (setf (slot-value instance 'from-storage) from-storage)
     (setf (slot-value instance 'to-storage) (inverse from-storage))))
 
-(defmethod petalispify ((array array))
-  (make-instance 'strided-array-immediate
-    :element-type (array-element-type array)
-    :index-space (make-strided-array-index-space array)
-    :storage array))
+(defmethod immediate
+    ((array array)
+     &optional (from-storage (from-storage-transformation (index-space array))))
+  (let* ((element-type (array-element-type array))
+         (to-storage (inverse from-storage))
+         (index-space (funcall from-storage (index-space array))))
+    (make-instance 'strided-array-immediate
+      :element-type element-type
+      :index-space index-space
+      :storage array
+      :to-storage to-storage
+      :from-storage from-storage)))
 
 (defmethod depetalispify ((instance strided-array-immediate))
   (storage instance))
@@ -46,7 +53,7 @@
   (when (and (= 1 (size a1)) (every #'strided-array-immediate? a2...aN))
     (let ((value (apply f (row-major-aref (storage a1) 0)
                         (mapcar (λ ak (row-major-aref (storage ak) 0)) a2...aN))))
-      (broadcast (petalispify value) (index-space a1)))))
+      (broadcast (immediate value) (index-space a1)))))
 
 (defmethod optimize-application or ((f function) (a1 strided-array-reference) &rest a2...aN)
   "Constant-fold operations on references to scalar values."
@@ -58,4 +65,10 @@
     (when (and (scalar-reference? a1) (every #'scalar-reference? a2...aN))
       (let ((value (apply f (row-major-aref (storage (input a1)) 0)
                           (mapcar (λ ak (row-major-aref (storage (input ak)) 0)) a2...aN))))
-        (reference (petalispify value) (index-space a1) (transformation a1))))))
+        (reference (immediate value) (index-space a1) (transformation a1))))))
+
+(defmethod print-object
+    ((strided-array-immediate strided-array-immediate)
+     stream)
+  (print-unreadable-object (strided-array-immediate stream :type t :identity t)
+    (princ (storage strided-array-immediate) stream)))

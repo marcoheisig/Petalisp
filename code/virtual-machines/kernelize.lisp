@@ -36,8 +36,10 @@
         (graph-roots (ensure-sequence graph-roots)))
     ;; step 1 - define a mapping from nodes to immediate values
     (labels ((register (node)
-               (setf (gethash node table)
-                     (corresponding-immediate node))
+               ;; immediate graph roots are ignored at this step
+               (unless (immediate? node)
+                 (setf (gethash node table)
+                       (corresponding-immediate node)))
                (values))
              (traverse (node)
                (if (or (< (refcount node) 2)
@@ -80,4 +82,9 @@
                (let ((kernels (subgraph-kernels target tree-root #'leaf-function)))
                  (setf (kernels target) kernels))))))
       (maphash #'kernelize-hash-table-entry table))
-    (map 'vector (λ node (gethash node table)) graph-roots)))
+    (map 'vector
+         (lambda (node)
+           (if (immediate? node)
+               node
+               (gethash node table)))
+         graph-roots)))

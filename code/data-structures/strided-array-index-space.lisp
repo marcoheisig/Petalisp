@@ -5,22 +5,6 @@
 (define-class strided-array-index-space (index-space)
   ((ranges :type simple-vector)))
 
-(defgeneric make-strided-array-index-space (specification)
-  (:method ((space strided-array-index-space)) space)
-  (:method ((vector simple-vector))
-    (if (every #'range? vector)
-        (make-instance 'strided-array-index-space
-          :ranges vector)
-        (call-next-method)))
-  (:method ((array array))
-    (make-instance 'strided-array-index-space
-      :ranges (map 'vector (λ end (range 0 1 (1- end)))
-                   (array-dimensions array))))
-  (:method ((range-specifications list))
-    (make-instance 'strided-array-index-space
-      :ranges (map 'vector (λ spec (apply #'range spec))
-                   range-specifications))))
-
 (defun strided-array-index-space-generator
     (&key (dimension 3) (max-size 30) (max-extent 100) intersecting)
   (assert (or (not intersecting) (= dimension (dimension intersecting))))
@@ -34,11 +18,11 @@
                          (range-generator :max-size max-size
                                           :max-extent max-extent)))))
     (lambda ()
-      (make-strided-array-index-space
+      (index-space
        (map 'vector #'funcall range-generators)))))
 
 (defmacro σ (&rest range-specifications)
-  `(make-strided-array-index-space
+  `(index-space
     (vector ,@(iterate (for spec in range-specifications)
                        (collect `(range ,@spec))))))
 
@@ -49,7 +33,7 @@
            ((,(intern "START") (range-start (aref (ranges ,space) ,dim)))
             (,(intern "STEP") (range-step (aref (ranges ,space) ,dim)))
             (,(intern "END") (range-end (aref (ranges ,space) ,dim))))
-         (make-strided-array-index-space
+         (index-space
           (vector
            ,@(iterate (for form in dimensions)
                       (for d from 0)
@@ -72,7 +56,7 @@
                           (t
                            (error "Illegal broadcasting in dimension ~D of argument ~D."
                                   dimension argument)))))
-      (make-strided-array-index-space result-ranges))))
+      (index-space result-ranges))))
 
 (defmethod difference ((space-1 strided-array-index-space)
                        (space-2 strided-array-index-space))
@@ -115,8 +99,27 @@
 (defmethod fusion ((object strided-array-index-space) &rest more-objects)
   (let ((objects (cons object more-objects)))
     (with-memoization ((mapcar #'ranges objects) :test #'equalp)
-      (make-strided-array-index-space
+      (index-space
        (apply #'vector (fuse-recursively objects))))))
+
+(defmethod index-space ((array array))
+  (make-instance 'strided-array-index-space
+    :ranges (map 'vector (λ end (range 0 1 (1- end)))
+                 (array-dimensions array))))
+
+(defmethod index-space ((range-specifications list))
+  (flet ((rangeify (spec)
+           (etypecase spec
+             (integer (range 0 spec))
+             (list (apply #'range spec))
+             (range spec))))
+    (make-instance 'strided-array-index-space
+      :ranges (map 'vector #'rangeify range-specifications))))
+
+(defmethod index-space ((vector simple-vector))
+    (if (every #'range? vector)
+        (make-instance 'strided-array-index-space :ranges vector)
+        (call-next-method)))
 
 (defmethod intersection ((space-1 strided-array-index-space)
                          (space-2 strided-array-index-space))
@@ -207,7 +210,7 @@
                     :ranges (subseq ranges 0 1)
                     :spaces-to-fuse
                     (list
-                     (make-strided-array-index-space
+                     (index-space
                       (subseq ranges 1))))))
               spaces))))
       (let ((results (mapcar ; recurse

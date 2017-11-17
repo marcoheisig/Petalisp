@@ -8,7 +8,7 @@
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
 for Petalisp data structures. When the dimensions of some of the inputs
 mismatch, the smaller objects are broadcast."
-  (let ((objects (cons (petalispify object) (mapcar #'petalispify more-objects))))
+  (let ((objects (cons (immediate object) (mapcar #'immediate more-objects))))
     (let ((space (apply #'common-broadcast-space (mapcar #'index-space objects))))
       (apply #'application
              function
@@ -16,18 +16,18 @@ mismatch, the smaller objects are broadcast."
 
 (defun β (function object)
   "Reduce the last dimension of OBJECT with FUNCTION."
-  (reduction function (petalispify object)))
+  (reduction function (immediate object)))
 
 (defun fuse (&rest objects)
   "Combine OBJECTS into a single petalisp data structure. It is an error if
 some of the inputs overlap, or if there exists no suitable data structure
 to represent the fusion."
-  (apply #'fusion (mapcar #'petalispify objects)))
+  (apply #'fusion (mapcar #'immediate objects)))
 
 (defun fuse* (&rest objects)
   "Combine OBJECTS into a single petalisp data structure. When some OBJECTS
 overlap partially, the value of the rightmost object is used."
-  (let ((objects (mapcar #'petalispify objects)))
+  (let ((objects (mapcar #'immediate objects)))
     (let ((pieces (subdivision (mapcar #'index-space objects))))
       (flet ((reference-origin (piece)
                (reference
@@ -71,14 +71,13 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
                  data-structure
                  (funcall modifier (index-space data-structure))
                  (inverse modifier))))))
-    (recurse (petalispify data-structure) modifiers)))
+    (recurse (immediate data-structure) modifiers)))
 
 (defun schedule (&rest objects)
   "Instruct Petalisp to compute all given OBJECTS asynchronously."
   (let* ((recipes (map 'vector #'shallow-copy objects))
          (targets (map 'vector #'make-immediate! objects)))
-    (vm/schedule *virtual-machine* targets recipes)
-    (values)))
+    (vm/schedule *virtual-machine* targets recipes)))
 
 (defun compute (&rest objects)
   "Return the computed values of all OBJECTS."
@@ -86,3 +85,12 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
          (targets (map 'vector #'make-immediate! objects)))
     (wait (vm/schedule *virtual-machine* targets recipes))
     (values-list (map 'list #'depetalispify targets))))
+
+(test petalisp-api
+  (let ((*virtual-machine*
+          (make-instance 'testing-virtual-machine
+            :virtual-machines
+            (list
+             (make-instance 'reference-virtual-machine)
+             (make-instance 'common-lisp-virtual-machine)))))
+    (wait (schedule (α #'+ 2 3)))))

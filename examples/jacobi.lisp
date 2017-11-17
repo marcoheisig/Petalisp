@@ -41,3 +41,16 @@
                                   (-> u (τ (i j k) i j (1- k)) interior)
                                   (-> (α #'* (* h h) f) interior))))))
          u))))
+
+(defun jacobi-test ()
+  (let ((array #2A((1 1 1 1 1 1)
+                   (2 2 2 2 2 2)
+                   (1 1 1 1 1 1)
+                   (1 1 1 1 1 1)
+                   (1 1 1 1 1 1)
+                   (1 1 1 1 1 1))))
+    (values
+     (let ((*virtual-machine* (make-instance 'common-lisp-virtual-machine)))
+       (compute (jacobi array)))
+     (let ((*virtual-machine* (make-instance 'reference-virtual-machine)))
+       (compute (jacobi array))))))

@@ -11,8 +11,22 @@
 ;;; signaled.
 
 (define-class testing-virtual-machine (virtual-machine)
-  ((virtual-machines :type (simple-vector virtual-machine)
+  ((virtual-machines :type sequence
                      :initform (required-argument "virtual-machines"))))
 
-(defmethod vm/schedule ((vm testing-virtual-machine) targets recipe)
-  )
+(defmethod vm/schedule ((vm testing-virtual-machine) targets recipes)
+  (let ((results
+          (map 'vector
+               (lambda (vm)
+                 (let ((targets (map 'vector #'shallow-copy targets)))
+                   (wait
+                    (vm/schedule vm targets recipes))
+                   targets))
+               (virtual-machines vm))))
+    (unless (identical results :test #'equal?)
+      (error "Virtual machines compute different results for the same recipe:~%~A"
+             results))
+    (loop for target across targets
+          for vm-target across (elt results 0)
+          do (setf (storage target) (storage vm-target)))
+    (complete (make-request))))
