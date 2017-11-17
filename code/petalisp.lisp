@@ -226,12 +226,7 @@
      (make-array () :initial-element object
                     :element-type (type-of object)))))
 
-(defgeneric index-space (object)
-  (:documentation
-   "Return the INDEX-SPACE of OBJECT, i.e. a data structure whose elements
-are the indices of OBJECT.")
-  (:method ((object index-space))
-    object))
+(defmethod index-space ((index-space index-space)) index-space)
 
 (defgeneric input-dimension (transformation)
   (:documentation

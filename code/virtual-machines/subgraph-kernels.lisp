@@ -60,7 +60,9 @@
    to the data flow graph prescribed by ROOT and LEAF-FUNCTION."
   (let ((dimension (dimension root)))
     (multiple-value-bind (ranges sources)
-        (subgraph-ranges-and-sources root leaf-function iteration-space)
+        (subgraph-ranges-and-sources
+         root leaf-function iteration-space
+         (ranges (funcall (to-storage target) iteration-space)))
       (make-instance 'kernel
         :target target
         :ranges ranges
@@ -78,12 +80,11 @@
                 (%for range-id (build-blueprint (1+ range-id)))))
           0))))))
 
-(defun subgraph-ranges-and-sources (root leaf-function iteration-space)
+(defun subgraph-ranges-and-sources (root leaf-function iteration-space initial-ranges)
   "Return as multiple values a vector of the ranges and a vector of the
   sources reachable from ROOT, as determined by the supplied
   LEAF-FUNCTION."
-  (let ((ranges (ranges iteration-space)) ;; TODO
-        (sources (fvector)))
+  (let ((sources (fvector)))
     (labels
         ((traverse (node relevant-space)
            (when relevant-space
@@ -106,7 +107,7 @@
                              (index-space (input node))
                              (funcall (transformation node) relevant-space)))))))))
       (traverse root iteration-space))
-    (values ranges sources)))
+    (values initial-ranges sources)))
 
 (defun subgraph-iteration-spaces (root leaf-function)
   "Return a partitioning of the index space of ROOT, whose elements
