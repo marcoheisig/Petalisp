@@ -43,7 +43,16 @@
 (defmethod vm/execute
   ((virtual-machine common-lisp-virtual-machine)
    (kernel kernel))
-  (vm/compile virtual-machine (blueprint kernel)))
+  (let (arguments)
+    (loop for range across (ranges kernel) do
+      (push (range-start range) arguments)
+      (push (range-end range) arguments))
+    (push (storage (target kernel)) arguments)
+    (loop for source across (sources kernel) do
+      (push (storage source) arguments))
+    (apply
+     (vm/compile virtual-machine (blueprint kernel))
+     (nreverse arguments))))
 
 (defun translate-blueprint-to-lambda (blueprint)
   (with-ustruct-accessors (%blueprint) blueprint

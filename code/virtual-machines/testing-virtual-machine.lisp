@@ -24,7 +24,7 @@
                    targets))
                (virtual-machines vm))))
     (unless (identical results :test #'equal?)
-      (error "Virtual machines compute different results for the same recipe:~%~A"
+      (error "Different virtual machines compute different results for the same recipes:~%~A"
              results))
     (loop for target across targets
           for vm-target across (elt results 0)

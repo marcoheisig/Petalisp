@@ -36,11 +36,12 @@
         (graph-roots (ensure-sequence graph-roots)))
     ;; step 1 - define a mapping from nodes to immediate values
     (labels ((register (node)
-               ;; immediate graph roots are ignored at this step
-               (unless (immediate? node)
-                 (setf (gethash node table)
-                       (corresponding-immediate node)))
+               (setf (gethash node table)
+                     (corresponding-immediate node))
                (values))
+             (register-root (node)
+               (unless (immediate? node)
+                 (register node)))
              (traverse (node)
                (if (or (< (refcount node) 2)
                        (immediate? node))
@@ -55,9 +56,9 @@
              (traverse-inputs (node)
                (dolist (input (inputs node))
                  (traverse input))))
-      ;; explicitly register all graph roots, because they are tree roots
-      ;; regardless of their type or refcount
-      (map nil #'register graph-roots)
+      ;; explicitly register all non-immediate graph roots, because they
+      ;; are tree roots regardless of their type or refcount
+      (map nil #'register-root graph-roots)
       ;; now process the entire graph recursively
       (map nil #'traverse graph-roots))
     ;; step 2 - derive the kernels of each immediate

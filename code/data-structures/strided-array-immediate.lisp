@@ -24,6 +24,14 @@
       :to-storage to-storage
       :from-storage from-storage)))
 
+(defmethod shallow-copy ((immediate strided-array-immediate))
+  (make-instance 'strided-array-immediate
+    :element-type (element-type immediate)
+    :index-space (index-space immediate)
+    :storage (storage immediate)
+    :to-storage (to-storage immediate)
+    :from-storage (from-storage immediate)))
+
 (defmethod depetalispify ((instance strided-array-immediate))
   (storage instance))
 

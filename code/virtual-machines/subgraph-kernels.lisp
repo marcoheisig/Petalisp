@@ -139,7 +139,9 @@
               (if (> number-of-fusing-subtrees 1)
                   (subdivision index-spaces)
                   index-spaces))))))
-    (iteration-spaces root (index-space root) (make-identity-transformation (dimension root)))))
+    (or
+     (iteration-spaces root (index-space root) (make-identity-transformation (dimension root)))
+     (list (index-space root)))))
 
 (defun subgraph-blueprint-body (node leaf-function sources iteration-space transformation)
   (labels ((traverse (node relevant-space transformation)

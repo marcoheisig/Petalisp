@@ -93,4 +93,8 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
             (list
              (make-instance 'reference-virtual-machine)
              (make-instance 'common-lisp-virtual-machine)))))
-    (wait (schedule (α #'+ 2 3)))))
+    (flet ((check (&rest recipes)
+             (is-true
+              (apply #'compute recipes))))
+      (check (α #'+ 2 3))
+      (check (α #'+ #(2 3 4) #(5 4 3))))))
