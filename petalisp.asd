@@ -23,7 +23,8 @@
     ((:file "package")
      (:module "utilities"
       :components
-      ((:file "code-statistics")
+      ((:file "array-element-types")
+       (:file "code-statistics")
        (:file "extended-euclid" :depends-on ("macros" "testing"))
        (:file "function-lambda-lists")
        (:file "fvector")

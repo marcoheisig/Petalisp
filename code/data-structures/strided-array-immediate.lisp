@@ -14,7 +14,7 @@
 (defmethod immediate
     ((array array)
      &optional (from-storage (from-storage-transformation (index-space array))))
-  (let* ((element-type (array-element-type array))
+  (let* ((element-type (atomic-array-element-type-specifier array))
          (to-storage (inverse from-storage))
          (index-space (funcall from-storage (index-space array))))
     (make-instance 'strided-array-immediate
