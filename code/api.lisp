@@ -98,4 +98,4 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
               (apply #'compute recipes))))
       (check (α #'+ 2 3))
       (check (α #'+ #(2 3 4) #(5 4 3)))
-      (check (-> #(1 2 3) (τ (i) (- i)))))))
+      (check (-> #(1 2 3) (τ (i) ((- i))))))))
