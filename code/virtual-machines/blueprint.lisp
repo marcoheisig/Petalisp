@@ -48,12 +48,11 @@
 (defgeneric %indices (transformation)
   (:method ((transformation identity-transformation))
     (let ((dimension (input-dimension transformation)))
-      (with-vector-memoization (dimension)
-        (let (result)
-          (iterate
-            (for index from (1- dimension) downto 0)
-            (setf result (ulist* (ulist index 1 0) result)))
-          result))))
+      (let (result)
+        (iterate
+          (for index from (1- dimension) downto 0)
+          (setf result (ulist* (ulist index 1 0) result)))
+        result)))
   (:method ((transformation affine-transformation))
     (let (result)
       (iterate

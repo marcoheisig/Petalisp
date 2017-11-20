@@ -4,7 +4,7 @@
 (in-package :petalisp)
 
 (defun ! (expression)
-  (view expression))
+  (print (compute expression)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

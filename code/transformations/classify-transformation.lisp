@@ -84,7 +84,7 @@
            ,input-constraints)))
       whole))
 
-(defmacro τ (input-forms &rest output-forms)
+(defmacro τ (input-forms output-forms)
   (let* ((input-dimension (length input-forms))
          (input-constraints (make-array input-dimension :initial-element nil)))
     (iterate (for form in input-forms)
@@ -106,10 +106,10 @@
                   ,input-constraints))))))
 
 (test identity-transformation
-  (let ((τ (τ (a b) a b)))
+  (let ((τ (τ (a b) (a b))))
     (is (identity-transformation? τ))
     (is (= 2 (input-dimension τ) (output-dimension τ))))
-  (let ((τ (τ (a b c d) a b (ash (* 2 c) -1) (+ d 0))))
+  (let ((τ (τ (a b c d) (a b (ash (* 2 c) -1) (+ d 0)))))
     (is (identity-transformation? τ))
     (is (= 4 (input-dimension τ) (output-dimension τ))))
   (for-all ((dimension (integer-generator 0 200)))
@@ -120,13 +120,13 @@
       (is (equal? τ (composition τ τ))))))
 
 (test affine-transformation
-  (dolist (τ (list (τ (m n) n m)
-                   (τ (m) (* 2 m))
-                   (τ (m) (/ (+ (* 90 (+ 2 m)) 15) 2))
-                   (τ (m) m 1 2 3)
-                   (τ (m) 5 9 m 2)
-                   (τ (0 n 0) n)
-                   (τ (i j 5) i j)))
+  (dolist (τ (list (τ (m n) (n m))
+                   (τ (m) ((* 2 m)))
+                   (τ (m) ((/ (+ (* 90 (+ 2 m)) 15) 2)))
+                   (τ (m) (m 1 2 3))
+                   (τ (m) (5 9 m 2))
+                   (τ (0 n 0) (n))
+                   (τ (i j 5) (i j))))
     (let ((τ-inv (inverse τ)))
       (is (affine-transformation? τ))
       (is (equal? τ (inverse τ-inv)))

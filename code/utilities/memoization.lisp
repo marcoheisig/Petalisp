@@ -5,18 +5,17 @@
 ;;; Marco Heisig's Memoization Macros
 ;;;
 ;;; There are numerous libraries for memoization, but most of them succumb
-;;; the temptation to provide a wrapper for DEFUN as primary API. This has
-;;; a number of drawbacks:
+;;; the temptation to provide a wrapper for DEFUN as primary API. This
+;;; fails to address several important use-cases
 ;;;
-;;; - memoization of subexpressions requires toplevel helper functions
-;;; - the memoization key cannot be specified directly
-;;; - combining memoization with other DEFUN wrappers is difficult
-;;; - in particular, it is inconvenient to use memoization within CLOS
+;;; - Memoization within CLOS, e.g. in :around methods
+;;; - Explicit construction of the memoization key
+;;; - Explicit specification of the memoization test
 ;;;
 ;;; To address these problems, this library uses lexical memoization, i.e.
 ;;; WITH-something macros that memoize the result of evaluating their
-;;; body. Furthermore, there are three different memoization macros for
-;;; more or less fine-grained control over the memoization strategy.
+;;; body. Furthermore, there are different memoization macros for more or
+;;; less fine-grained control over the memoization strategy.
 ;;;
 ;;; Thread safety is deliberately neglected. Unconditional thread safety is
 ;;; relatively expensive (but please, run your own benchmarks) and other
