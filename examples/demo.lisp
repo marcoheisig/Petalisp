@@ -111,10 +111,10 @@
     (labels ((update (u what)
                (α #'* 0.25
                   (α #'+
-                     (-> u (τ (i j) (1+ i) j) what)
-                     (-> u (τ (i j) (1- i) j) what)
-                     (-> u (τ (i j) i (1+ j)) what)
-                     (-> u (τ (i j) i (1- j)) what)
+                     (-> u (τ (i j) ((1+ i) j)) what)
+                     (-> u (τ (i j) ((1- i) j)) what)
+                     (-> u (τ (i j) (i (1+ j))) what)
+                     (-> u (τ (i j) (i (1- j))) what)
                      (-> (α #'* (* h h) rhs) what)))))
       (loop repeat iterations do
         (setf u (fuse* u (update u r1) (update u r2)))
@@ -130,7 +130,7 @@
          1))
 
 (defun prolongate (u)
-  (let* ((u* (-> u (τ (i j) (* i 2) (* j 2))))
+  (let* ((u* (-> u (τ (i j) ((* i 2) (* j 2)))))
          (space-1
            (σ* u* ((1+ start) step (- (1+ end) step))
                   (start step end)))
@@ -143,18 +143,18 @@
     (fuse u*
           (α #'* 0.5
              (α #'+
-                (-> u* (τ (i j) (1+ i) j) space-1)
-                (-> u* (τ (i j) (1- i) j) space-1)))
+                (-> u* (τ (i j) ((1+ i) j)) space-1)
+                (-> u* (τ (i j) ((1- i) j)) space-1)))
           (α #'* 0.5
              (α #'+
-                (-> u* (τ (i j) i (1+ j)) space-2)
-                (-> u* (τ (i j) i (1- j)) space-2)))
+                (-> u* (τ (i j) (i (1+ j))) space-2)
+                (-> u* (τ (i j) (i (1- j))) space-2)))
           (α #'* 0.25
              (α #'+
-                (-> u* (τ (i j) (1+ i) (1+ j)) space-3)
-                (-> u* (τ (i j) (1+ i) (1- j)) space-3)
-                (-> u* (τ (i j) (1- i) (1+ j)) space-3)
-                (-> u* (τ (i j) (1- i) (1- j)) space-3))))))
+                (-> u* (τ (i j) ((1+ i) (1+ j))) space-3)
+                (-> u* (τ (i j) ((1+ i) (1- j))) space-3)
+                (-> u* (τ (i j) ((1- i) (1+ j))) space-3)
+                (-> u* (τ (i j) ((1- i) (1- j))) space-3))))))
 
 (! (fuse* (-> 0.0 (σ (2 4) (2 4)))
           (-> 1.0 (σ (3 3) (3 3)))))
