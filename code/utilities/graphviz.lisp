@@ -26,9 +26,6 @@
 
 (defclass graphviz-graph () ())
 
-(defgeneric graphviz-standard-purpose (node)
-  (:method ((node t)) 'graphviz-graph))
-
 (defgeneric graphviz-successors (purpose node)
   (:method ((purpose graphviz-graph) (node t)) nil))
 
@@ -46,10 +43,6 @@
   (:method-combination plist-union)
   (:method plist-union ((purpose graphviz-graph) (from t) (to t)) nil))
 
-(defparameter *graphviz-viewer* "evince")
-
-(defparameter *graphviz-viewer-format* "pdf")
-
 (defgeneric graphviz-draw-graph (purpose graph-roots &optional stream)
   (:documentation
    "Write object to STREAM in a format suitable for the program
@@ -60,29 +53,9 @@
    instance of a subclass of graphviz-graph (or a symbol, denoting such an
    instance), and the generic functions GRAPHVIZ-SUCCESSORS,
    GRAPHVIZ-GRAPH-PLIST, GRAPHVIZ-NODE-PLIST and GRAPHVIZ-EDGE-PLIST.")
-
-  ;; handle the case where STREAM is NIL
-  (:method :around (purpose graph-roots &optional stream)
-    (if stream
-        (call-next-method)
-        (with-temporary-file (:stream stream :pathname dotfile :direction :output)
-          (call-next-method purpose graph-roots stream)
-          (finish-output stream)
-          :close-stream
-          (with-temporary-file (:pathname imagefile)
-            (run-program (list "dot"
-                               (format nil "-T~A" *graphviz-viewer-format*)
-                               "-o"
-                               (native-namestring imagefile)
-                               (native-namestring dotfile)))
-            (run-program (list *graphviz-viewer* (native-namestring imagefile))))))
-    (values))
-
-  ;; the actual graph drawing algorithm
   (:method (purpose graph-roots &optional stream)
     (let ((table (make-hash-table :test #'eq))
-          (node-counter 0)
-          (*print-case* :downcase))
+          (node-counter 0))
       (labels
           ((populate-node-table (node)
              (unless (gethash node table)
@@ -106,28 +79,32 @@
         (maphash #'write-edges table)
         (format stream "}~%")))))
 
-(defun graphviz (graph &optional purpose-designator)
-  (let* ((graph-roots
-           (typecase graph
-             (sequence graph)
-             (t (list graph))))
-         (purpose-designator
-           (or purpose-designator
-               (graphviz-standard-purpose (elt graph-roots 0))))
-         (purpose
-           (typecase purpose-designator
-             (symbol (make-instance purpose-designator))
-             (t purpose-designator))))
-    (graphviz-draw-graph purpose graph-roots nil)))
+(defparameter *graphviz-viewer* "evince")
+
+(defparameter *graphviz-output-format* "pdf")
+
+(defun graphviz (purpose-designator &rest graph-roots)
+  (let ((purpose
+          (typecase purpose-designator
+            (symbol (make-instance purpose-designator))
+            (t purpose-designator))))
+    (with-temporary-file (:stream stream :pathname dotfile :direction :output)
+      (graphviz-draw-graph purpose graph-roots stream)
+      (finish-output stream)
+      :close-stream
+      (with-temporary-file (:pathname imagefile)
+        (run-program (list "dot"
+                           (format nil "-T~A" *graphviz-output-format*)
+                           "-o"
+                           (native-namestring imagefile)
+                           (native-namestring dotfile)))
+        (run-program (list *graphviz-viewer* (native-namestring imagefile)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; example: draw the class hierarchy of the current lisp image
+;;; Example 1: Draw the Class Hierarchy of the Current Lisp Image
 
 (defclass class-hierarchy (graphviz-graph) ())
-
-(defmethod graphviz-standard-purpose ((node class))
-  'class-hierarchy)
 
 (defmethod graphviz-successors ((purpose class-hierarchy) (node class))
   ;; Show only classes that are accessible in the current package and all
