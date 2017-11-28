@@ -55,14 +55,11 @@
       :components
       ((:file "compile-cache-mixin")
        (:file "default-scheduler-mixin" :depends-on ("kernelize"))
-       (:file "kernelize" :depends-on ("subgraph-kernels"))
-       (:file "blueprint")
+       (:file "kernelize")
        (:file "reference-virtual-machine")
        (:file "testing-virtual-machine")
-       (:file "subgraph-kernels" :depends-on ("blueprint"))
        (:module "common-lisp-virtual-machine"
-        :depends-on ("default-scheduler-mixin"
-                     "compile-cache-mixin")
+        :depends-on ("default-scheduler-mixin" "compile-cache-mixin")
         :components ((:file "common-lisp-virtual-machine")))))
      (:file "visualization")
      (:file "api")))))
