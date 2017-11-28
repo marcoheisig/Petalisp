@@ -35,8 +35,8 @@
 (defmethod vm/compile
     ((virtual-machine common-lisp-virtual-machine) (blueprint ucons))
   (let ((code (translate-blueprint-to-lambda blueprint)))
-    (print "Cache miss!")
-    (print code)
+    (format t "~A~%" blueprint)
+    (format t "~A~%" code)
     (finish-output)
     (compile nil code)))
 

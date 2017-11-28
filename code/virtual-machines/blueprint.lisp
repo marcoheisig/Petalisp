@@ -13,6 +13,8 @@
 ;;; blueprint grammar has been chosen to maximize structural sharing and to
 ;;; avoid unnecessary uconses.
 
+(deftype blueprint () 'ucons)
+
 (define-ustruct %blueprint
   (range-info ulist)
   (storage-info ulist)
@@ -62,21 +64,16 @@
         (setf result (ulist* (ulist column value offset) result)))
       result)))
 
-(defun blueprint-range-information-ulist (ranges)
-  (let (result)
-    (iterate
-      (for range in-vector ranges downto 0)
-      (let ((min-size (size range))
-            (max-size (size range))
-            (step (range-step range)))
-        (setf result (ucons
-                      (ulist min-size max-size step)
-                      result))))
-    result))
+(defun blueprint-range-information (ranges)
+  (flet ((range-info (range)
+           (let ((lb (log (size range) 2)))
+             (ulist (expt (floor lb) 2)
+                    (expt (ceiling lb) 2)
+                    (range-step range)))))
+    (map-ulist #'range-info ranges)))
 
-(defun blueprint-sources-ulist (immediates)
-  (let (result)
-    (iterate
-      (for immediate in-vector immediates downto 0)
-      (setf result (ucons (element-type immediate) result)))
-    result))
+(defun blueprint-storage-information (target sources)
+  (flet ((storage-info (immediate)
+           (element-type immediate)))
+    (ulist* (storage-info target)
+            (map-ulist #'storage-info sources))))

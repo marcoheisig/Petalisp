@@ -2,9 +2,6 @@
 
 (in-package :petalisp)
 
-;;; This is probably the most complicated part of Petalisp and deserves
-;;; some explanation...
-;;;
 ;;; The goal is to determine a sequence of kernels that compute the
 ;;; elements of a target immediate according to a subgraph specified by a
 ;;; root and a leaf function. The latter is a function returning the
@@ -41,20 +38,6 @@
          (subgraph-kernel target root leaf-function iteration-space))
        (subgraph-iteration-spaces root leaf-function)))
 
-(defun range-info (ranges)
-  (flet ((range-info-fn (range)
-           (let ((lb (log (size range) 2)))
-             (ulist (expt (floor lb) 2)
-                    (expt (ceiling lb) 2)
-                    (range-step range)))))
-    (map-ulist #'range-info-fn ranges)))
-
-(defun storage-info (target sources)
-  (flet ((storage-info-fn (immediate)
-           (element-type immediate)))
-    (ulist* (storage-info-fn target)
-            (map-ulist #'storage-info-fn sources))))
-
 (defun subgraph-kernel (target root leaf-function iteration-space)
   "Return the kernel that computes the ITERATION-SPACE of TARGET, according
    to the data flow graph prescribed by ROOT and LEAF-FUNCTION."
@@ -69,8 +52,8 @@
         :sources sources
         :blueprint
         (%blueprint
-         (range-info ranges)
-         (storage-info target sources)
+         (blueprint-range-information ranges)
+         (blueprint-storage-information target sources)
          (funcall
           (named-lambda build-blueprint (range-id)
             (if (= range-id dimension)
