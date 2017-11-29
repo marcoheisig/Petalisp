@@ -192,6 +192,9 @@
     (signals error
       (funcall (τ (1 m) (m 1)) (σ (0 0) (0 0))))))
 
+(defmethod size ((object strided-array-index-space))
+  (reduce #'* (ranges object) :key #'size))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;;  fusion islands - specially annotated index spaces
@@ -240,9 +243,6 @@
        (change-class x 'fusion-island
                      :spaces-to-fuse (spaces-to-fuse space-1)))
      result)))
-
-(defmethod size ((object strided-array-index-space))
-  (reduce #'* (ranges object) :key #'size))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

@@ -300,7 +300,7 @@ function is the identity transformation."))
    "Return a (potentially optimized and simplified) data structure
    equivalent to an instance of class REDUCTION.")
   (:method :around ((f function) (a data-structure))
-    (assert (< 0 (dimension a)))
+    (assert (plusp (dimension a)))
     (check-arity f 2)
     (or (optimize-reduction f a)
         (call-next-method))))

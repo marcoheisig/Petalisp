@@ -60,7 +60,7 @@
            (map 'vector
                 (lambda (iteration-space)
                   (kernelize-subtree-fragment target root leaf-function iteration-space))
-                (subtree-iteration-spaces root leaf-function))))
+                (subtree-fragment-spaces root leaf-function))))
    graph-roots))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -141,8 +141,8 @@
                         (corresponding-immediate node))
                   (values nil))))))
          (recurse-into (node)
-           (etypecase node
-             (immediate (register-critical-node node))
+           (typecase node
+             ;; deliberately ignore immediates
              (reduction (traverse (input node) nil))
              (reference (traverse (input node) nil)) ; TODO
              ((or application fusion)
@@ -181,39 +181,41 @@
 ;;;
 ;;; 2. Fusion Free Index Spaces
 
-(defun subtree-iteration-spaces (root leaf-function)
+(defun subtree-fragment-spaces (root leaf-function)
   "Return a partitioning of the index space of ROOT, whose elements
    describe the maximal fusion-free paths through the subgraph from ROOT to
    some leaves, as determined by the supplied LEAF-FUNCTION."
   (labels
-      ((iteration-spaces (node relevant-space transformation)
-         (cond
-           ((funcall leaf-function node) nil)
-           ((fusion? node)
-            (iterate
-              (for input in (inputs node))
-              (when-let ((subspace (intersection relevant-space (index-space input))))
-                (nconcing (or (iteration-spaces input subspace transformation)
-                              (list (funcall (inverse transformation) subspace)))))))
-           ((reference? node)
-            (when-let ((subspace (intersection relevant-space (index-space node))))
-              (iteration-spaces (input node) subspace
-                                (composition (transformation node) transformation))))
-           ((reduction? node)
-            (iteration-spaces (input node) relevant-space transformation))
-           ((application? node)
-            (let* ((number-of-fusing-subtrees 0)
+      ((fragment-spaces (node relevant-space transformation)
+         ;; return a list of all iteration spaces in the preceding subtree
+         (unless (funcall leaf-function node)
+           (typecase node
+             (fusion
+              (iterate
+                (for input in (inputs node))
+                (when-let ((subspace (intersection relevant-space (index-space input))))
+                  (nconcing
+                   (or (fragment-spaces input subspace transformation)
+                       (list (funcall (inverse transformation) subspace)))))))
+             (reference
+              (when-let ((subspace (intersection relevant-space (index-space node))))
+                (fragment-spaces (input node) subspace
+                                  (composition (transformation node) transformation))))
+             (reduction
+              (fragment-spaces (input node) relevant-space transformation))
+             (application
+              (let* ((number-of-fusing-subtrees 0)
                    (index-spaces
                      (iterate
                        (for input in (inputs node))
-                       (when-let ((spaces (iteration-spaces input relevant-space transformation)))
+                       (when-let ((spaces (fragment-spaces input relevant-space transformation)))
                          (incf number-of-fusing-subtrees)
                          (nconcing spaces)))))
               (if (> number-of-fusing-subtrees 1)
                   (subdivision index-spaces)
-                  index-spaces))))))
+                  index-spaces)))))))
     (or
-     (iteration-spaces root (index-space root) (make-identity-transformation (dimension root)))
+     (fragment-spaces root (index-space root) (make-identity-transformation (dimension root)))
      (list (index-space root)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
