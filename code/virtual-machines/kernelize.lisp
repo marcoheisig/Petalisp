@@ -7,14 +7,14 @@
 ;;;
 ;;; The goal is to translate a data flow graph into a graph of executable
 ;;; parts, called kernels. The data flow nodes form a DAG (directed acyclic
-;;; graph). The data flow graph is fully determined by a set of graph roots
-;;; --- typically the nodes passed to SCHEDULE.
+;;; graph). The data flow graph is fully determined by a set of graph
+;;; roots, typically the nodes passed to SCHEDULE.
 ;;;
 ;;; The resulting graph consists only of immediate values. Each immediate
-;;; comes with a set of kernels. Each kernel describes how the values of a
-;;; subspace of the index space of its target immediate can be
+;;; hash a possibly empty set of kernels. Each kernel describes how values
+;;; of a subspace of the index space of its target immediate can be
 ;;; computed. Furthermore each kernel tracks the set of its sources,
-;;; i.e. other immediates that are referenced during their
+;;; i.e. those immediates that are referenced during their
 ;;; evaluation. Since the resulting immediate graph is used to decide a
 ;;; scheduling and allocation strategy, it is important that its kernels
 ;;; are easy to analyze, yet expressive enough to denote fast programs.
@@ -28,30 +28,30 @@
 ;;;
 ;;; 2. By construction, the nodes starting from one critical node, up to
 ;;;    and including the next critical nodes, form a tree of application,
-;;;    reduction, reference and fusion nodes. To eliminate fusion nodes in
-;;;    the later stages, determine a set of index spaces such that their
-;;;    union is the index space of the current critical node, but such that
-;;;    each index space lies uniquely within a particular input of each
-;;;    fusion node.
+;;;    reduction, reference and fusion nodes. To eliminate all fusion
+;;;    nodes, determine a set of index spaces such that their union is the
+;;;    index space of the current critical node, but such that each index
+;;;    space lies only within a single input of each fusion node.
 ;;;
-;;; 3. Each particular index space from 2. denotes a fusion-free
-;;;    sub-problem on the way to computing the current critical
-;;;    node. Determine the iteration space of this sub-problem and the set
-;;;    of referenced immediates.
+;;; 3. Each particular index space from the previous step denotes a
+;;;    fusion-free subtask in the process of computing the values of a
+;;;    critical node. Determine the iteration space of this subtask and the
+;;;    set of referenced immediates, called sources.
 ;;;
-;;; 4. Given the iteration space and the set of referenced immediates,
-;;;    translate the tree into an explicit blueprint. The blueprint
-;;;    describes how the given inputs are used to compute the target. It is
-;;;    important that this blueprint is normalized, such that as many
-;;;    computationally similar operations as possible have the same
-;;;    blueprint. To achieve this, blueprints do not use index space
-;;;    coordinates, but the storage coordinates of the source and target
-;;;    immediates.
+;;; 4. Given the iteration space and the set of sources, translate the tree
+;;;    into an explicit blueprint. The blueprint describes how target
+;;;    values can be computed from the given source. It is important that
+;;;    this blueprint is normalized, such that as many computationally
+;;;    similar operations as possible have the same blueprint. To achieve
+;;;    this, blueprints do not use index space coordinates, but the storage
+;;;    coordinates of the source and target immediates.
 ;;;
 ;;; 5. Use each blueprint, together with the set of sources, the target and
-;;;    the iteration space, to create one kernel and associates its target
-;;;    node. Once every critical node and index space thereof has been
-;;;    processed, the algorithm terminates.
+;;;    the iteration space, to create one kernel. Attach this kernel to its
+;;;    target immediate.
+;;;
+;;; Once every critical node and index space thereof has been processed,
+;;; the algorithm terminates.
 
 (defun kernelize (graph-roots)
   (kernelize-subtrees
@@ -80,9 +80,8 @@
 ;;;   data flow graph are critical nodes. However such a critical node is
 ;;;   cheap, because it has already been allocated.
 ;;;
-;;; - Each graph root is a critical node. Since the whole purpose of
-;;;   Petalisp is to compute the values of the graph roots, allocating them
-;;;   is absolutely mandatory.
+;;; - Each graph root is a critical node -- the whole purpose of Petalisp
+;;;   is to compute the values of these graph roots.
 ;;;
 ;;; - A node that appears as an input of multiple other nodes of the same
 ;;;   graph, is a critical node. As a result, all non-critical nodes have
@@ -100,26 +99,12 @@
 ;;;   broadcasting reference is usually orders of magnitude smaller than
 ;;;   the output, so allocating it explicitly is hardly severe.
 ;;;
-;;; - A node is a critical node, if it has more than one input that
-;;;   contains --- possibly further upward, but below the next critical
-;;;   node --- a reduction node. This rather arcane criterion achieves,
+;;; - A node is a critical node, if it has more than one input path
+;;;   containing a reduction node. This rather arcane criterion achieves,
 ;;;   that the iteration space of each kernel is an n-dimensional strided
 ;;;   cube, simplifying later analysis considerably. Introducing these
 ;;;   critical nodes is not terribly expensive, since the target of some
 ;;;   reductions is usually orders of magnitude smaller than their inputs.
-;;;
-;;; The first step in the algorithm is the creation of a *USE-TABLE*, a
-;;; hash table mapping each graph node to its successors. It would seem
-;;; more efficient to track the users of each node at DAG construction time
-;;; and avoid this indirection, but we are only interested in those users
-;;; that are reachable via the given graph roots. This way the system
-;;; implicitly eliminates dead code.
-;;;
-;;; Once the *USE-TABLE* is populated, the graph is traversed a second
-;;; time, to generate a kernelized copy of it. A node with more than one
-;;; user triggers the creation of a new intermediate result and one or more
-;;; kernels. The hash table *KERNEL-TABLE* memoizes repeated calls to
-;;; KERNELIZE-NODE.
 
 (defun kernelize-subtrees (subtree-fn graph-roots)
   "Invoke SUBTREE-FN on each subtree in the graph spanned by the supplied
@@ -130,69 +115,67 @@
    3. A function, mapping each tree leaf to its corresponding immediate
 
    Return the sequence of immediates corresponding to the GRAPH-ROOTS."
-  )
-
-(defun kernelize-graph (graph-roots)
-  "Convert the data flow graph defined by GRAPH-ROOTS to an executable
-   specification. Return a sequence of immediate values, each with a
-   (possibly empty) set of kernels and dependencies."
-  (let ((table (make-hash-table :test #'eq))
-        (graph-roots (ensure-sequence graph-roots)))
-    ;; step 1 - define a mapping from nodes to immediate values
-    (labels ((register (node)
-               (setf (gethash node table)
-                     (corresponding-immediate node))
-               (values))
-             (register-root (node)
-               (unless (immediate? node)
-                 (register node)))
-             (traverse (node)
-               (if (or (< (refcount node) 2)
-                       (immediate? node))
-                   (traverse-inputs node)
-                   (multiple-value-bind (value recurring)
-                       (gethash node table)
-                     (cond ((not recurring)
-                            (setf (gethash node table) nil)
-                            (traverse-inputs node))
-                           ((and recurring (not value))
-                            (register node))))))
-             (traverse-inputs (node)
-               (dolist (input (inputs node))
-                 (traverse input))))
-      ;; explicitly register all non-immediate graph roots, because they
-      ;; are tree roots regardless of their type or refcount
-      (map nil #'register-root graph-roots)
-      ;; now process the entire graph recursively
-      (map nil #'traverse graph-roots))
-    ;; step 2 - derive the kernels of each immediate
+  (let ((critical-node-table (make-hash-table :test #'eq)))
+    ;; Naively, CRITICAL-NODE-TABLE would simply contain an entry for each
+    ;; critical node, mapping it to its corresponding immediate value. But
+    ;; since there is initially some uncertainty about which nodes are
+    ;; actually critical, the table will also contain an entry for each
+    ;; node with a refcount of two or higher, with a value of NIL.
     (labels
-        ((kernelize-hash-table-entry (tree-root target)
-           ;; TABLE has an entry for all nodes that are potential kernel
-           ;; targets (i.e. their refcount is bigger than 1). But only
-           ;; those nodes with a non-NIL target actually need to be
-           ;; kernelized, the rest is skipped
-           (when target
-             (flet ((leaf-function (node)
-                      (cond
-                        ;; the root is never a leaf
-                        ((eq node tree-root) nil)
-                        ;; all immediates are leaves
-                        ((immediate? node) node)
-                        ;; skip the table lookup when the refcount is small
-                        ((< (refcount node) 2) nil)
-                        ;; otherwise check the table
-                        (t (values (gethash node table))))))
-               (declare (dynamic-extent #'leaf-function))
-               (let ((kernels (subgraph-kernels target tree-root #'leaf-function)))
-                 (setf (kernels target) kernels))))))
-      (maphash #'kernelize-hash-table-entry table))
-    (map 'vector
-         (lambda (node)
-           (if (immediate? node)
-               node
-               (gethash node table)))
-         graph-roots)))
+        ((register-critical-node (node)
+           (unless (gethash node critical-node-table)
+             (setf (gethash node critical-node-table)
+                   (corresponding-immediate node))
+             (recurse-into node)
+             (values nil)))
+         (register-potentially-critical-node (node)
+           (multiple-value-bind (value recurring)
+               (gethash node critical-node-table)
+             (unless value
+               (cond
+                 ((not recurring)
+                  (setf (gethash node critical-node-table) nil)
+                  (recurse-into node))
+                 (recurring
+                  (setf (gethash node critical-node-table)
+                        (corresponding-immediate node))
+                  (values nil))))))
+         (recurse-into (node)
+           (etypecase node
+             (immediate (register-critical-node node))
+             (reduction (traverse (input node) nil))
+             (reference (traverse (input node) nil)) ; TODO
+             ((or application fusion)
+              (let ((reductions
+                      (loop for input in (inputs node)
+                            count (traverse input nil))))
+                (case reductions
+                  (0 (values nil))
+                  (1 (values t))
+                  (otherwise (register-critical-node node)))))))
+         (traverse (node critical?)
+           (cond
+             (critical?             (register-critical-node node))
+             ((> (refcount node) 1) (register-potentially-critical-node node))
+             (t                     (recurse-into node)))))
+      (map nil #'register-critical-node graph-roots))
+    ;; now call SUBTREE-FN for each subtree
+    (flet ((process-hash-table-entry (tree-root target)
+             (when (and target (not (eq tree-root target)))
+               (flet ((leaf-function (node)
+                        (cond
+                          ;; the root is never a leaf
+                          ((eq node tree-root) nil)
+                          ;; all immediates are leaves
+                          ((immediate? node) node)
+                          ;; otherwise check the table
+                          (t (values (gethash node critical-node-table))))))
+                 (declare (dynamic-extent #'leaf-function))
+                 (funcall subtree-fn target tree-root #'leaf-function)))))
+      (maphash #'process-hash-table-entry critical-node-table)
+      ;; finally return the result
+      (flet ((lookup (node) (gethash node critical-node-table)))
+        (map 'vector #'lookup graph-roots)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
