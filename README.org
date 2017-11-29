@@ -1,9 +1,9 @@
 #+TITLE: Petalisp
 
 Petalisp is an attempt to generate high performance code for parallel
-computers from a pure data flow specification. It is not a full blown
-programming language, but rather a carefully crafted extension of Common
-Lisp that allows for extreme optimization and parallelization.
+computers, by JIT-compiling definitions of data structures. It is not a
+full blown programming language, but rather a carefully crafted extension
+of Common Lisp that allows for extreme optimization and parallelization.
 
 ** Showcases
 Petalisp is still under development, so the following examples may still
@@ -42,23 +42,26 @@ Example 3: the numerical Jacobi scheme in two dimensions
          (- iterations 1)))))
 #+END_SRC
 
-Example 4: A full Petalisp program to multiply two matrices and store the
-result. The first matrix is read from a file, while the second one is
-passed as a lisp array.
-#+BEGIN_SRC lisp
-(defun matrix-multiplication (A B)
-  (β #'+
-     (α #'*
-        (-> A (τ (m n) (m 1 n)))
-        (-> B (τ (n k) (1 k n))))))
+** Frequently Asked Questions
 
-(let ((result
-        (matrix-multiplication
-         (hdf5->petalisp "A.h5" "matrix")
-         #2a((1 2) (3 4)))))
-  (petalisp->hdf5
-   result
-   "scaled-matrix.h5"
-   "output"))
-#+END_SRC
+*** Why is Petalisp licensed under AGPL?
+I am aware that this license prevents some people from using or
+contributing to this piece of software, which is a shame. But unfortunately
+the majority of software developers have not yet understood that
 
+1. in a digital world, free software is a necessary prerequisite for a free
+   society
+2. when developing software, open collaboration is way more efficient than
+   competition
+
+So as long as distribution of non-free software is socially accepted,
+copyleft licenses like the AGPL seem to be the lesser evil.
+
+That being said, I am willing to discuss relicensing on an individual
+basis.
+
+*** Why is Petalisp written in Common Lisp?
+To my own surprise, Common Lisp is --- as of 2017 --- still the sweetest
+spot in the programming language design space. The language appears even
+more attractive if one considers its plethora of high quality libraries and
+implementations.
