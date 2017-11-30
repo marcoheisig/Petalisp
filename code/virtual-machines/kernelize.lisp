@@ -27,28 +27,15 @@
 ;;;    critical node will later be the target of one or more kernels.
 ;;;
 ;;; 2. By construction, the nodes starting from one critical node, up to
-;;;    and including the next critical nodes, form a tree of application,
-;;;    reduction, reference and fusion nodes. To eliminate all fusion
-;;;    nodes, determine a set of index spaces such that their union is the
-;;;    index space of the current critical node, but such that each index
-;;;    space lies only within a single input of each fusion node.
+;;;    and including the next critical nodes, form a tree. All fusion nodes
+;;;    therein can be eliminated by determining a set of index spaces such
+;;;    that their union is the index space of the current critical node,
+;;;    but such that each index space reaches only a single input of each
+;;;    fusion node.
 ;;;
-;;; 3. Each particular index space from the previous step denotes a
-;;;    fusion-free subtask in the process of computing the values of a
-;;;    critical node. Determine the iteration space of this subtask and the
-;;;    set of referenced immediates, called sources.
-;;;
-;;; 4. Given the iteration space and the set of sources, translate the tree
-;;;    into an explicit blueprint. The blueprint describes how target
-;;;    values can be computed from the given source. It is important that
-;;;    this blueprint is normalized, such that as many computationally
-;;;    similar operations as possible have the same blueprint. To achieve
-;;;    this, blueprints do not use index space coordinates, but the storage
-;;;    coordinates of the source and target immediates.
-;;;
-;;; 5. Use each blueprint, together with the set of sources, the target and
-;;;    the iteration space, to create one kernel. Attach this kernel to its
-;;;    target immediate.
+;;; 3. For each index space from the previous step, create a suitable
+;;;    kernel. To do so, the problem must be translated to a blueprint and
+;;;    its iteration space must be determined.
 ;;;
 ;;; Once every critical node and index space thereof has been processed,
 ;;; the algorithm terminates.
@@ -220,9 +207,21 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; 3. iteration space and sources
+;;; 3. Kernel Creation
 
-(defun subtree-ranges-and-sources (root leaf-function iteration-space initial-ranges)
+(defun kernelize-subtree-fragment (target root leaf-function index-space)
+  "Return the kernel that computes the INDEX-SPACE of TARGET, according
+   to the data flow graph prescribed by ROOT and LEAF-FUNCTION."
+  (multiple-value-bind (iteration-space sources)
+      (subtree-ranges-and-sources root leaf-function index-space)
+    (let ((blueprint (subtree-fragment-blueprint target root leaf-function iteration-space sources)))
+      (make-instance 'kernel
+        :target target
+        :iteration-space iteration-space
+        :sources sources
+        :blueprint blueprint))))
+
+(defun subtree-ranges-and-sources (root leaf-function index-space)
   "Return as multiple values a vector of the ranges and a vector of the
   sources reachable from ROOT, as determined by the supplied
   LEAF-FUNCTION."
@@ -234,11 +233,9 @@
                (fvector-pushnew leaf sources :test #'eq)
                (etypecase node
                  (application
-                  (map nil
-                       (λ input (traverse input relevant-space))
-                       (inputs node)))
+                  (mapcar (λ input (traverse input relevant-space)) (inputs node)))
                  (reduction
-                  (traverse (input node) relevant-space))
+                  (traverse (input node) relevant-space)) ; TODO
                  (fusion
                   (map nil
                        (λ input (traverse input (intersection (index-space input) relevant-space)))
@@ -248,60 +245,10 @@
                             (intersection
                              (index-space (input node))
                              (funcall (transformation node) relevant-space)))))))))
-      (traverse root iteration-space))
-    (values initial-ranges sources)))
+      (traverse root index-space))
+    (values iteration-space sources)))
 
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; 4. Blueprint Creation
-;;;
-;;; The blueprint of a kernel is used to construct some
-;;; performance-critical function and as a key to search whether such a
-;;; function has already been generated and compiled. The latter case is
-;;; expected to be far more frequent, so the primary purpose of a blueprint
-;;; is to select an existing function as fast as possible and without
-;;; consing.
-;;;
-;;; To achieve this, each blueprint is built from uconses. Furthermore, the
-;;; blueprint grammar has been chosen to maximize structural sharing and to
-;;; avoid unnecessary uconses.
-
-(deftype blueprint () 'ucons)
-
-(define-ustruct %blueprint
-  (range-info ulist)
-  (storage-info ulist)
-  (expression ulist))
-
-(define-ustruct %reference
-  (storage non-negative-fixnum)
-  &rest indices)
-
-(define-ustruct %store
-  (reference ulist)
-  (expression ulist))
-
-(define-ustruct %call
-  operator
-  &rest expressions)
-
-(define-ustruct %reduce
-  (range non-negative-fixnum)
-  operator
-  (expression ulist))
-
-(define-ustruct %accumulate
-  (range non-negative-fixnum)
-  operator
-  initial-value
-  (expression ulist))
-
-(define-ustruct %for
-  (range non-negative-fixnum)
-  (expression ulist))
-
-(defgeneric %indices (transformation)
+(defgeneric blueprint-indices (transformation)
   (:method ((transformation identity-transformation))
     (let ((dimension (input-dimension transformation)))
       (let (result)
@@ -332,71 +279,11 @@
     (ulist* (storage-info target)
             (map-ulist #'storage-info sources))))
 
-(defun subtree-fragment-blueprint (target root leaf-function iteration-space sources)
-  )
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; 5. Kernel Creation
-;;;
-;;; The goal is to determine a sequence of kernels that compute the
-;;; elements of a target immediate according to a subgraph specified by a
-;;; root and a leaf function. The latter is a function returning the
-;;; corresponding immediate of each leaf node and NIL for all other nodes.
-;;;
-;;; Most importantly, it is necessary to generate, for each kernel, a
-;;; blueprint that describes how it should be computed. It is crucial that
-;;; this blueprint is normalized, i.e. similar operations should lead to
-;;; identical blueprints. This makes it possible to efficiently cache and
-;;; compile these blueprints. In particular, a blueprint must not depend on
-;;; the absolute index space of any of the involved immediates and instead
-;;; work directly on their storage.
-;;;
-;;; Another normalization is obtained by observing that, since the
-;;; subgraphs are now much smaller than the original data flow graph, it is
-;;; possible to move all references upwards until they merge into a single
-;;; reference per leaf. As a result, transformations concern only the
-;;; references to the sources of each kernel.
-;;;
-;;; The final and perhaps most controversial normalization is the
-;;; elimination of all fusion nodes. Each fusion node can be eliminated by
-;;; instead generating multiple kernels. The iteration space of each of
-;;; these kernels is chosen such that only a single input of each fusion is
-;;; utilized, effectively turning it into a reference node. The downside of
-;;; this normalization step is that for subgraphs with multiple fusion
-;;; nodes, the number of generated kernels grows exponentially. Time will
-;;; tell whether this case occurs in practical applications.
-
-(defun kernelize-subtree-fragment (target root leaf-function iteration-space)
-  "Return the kernel that computes the ITERATION-SPACE of TARGET, according
-   to the data flow graph prescribed by ROOT and LEAF-FUNCTION."
-  (let ((dimension (dimension root)))
-    (multiple-value-bind (ranges sources)
-        (subgraph-ranges-and-sources
-         root leaf-function iteration-space
-         (ranges (funcall (to-storage target) iteration-space)))
-      (make-instance 'kernel
-        :target target
-        :ranges ranges
-        :sources sources
-        :blueprint
-        (%blueprint
-         (blueprint-range-information ranges)
-         (blueprint-storage-information target sources)
-         (funcall
-          (named-lambda build-blueprint (range-id)
-            (if (= range-id dimension)
-                (%store (%reference 0 (%indices (make-identity-transformation dimension)))
-                        (subgraph-blueprint-body
-                         root leaf-function sources iteration-space (from-storage target)))
-                (%for range-id (build-blueprint (1+ range-id)))))
-          0))))))
-
-(defun subgraph-blueprint-body (node leaf-function sources iteration-space transformation)
+(defun blueprint-body (node leaf-function sources iteration-space transformation)
   (labels ((traverse (node relevant-space transformation)
              (if-let ((immediate (funcall leaf-function node)))
                (%reference (1+ (position immediate sources))
-                           (%indices (composition (to-storage immediate) transformation)))
+                           (blueprint-indices (composition (to-storage immediate) transformation)))
                (etypecase node
                  (reference
                   (traverse
@@ -414,3 +301,17 @@
                          (map-ulist (λ input (traverse input relevant-space transformation))
                                     (inputs node))))))))
     (traverse node iteration-space transformation)))
+
+(defun subtree-fragment-blueprint (target root leaf-function iteration-space sources)
+  (let ((dimension (dimension root)))
+    (%blueprint
+     (blueprint-range-information iteration-space)
+     (blueprint-storage-information target sources)
+     (funcall
+      (named-lambda build-blueprint (range-id)
+        (if (= range-id dimension)
+            (%store (%reference 0 (blueprint-indices (make-identity-transformation dimension)))
+                    (subgraph-blueprint-body
+                     root leaf-function sources iteration-space (from-storage target)))
+            (%for range-id (build-blueprint (1+ range-id)))))
+      0))))
