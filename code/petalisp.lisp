@@ -38,7 +38,7 @@
   (mapc (λ input (incf (refcount input))) (inputs instance)))
 
 (define-class immediate (data-structure)
-  ((inputs       :type null)
+  ((inputs       :type null :initform nil)
    (storage      :type t :initform nil :accessor storage)
    (to-storage   :type transformation)
    (from-storage :type transformation)

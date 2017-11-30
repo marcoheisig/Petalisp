@@ -3,8 +3,8 @@
 (in-package :petalisp)
 
 (define-class identity-transformation (transformation)
-  ((input-dimension :type (integer 0 *)))
-  (:metaclass funcallable-standard-class))
+  (:metaclass funcallable-standard-class)
+  ((input-dimension :type (integer 0 *))))
 
 (defun make-identity-transformation (dimension)
   (with-vector-memoization (dimension)

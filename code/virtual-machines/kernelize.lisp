@@ -6,13 +6,13 @@
 ;;; some explanation...
 ;;;
 ;;; The goal is to translate a data flow graph into a graph of executable
-;;; parts, called kernels. The data flow nodes form a DAG (directed acyclic
-;;; graph). The data flow graph is fully determined by a set of graph
-;;; roots, typically the nodes passed to SCHEDULE.
+;;; parts, called kernels. The data flow nodes form a directed acyclic
+;;; graph. The graph is fully determined by a set of graph roots, typically
+;;; the nodes passed to SCHEDULE.
 ;;;
-;;; The resulting graph consists only of immediate values. Each immediate
-;;; hash a possibly empty set of kernels. Each kernel describes how values
-;;; of a subspace of the index space of its target immediate can be
+;;; The result is a graph consisting only of immediate values, where each
+;;; immediate is the target of one or more kernels. Each kernel describes
+;;; how values of a subspace of the index space of its target can be
 ;;; computed. Furthermore each kernel tracks the set of its sources,
 ;;; i.e. those immediates that are referenced during their
 ;;; evaluation. Since the resulting immediate graph is used to decide a
@@ -28,10 +28,10 @@
 ;;;
 ;;; 2. By construction, the nodes starting from one critical node, up to
 ;;;    and including the next critical nodes, form a tree. All fusion nodes
-;;;    therein can be eliminated by determining a set of index spaces such
-;;;    that their union is the index space of the current critical node,
-;;;    but such that each index space reaches only a single input of each
-;;;    fusion node.
+;;;    therein can be eliminated by determining a set of index spaces whose
+;;;    union is the index space of the current critical node, but where
+;;;    paths from each index space never pass through more than one input
+;;;    of each fusion node.
 ;;;
 ;;; 3. For each index space from the previous step, create a suitable
 ;;;    kernel. To do so, the problem must be translated to a blueprint and
@@ -41,6 +41,8 @@
 ;;; the algorithm terminates.
 
 (defun kernelize (graph-roots)
+  "Translate the data flow graph specified by the given GRAPH-ROOTS to a
+   graph of immediates and kernels. Return the roots of this new graph."
   (kernelize-subtrees
    (lambda (target root leaf-function)
      (setf (kernels target)
@@ -106,8 +108,10 @@
     ;; Naively, CRITICAL-NODE-TABLE would simply contain an entry for each
     ;; critical node, mapping it to its corresponding immediate value. But
     ;; since there is initially some uncertainty about which nodes are
-    ;; actually critical, the table will also contain an entry for each
-    ;; node with a refcount of two or higher, with a value of NIL.
+    ;; critical, the table will also contain an entry for each node with a
+    ;; refcount of two or higher, but with a value of NIL. Furthermore,
+    ;; immediates are not necessarily placed in the table, because they are
+    ;; always critical and only map to themselves.
     (labels
         ((register-critical-node (node)
            (unless (gethash node critical-node-table)
@@ -173,8 +177,16 @@
    describe the maximal fusion-free paths through the subgraph from ROOT to
    some leaves, as determined by the supplied LEAF-FUNCTION."
   (labels
+      ;; walk the tree starting from ROOT, up to the leaves as determined
+      ;; by LEAF-FUNCTION. RELEVANT-SPACE is a subspace of the index space
+      ;; of ROOT, that shrinks when selecting a particular input of a
+      ;; fusion node. TRANSFORMATION as a mapping between the coordinate
+      ;; system of the current node and the coordinate system of the root
+      ;; node.
       ((fragment-spaces (node relevant-space transformation)
-         ;; return a list of all iteration spaces in the preceding subtree
+         ;; NODE is the root of the current subtree. FRAGMENT-SPACES
+         ;; returns a list of all iteration spaces in the current subtree,
+         ;; or NIL, if the subtree contains no fusions.
          (unless (funcall leaf-function node)
            (typecase node
              (fusion
@@ -208,6 +220,19 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; 3. Kernel Creation
+;;;
+;;; Several exciting things happen during kernel creation:
+;;;
+;;; - reference nodes are lifted and combined, until they reach the
+;;;   leaves. As a consequence, the body of a recipe is now free of
+;;;   references and fusions
+;;;
+;;; - a common iteration space is derived
+;;;
+;;; - for each memory reference, a mapping from the iteration space to the
+;;;   storage coordinates of the referenced immediate is determined
+;;;
+;;; The iteration space of a kernel is an N-dimensional strided cube.
 
 (defun kernelize-subtree-fragment (target root leaf-function index-space)
   "Return the kernel that computes the INDEX-SPACE of TARGET, according
