@@ -186,8 +186,19 @@
   (:method ((object t)) 0)
   (:method ((list list)) (length list))
   (:method ((array array)) (array-rank array))
+  (:method ((transformation transformation))
+    (let ((input-dimension (input-dimension transformation))
+          (output-dimension (output-dimension transformation)))
+      (assert (= input-dimension output-dimension))
+      input-dimension))
   (:method ((data-structure data-structure))
     (dimension (index-space data-structure))))
+
+(defgeneric enlarge-transformation (transformation)
+  (:documentation
+   "Given a transformation mapping from (i1 ... iN) to (j1 ... jM),
+    return a transformation mapping from (i1 ... iN iN+1) to
+    (j1 ... jM iN+1)."))
 
 (defgeneric equal? (a b)
   (:documentation

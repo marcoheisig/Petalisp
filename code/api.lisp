@@ -33,7 +33,7 @@ overlap partially, the value of the rightmost object is used."
                (reference
                 (find piece objects :from-end t :key #'index-space :test #'subspace?)
                 piece
-                (make-identity-transformation (dimension piece)))))
+                (identity-transformation (dimension piece)))))
         (apply #'fusion (mapcar #'reference-origin pieces))))))
 
 (defun -> (data-structure &rest modifiers)
@@ -64,7 +64,7 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
                     (reference
                      data-structure
                      (intersection modifier (index-space data-structure))
-                     (make-identity-transformation
+                     (identity-transformation
                       (dimension data-structure)))))
                (transformation
                 (reference

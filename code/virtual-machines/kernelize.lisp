@@ -214,7 +214,7 @@
                   (subdivision index-spaces)
                   index-spaces)))))))
     (or
-     (fragment-spaces root (index-space root) (make-identity-transformation (dimension root)))
+     (fragment-spaces root (index-space root) (identity-transformation (dimension root)))
      (list (index-space root)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -335,7 +335,7 @@
      (funcall
       (named-lambda build-blueprint (range-id)
         (if (= range-id dimension)
-            (%store (%reference 0 (blueprint-indices (make-identity-transformation dimension)))
+            (%store (%reference 0 (blueprint-indices (identity-transformation dimension)))
                     (subgraph-blueprint-body
                      root leaf-function sources iteration-space (from-storage target)))
             (%for range-id (build-blueprint (1+ range-id)))))

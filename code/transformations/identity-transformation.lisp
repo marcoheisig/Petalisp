@@ -3,16 +3,19 @@
 (in-package :petalisp)
 
 (define-class identity-transformation (transformation)
-  (:metaclass funcallable-standard-class)
-  ((input-dimension :type (integer 0 *))))
+  ((input-dimension :type (integer 0 *)))
+  (:metaclass funcallable-standard-class))
 
-(defun make-identity-transformation (dimension)
+(defun identity-transformation (dimension)
   (with-vector-memoization (dimension)
     (make-instance 'identity-transformation :input-dimension dimension)))
 
 (defmethod composition ((g identity-transformation) (f transformation)) f)
 
 (defmethod composition ((g transformation) (f identity-transformation)) g)
+
+(defmethod enlarge-transformation ((transformation identity-transformation))
+  (identity-transformation (1+ (dimension transformation))))
 
 (defmethod equal? ((a identity-transformation) (b identity-transformation))
   (= (dimension a) (dimension b)))

@@ -66,7 +66,7 @@
                               (setf (aref translation-vector index) (range-start output-range)))
                              ((equal? input-range output-range)
                               (setf (aref values index) 1))))
-              (make-affine-transformation
+              (affine-transformation
                (make-array input-dimension :initial-element nil)
                (scaled-permutation-matrix
                 output-dimension

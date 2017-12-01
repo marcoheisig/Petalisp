@@ -45,7 +45,7 @@
    with step size one to the given INDEX-SPACE."
   (let ((ranges (ranges index-space))
         (dimension (dimension index-space)))
-    (make-affine-transformation
+    (affine-transformation
      (make-array dimension :initial-element nil)
      (scaled-permutation-matrix
       dimension dimension

@@ -63,7 +63,7 @@
             (assert (every #'= result-1 result-2) ()
                     "Not a valid transformation:~%  ~S"
                     f))
-          (make-affine-transformation
+          (affine-transformation
            input-constraints
            linear-operator
            translation-vector))))))

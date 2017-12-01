@@ -35,19 +35,40 @@
    (translation-vector :type (simple-array integer (*))))
   (:metaclass funcallable-standard-class))
 
-(defun make-affine-transformation (input-constraints A b)
+(defun affine-transformation (input-constraints A b)
   (declare (type scaled-permutation-matrix A)
            (type simple-vector input-constraints b))
   (if (and (= (length input-constraints) (matrix-n A) (matrix-m A) (length b))
            (every #'null input-constraints)
            (every #'zerop b)
            (identity-matrix? A))
-      (make-identity-transformation (length input-constraints))
+      (identity-transformation (length input-constraints))
       (with-memoization ((list input-constraints A b) :test #'equalp)
         (make-instance 'affine-transformation
           :input-constraints input-constraints
           :linear-operator A
           :translation-vector b))))
+
+(defmethod enlarge-transformation ((transformation affine-transformation))
+  (let ((input-dimension (input-dimension transformation))
+        (output-dimension (output-dimension transformation))
+        (matrix (linear-operator transformation)))
+    (let ((input-constraints (make-array (1+ input-dimension)))
+          (permutation       (make-array (1+ output-dimension)))
+          (scaling           (make-array (1+ output-dimension)))
+          (translation       (make-array (1+ output-dimension))))
+      (replace input-constraints (input-constraints transformation))
+      (replace permutation       (spm-column-indices matrix))
+      (replace scaling           (spm-values matrix))
+      (replace translation       (translation-vector transformation))
+      (setf (aref input-constraints input-dimension) nil)
+      (setf (aref permutation       output-dimension) input-dimension)
+      (setf (aref scaling           output-dimension) 1)
+      (setf (aref translation       output-dimension) 0)
+      (affine-transformation
+       input-constraints
+       (scaled-permutation-matrix (1+ output-dimension) (1+ input-dimension) permutation scaling)
+       translation))))
 
 (defmethod input-dimension ((instance affine-transformation))
   (length (input-constraints instance)))
@@ -90,7 +111,7 @@
     (let ((input-constraints (input-constraints f))
           (linear-operator (matrix-product A2 A1))
           (translation-vector (map 'vector #'+ (matrix-product A2 b1) b2)))
-      (make-affine-transformation
+      (affine-transformation
        input-constraints
        linear-operator
        translation-vector))))
@@ -131,7 +152,7 @@
                (when input-constraint
                  (assert (= (aref translation-vector index) 0))
                  (setf (aref translation-vector index) input-constraint)))
-      (make-affine-transformation
+      (affine-transformation
        input-constraints
        linear-operator
        translation-vector))))
