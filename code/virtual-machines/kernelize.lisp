@@ -237,6 +237,10 @@
 (defun kernelize-subtree-fragment (target root leaf-function index-space)
   "Return the kernel that computes the INDEX-SPACE of TARGET, according
    to the data flow graph prescribed by ROOT and LEAF-FUNCTION."
+  (let ((transformations )
+        (ranges )
+        (gcd-vector)
+        (min-vector)))
   (multiple-value-bind (iteration-space sources)
       (subtree-ranges-and-sources root leaf-function index-space)
     (let ((blueprint (subtree-fragment-blueprint target root leaf-function iteration-space sources)))
@@ -250,7 +254,8 @@
   "Return as multiple values a vector of the ranges and a vector of the
   sources reachable from ROOT, as determined by the supplied
   LEAF-FUNCTION."
-  (let ((sources (fvector)))
+  (let ((sources (fvector))
+        (ranges (copy-array (ranges (index-space root)) :fill-pointer t)))
     (labels
         ((traverse (node relevant-space)
            (when relevant-space
@@ -260,11 +265,13 @@
                  (application
                   (mapcar (λ input (traverse input relevant-space)) (inputs node)))
                  (reduction
-                  (traverse (input node) relevant-space)) ; TODO
+                  (vector-push-extend (last-elt (ranges (index-space node))) ranges)
+                  (traverse (input node) relevant-space))
                  (fusion
-                  (map nil
-                       (λ input (traverse input (intersection (index-space input) relevant-space)))
-                       (inputs node)))
+                  (let ((input (find relevant-space (inputs node)
+                                     :key #'index-space
+                                     :test #'intersection?)))
+                    (traverse input (intersection relevant-space (index-space input)))))
                  (reference
                   (traverse (input node)
                             (intersection

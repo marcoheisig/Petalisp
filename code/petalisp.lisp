@@ -252,6 +252,14 @@
   (:method :before ((space-1 index-space) (space-2 index-space))
     (assert (= (dimension space-1) (dimension space-2)))))
 
+(defgeneric intersection? (space-1 space-2)
+  (:documentation
+   "Return whether some indices occur both in SPACE-1 and SPACE-2.")
+  (:method :before ((space-1 index-space) (space-2 index-space))
+    (assert (= (dimension space-1) (dimension space-2))))
+  (:method ((space-1 index-space) (space-2 index-space))
+    (and (intersection space-1 space-2) t)))
+
 (defgeneric inverse (transformation)
   (:documentation
    "Return a transformation whose composition with the argument of this

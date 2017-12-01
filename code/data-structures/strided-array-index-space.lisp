@@ -3,7 +3,7 @@
 (in-package :petalisp)
 
 (define-class strided-array-index-space (index-space)
-  ((ranges :type simple-vector)))
+  ((ranges :type vector)))
 
 (defun strided-array-index-space-generator
     (&key (dimension 3) (max-size 30) (max-extent 100) intersecting)
@@ -116,7 +116,7 @@
     (make-instance 'strided-array-index-space
       :ranges (map 'vector #'rangeify range-specifications))))
 
-(defmethod index-space ((vector simple-vector))
+(defmethod index-space ((vector vector))
     (if (every #'range? vector)
         (make-instance 'strided-array-index-space :ranges vector)
         (call-next-method)))
