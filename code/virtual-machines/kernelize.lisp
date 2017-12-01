@@ -237,20 +237,26 @@
 (defun kernelize-subtree-fragment (target root leaf-function index-space)
   "Return the kernel that computes the INDEX-SPACE of TARGET, according
    to the data flow graph prescribed by ROOT and LEAF-FUNCTION."
-  (let ((transformations )
-        (ranges )
-        (gcd-vector)
-        (min-vector)))
   (multiple-value-bind (iteration-space sources)
-      (subtree-ranges-and-sources root leaf-function index-space)
-    (let ((blueprint (subtree-fragment-blueprint target root leaf-function iteration-space sources)))
-      (make-instance 'kernel
-        :target target
-        :iteration-space iteration-space
-        :sources sources
-        :blueprint blueprint))))
+      (subtree-iteration-space-and-sources root leaf-function index-space)
+    ;; ITERATION-SPACE is currently based on the coordinate system of ROOT
+    ;; and the subsequent reductions and is therefore -- from a virtual
+    ;; machine perspective -- rather arbitrary. Unfortunately, all storage
+    ;; references are relative to this space and therefore also
+    ;; arbitrary. Since we want computationally equivalent kernels to have
+    ;; the same blueprint, we need to normalize the iteration space.
+    (multiple-value-bind (iteration-space transformations)
+        (normalize-iteration-space
+         iteration-space
+         (subtree-fragment-transformations iteration-space transformations))
+      (let ((blueprint (subtree-fragment-blueprint target root leaf-function sources transformations)))
+        (make-instance 'kernel
+          :target target
+          :iteration-space iteration-space
+          :sources sources
+          :blueprint blueprint)))))
 
-(defun subtree-ranges-and-sources (root leaf-function index-space)
+(defun subtree-iteration-space-and-sources (root leaf-function index-space)
   "Return as multiple values a vector of the ranges and a vector of the
   sources reachable from ROOT, as determined by the supplied
   LEAF-FUNCTION."
@@ -278,7 +284,42 @@
                              (index-space (input node))
                              (funcall (transformation node) relevant-space)))))))))
       (traverse root index-space))
-    (values iteration-space sources)))
+    (values (index-space ranges) sources)))
+
+(defun normalize-iteration-space (iteration-space transformations)
+  "Given an iteration space and a sequence of transformations, return a
+  normalized iteration space and a sequence of adapted transformations."
+  (flet ((dependent-ranges (transformation)
+           (ranges
+            (funcall transformation iteration-space))))
+    (let ((iteration-ranges (ranges iteration-space))
+          (dimension (dimension iteration-space)))
+      (let ((gcd-vector (map 'vector #'range-step iteration-ranges))
+            (min-vector (map 'vector #'range-start iteration-ranges)))
+        ;; TODO there is quite some potential for optimization here,
+        ;; e.g. via a MAP-OVER-TRANSFORMED-RANGES function
+        (loop for transformation across transformations do
+          (loop for range across (dependent-ranges transformation)
+                and i from 0 do
+                  (setf (aref gcd-vector i)
+                        (gcd (aref gcd-vector i)
+                             (range-step range)))
+                  (setf (aref  min-vector i)
+                        (min (aref min-vector i)
+                             (range-start range)))))
+        (let ((input-constraints (make-array dimension :initial-element nil))
+              (linear-operator
+                (let ((column-indices (make-array dimension)))
+                  (loop for i below (length column-indices) do
+                    (setf (aref column-indices i) i))
+                  (scaled-permutation-matrix dimension dimension column-indices gcd-vector))))
+          (let ((normalizing-transformation
+                  (affine-transformation input-constraints linear-operator min-vector)))
+            (values
+             (funcall (inverse normalizing-transformation) iteration-space)
+             (flet ((normalize (transformation)
+                      (composition transformation normalizing-transformation)))
+               (map 'vector #'normalize  transformations)))))))))
 
 (defgeneric blueprint-indices (transformation)
   (:method ((transformation identity-transformation))
