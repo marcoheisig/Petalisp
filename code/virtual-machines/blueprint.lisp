@@ -14,24 +14,28 @@
 ;;; avoid unnecessary uconses.
 
 (define-ustruct %blueprint
-  (range-info ulist)
-  (storage-info ulist)
+  (iteration-space-info ulist)
+  ;; ITERATION-SPACE-INFO has one entry per iteration space dimension,
+  ;; stored as an ulist of the form [step min-size max-size]
+  (memory-references ulist)
+  ;; MEMORY-REFERENCES describes how a particular piece of memory is
+  ;; accessed relative to the iteration space. Its entries are of the form
+  ;; [source/target-id [range-id-1 scale-1 offset-1] ...]
+  (target-info ulist)
+  (source-info ulist)
+  ;; SOURCE-INFO and TARGET-INFO store the element type of each source and
+  ;; target, respectively
   (expression ulist))
 
 (define-ustruct %reference
   (storage non-negative-fixnum)
   &rest indices)
 
-(define-ustruct %store
-  (reference ulist)
-  (expression ulist))
-
 (define-ustruct %call
   operator
   &rest expressions)
 
 (define-ustruct %reduce
-  (range non-negative-fixnum)
   operator
   (expression ulist))
 

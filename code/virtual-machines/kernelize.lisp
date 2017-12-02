@@ -171,6 +171,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; 2. Fusion Free Index Spaces
+;;;
+;;; The purpose of this step is to partition the index space of the root of
+;;; a subtree into a set of subspaces, such that the tree fragment starting
+;;; from this subspace is free of fusion nodes.
 
 (defun subtree-fragment-spaces (root leaf-function)
   "Return a partitioning of the index space of ROOT, whose elements
@@ -237,8 +241,8 @@
 (defun kernelize-subtree-fragment (target root leaf-function index-space)
   "Return the kernel that computes the INDEX-SPACE of TARGET, according
    to the data flow graph prescribed by ROOT and LEAF-FUNCTION."
-  (multiple-value-bind (iteration-space sources)
-      (subtree-iteration-space-and-sources root leaf-function index-space)
+  (multiple-value-bind (iteration-space sources source-ids transformations body)
+      (analyze-subtree-fragment root leaf-function index-space)
     ;; ITERATION-SPACE is currently based on the coordinate system of ROOT
     ;; and the subsequent reductions and is therefore -- from a virtual
     ;; machine perspective -- rather arbitrary. Unfortunately, all storage
@@ -246,49 +250,75 @@
     ;; arbitrary. Since we want computationally equivalent kernels to have
     ;; the same blueprint, we need to normalize the iteration space.
     (multiple-value-bind (iteration-space transformations)
-        (normalize-iteration-space
-         iteration-space
-         (subtree-fragment-transformations iteration-space transformations))
-      (let ((blueprint (subtree-fragment-blueprint target root leaf-function sources transformations)))
-        (make-instance 'kernel
-          :target target
-          :iteration-space iteration-space
-          :sources sources
-          :blueprint blueprint)))))
+        (normalize-iteration-space iteration-space transformations)
+      (labels
+          ((blueprint-body (node)
+             )))
+      (make-instance 'kernel
+        :target target
+        :iteration-space iteration-space
+        :unknown-operators unknown-operators
+        :sources sources
+        :blueprint
+        (blueprint)))))
 
-(defun subtree-iteration-space-and-sources (root leaf-function index-space)
-  "Return as multiple values a vector of the ranges and a vector of the
-  sources reachable from ROOT, as determined by the supplied
-  LEAF-FUNCTION."
+(defun analyze-subtree-fragment (root leaf-function index-space)
+  "Return as multiple values
+   1. the iteration space, including all reductions
+   2. a vector of the referenced sources
+   3. a vector of source ids
+   4. a vector of leaf transformations, one for each source id
+   5. the body of the blueprint"
   (let ((sources (fvector))
-        (ranges (copy-array (ranges (index-space root)) :fill-pointer t)))
+        (ranges (copy-array (ranges (index-space root)) :fill-pointer t))
+        (source-ids (fvector))
+        (transformations (fvector)))
     (labels
-        ((traverse (node relevant-space)
+        ((traverse (node relevant-space transformation)
            (when relevant-space
              (if-let ((leaf (funcall leaf-function node)))
-               (fvector-pushnew leaf sources :test #'eq)
+               ;; register leaf nodes and return their id
+               (let ((source-id
+                       (or (position leaf sources :test #'eq)
+                           (vector-push-extend leaf sources)))
+                     (transformation
+                       (composition (to-storage leaf) transformation)))
+                 (vector-push-extend source-id source-ids)
+                 (vector-push-extend transformation transformations))
                (etypecase node
-                 (application
-                  (mapcar (λ input (traverse input relevant-space)) (inputs node)))
+                 ;; translate applications
+                 (flet ((traverse (input)
+                          (traverse input relevant-space transformation)))
+                   (application
+                    (%call (operator node) (map-ulist #'traverse-input (inputs node)))))
+                 ;; increase the iteration space on each reduction
                  (reduction
                   (vector-push-extend (last-elt (ranges (index-space node))) ranges)
-                  (traverse (input node) relevant-space))
+                  (flet ((traverse (input)
+                           (traverse input relevant-space (enlarge-transformation transformation))))
+                    (let ((transformation (enlarge-transformation transformation)))
+                      (%reduce (operator node) (traverse (input node))))))
+                 ;; eliminate fusions
                  (fusion
-                  (let ((input (find relevant-space (inputs node)
-                                     :key #'index-space
-                                     :test #'intersection?)))
-                    (traverse input (intersection relevant-space (index-space input)))))
+                  (let* ((input (find relevant-space (inputs node)
+                                      :key #'index-space
+                                      :test #'intersection?))
+                         (relevant-space (intersection relevant-space (index-space input))))
+                    (traverse input relevant-space transformation)))
+                 ;; eliminate references, but adapt the currently relevant
+                 ;; space and transformation
                  (reference
-                  (traverse (input node)
-                            (intersection
-                             (index-space (input node))
-                             (funcall (transformation node) relevant-space)))))))))
-      (traverse root index-space))
-    (values (index-space ranges) sources)))
+                  (let ((relevant-space
+                          (intersection
+                           (index-space (input node))
+                           (funcall (transformation node) relevant-space)))
+                        (transformation
+                          (composition (transformation node) transformation)))
+                    (traverse (input node) relevant-space transformation))))))))
+      (let ((body (traverse root index-space (identity-transformation (dimension root)))))
+        (values (index-space ranges) sources source-ids transformations body)))))
 
-(defun normalize-iteration-space (iteration-space transformations)
-  "Given an iteration space and a sequence of transformations, return a
-  normalized iteration space and a sequence of adapted transformations."
+(defun iteration-space-normalization (iteration-space transformations)
   (flet ((dependent-ranges (transformation)
            (ranges
             (funcall transformation iteration-space))))
@@ -297,7 +327,8 @@
       (let ((gcd-vector (map 'vector #'range-step iteration-ranges))
             (min-vector (map 'vector #'range-start iteration-ranges)))
         ;; TODO there is quite some potential for optimization here,
-        ;; e.g. via a MAP-OVER-TRANSFORMED-RANGES function
+        ;; e.g. via a MAP-OVER-TRANSFORMED-RANGES function to reduce
+        ;; consing
         (loop for transformation across transformations do
           (loop for range across (dependent-ranges transformation)
                 and i from 0 do
@@ -313,13 +344,7 @@
                   (loop for i below (length column-indices) do
                     (setf (aref column-indices i) i))
                   (scaled-permutation-matrix dimension dimension column-indices gcd-vector))))
-          (let ((normalizing-transformation
-                  (affine-transformation input-constraints linear-operator min-vector)))
-            (values
-             (funcall (inverse normalizing-transformation) iteration-space)
-             (flet ((normalize (transformation)
-                      (composition transformation normalizing-transformation)))
-               (map 'vector #'normalize  transformations)))))))))
+          (affine-transformation input-constraints linear-operator min-vector))))))
 
 (defgeneric blueprint-indices (transformation)
   (:method ((transformation identity-transformation))
