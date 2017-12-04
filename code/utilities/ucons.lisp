@@ -55,7 +55,7 @@
 (deftype ucar ()
   "The type of all elements that may appear as the UCAR of a UCONS."
   ;; the type of things you can reasonably compare with EQ
-  '(or fixnum symbol function character ucons))
+  '(or fixnum symbol function character structure-object))
 
 (deftype ulist ()
   "A list made of UCONSes, or NIL."
@@ -96,6 +96,7 @@
          (notinline ucons--slow)
          (ftype (function (ucar ulist) ucons) ucons)
          (ftype (function (ucar ulist) ucons) ucons--slow))
+
 (defun ucons (car cdr)
   "Given a suitable CAR and CDR, return a UCONS that is EQ to all future
    and past invocation of this function with the same arguments."
