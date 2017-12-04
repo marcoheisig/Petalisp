@@ -46,7 +46,7 @@
            (map 'vector
                 (lambda (iteration-space)
                   (kernelize-subtree-fragment target root leaf-function iteration-space))
-                (subtree-fragment-spaces root leaf-function))))
+                (subtree-fragment-index-spaces root leaf-function))))
    graph-roots))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -173,7 +173,7 @@
 ;;; a subtree into a set of subspaces, such that the tree fragment starting
 ;;; from this subspace is free of fusion nodes.
 
-(defun subtree-fragment-spaces (root leaf-function)
+(defun subtree-fragment-index-spaces (root leaf-function)
   "Return a partitioning of the index space of ROOT, whose elements
    describe the maximal fusion-free paths through the subgraph from ROOT to
    some leaves, as determined by the supplied LEAF-FUNCTION."
