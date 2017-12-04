@@ -27,10 +27,6 @@
   ;; target, respectively
   (expression ulist))
 
-(define-ustruct %reference
-  (storage non-negative-fixnum)
-  &rest indices)
-
 (define-ustruct %call
   operator
   &rest expressions)

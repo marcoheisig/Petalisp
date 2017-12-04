@@ -224,12 +224,15 @@
                       (funcall-form ,step ,ulist)))))))))
 
 (declaim (inline map-ulist))
-(defun map-ulist (function sequence)
+(defun map-ulist (function sequence &rest more-sequences)
   (declare (function function))
-  (reduce #'ucons sequence
-          :key function
-          :from-end t
-          :initial-value nil))
+  (let (ulist)
+    (flet ((compute-and-push (argument &rest more-arguments)
+             (setf ulist
+                   (ucons
+                    (apply function argument more-arguments)
+                    ulist))))
+      (apply #'map nil #'compute-and-push sequence more-sequences))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

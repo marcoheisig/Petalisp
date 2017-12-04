@@ -2,9 +2,6 @@
 
 (in-package :petalisp)
 
-;;; This is probably the most complicated part of Petalisp and deserves
-;;; some explanation...
-;;;
 ;;; The goal is to translate a data flow graph into a graph of executable
 ;;; parts, called kernels. The data flow nodes form a directed acyclic
 ;;; graph. The graph is fully determined by a set of graph roots, typically
@@ -241,28 +238,46 @@
 (defun kernelize-subtree-fragment (target root leaf-function index-space)
   "Return the kernel that computes the INDEX-SPACE of TARGET, according
    to the data flow graph prescribed by ROOT and LEAF-FUNCTION."
-  (multiple-value-bind (iteration-space sources source-ids transformations body)
-      (analyze-subtree-fragment root leaf-function index-space)
+  (with-subtree-fragment-information (root leaf-function index-space)
+      (iteration-space sources source-ids transformations body)
     ;; ITERATION-SPACE is currently based on the coordinate system of ROOT
     ;; and the subsequent reductions and is therefore -- from a virtual
     ;; machine perspective -- rather arbitrary. Unfortunately, all storage
     ;; references are relative to this space and therefore also
     ;; arbitrary. Since we want computationally equivalent kernels to have
     ;; the same blueprint, we need to normalize the iteration space.
-    (multiple-value-bind (iteration-space transformations)
-        (normalize-iteration-space iteration-space transformations)
-      (labels
-          ((blueprint-body (node)
-             )))
-      (make-instance 'kernel
-        :target target
-        :iteration-space iteration-space
-        :unknown-operators unknown-operators
-        :sources sources
-        :blueprint
-        (blueprint)))))
+    #+nil(let ((normalization (iteration-space-normalization iteration-space transformations))))
+    (make-instance 'kernel
+      :target target
+      :iteration-space iteration-space
+      ;;:unknown-operators unknown-operators
+      :sources sources
+      :blueprint
+      (flet ((range-info (range)
+               (let ((lb (log (size range) 2)))
+                 (ulist (expt (floor lb) 2)
+                        (expt (ceiling lb) 2)
+                        (range-step range))))
+             (memory-reference-info (source-id transformation)
+               (ulist* source-id (blueprint-indices transformation)))
+             (storage-info (immediate)
+               (element-type immediate)))
+        (ulist 'blueprint
+               (map-ulist #'range-info (ranges iteration-space))
+               (map-ulist #'memory-reference-info source-ids transformations)
+               (ulist (storage-info target))
+               (map-ulist #'storage-info sources)
+               body)))))
 
-(defun analyze-subtree-fragment (root leaf-function index-space)
+(defmacro with-subtree-fragment-information
+    ((root leaf-function index-space) (&rest keyword-arguments) &body body)
+  `(call-with-subtree-fragment-information
+    ,root ,leaf-function ,index-space
+    (lambda (&key ,@keyword-arguments)
+      ,@body)))
+
+(defun call-with-subtree-fragment-information
+    (root leaf-function index-space continuation)
   "Return as multiple values
    1. the iteration space, including all reductions
    2. a vector of the referenced sources
@@ -287,17 +302,16 @@
                  (vector-push-extend transformation transformations))
                (etypecase node
                  ;; translate applications
-                 (flet ((traverse (input)
-                          (traverse input relevant-space transformation)))
-                   (application
-                    (%call (operator node) (map-ulist #'traverse-input (inputs node)))))
+                 (application
+                  (flet ((traverse-input (input)
+                           (traverse input relevant-space transformation)))
+                    (ulist* 'call (operator node) (map-ulist #'traverse-input (inputs node)))))
                  ;; increase the iteration space on each reduction
                  (reduction
                   (vector-push-extend (last-elt (ranges (index-space node))) ranges)
                   (flet ((traverse (input)
                            (traverse input relevant-space (enlarge-transformation transformation))))
-                    (let ((transformation (enlarge-transformation transformation)))
-                      (%reduce (operator node) (traverse (input node))))))
+                    (ulist 'reduce (operator node) (traverse (input node)))))
                  ;; eliminate fusions
                  (fusion
                   (let* ((input (find relevant-space (inputs node)
@@ -316,7 +330,13 @@
                           (composition (transformation node) transformation)))
                     (traverse (input node) relevant-space transformation))))))))
       (let ((body (traverse root index-space (identity-transformation (dimension root)))))
-        (values (index-space ranges) sources source-ids transformations body)))))
+        (funcall
+         continuation
+         :index-space (index-space ranges)
+         :sources sources
+         :source-ids source-ids
+         :transformations transformations
+         :body body)))))
 
 (defun iteration-space-normalization (iteration-space transformations)
   (flet ((dependent-ranges (transformation)
@@ -362,54 +382,3 @@
         (for offset in-vector (translation-vector transformation) downto 0)
         (setf result (ulist* (ulist column value offset) result)))
       result)))
-
-(defun blueprint-range-information (ranges)
-  (flet ((range-info (range)
-           (let ((lb (log (size range) 2)))
-             (ulist (expt (floor lb) 2)
-                    (expt (ceiling lb) 2)
-                    (range-step range)))))
-    (map-ulist #'range-info ranges)))
-
-(defun blueprint-storage-information (target sources)
-  (flet ((storage-info (immediate)
-           (element-type immediate)))
-    (ulist* (storage-info target)
-            (map-ulist #'storage-info sources))))
-
-(defun blueprint-body (node leaf-function sources iteration-space transformation)
-  (labels ((traverse (node relevant-space transformation)
-             (if-let ((immediate (funcall leaf-function node)))
-               (%reference (1+ (position immediate sources))
-                           (blueprint-indices (composition (to-storage immediate) transformation)))
-               (etypecase node
-                 (reference
-                  (traverse
-                   (input node)
-                   relevant-space
-                   (composition (transformation node) transformation)))
-                 (fusion
-                  (traverse
-                   (find-if (λ input (subspace? relevant-space (index-space input)))
-                            (inputs node))
-                   relevant-space
-                   transformation))
-                 (application
-                  (%call (operator node)
-                         (map-ulist (λ input (traverse input relevant-space transformation))
-                                    (inputs node))))))))
-    (traverse node iteration-space transformation)))
-
-(defun subtree-fragment-blueprint (target root leaf-function iteration-space sources)
-  (let ((dimension (dimension root)))
-    (%blueprint
-     (blueprint-range-information iteration-space)
-     (blueprint-storage-information target sources)
-     (funcall
-      (named-lambda build-blueprint (range-id)
-        (if (= range-id dimension)
-            (%store (%reference 0 (blueprint-indices (identity-transformation dimension)))
-                    (subgraph-blueprint-body
-                     root leaf-function sources iteration-space (from-storage target)))
-            (%for range-id (build-blueprint (1+ range-id)))))
-      0))))
