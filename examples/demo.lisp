@@ -38,8 +38,8 @@
 (defun matmul (A B)
   (β #'+
      (α #'*
-        (-> A (τ (m n) m 1 n))
-        (-> B (τ (n k) 1 k n)))))
+        (-> A (τ (m n) (m 1 n)))
+        (-> B (τ (n k) (1 k n))))))
 
 (defparameter I #2a((1.0 0.0)
                     (0.0 1.0)))

@@ -34,17 +34,18 @@
 
 (defmethod vm/compile
     ((virtual-machine common-lisp-virtual-machine) (blueprint ucons))
-  (let ((code (translate-blueprint-to-lambda blueprint)))
+  (let ((code nil #+nil(translate-blueprint-to-lambda blueprint)))
     (format t "~A~%" blueprint)
     (format t "~A~%" code)
     (finish-output)
-    (compile nil code)))
+    ;;(compile nil code)
+    (lambda (&rest rest))))
 
 (defmethod vm/execute
   ((virtual-machine common-lisp-virtual-machine)
    (kernel kernel))
   (let (arguments)
-    (loop for range across (ranges kernel) do
+    (loop for range across (ranges (iteration-space kernel)) do
       (push (range-start range) arguments)
       (push (range-end range) arguments))
     (push (storage (target kernel)) arguments)
@@ -55,7 +56,8 @@
      (nreverse arguments))))
 
 (defun translate-blueprint-to-lambda (blueprint)
-  (with-ustruct-accessors (%blueprint) blueprint
+  (destructure-ulist (range-info memory-references target-info source-info body)
+      blueprint
     (let ((range-steps (fvector))
           declarations
           lambda-list)
@@ -72,7 +74,7 @@
                      declarations))
       `(lambda ,(nreverse lambda-list)
          (declare ,@declarations)
-         ,(translate-blueprint-form expression range-steps 0)))))
+         ,(translate-blueprint-form body range-steps 0)))))
 
 (defun translate-blueprint-form (uexpression range-steps depth)
   (ecase (ucar uexpression)

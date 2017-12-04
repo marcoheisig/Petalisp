@@ -42,7 +42,7 @@
    (storage      :type t :initform nil :accessor storage)
    (to-storage   :type transformation)
    (from-storage :type transformation)
-   (kernels      :type list :accessor kernels))
+   (kernels      :type list :initform nil :accessor kernels))
   (:documentation
    "An immediate is a data structure whose elements can be referenced in
     constant time. It has a STORAGE slot that contains its elements in some
@@ -94,10 +94,10 @@
    k \in ΩB to A(T(k))."))
 
 (define-class kernel ()
-  ((target    :type immediate)
-   (blueprint :type ulist)
-   (ranges    :type list)
-   (sources   :type list))
+  ((target          :type immediate)
+   (blueprint       :type ulist)
+   (iteration-space :type list)
+   (sources         :type list))
   (:documentation
    "A kernel is the fundamental unit of work in Petalisp. It's BLUEPRINT
    describes how elements of the storage of TARGET can be computed by using
@@ -312,7 +312,7 @@ function is the identity transformation."))
 
 (defmethod print-object ((object kernel) stream)
   (print-unreadable-object (object stream :type t :identity t)
-    (princ (ranges object) stream)))
+    (princ (ranges (iteration-space object)) stream)))
 
 (defgeneric reduction (f a)
   (:documentation

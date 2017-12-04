@@ -149,7 +149,7 @@
       (map nil #'register-critical-node graph-roots))
     ;; now call SUBTREE-FN for each subtree
     (flet ((process-hash-table-entry (tree-root target)
-             (when (and target (not (eq tree-root target)))
+             (when (and target (not (immediate? tree-root)))
                (flet ((leaf-function (node)
                         (cond
                           ;; the root is never a leaf
@@ -262,8 +262,7 @@
                (ulist* source-id (blueprint-indices transformation)))
              (storage-info (immediate)
                (element-type immediate)))
-        (ulist 'blueprint
-               (map-ulist #'range-info (ranges iteration-space))
+        (ulist (map-ulist #'range-info (ranges iteration-space))
                (map-ulist #'memory-reference-info source-ids transformations)
                (ulist (storage-info target))
                (map-ulist #'storage-info sources)
@@ -332,7 +331,7 @@
       (let ((body (traverse root index-space (identity-transformation (dimension root)))))
         (funcall
          continuation
-         :index-space (index-space ranges)
+         :iteration-space (index-space ranges)
          :sources sources
          :source-ids source-ids
          :transformations transformations

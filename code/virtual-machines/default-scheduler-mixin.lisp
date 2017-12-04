@@ -9,7 +9,7 @@
 (defmethod vm/schedule ((vm default-scheduler-mixin) targets recipes)
   (let ((request (make-request)))
     ;; TODO currently schedules synchronously for easier debugging
-    (iterate (for immediate in-sequence (kernelize-graph recipes))
+    (iterate (for immediate in-sequence (kernelize recipes))
              (for index from 0)
              (setf (storage (aref targets index))
                    (storage (evaluate-naively vm immediate))))

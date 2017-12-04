@@ -225,92 +225,33 @@
                       (funcall-form ,step ,ulist)))))))))
 
 (declaim (inline map-ulist))
-(defun map-ulist (function sequence &rest more-sequences)
+(defun map-ulist (function &rest sequences)
   (declare (function function))
-  (let (ulist)
-    (flet ((compute-and-push (argument &rest more-arguments)
-             (setf ulist
-                   (ucons
-                    (apply function argument more-arguments)
-                    ulist))))
-      (apply #'map nil #'compute-and-push sequence more-sequences))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; structured ulists
-
-(defvar *ustruct-lambda-lists* (make-hash-table :test #'eq))
-
-(defun parse-ustruct-lamba-list (ustruct-lambda-list)
-  (let ((variadic? (find '&rest ustruct-lambda-list))
-        slot-names slot-types)
-    (dolist (element (remove '&rest ustruct-lambda-list))
-      (etypecase element
-        (symbol
-         (push element slot-names)
-         (push 'ucar   slot-types))
-        (cons
-         (assert (= 2 (length element)))
-         (assert (symbolp (car element)))
-         (push (first element) slot-names)
-         (push (second element) slot-types))))
-    (values (nreverse slot-names)
-            (nreverse slot-types)
-            variadic?)))
-
-(defmacro define-ustruct (name &body ustruct-lambda-list)
-  (multiple-value-bind (slot-names slot-types variadic?)
-      (parse-ustruct-lamba-list ustruct-lambda-list)
-    `(progn
-       (eval-when (:compile-toplevel :load-toplevel :execute)
-         (setf (gethash ',name *ustruct-lambda-lists*)
-               ',ustruct-lambda-list))
-       (declaim (inline ,name))
-       (defun ,name ,slot-names
-         (declare ,@(loop for slot-name in slot-names
-                          for slot-type in slot-types
-                          collect `(type ,slot-type ,slot-name)))
-         (,(if variadic? 'ulist* 'ulist) ',name ,@slot-names)))))
-
-(defmacro with-ustruct-accessors
-    ((ustruct-name &key (prefix "") (suffix "")) ustruct &body body)
-  (check-type ustruct-name symbol)
-  (check-type prefix string-designator)
-  (check-type suffix string-designator)
-  (once-only (ustruct)
-    (multiple-value-bind (ustruct-lambda-list ustruct-known?)
-        (gethash ustruct-name *ustruct-lambda-lists*)
-      (unless ustruct-known?
-        (error "Not a ustruct name: ~A" ustruct-name))
-      (multiple-value-bind (slot-names slot-types variadic?)
-          (parse-ustruct-lamba-list ustruct-lambda-list)
-        (let* ((extended-names
-                 (loop for slot-name in slot-names
-                       collect (symbolicate prefix slot-name suffix)))
-               (typedecls (loop for extended-name in extended-names
-                                for slot-type in slot-types
-                                collect `(type ,slot-type ,extended-name))))
-          `(progn
-             (assert (eq (ucar ,ustruct) ',ustruct-name))
-             (let ((,ustruct (ucdr ,ustruct)))
-               ,(if variadic?
-                    `(let* ,(loop for extended-name in (butlast extended-names)
-                                  collect `(,extended-name (ucar ,ustruct))
-                                  collect `(,ustruct (ucdr ,ustruct)))
-                       (declare (ignorable ,ustruct ,@(butlast extended-names)))
-                       (let ((,(last-elt extended-names) ,ustruct))
-                         (declare (ignorable ,(last-elt extended-names))
-                                  ,@typedecls)
-                         ,@body))
-                    `(let* ,(loop for extended-name in extended-names
-                                  collect `(,extended-name (ucar ,ustruct))
-                                  collect `(,ustruct (ucdr ,ustruct)))
-                       (declare (ignorable ,ustruct ,@extended-names) ,@typedecls)
-                       ,@body)))))))))
+  (let ((length (reduce #'min sequences :key #'length))
+        (stack-allocation-threshold 30))
+    (flet ((map-ulist-with-buffer (buffer &aux result)
+             (apply #'map-into buffer function sequences)
+             (loop for index from (1- length) downto 0 do
+               (setf result (ucons (aref buffer index) result)))
+             result))
+      (if (<= length stack-allocation-threshold)
+          (let ((buffer (make-array stack-allocation-threshold)))
+            (declare (dynamic-extent buffer))
+            (map-ulist-with-buffer buffer))
+          (let ((buffer (make-array length)))
+            (map-ulist-with-buffer buffer))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; other ulist utilities
+
+(defmacro destructure-ulist (variables expression &body body)
+  (with-unique-names (rest)
+    `(let ((,rest ,expression))
+       (let* ,(loop for variable in variables
+                    collect `(,variable (ucar ,rest))
+                    collect `(,rest (ucdr ,rest)))
+         ,@body))))
 
 (defun ulength (ulist)
   "Return the length of the given ulist."
