@@ -200,6 +200,14 @@
     return a transformation mapping from (i1 ... iN iN+1) to
     (j1 ... jM iN+1)."))
 
+(defgeneric enlarge-index-space (from to)
+  (:documentation
+   "Given an index space FROM of dimension N and an index space TO of
+   dimension N+1, return an index space whose first dimensions are taken
+   from FROM, but with the last dimension of TO.")
+  (:method :before ((from index-space) (to index-space))
+    (assert (= (1+ (dimension from)) (dimension to)))))
+
 (defgeneric equal? (a b)
   (:documentation
    "Two objects are EQUAL? if their use in Petalisp will always result in

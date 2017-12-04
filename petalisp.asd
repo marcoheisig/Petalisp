@@ -53,10 +53,9 @@
        (:file "strided-array-immediate" :depends-on ("strided-array"))))
      (:module "virtual-machines"
       :components
-      ((:file "blueprint")
-       (:file "compile-cache-mixin")
+      ((:file "compile-cache-mixin")
        (:file "default-scheduler-mixin" :depends-on ("kernelize"))
-       (:file "kernelize" :depends-on ("blueprint"))
+       (:file "kernelize")
        (:file "reference-virtual-machine")
        (:file "testing-virtual-machine")
        (:module "common-lisp-virtual-machine"

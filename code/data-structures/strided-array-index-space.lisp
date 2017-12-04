@@ -89,6 +89,13 @@
 (defmethod dimension ((object strided-array-index-space))
   (length (ranges object)))
 
+(defmethod enlarge-index-space
+    ((from strided-array-index-space)
+     (to strided-array-index-space))
+  (let ((new-ranges (copy-array (ranges (index-space to)))))
+    (replace new-ranges (ranges from))
+    (index-space new-ranges)))
+
 (defmethod equal? ((object-1 strided-array-index-space)
                    (object-2 strided-array-index-space))
   (and (= (dimension object-1) (dimension object-2))

@@ -32,7 +32,7 @@
 
 (defmethod print-object ((object identity-transformation) stream)
   (let ((index-symbols (index-symbol-list (input-dimension object))))
-    (prin1 `(τ ,index-symbols ,@index-symbols) stream)))
+    (prin1 `(τ ,index-symbols ,index-symbols) stream)))
 
 (defmethod optimize-reference or ((object data-structure)
                                   (space index-space)

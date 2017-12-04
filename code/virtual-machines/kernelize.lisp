@@ -202,7 +202,10 @@
                 (fragment-spaces (input node) subspace
                                   (composition (transformation node) transformation))))
              (reduction
-              (fragment-spaces (input node) relevant-space transformation))
+              (let ((input (input node)))
+                (let ((relevant-space (enlarge-index-space relevant-space (index-space input)))
+                      (transformation (enlarge-transformation transformation)))
+                  (fragment-spaces (input node) relevant-space transformation))))
              (application
               (let* ((number-of-fusing-subtrees 0)
                    (index-spaces
@@ -308,9 +311,10 @@
                  ;; increase the iteration space on each reduction
                  (reduction
                   (vector-push-extend (last-elt (ranges (index-space node))) ranges)
-                  (flet ((traverse (input)
-                           (traverse input relevant-space (enlarge-transformation transformation))))
-                    (ulist 'reduce (operator node) (traverse (input node)))))
+                  (let ((input (input node)))
+                    (let ((relevant-space (enlarge-index-space relevant-space (index-space input)))
+                          (transformation (enlarge-transformation transformation)))
+                      (ulist 'reduce (operator node) (traverse input relevant-space transformation)))))
                  ;; eliminate fusions
                  (fusion
                   (let* ((input (find relevant-space (inputs node)

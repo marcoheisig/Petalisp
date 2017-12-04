@@ -172,6 +172,6 @@
             (for input-constraint in-vector (input-constraints object))
             (for index-symbol in (index-symbol-list (input-dimension object)))
             (collect (or input-constraint index-symbol)))))
-    (prin1 `(τ ,inputs ,@(funcall object inputs))
+    (prin1 `(τ ,inputs ,(funcall object inputs))
            stream)))
 
