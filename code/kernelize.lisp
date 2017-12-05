@@ -107,66 +107,60 @@
     ;; since there is initially some uncertainty about which nodes are
     ;; critical, the table will also contain an entry for each node with a
     ;; refcount of two or higher, but with a value of NIL. Furthermore,
-    ;; immediates are not necessarily placed in the table, because they are
+    ;; immediates are not necessarily placed in the table, since they are
     ;; always critical and only map to themselves.
-    (labels
-        ((register-critical-node (node)
-           (unless (gethash node critical-node-table)
-             (setf (gethash node critical-node-table)
-                   (corresponding-immediate node))
-             (recurse-into node)
-             (values nil)))
-         (register-potentially-critical-node (node)
-           (multiple-value-bind (value recurring)
-               (gethash node critical-node-table)
-             (unless value
+    (labels ((register-critical-node (node)
+               (unless (gethash node critical-node-table)
+                 (setf (gethash node critical-node-table)
+                       (corresponding-immediate node))
+                 (recurse-into node)
+                 (values nil)))
+             (register-potentially-critical-node (node)
+               (multiple-value-bind (value recurring)
+                   (gethash node critical-node-table)
+                 (unless value
+                   (cond
+                     ((not recurring)
+                      (setf (gethash node critical-node-table) nil)
+                      (recurse-into node))
+                     (recurring
+                      (setf (gethash node critical-node-table)
+                            (corresponding-immediate node))
+                      (values nil))))))
+             (recurse-into (node)
+               (typecase node
+                 ;; deliberately ignore immediates
+                 (reduction (traverse (input node) nil))
+                 (reference (traverse (input node) nil)) ; TODO
+                 ((or application fusion)
+                  (let ((reductions
+                          (loop for input in (inputs node)
+                                count (traverse input nil))))
+                    (case reductions
+                      (0 (values nil))
+                      (1 (values t))
+                      (otherwise (register-critical-node node)))))))
+             (traverse (node critical?)
                (cond
-                 ((not recurring)
-                  (setf (gethash node critical-node-table) nil)
-                  (recurse-into node))
-                 (recurring
-                  (setf (gethash node critical-node-table)
-                        (corresponding-immediate node))
-                  (values nil))))))
-         (recurse-into (node)
-           (typecase node
-             ;; deliberately ignore immediates
-             (reduction (traverse (input node) nil))
-             (reference (traverse (input node) nil)) ; TODO
-             ((or application fusion)
-              (let ((reductions
-                      (loop for input in (inputs node)
-                            count (traverse input nil))))
-                (case reductions
-                  (0 (values nil))
-                  (1 (values t))
-                  (otherwise (register-critical-node node)))))))
-         (traverse (node critical?)
-           (cond
-             (critical?             (register-critical-node node))
-             ((> (refcount node) 1) (register-potentially-critical-node node))
-             (t                     (recurse-into node)))))
+                 (critical?             (register-critical-node node))
+                 ((> (refcount node) 1) (register-potentially-critical-node node))
+                 (t                     (recurse-into node)))))
       (map nil #'register-critical-node graph-roots))
     ;; now call SUBTREE-FN for each subtree
-    (labels
-        ((lookup (node)
-           (if (immediate? node) node
-               (values (gethash node critical-node-table))))
-         (process-hash-table-entry (tree-root target)
-             (when (and target (not (immediate? tree-root)))
-               (flet ((leaf-function (node)
-                        ;; the root is never a leaf
-                        (unless (eq node tree-root)
-                          (lookup node))))
-                 (declare (dynamic-extent #'leaf-function))
-                 (funcall subtree-fn target tree-root #'leaf-function)))))
-      (maphash #'process-hash-table-entry critical-node-table)
-      ;; finally return the result
-      (flet ((lookup (node)
+    (labels ((lookup (node)
                (if (immediate? node)
                    node
-                   (gethash node critical-node-table))))
-        (map 'vector #'lookup graph-roots)))))
+                   (values (gethash node critical-node-table))))
+             (process-hash-table-entry (tree-root target)
+               (when (and target (not (immediate? tree-root)))
+                 (flet ((leaf-function (node)
+                          ;; the root is never a leaf
+                          (unless (eq node tree-root)
+                            (lookup node))))
+                   (declare (dynamic-extent #'leaf-function))
+                   (funcall subtree-fn target tree-root #'leaf-function)))))
+      (maphash #'process-hash-table-entry critical-node-table)
+      (map 'vector #'lookup graph-roots))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -239,7 +233,8 @@
 ;;; - for each memory reference, a mapping from the iteration space to the
 ;;;   storage coordinates of the referenced immediate is determined
 ;;;
-;;; The iteration space of a kernel is an N-dimensional strided cube.
+;;; The selection criteria for critical nodes ensure, that the iteration
+;;; space of a kernel is always an N-dimensional strided cube.
 
 (defun kernelize-subtree-fragment (target root leaf-function index-space)
   "Return the kernel that computes the INDEX-SPACE of TARGET, according
