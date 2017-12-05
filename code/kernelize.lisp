@@ -264,11 +264,14 @@
              (memory-reference-info (source-id transformation)
                (ulist* source-id (blueprint-indices transformation)))
              (storage-info (immediate)
-               (element-type immediate)))
+               (ulist
+                (element-type immediate)
+                (dimension immediate))))
         (ulist (map-ulist #'range-info (ranges iteration-space))
-               (map-ulist #'memory-reference-info source-ids transformations)
-               (ulist (storage-info target))
+               (storage-info target)
+               (memory-reference-info 0 (to-storage target))
                (map-ulist #'storage-info sources)
+               (map-ulist #'memory-reference-info source-ids transformations)
                body)))))
 
 (defmacro with-subtree-fragment-information
@@ -287,7 +290,7 @@
    4. a vector of leaf transformations, one for each source id
    5. the body of the blueprint"
   (let ((sources (fvector))
-        (ranges (copy-array (ranges (index-space root)) :fill-pointer t))
+        (ranges (copy-array (ranges index-space) :fill-pointer t))
         (source-ids (fvector))
         (transformations (fvector)))
     (labels

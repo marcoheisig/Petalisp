@@ -245,14 +245,6 @@
 ;;;
 ;;; other ulist utilities
 
-(defmacro destructure-ulist (variables expression &body body)
-  (with-unique-names (rest)
-    `(let ((,rest ,expression))
-       (let* ,(loop for variable in variables
-                    collect `(,variable (ucar ,rest))
-                    collect `(,rest (ucdr ,rest)))
-         ,@body))))
-
 (defun ulength (ulist)
   "Return the length of the given ulist."
   (declare (ulist ulist) (optimize speed))

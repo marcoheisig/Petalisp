@@ -113,7 +113,7 @@
     (is (identity-transformation? τ))
     (is (= 4 (input-dimension τ) (output-dimension τ))))
   (for-all ((dimension (integer-generator 0 200)))
-    (let ((τ (make-identity-transformation dimension)))
+    (let ((τ (identity-transformation dimension)))
       (is (identity-transformation? τ))
       (is (equal? τ τ))
       (is (equal? τ (inverse τ)))
@@ -133,5 +133,5 @@
       (when (and (every #'null (input-constraints τ))
                  (every #'null (input-constraints τ-inv)))
         (is (equal? (composition τ-inv τ)
-                    (make-identity-transformation
+                    (identity-transformation
                      (input-dimension τ))))))))

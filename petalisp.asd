@@ -51,11 +51,11 @@
        (:file "strided-array-index-space" :depends-on ("range"))
        (:file "strided-array" :depends-on ("strided-array-index-space"))
        (:file "strided-array-immediate" :depends-on ("strided-array"))))
+     (:file "kernelize")
      (:module "virtual-machines"
       :components
       ((:file "compile-cache-mixin")
-       (:file "default-scheduler-mixin" :depends-on ("kernelize"))
-       (:file "kernelize")
+       (:file "default-scheduler-mixin")
        (:file "reference-virtual-machine")
        (:file "testing-virtual-machine")
        (:module "common-lisp-virtual-machine"
