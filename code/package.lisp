@@ -20,8 +20,6 @@
                 #:metaenv-tags
                 #:metaenv-ensure-name-from-environment
                 #:metaenv-ensure-names-from-environment)
-  ;; Petalisp imports only a small subset of fiveam functionality
-  (:import-from :fiveam #:is #:is-true #:is-false #:signals #:for-all)
   ;; LOOP no more
   (:import-from :iterate #:display-iterate-clauses
                 #:defsynonym #:dsetq #:declare-variables
@@ -46,4 +44,8 @@
    #:subspace
    #:depetalispify
    #:schedule
-   #:compute))
+   #:compute
+   #:*virtual-machine*
+   #:reference-virtual-machine
+   #:common-lisp-virtual-machine
+   #:testing-virtual-machine))

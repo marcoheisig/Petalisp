@@ -29,18 +29,3 @@
       (if (<= (* u v) most-positive-fixnum)
           (funcall (typed-euclid fixnum ) 1 u 0 v)
           (funcall (typed-euclid integer) 1 u 0 v)))))
-
-(test |(extended-euclid)|
-  (flet ((? (u v)
-           (multiple-value-bind (u1 u3) (extended-euclid u v)
-             (is (= (gcd u v) u3))
-             (if (zerop v)
-                 (is (= u3 (* u u1)))
-                 (is (integerp (/ (- u3 (* u u1)) v)))))))
-    (? 0 0)
-    (? 1 0)
-    (? 0 1)
-    (? (expt 6 40) (expt 9 40))
-    (for-all ((u (integer-generator 0))
-              (v (integer-generator 0)))
-      (? u v))))

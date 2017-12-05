@@ -8,13 +8,12 @@
    :alexandria
    :bordeaux-threads
    :closer-mop
-   :fiveam
    :iterate
    :the-cost-of-nothing
    :trivial-garbage
    :uiop)
 
-  :perform (test-op (o c) (symbol-call "PETALISP" "RUN-TEST-SUITE"))
+  :in-order-to ((test-op (test-op :petalisp-test-suite)))
 
   :components
   ((:module "code"
@@ -63,3 +62,14 @@
         :components ((:file "common-lisp-virtual-machine")))))
      (:file "visualization")
      (:file "api")))))
+
+(defsystem :petalisp-test-suite
+  :description "Test suite for the parallel programming library Petalisp."
+  :author "Marco Heisig <marco.heisig@fau.de>"
+  :license "AGPLv3"
+  :depends-on (:petalisp :fiveam)
+  :components
+  ((:module "code"
+    :components ((:file "test-suite"))))
+  :perform (test-op (o c)
+                    (symbol-call "PETALISP-TEST-SUITE" "RUN-TEST-SUITE")))

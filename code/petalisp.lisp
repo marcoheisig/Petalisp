@@ -450,9 +450,3 @@ arguments."
           ((= 1 (length objects)) (list (elt objects 0)))
           (t (reduce #'shatter objects :initial-value nil)))))
 
-(defun run-test-suite ()
-  (format t "== Testing Petalisp ==~%")
-  (print-platform-information)
-  (print-system-statistics :petalisp)
-  (print-package-statistics :petalisp)
-  (fiveam:run! 'petalisp))

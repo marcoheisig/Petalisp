@@ -63,15 +63,6 @@ intersect it (potentially violating MAX-EXTENT)."
                                (range-step range)
                                (+ (range-end range) offset)))))))))))))
 
-(test |(range-generator)|
-  (let ((max-size 10)
-        (max-extent 100))
-    (for-all ((range (range-generator :max-extent max-extent
-                                      :max-size max-size)))
-      (is (<= (abs (range-start range)) max-extent))
-      (is (<= (abs (range-end range)) max-extent))
-      (is (<= (size range) max-size)))))
-
 (defmethod difference ((space-1 range) (space-2 range))
   ;; we only care about the part of space-2 that intersects with space-1
   (let ((space-2 (intersection space-1 space-2)))
@@ -131,14 +122,6 @@ intersect it (potentially violating MAX-EXTENT)."
                                (maybe-push-range start step-1 end)))))))
           result))))
 
-(test |(difference range)|
-  (for-all ((a (range-generator :max-extent 100)))
-    (for-all ((b (range-generator :max-extent 100
-                                  :intersecting a)))
-      (is (equal? a (apply #'fusion
-                           (intersection a b)
-                           (difference a b)))))))
-
 (defmethod fusion ((range range) &rest more-ranges)
   (let ((ranges (list* range more-ranges)))
     (flet ((fail ()
@@ -182,17 +165,6 @@ intersect it (potentially violating MAX-EXTENT)."
                    (when (<= lb start end ub)
                      (range start lcm end)))))))))))
 
-(test |(intersection range)|
-  (let ((fiveam::*num-trials* (ceiling (sqrt fiveam::*num-trials*))))
-    (for-all ((a (range-generator :max-extent 10000)))
-      (for-all ((b (range-generator :max-extent 10000
-                                    :intersecting a)))
-        (let ((intersection (intersection a b)))
-          (is-true (subspace? intersection a))
-          (is-true (subspace? intersection b))
-          (is (not (difference intersection a)))
-          (is (not (difference intersection b))))))))
-
 (defmethod size ((object range))
   (1+ (the integer (/ (- (range-end object) (range-start object))
                       (range-step object)))))
@@ -201,15 +173,3 @@ intersect it (potentially violating MAX-EXTENT)."
 (defun unary-range? (range)
   (= (range-start range)
      (range-end range)))
-
-(test range
-  (is (range? (range 0 0 0)))
-  (signals error (range 0 0 1))
-  (for-all ((start (integer-generator))
-            (step (integer-generator 1))
-            (end (integer-generator)))
-    (is (range? (range start step end)))
-    (is (= (size (range start step end))
-           (1+ (floor (abs (- start end)) (abs step)))))
-    (is (equal? (range start step end)
-                (range start (- step) end)))))

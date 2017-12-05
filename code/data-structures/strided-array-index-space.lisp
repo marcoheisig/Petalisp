@@ -75,17 +75,6 @@
                                   :ranges ranges))))))
     (list space-1)))
 
-(test |(difference strided-array-index-space)|
-  (let ((fiveam::*num-trials* (ceiling (sqrt fiveam::*num-trials*))))
-    (for-all ((a (strided-array-index-space-generator :dimension 3
-                                                      :max-extent 40)))
-      (for-all ((b (strided-array-index-space-generator :dimension 3
-                                                        :intersecting a
-                                                        :max-extent 40)))
-        (is (equal? a (apply #'fusion
-                             (intersection a b)
-                             (difference a b))))))))
-
 (defmethod dimension ((object strided-array-index-space))
   (length (ranges object)))
 
@@ -136,13 +125,6 @@
                  (ranges space-1)
                  (ranges space-2))))
 
-(test |(intersection strided-array-index-space)|
-  (flet ((? (a b result)
-           (is (equal? result (intersection a b)))))
-    (?  (σ) (σ) (σ))
-    (? (σ (0 9) (0 9)) (σ (2 10) (2 10)) (σ (2 9) (2 9)))
-    (? (σ (1 2 3) (0 3 6)) (σ (1 1 3) (0 2 6)) (σ (1 2 3) (0 6 6)))))
-
 (defmethod print-object ((object strided-array-index-space) stream)
   (flet ((range-list (range)
            (list (range-start range)
@@ -175,29 +157,6 @@
                           (* scale (range-step range))
                           (+ offset (* scale (range-end range)))))))))
     (make-instance 'strided-array-index-space :ranges result)))
-
-(test |(generic-unery-funcall affine-transformation strided-array-index-space)|
-  (flet ((? (object transformation result)
-           (is (equal? result (funcall transformation object)))
-           (is (equal? object (funcall (inverse transformation) result)))))
-    (? (σ (1 1 1)) (τ (m) ((1+ m)))
-       (σ (2 1 2)))
-    (? (σ (0 9) (0 5)) (τ (m n) (n m))
-       (σ (0 5) (0 9)))
-    (? (σ (1 1) (2 2) (3 3)) (τ (1 2 3) (4))
-       (σ (4 4)))
-    (? (σ (2 2)) (τ (m) (1 m 3))
-       (σ (1 1) (2 2) (3 3)))
-    (? (σ (0 5 10) (0 7 21))
-       (τ (m n)
-          ((+ (* 2 n) 5)
-           (+ (* 3 m) 99)))
-       (σ (5 14 47) (99 15 129)))
-    (? (σ (0 0) (0 0) (0 0) (0 0) (0 0))
-       (τ (a 0 c 0 e) (0 a 0 c 0 e 0))
-       (σ (0 0) (0 0) (0 0) (0 0) (0 0) (0 0) (0 0)))
-    (signals error
-      (funcall (τ (1 m) (m 1)) (σ (0 0) (0 0))))))
 
 (defmethod size ((object strided-array-index-space))
   (reduce #'* (ranges object) :key #'size))
@@ -250,30 +209,3 @@
        (change-class x 'fusion-island
                      :spaces-to-fuse (spaces-to-fuse space-1)))
      result)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; miscellaneous strided array index space tests
-
-(test |(subdivide strided-array-index-space)|
-  (flet ((? (&rest args)
-           (let ((result (subdivision args)))
-             ;; check for disjointness
-             (let (intersections)
-               (map-combinations
-                (lambda (x)
-                  (push (apply #'intersection x) intersections))
-                result :length 2)
-               (is (every #'null intersections)))
-             ;; check for coverage
-             (let ((fusion (apply #'fusion result)))
-               (is (every (λ x (subspace? x fusion)) args))))))
-    (? (σ (1 1 4)) (σ (1 2 5)))
-    (? (σ (1 1 10) (1 1 10))
-       (σ (5 1 10) (5 1 10)))))
-
-(test |(subspace? strided-array-index-space)|
-  (is (subspace? (range 1 1 2) (range 0 1 3)))
-  (is (subspace? (range 0 4 8) (range 0 2 10)))
-  (is (subspace? (σ (0 6 120) (1 1 100))
-                 (σ (0 2 130) (0 1 101)))))

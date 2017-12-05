@@ -236,6 +236,13 @@
 ;;; The selection criteria for critical nodes ensure, that the iteration
 ;;; space of a kernel is always an N-dimensional strided cube.
 
+(defmacro with-subtree-fragment-information
+    ((root leaf-function index-space) (&rest keyword-arguments) &body body)
+  `(call-with-subtree-fragment-information
+    ,root ,leaf-function ,index-space
+    (lambda (&key ,@keyword-arguments)
+      ,@body)))
+
 (defun kernelize-subtree-fragment (target root leaf-function index-space)
   "Return the kernel that computes the INDEX-SPACE of TARGET, according
    to the data flow graph prescribed by ROOT and LEAF-FUNCTION."
@@ -271,13 +278,6 @@
                (map-ulist #'storage-info sources)
                (map-ulist #'memory-reference-info source-ids transformations)
                body)))))
-
-(defmacro with-subtree-fragment-information
-    ((root leaf-function index-space) (&rest keyword-arguments) &body body)
-  `(call-with-subtree-fragment-information
-    ,root ,leaf-function ,index-space
-    (lambda (&key ,@keyword-arguments)
-      ,@body)))
 
 (defun call-with-subtree-fragment-information
     (root leaf-function index-space continuation)

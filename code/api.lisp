@@ -86,16 +86,3 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
     (wait (vm/schedule *virtual-machine* targets recipes))
     (values-list (map 'list #'depetalispify targets))))
 
-(test petalisp-api
-  (let ((*virtual-machine*
-          (make-instance 'testing-virtual-machine
-            :virtual-machines
-            (list
-             (make-instance 'reference-virtual-machine)
-             (make-instance 'common-lisp-virtual-machine)))))
-    (flet ((check (&rest recipes)
-             (is-true
-              (apply #'compute recipes))))
-      (check (α #'+ 2 3))
-      (check (α #'+ #(2 3 4) #(5 4 3)))
-      (check (-> #(1 2 3) (τ (i) ((- i))))))))

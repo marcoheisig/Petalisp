@@ -57,14 +57,6 @@ per row and column."
             "Duplicate column indices:~%  ~S" column-indices)
     (%scaled-permutation-matrix m n column-indices values)))
 
-(test scaled-permutation-matrix
-  (is (scaled-permutation-matrix?
-       (scaled-permutation-matrix 3 3 #(0 1 2) #(5 4 3))))
-  (signals error
-    (scaled-permutation-matrix 1 1 #(2) #(1)))
-  (signals error
-    (scaled-permutation-matrix 2 2 #(0 0) #(1 1))))
-
 (defmethod matrix-product ((matrix scaled-permutation-matrix) (vector simple-array))
   "For a given m times n  sparse matrix SPM and a n-vector VEC, this
 function returns the m-vector that is the dot product of SPM and VEC."
@@ -81,13 +73,6 @@ function returns the m-vector that is the dot product of SPM and VEC."
                 (* (value row-index)
                    (aref vector (column-index row-index)))))
         result))))
-
-(test |(matrix-product scaled-permutation-matrix vector)|
-  (is (equalp
-       #(10 8)
-       (matrix-product
-        (scaled-permutation-matrix 2 2 #(1 0) #(2 2))
-        #(4 5)))))
 
 (defmethod matrix-product ((spm-1 scaled-permutation-matrix) (spm-2 scaled-permutation-matrix))
   (declare (type scaled-permutation-matrix spm-1 spm-2))
@@ -107,18 +92,6 @@ function returns the m-vector that is the dot product of SPM and VEC."
                    (aref (spm-values spm-2) k)))))
       (scaled-permutation-matrix m n column-indices values))))
 
-(test |(matrix-product scaled-permutation-matrix scaled-permutation-matrix)|
-  (is (equalp
-       (scaled-permutation-matrix 2 2 #(0 1) #(8 6))
-       (matrix-product
-        (scaled-permutation-matrix 2 2 #(1 0) #(2 2))
-        (scaled-permutation-matrix 2 2 #(1 0) #(3 4)))))
-  (is (equalp
-       (scaled-permutation-matrix 3 5 #(0 0 0) #(0 0 0))
-       (matrix-product
-        (scaled-permutation-matrix 3 7 #(0 0 0) #(0 0 0))
-        (scaled-permutation-matrix 7 5 #(0 1 2 3 4 0 0) #(6 6 6 6 6 0 0))))))
-
 (defmethod matrix-product ((spm scaled-permutation-matrix) (s-expressions list))
   (map 'list (λ col val
                 (let ((sexp (elt s-expressions col)))
@@ -128,13 +101,6 @@ function returns the m-vector that is the dot product of SPM and VEC."
                         (t `(* ,val ,sexp)))))
        (spm-column-indices spm)
        (spm-values spm)))
-
-(test |(matrix-product scaled-permutation-matrix list)|
-  (is (equalp
-       '(0 foo 84 (* 3 foo))
-       (matrix-product
-        (scaled-permutation-matrix 4 4 #(0 1 2 3) #(0 1 2 3))
-        '(foo foo 42 foo)))))
 
 ;;; Note that a scaled permutation matrix is not generally invertible. The
 ;;; inverse as returned from this function assumes A is only applied to
@@ -163,12 +129,6 @@ function returns the m-vector that is the dot product of SPM and VEC."
                     (if (zerop value) 0 (/ value)))))))
       (scaled-permutation-matrix m n column-indices values))))
 
-(test |(matrix-inverse scaled-permutation-matrix)|
-  (is (equalp
-       (scaled-permutation-matrix 4 4 #(2 0 1 3) #(2 3 4 5))
-       (matrix-inverse
-        (scaled-permutation-matrix 4 4 #(1 2 0 3) #(1/3 1/4 1/2 1/5))))))
-
 (defun identity-matrix? (spm)
   (let ((m (matrix-m spm)) (n (matrix-n spm)))
     (and (= m n)
@@ -177,8 +137,3 @@ function returns the m-vector that is the dot product of SPM and VEC."
                for column-index across (spm-column-indices spm)
                always (and (= column-index row-index)
                             (= value 1))))))
-
-(test |(identity-matrix? scaled-permutation-matrix)|
-  (is-true  (identity-matrix? (scaled-permutation-matrix 3 3 #(0 1 2) #(1 1 1))))
-  (is-false (identity-matrix? (scaled-permutation-matrix 3 3 #(0 1 2) #(1 2 1))))
-  (is-false (identity-matrix? (scaled-permutation-matrix 3 3 #(1 0 2) #(1 1 1)))))
