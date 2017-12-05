@@ -53,13 +53,11 @@
      (:file "kernelize")
      (:module "virtual-machines"
       :components
-      ((:file "compile-cache-mixin")
+      ((:file "common-lisp-virtual-machine" :depends-on ("default-scheduler-mixin" "compile-cache-mixin"))
+       (:file "compile-cache-mixin")
        (:file "default-scheduler-mixin")
        (:file "reference-virtual-machine")
-       (:file "testing-virtual-machine")
-       (:module "common-lisp-virtual-machine"
-        :depends-on ("default-scheduler-mixin" "compile-cache-mixin")
-        :components ((:file "common-lisp-virtual-machine")))))
+       (:file "testing-virtual-machine")))
      (:file "visualization")
      (:file "api")))))
 
@@ -67,7 +65,7 @@
   :description "Test suite for the parallel programming library Petalisp."
   :author "Marco Heisig <marco.heisig@fau.de>"
   :license "AGPLv3"
-  :depends-on (:petalisp :fiveam)
+  :depends-on (:alexandria :petalisp :fiveam)
   :components
   ((:module "code"
     :components ((:file "test-suite"))))
