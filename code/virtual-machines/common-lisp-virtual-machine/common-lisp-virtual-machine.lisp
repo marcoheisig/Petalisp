@@ -3,7 +3,7 @@
 (in-package :petalisp)
 
 (define-class common-lisp-virtual-machine
-    (virtual-machine default-scheduler-mixin)
+    (virtual-machine default-scheduler-mixin compile-cache-mixin)
   ((memory-pool :type hash-table :initform (make-hash-table :test #'equalp))))
 
 (defmethod vm/bind-memory

@@ -148,21 +148,24 @@
              (t                     (recurse-into node)))))
       (map nil #'register-critical-node graph-roots))
     ;; now call SUBTREE-FN for each subtree
-    (flet ((process-hash-table-entry (tree-root target)
+    (labels
+        ((lookup (node)
+           (if (immediate? node) node
+               (values (gethash node critical-node-table))))
+         (process-hash-table-entry (tree-root target)
              (when (and target (not (immediate? tree-root)))
                (flet ((leaf-function (node)
-                        (cond
-                          ;; the root is never a leaf
-                          ((eq node tree-root) nil)
-                          ;; all immediates are leaves
-                          ((immediate? node) node)
-                          ;; otherwise check the table
-                          (t (values (gethash node critical-node-table))))))
+                        ;; the root is never a leaf
+                        (unless (eq node tree-root)
+                          (lookup node))))
                  (declare (dynamic-extent #'leaf-function))
                  (funcall subtree-fn target tree-root #'leaf-function)))))
       (maphash #'process-hash-table-entry critical-node-table)
       ;; finally return the result
-      (flet ((lookup (node) (gethash node critical-node-table)))
+      (flet ((lookup (node)
+               (if (immediate? node)
+                   node
+                   (gethash node critical-node-table))))
         (map 'vector #'lookup graph-roots)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
