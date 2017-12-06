@@ -86,8 +86,8 @@
     (? 1 0)
     (? 0 1)
     (? (expt 6 40) (expt 9 40))
-    (for-all ((u (integer-generator 0))
-              (v (integer-generator 0)))
+    (for-all ((u (generator 'integer :minimum 0))
+              (v (generator 'integer :minimum 0)))
       (? u v))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -101,7 +101,7 @@
   (let ((τ (τ (a b c d) (a b (ash (* 2 c) -1) (+ d 0)))))
     (is (identity-transformation? τ))
     (is (= 4 (input-dimension τ) (output-dimension τ))))
-  (for-all ((dimension (integer-generator 0 200)))
+  (for-all ((dimension (generator 'integer :minimum 0 :maximum 200)))
     (let ((τ (identity-transformation dimension)))
       (is (identity-transformation? τ))
       (is (equal? τ τ))
@@ -129,18 +129,18 @@
 ;;;
 ;;; Ranges
 
-(test |(range-generator)|
+(test |(generator 'range)|
   (let ((max-size 10)
         (max-extent 100))
-    (for-all ((range (range-generator :max-extent max-extent
-                                      :max-size max-size)))
+    (for-all ((range (generator 'range :max-extent max-extent
+                                       :max-size max-size)))
       (is (<= (abs (range-start range)) max-extent))
       (is (<= (abs (range-end range)) max-extent))
       (is (<= (size range) max-size)))))
 
 (test |(difference range)|
-  (for-all ((a (range-generator :max-extent 100)))
-    (for-all ((b (range-generator :max-extent 100
+  (for-all ((a (generator 'range :max-extent 100)))
+    (for-all ((b (generator 'range :max-extent 100
                                   :intersecting a)))
       (is (equal? a (apply #'fusion
                            (intersection a b)
@@ -148,9 +148,9 @@
 
 (test |(intersection range)|
   (let ((fiveam::*num-trials* (ceiling (sqrt fiveam::*num-trials*))))
-    (for-all ((a (range-generator :max-extent 10000)))
-      (for-all ((b (range-generator :max-extent 10000
-                                    :intersecting a)))
+    (for-all ((a (generator 'range :max-extent 10000)))
+      (for-all ((b (generator 'range :max-extent 10000
+                                     :intersecting a)))
         (let ((intersection (intersection a b)))
           (is-true (subspace? intersection a))
           (is-true (subspace? intersection b))
@@ -160,9 +160,9 @@
 (test range
   (is (range? (range 0 0 0)))
   (signals error (range 0 0 1))
-  (for-all ((start (integer-generator))
-            (step (integer-generator 1))
-            (end (integer-generator)))
+  (for-all ((start (generator 'integer))
+            (step (generator 'integer :minimum 1))
+            (end (generator 'integer)))
     (is (range? (range start step end)))
     (is (= (size (range start step end))
            (1+ (floor (abs (- start end)) (abs step)))))
@@ -175,11 +175,13 @@
 
 (test |(difference strided-array-index-space)|
   (let ((fiveam::*num-trials* (ceiling (sqrt fiveam::*num-trials*))))
-    (for-all ((a (strided-array-index-space-generator :dimension 3
-                                                      :max-extent 40)))
-      (for-all ((b (strided-array-index-space-generator :dimension 3
-                                                        :intersecting a
-                                                        :max-extent 40)))
+    (for-all ((a (generator 'strided-array-index-space
+                            :dimension 3
+                            :max-extent 40)))
+      (for-all ((b (generator 'strided-array-index-space
+                              :dimension 3
+                              :intersecting a
+                              :max-extent 40)))
         (is (equal? a (apply #'fusion
                              (intersection a b)
                              (difference a b))))))))

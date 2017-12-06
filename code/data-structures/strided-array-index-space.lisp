@@ -5,18 +5,18 @@
 (define-class strided-array-index-space (index-space)
   ((ranges :type vector)))
 
-(defun strided-array-index-space-generator
-    (&key (dimension 3) (max-size 30) (max-extent 100) intersecting)
+(defmethod generator ((result-type (eql 'strided-array-index-space))
+                      &key (dimension 3) (max-size 30) (max-extent 100) intersecting)
   (assert (or (not intersecting) (= dimension (dimension intersecting))))
   (let ((range-generators
           (if intersecting
-              (map 'list (λ range (range-generator :max-size max-size
-                                                   :max-extent max-extent
-                                                   :intersecting range))
+              (map 'list (λ range (generator 'range :max-size max-size
+                                                    :max-extent max-extent
+                                                    :intersecting range))
                    (ranges intersecting))
               (make-list dimension :initial-element
-                         (range-generator :max-size max-size
-                                          :max-extent max-extent)))))
+                         (generator 'range :max-size max-size
+                                           :max-extent max-extent)))))
     (lambda ()
       (index-space
        (map 'vector #'funcall range-generators)))))

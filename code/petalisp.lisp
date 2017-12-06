@@ -226,6 +226,60 @@
       (or (apply #'optimize-fusion a1 a2...aN)
           (call-next-method)))))
 
+(defgeneric generate (result-type &key &allow-other-keys)
+  (:documentation
+   "Return a single, random object of type RESULT-TYPE, with properties
+    according to the supplied keyword arguments.")
+  (:method ((result-type symbol) &rest arguments)
+    (funcall (apply #'generator result-type arguments))))
+
+(defgeneric generator (result-type &key &allow-other-keys)
+  (:documentation
+   "Return a function that returns on each invocation a new, random object
+    of type RESULT-TYPE, with properties according to the supplied keyword
+    arguments.")
+  (:method ((result-type (eql 'integer)) &key (minimum -1000) (maximum 1000))
+    (lambda ()
+      (+ minimum (random (1+ (- maximum minimum))))))
+  (:method ((result-type (eql 'array))
+            &key
+              (element-type 'single-float)
+              (dimensions (loop repeat (random 4) collect (random 8)))
+              (element-generator (generator element-type)))
+    (lambda ()
+      (let ((result (make-array dimensions :element-type element-type)))
+        (loop for index below (array-total-size result) do
+          (setf (row-major-aref result index) (funcall element-generator)))
+        result))))
+
+(macrolet
+    ((define-float-generator (type)
+       `(defmethod generator ((result-type (eql ',type))
+                              &key
+                                (mean (coerce 0 ',type))
+                                (standard-deviation (coerce 1 ',type)))
+          "Return a generator for floating point numbers over a uniform
+           distribution with given MEAN and STANDARD-DEVIATION."
+          (let ((zero (coerce 0 ',type))
+                (one  (coerce 1 ',type))
+                (two  (coerce 2 ',type))
+                (cache nil))
+            (lambda ()
+              (or (shiftf cache nil)
+                  (loop for u ,type = (- (random two) one)
+                        for v ,type = (- (random two) one)
+                        for s ,type = (+ (* u u) (* v v))
+                        until (and (<= s 1)
+                                   (/= s zero))
+                        finally
+                           (let ((m (sqrt (* (- two) (log s) (/ s)))))
+                             (setf cache (+ (* v m standard-deviation) mean))
+                             (return     (+ (* u m standard-deviation) mean))))))))))
+  (define-float-generator short-float)
+  (define-float-generator single-float)
+  (define-float-generator double-float)
+  (define-float-generator long-float))
+
 (defmethod generic-unary-funcall :before ((transformation transformation)
                                           (object index-space))
   (assert (= (input-dimension transformation) (dimension object))))

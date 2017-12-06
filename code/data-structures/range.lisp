@@ -32,10 +32,11 @@
       (let ((end (+ start (* step (truncate (- end start) step)))))
         (%make-range (min start end) step (max start end))))))
 
-(defun range-generator (&key
-                          (max-extent #.(floor most-positive-fixnum 4/5))
-                          (max-size (floor (sqrt max-extent)))
-                          intersecting)
+(defmethod generator ((result-type (eql 'range))
+                      &key
+                        (max-extent (floor most-positive-fixnum 4/5))
+                        (max-size (floor (sqrt max-extent)))
+                        intersecting)
   "Return a random range with at most MAX-SIZE elements, bounded by
 MAX-EXTENT. If another range INTERSECTING is given, the result will
 intersect it (potentially violating MAX-EXTENT)."
