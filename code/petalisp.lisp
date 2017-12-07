@@ -16,6 +16,12 @@
    "A transformation is an analytically tractable function from indices to
    indices."))
 
+(define-class operator-metadata ()
+  ((result-type :type type-specifier)
+   (neutral-element))
+  (:documentation
+   "Petalisp's knowledge of a particular function call."))
+
 (define-class data-structure ()
   ((element-type :type type-specifier      :initform t)
    (index-space  :type index-space)
@@ -58,7 +64,8 @@
   (setf (slot-value instance 'inputs) nil))
 
 (define-class application (data-structure)
-  ((operator :type function))
+  ((operator          :type function)
+   (operator-metadata :type operator-metadata))
   (:documentation
    "Let F be a referentially transparent Common Lisp function that accepts
    n arguments, and let A1...AN be data structures with index space Ω. The
@@ -66,7 +73,9 @@
    k ∈ Ω to (F (A1 k) ... (AN k))."))
 
 (define-class reduction (data-structure)
-  ((operator :type function))
+  ((operator          :type function)
+   (operator-metadata :type operator-metadata)
+   (order             :type (member :up :down :arbitrary) :initform :up))
   (:documentation
    "Let F be a referentially transparent Common Lisp function that accepts
    two arguments, and let A be a data structure of dimension n, i.e. a
@@ -74,7 +83,7 @@
    ..., Sn to some values. Then the reduction of A by F is a data structure
    of dimension n-1 that maps each element k of S1 ⨯ ... ⨯ Sn-1 to the
    pairwise combination of the elements {a(i) | i ∈ k ⨯ Sn} by F in some
-   arbitrary order."))
+   ORDER."))
 
 (define-class fusion (data-structure) ()
   (:documentation
@@ -117,7 +126,22 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Petalisp Vocabulary - Generic Functions
+;;; Petalisp Vocabulary - Data Structure Constructors
+
+(defgeneric immediate (object &optional from-storage)
+  (:documentation
+   "Convert object to a Petalisp immediate with the same dimension, element
+   type and contents. If OBJECT is already a Petalisp data structure,
+   return OBJECT. Otherwise return a zero-dimensional Petalisp data
+   structure with OBJECT as its sole element.")
+  (:method ((object data-structure) &optional from-storage)
+    (assert (not from-storage))
+    object)
+  (:method ((object t) &optional from-storage)
+    (assert (not from-storage))
+    (immediate
+     (make-array () :initial-element object
+                    :element-type (type-of object)))))
 
 (defgeneric application (f a1 &rest a2...aN)
   (:documentation
@@ -125,10 +149,78 @@
    equivalent to an instance of class APPLICATION.")
   (:method :around ((f function) (a1 data-structure) &rest a2...aN)
     (let/de ((a1...aN (list* a1 a2...aN)))
-      (check-arity f (length a1...aN))
       (assert (identical a1...aN :test #'equal? :key #'index-space)))
     (or (apply #'optimize-application f a1 a2...aN)
         (call-next-method))))
+
+(defgeneric optimize-application (f a1 &rest a2...aN)
+  (:documentation
+   "Return an optimized data-structure, or NIL.")
+  (:method-combination or)
+  (:method or ((f function) (a1 data-structure) &rest a2...aN)
+    (when (and (eq f #'identity) (null a2...aN)) a1)))
+
+(defgeneric reduction (f a)
+  (:documentation
+   "Return a (potentially optimized and simplified) data structure
+   equivalent to an instance of class REDUCTION.")
+  (:method :around ((f function) (a data-structure))
+    (assert (plusp (dimension a)))
+    (or (optimize-reduction f a)
+        (call-next-method))))
+
+(defgeneric optimize-reduction (f a)
+  (:documentation
+   "Return an optimized data-structure, or NIL.")
+  (:method-combination or)
+  (:method or ((f function) (a data-structure))
+    (declare (ignore f a))
+    nil))
+
+(defgeneric fusion (a1 &rest a2...aN)
+  (:documentation
+   "Return a (potentially optimized and simplified) data structure
+   equivalent to an instance of class FUSION.")
+  (:method :around ((a1 data-structure) &rest a2...aN)
+    (let/de ((a1...aN (list* a1 a2...aN)))
+      (assert (identical a1...aN :test #'= :key #'dimension))
+      (or (apply #'optimize-fusion a1 a2...aN)
+          (call-next-method)))))
+
+(defgeneric optimize-fusion (a1 &rest a2...aN)
+  (:documentation
+   "Return an optimized data-structure, or NIL.")
+  (:method-combination or)
+  (:method or ((a1 data-structure) &rest a2...aN)
+    "One-argument fusions are equivalent to that argument."
+    (unless a2...aN a1)))
+
+(defgeneric reference (object space transformation)
+  (:documentation
+   "Return a (potentially optimized and simplified) data structure
+   equivalent to an instance of class REFERENCE.")
+  (:method :around ((object data-structure)
+                    (space index-space)
+                    (transformation transformation))
+    (assert (= (dimension space) (input-dimension transformation)))
+    (or (optimize-reference object space transformation)
+        (call-next-method))))
+
+(defgeneric optimize-reference (object space transformation)
+  (:documentation
+   "Return an optimized data-structure, or NIL.")
+  (:method-combination or)
+  (:method or ((object data-structure) (space index-space) (transformation transformation)) nil)
+  (:method or ((object reference) (space index-space) (transformation transformation))
+    "Fold consecutive references. This method is crucial for Petalisp, as
+    it ensures there will never be two consecutive references."
+    (reference (input object)
+               space
+               (composition (transformation object) transformation))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Petalisp Vocabulary - Generic Functions
 
 (defgeneric broadcast (object space)
   (:documentation
@@ -152,6 +244,21 @@
     (alexandria:compose g f))
   (:method :before ((g transformation) (f transformation))
     (assert (= (input-dimension g) (output-dimension f)))))
+
+(defgeneric compute-operator-metadata (function &rest type-specifiers)
+  (:documentation
+   "Return metadata about calls to FUNCTION for inputs of the given
+   TYPE-SPECIFIERS. Signal an error if the call is erroneous.")
+  (:method :around ((function function) &rest type-specifiers)
+    (or (call-next-method)
+        (error "Malformed call to ~A with arguments of types ~A."
+               function type-specifiers)))
+  (:method ((function function) &rest type-specifiers)
+    (multiple-value-bind (mandatory-arguments max-arguments)
+        (function-arity function)
+      (when (<= mandatory-arguments (length type-specifiers) max-arguments)
+        (load-time-value
+         (make-instance 'operator-metadata :result-type t))))))
 
 (defgeneric corresponding-immediate (data-structure)
   (:documentation
@@ -216,16 +323,6 @@
   (:method ((a sequence) (b sequence)) (every #'equal? a b))
   (:method ((a structure-object) (b structure-object)) (equalp a b)))
 
-(defgeneric fusion (a1 &rest a2...aN)
-  (:documentation
-   "Return a (potentially optimized and simplified) data structure
-   equivalent to an instance of class FUSION.")
-  (:method :around ((a1 data-structure) &rest a2...aN)
-    (let/de ((a1...aN (list* a1 a2...aN)))
-      (assert (identical a1...aN :test #'= :key #'dimension))
-      (or (apply #'optimize-fusion a1 a2...aN)
-          (call-next-method)))))
-
 (defgeneric generate (result-type &key &allow-other-keys)
   (:documentation
    "Return a single, random object of type RESULT-TYPE, with properties
@@ -254,27 +351,29 @@
 
 (macrolet
     ((define-float-generator (type)
-       `(defmethod generator ((result-type (eql ',type))
-                              &key
-                                (mean (coerce 0 ',type))
-                                (standard-deviation (coerce 1 ',type)))
-          "Return a generator for floating point numbers over a uniform
+       (let ((zero (coerce 0 type))
+             (one  (coerce 1 type))
+             (two  (coerce 2 type)))
+         ;; These generators use Marsaglia's polar method to convert the
+         ;; uniform random numbers from RANDOM to a normal distribution.
+         `(defmethod generator ((result-type (eql ',type))
+                                &key
+                                  (mean ,zero)
+                                  (standard-deviation ,one))
+            "Return a generator for floating point numbers over a uniform
            distribution with given MEAN and STANDARD-DEVIATION."
-          (let ((zero (coerce 0 ',type))
-                (one  (coerce 1 ',type))
-                (two  (coerce 2 ',type))
-                (cache nil))
-            (lambda ()
-              (or (shiftf cache nil)
-                  (loop for u ,type = (- (random two) one)
-                        for v ,type = (- (random two) one)
-                        for s ,type = (+ (* u u) (* v v))
-                        until (and (<= s 1)
-                                   (/= s zero))
-                        finally
-                           (let ((m (sqrt (* (- two) (log s) (/ s)))))
-                             (setf cache (+ (* v m standard-deviation) mean))
-                             (return     (+ (* u m standard-deviation) mean))))))))))
+            (let (cache)
+              (lambda ()
+                (or (shiftf cache nil)
+                    (loop for u ,type = (- (random ,two) ,one)
+                          for v ,type = (- (random ,two) ,one)
+                          for s ,type = (+ (* u u) (* v v))
+                          until (and (<= s ,one)
+                                     (/= s ,zero))
+                          finally
+                             (let ((m (sqrt (* (- ,two) (log s) (/ s)))))
+                               (setf cache (+ (* v m standard-deviation) mean))
+                               (return     (+ (* u m standard-deviation) mean)))))))))))
   (define-float-generator short-float)
   (define-float-generator single-float)
   (define-float-generator double-float)
@@ -283,21 +382,6 @@
 (defmethod generic-unary-funcall :before ((transformation transformation)
                                           (object index-space))
   (assert (= (input-dimension transformation) (dimension object))))
-
-(defgeneric immediate (object &optional from-storage)
-  (:documentation
-   "Convert object to a Petalisp immediate with the same dimension, element
-   type and contents. If OBJECT is already a Petalisp data structure,
-   return OBJECT. Otherwise return a zero-dimensional Petalisp data
-   structure with OBJECT as its sole element.")
-  (:method ((object data-structure) &optional from-storage)
-    (assert (not from-storage))
-    object)
-  (:method ((object t) &optional from-storage)
-    (assert (not from-storage))
-    (immediate
-     (make-array () :initial-element object
-                    :element-type (type-of object)))))
 
 (defmethod index-space ((index-space index-space)) index-space)
 
@@ -327,41 +411,6 @@
    "Return a transformation whose composition with the argument of this
 function is the identity transformation."))
 
-(defgeneric optimize-application (f a1 &rest a2...aN)
-  (:documentation
-   "Return an optimized data-structure, or NIL.")
-  (:method-combination or)
-  (:method or ((f function) (a1 data-structure) &rest a2...aN)
-    (when (and (eq f #'identity) (null a2...aN)) a1)))
-
-(defgeneric optimize-fusion (a1 &rest a2...aN)
-  (:documentation
-   "Return an optimized data-structure, or NIL.")
-  (:method-combination or)
-  (:method or ((a1 data-structure) &rest a2...aN)
-    "One-argument fusions are equivalent to that argument."
-    (unless a2...aN a1)))
-
-(defgeneric optimize-reduction (f a)
-  (:documentation
-   "Return an optimized data-structure, or NIL.")
-  (:method-combination or)
-  (:method or ((f function) (a data-structure))
-    (declare (ignore f a))
-    nil))
-
-(defgeneric optimize-reference (object space transformation)
-  (:documentation
-   "Return an optimized data-structure, or NIL.")
-  (:method-combination or)
-  (:method or ((object data-structure) (space index-space) (transformation transformation)) nil)
-  (:method or ((object reference) (space index-space) (transformation transformation))
-    "Fold consecutive references. This method is crucial for Petalisp, as
-    it ensures there will never be two consecutive references."
-    (reference (input object)
-               space
-               (composition (transformation object) transformation))))
-
 (defgeneric output-dimension (transformation)
   (:documentation
    "Return the number of dimensions of data structures generated by
@@ -375,37 +424,6 @@ function is the identity transformation."))
 (defmethod print-object ((object kernel) stream)
   (print-unreadable-object (object stream :type t :identity t)
     (princ (ranges (iteration-space object)) stream)))
-
-(defgeneric reduction (f a)
-  (:documentation
-   "Return a (potentially optimized and simplified) data structure
-   equivalent to an instance of class REDUCTION.")
-  (:method :around ((f function) (a data-structure))
-    (assert (plusp (dimension a)))
-    (check-arity f 2)
-    (or (optimize-reduction f a)
-        (call-next-method))))
-
-(defgeneric reference (object space transformation)
-  (:documentation
-   "Return a (potentially optimized and simplified) data structure
-   equivalent to an instance of class REFERENCE.")
-  (:method :around ((object data-structure)
-                    (space index-space)
-                    (transformation transformation))
-    (assert (= (dimension space) (input-dimension transformation)))
-    (or (optimize-reference object space transformation)
-        (call-next-method))))
-
-(defgeneric result-type (function &rest type-specifiers)
-  (:documentation
-   "Return a type specifier that is a conservative estimate of the return
-   type of FUNCTION, when applied to arguments that are representatives of
-   the given TYPE-SPECIFIERS. A return type of NIL signifies that FUNCTION
-   will never return for the given argument types.")
-  (:method ((function function) &rest type-specifiers)
-    (declare (ignore type-specifiers))
-    t))
 
 (defgeneric shallow-copy (instance)
   (:documentation

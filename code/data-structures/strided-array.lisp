@@ -12,11 +12,14 @@
 
 (defmethod application ((operator function) (object strided-array)
                         &rest more-objects)
-  (let ((objects (cons object more-objects)))
+  (let* ((objects (cons object more-objects))
+         (operator-metadata
+           (apply #'compute-operator-metadata
+                  operator (mapcar #'element-type objects))))
     (make-instance 'strided-array-application
       :operator operator
-      :element-type (apply #'result-type operator
-                           (mapcar #'element-type objects))
+      :element-type (result-type operator-metadata)
+      :operator-metadata operator-metadata
       :inputs objects
       :index-space (index-space object))))
 
