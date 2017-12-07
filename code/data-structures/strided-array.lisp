@@ -36,14 +36,30 @@
       :inputs objects
       :index-space (apply #'fusion (mapcar #'index-space objects)))))
 
-(defmethod make-reduction ((operator function) (object strided-array))
-  (let ((ranges (ranges (index-space object))))
+(defmethod make-reduction ((binary-operator function)
+                           (unary-operator function)
+                           (strided-array strided-array)
+                           order)
+  (let* ((unary-operator-metadata
+           (compute-operator-metadata
+            unary-operator (element-type strided-array)))
+         (binary-operator-metadata
+           (compute-operator-metadata
+            binary-operator (element-type strided-array)
+            (result-type unary-operator-metadata)))
+         (element-type (result-type binary-operator-metadata)))
     (make-instance 'strided-array-reduction
-      :operator operator
-      :element-type (element-type object)
-      :inputs (list object)
-      :index-space (index-space
-                    (subseq ranges 0 (1- (length ranges)))))))
+      :binary-operator binary-operator
+      :binary-operator-metadata binary-operator-metadata
+      :unary-operator unary-operator
+      :unary-operator-metadata unary-operator-metadata
+      :order order
+      :element-type element-type
+      :inputs (list strided-array)
+      :index-space
+      (let ((ranges (ranges (index-space strided-array))))
+        (index-space
+         (subseq ranges 0 (1- (length ranges))))))))
 
 (defmethod make-reference ((object strided-array)
                       (space strided-array-index-space)

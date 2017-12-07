@@ -27,31 +27,31 @@
 
 (! (α #'* (-> 2 (σ (0 9))) 3))
 
-(! (β #'+ (α #'* (-> 2 (σ (0 9))) 3)))
+(! (β #'+ #'identity (α #'* (-> 2 (σ (0 9))) 3)))
 
-(! (-> #(1 2 3 4) (τ (i) (- i))))
+(! (-> #(1 2 3 4) (τ (i) ((- i)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;;  Matrix multiplication
 
 (defun matmul (A B)
-  (β #'+
+  (β #'+ #'identity
      (α #'*
         (-> A (τ (m n) (m 1 n)))
         (-> B (τ (n k) (1 k n))))))
 
-(defparameter I #2a((1.0 0.0)
-                    (0.0 1.0)))
+(defparameter MI #2a((1.0 0.0)
+                     (0.0 1.0)))
 
-(defparameter A #2a((2.0 3.0)
-                    (4.0 5.0)))
+(defparameter MA #2a((2.0 3.0)
+                     (4.0 5.0)))
 
-(! (matmul I I))
+(! (matmul MI MI))
 
-(! (matmul I A))
+(! (matmul MI MA))
 
-(! (matmul A A))
+(! (matmul MA MA))
 
 (! (matmul (-> 3.0 (σ (1 10) (1 10)))
            (-> 2.0 (σ (1 10) (1 10)))))
@@ -73,10 +73,10 @@
                   grid
                   (α #'* 0.25
                      (α #'+
-                        (-> grid (τ (i j) (1+ i) j) interior)
-                        (-> grid (τ (i j) (1- i) j) interior)
-                        (-> grid (τ (i j) i (1+ j)) interior)
-                        (-> grid (τ (i j) i (1- j)) interior))))))
+                        (-> grid (τ (i j) ((1+ i) j)) interior)
+                        (-> grid (τ (i j) ((1- i) j)) interior)
+                        (-> grid (τ (i j) (i (1+ j))) interior)
+                        (-> grid (τ (i j) (i (1- j))) interior))))))
     grid))
 
 (! (jacobi-2d (-> 0.0 (σ (0 99) (0 99))) 2))
@@ -85,7 +85,7 @@
 (! (jacobi-2d
     (fuse* (-> 0.0 (σ (0 4) (0 4)))
            (-> 1.0 (σ (1 3) (0 4 4))))
-    2))
+    1))
 
 (time
  (compute

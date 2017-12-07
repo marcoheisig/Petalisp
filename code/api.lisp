@@ -14,9 +14,10 @@ mismatch, the smaller objects are broadcast."
              function
              (mapcar (λ object (broadcast object space)) objects)))))
 
-(defun β (function object)
-  "Reduce the last dimension of OBJECT with FUNCTION."
-  (reduction function (make-immediate object)))
+(defun β (f g object &optional (order :up))
+  "Reduce the last dimension of OBJECT with F, using G to convert single
+   values to the appropriate result type."
+  (reduction f g (make-immediate object) order))
 
 (defun fuse (&rest objects)
   "Combine OBJECTS into a single petalisp data structure. It is an error if
@@ -84,5 +85,5 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
   (let* ((recipes (map 'vector #'shallow-copy objects))
          (targets (map 'vector #'make-immediate! objects)))
     (wait (vm/schedule *virtual-machine* targets recipes))
-    (values-list (map 'list #'depetalispify targets))))
+    (values-list (map 'list #'storage targets))))
 

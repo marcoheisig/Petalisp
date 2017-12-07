@@ -97,14 +97,15 @@
 (defmethod vm/evaluate
     ((vm reference-virtual-machine) (node reduction))
   (let ((input (vm/evaluate vm (input node)))
-        (operator (operator node))
+        (binary-operator (binary-operator node))
+        (unary-operator (unary-operator node))
         result)
     (loop for (indices . value) in input do
       (let ((new-indices (butlast indices)))
         (if-let ((found (assoc new-indices result :test #'equal)))
           (setf (cdr found)
-                (funcall operator (cdr found) value))
-          (push (cons new-indices value) result))))
+                (funcall binary-operator (cdr found) value))
+          (push (cons new-indices (funcall unary-operator value)) result))))
     result))
 
 (defmethod vm/evaluate

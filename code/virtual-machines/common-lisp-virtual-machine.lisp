@@ -99,18 +99,31 @@
                              body
                              (for (first depths)
                                   (for* (rest depths) body))))
+                       (reducing-for (depth binary-operator unary-operator body)
+                         (let ((range-step (third (elt range-info depth))))
+                           `(loop
+                              with accumulator
+                                = (let ((,(index-symbol depth) (range-start ,(range-symbol depth))))
+                                    (funcall ,unary-operator ,body))
+                              for ,(index-symbol depth)
+                              from (+ (range-start ,(range-symbol depth)) ,range-step)
+                                to (range-end ,(range-symbol depth))
+                              by ,range-step
+                              do (setf accumulator (funcall ,binary-operator ,body accumulator))
+                              finally (return accumulator))))
                        (translate (form depth)
                          (if (integerp form)
                              (aref references form)
                              (ecase (first form)
-                               (reduction
-                                ;; TODO
-                                ;;(for depth `(funcall ,(second for) ,(translate (third form))))
-                                )
+                               (reduce
+                                (destructuring-bind (binary-operator unary-operator body)
+                                    (rest form)
+                                  (reducing-for depth binary-operator unary-operator
+                                                (translate body (1+ depth)))))
                                (call
-                                (flet ((translate-input (input)
+                                (flet ((recurse (input)
                                          (translate input depth)))
-                                  `(funcall ,(second form) ,@(mapcar #'translate-input (cddr form)))))))))
+                                  `(funcall ,(second form) ,@(mapcar #'recurse (cddr form)))))))))
                     (for* (iota target-dimension)
                           `(setf ,(translate-target-reference target-reference)
                                  ,(translate body target-dimension))))))))))))

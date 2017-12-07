@@ -73,10 +73,13 @@
     index k ∈ Ω to (F (A1 k) ... (AN k))."))
 
 (define-class reduction (data-structure)
-  ((operator          :type function)
-   (operator-metadata :type operator-metadata)
-   (order             :type (member :up :down :arbitrary) :initform :up))
+  ((binary-operator          :type function)
+   (unary-operator           :type function)
+   (binary-operator-metadata :type operator-metadata)
+   (unary-operator-metadata  :type operator-metadata)
+   (order                    :type (member :up :down :arbitrary)))
   (:documentation
+   ;; TODO outdated comment, reduce is now inspired by Richard Bird's foldrn function
    "Let F be a referentially transparent Common Lisp function that accepts
     two arguments, and let A be a data structure of dimension n, i.e. a
     mapping from each element of the cartesian product of the spaces S1,
@@ -142,7 +145,7 @@
   (:documentation
    "Create an instance of a suitable subclass of application."))
 
-(defgeneric make-reduction (f a)
+(defgeneric make-reduction (f g a order)
   (:documentation
    "Create an instance of a suitable subclass of reduction."))
 
@@ -166,14 +169,14 @@
       (assert (identical a1...aN :test #'equal? :key #'index-space)))
     (call-next-method)))
 
-(defgeneric reduction (f a)
+(defgeneric reduction (f g a order)
   (:documentation
    "Return a -- potentially optimized and simplified -- data structure
     equivalent to an instance of class REDUCTION.")
   (:method-combination or)
-  (:method or ((f function) (a data-structure))
-    (make-reduction f a))
-  (:method :around ((f function) (a data-structure))
+  (:method or ((f function) (g function) (a data-structure) order)
+    (make-reduction f g a order))
+  (:method :around ((f function) (g function) (a data-structure) order)
     (assert (plusp (dimension a)))
     (call-next-method)))
 
@@ -203,7 +206,7 @@
   (:method :around ((object data-structure)
                     (space index-space)
                     (transformation transformation))
-    (assert (= (dimension object) (dimension space) (input-dimension transformation)))
+    (assert (= (dimension space) (input-dimension transformation)))
     (call-next-method))
   (:method or ((object reference) (space index-space) (transformation transformation))
     ;; Combine consecutive references
@@ -265,13 +268,6 @@
     immediate.")
   (:method ((immediate immediate))
     immediate))
-
-(defgeneric depetalispify (object)
-  (:documentation
-   "If OBJECT is a Petalisp data structure, return an array with the
-    dimension, element type and contents of OBJECT. Otherwise return
-    OBJECT.")
-  (:method ((object t)) object))
 
 (defgeneric difference (space-1 space-2)
   (:documentation
@@ -388,7 +384,11 @@
   (:method ((application application))
     (apply #'make-application (operator application) (inputs application)))
   (:method ((reduction reduction))
-    (make-reduction (operator reduction) (input reduction)))
+    (make-reduction
+     (binary-operator reduction)
+     (unary-operator reduction)
+     (input reduction)
+     (order reduction)))
   (:method ((fusion fusion))
     (apply #'make-fusion (inputs fusion)))
   (:method ((reference reference))

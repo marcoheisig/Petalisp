@@ -22,9 +22,6 @@
       :to-storage identity
       :from-storage identity)))
 
-(defmethod depetalispify ((instance strided-array-immediate))
-  (storage instance))
-
 (defmethod corresponding-immediate ((strided-array strided-array))
   (make-instance 'strided-array-immediate
     :element-type (element-type strided-array)

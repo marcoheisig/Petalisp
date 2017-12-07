@@ -69,6 +69,9 @@
   ((:module "code"
     :components
     ((:module "test-suite"
-      :components ((:file "test-suite"))))))
+      :serial t
+      :components
+      ((:file "generators")
+       (:file "test-suite"))))))
   :perform (test-op (o c)
                     (symbol-call "PETALISP-TEST-SUITE" "RUN-TEST-SUITE")))

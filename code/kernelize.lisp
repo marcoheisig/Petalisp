@@ -311,11 +311,14 @@
                     (ulist* 'call (operator node) (map-ulist #'traverse-input (inputs node)))))
                  ;; increase the iteration space on each reduction
                  (reduction
-                  (vector-push-extend (last-elt (ranges (index-space node))) ranges)
+                  (vector-push-extend (last-elt (ranges (index-space (input node)))) ranges)
                   (let ((input (input node)))
                     (let ((relevant-space (enlarge-index-space relevant-space (index-space input)))
                           (transformation (enlarge-transformation transformation)))
-                      (ulist 'reduce (operator node) (traverse input relevant-space transformation)))))
+                      (ulist 'reduce
+                             (binary-operator node)
+                             (unary-operator node)
+                             (traverse input relevant-space transformation)))))
                  ;; eliminate fusions
                  (fusion
                   (let* ((input (find relevant-space (inputs node)
