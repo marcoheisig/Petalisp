@@ -131,7 +131,7 @@
                (typecase node
                  ;; deliberately ignore immediates
                  (reduction (traverse (input node) nil))
-                 (reference (traverse (input node) nil)) ; TODO
+                 (reference (traverse (input node) (not (invertible? (transformation node)))))
                  ((or application fusion)
                   (let ((reductions
                           (loop for input in (inputs node)

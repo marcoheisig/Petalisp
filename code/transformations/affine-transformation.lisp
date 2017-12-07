@@ -116,18 +116,23 @@
        linear-operator
        translation-vector))))
 
+(defgeneric invertible? (transformation)
+  (:method ((transformation identity-transformation)) t)
+  (:method ((transformation affine-transformation))
+    (let ((effective-input-dimension
+            (- (input-dimension transformation)
+               (count-if-not #'null (input-constraints transformation))))
+          (effective-output-dimension
+            (- (output-dimension transformation)
+               (count-if #'zerop (spm-values (linear-operator transformation))))))
+      (= effective-input-dimension effective-output-dimension))))
+
 (defmethod inverse :around ((transformation affine-transformation))
   (with-memoization (transformation :test #'eq)
     (call-next-method)))
 
 (defmethod inverse :before ((transformation affine-transformation))
-  (let ((effective-input-dimension
-          (- (input-dimension transformation)
-             (count-if-not #'null (input-constraints transformation))))
-        (effective-output-dimension
-          (- (output-dimension transformation)
-             (count-if #'zerop (spm-values (linear-operator transformation))))))
-    (assert (= effective-input-dimension effective-output-dimension))))
+  (assert (invertible? transformation)))
 
 (defmethod inverse ((object affine-transformation))
   ;;    f(x) = (Ax + b)
