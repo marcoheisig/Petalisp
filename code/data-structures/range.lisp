@@ -123,7 +123,7 @@ intersect it (potentially violating MAX-EXTENT)."
                                (maybe-push-range start step-1 end)))))))
           result))))
 
-(defmethod fusion ((range range) &rest more-ranges)
+(defmethod fusion or ((range range) &rest more-ranges)
   (let ((ranges (list* range more-ranges)))
     (flet ((fail ()
              (simple-program-error

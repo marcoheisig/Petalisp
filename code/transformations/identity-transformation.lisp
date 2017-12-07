@@ -34,8 +34,8 @@
   (let ((index-symbols (index-symbol-list (input-dimension object))))
     (prin1 `(τ ,index-symbols ,index-symbols) stream)))
 
-(defmethod optimize-reference or ((object data-structure)
-                                  (space index-space)
-                                  (transformation identity-transformation))
+(defmethod reference or ((object data-structure)
+                         (space index-space)
+                         (transformation identity-transformation))
   "Drop references with no effect."
   (when (equal? (index-space object) space) object))

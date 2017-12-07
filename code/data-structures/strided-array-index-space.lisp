@@ -92,7 +92,7 @@
               (ranges object-1)
               (ranges object-2))))
 
-(defmethod fusion ((object strided-array-index-space) &rest more-objects)
+(defmethod fusion or ((object strided-array-index-space) &rest more-objects)
   (let ((objects (cons object more-objects)))
     (with-memoization ((mapcar #'ranges objects) :test #'equalp)
       (index-space

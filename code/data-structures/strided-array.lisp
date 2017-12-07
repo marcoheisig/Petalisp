@@ -10,8 +10,14 @@
 
 (define-class strided-array-application (strided-array application) ())
 
-(defmethod application ((operator function) (object strided-array)
-                        &rest more-objects)
+(define-class strided-array-fusion (strided-array fusion) ())
+
+(define-class strided-array-reduction (strided-array reduction) ())
+
+(define-class strided-array-reference (strided-array reference) ())
+
+(defmethod make-application ((operator function) (object strided-array)
+                             &rest more-objects)
   (let* ((objects (cons object more-objects))
          (operator-metadata
            (apply #'compute-operator-metadata
@@ -23,18 +29,14 @@
       :inputs objects
       :index-space (index-space object))))
 
-(define-class strided-array-fusion (strided-array fusion) ())
-
-(defmethod fusion ((object strided-array) &rest more-objects)
+(defmethod make-fusion ((object strided-array) &rest more-objects)
   (let ((objects (cons object more-objects)))
     (make-instance 'strided-array-fusion
       :element-type (element-type object)
       :inputs objects
       :index-space (apply #'fusion (mapcar #'index-space objects)))))
 
-(define-class strided-array-reduction (strided-array reduction) ())
-
-(defmethod reduction ((operator function) (object strided-array))
+(defmethod make-reduction ((operator function) (object strided-array))
   (let ((ranges (ranges (index-space object))))
     (make-instance 'strided-array-reduction
       :operator operator
@@ -43,9 +45,7 @@
       :index-space (index-space
                     (subseq ranges 0 (1- (length ranges)))))))
 
-(define-class strided-array-reference (strided-array reference) ())
-
-(defmethod reference ((object strided-array)
+(defmethod make-reference ((object strided-array)
                       (space strided-array-index-space)
                       (transformation transformation))
   (make-instance 'strided-array-reference

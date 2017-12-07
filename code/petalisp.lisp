@@ -128,92 +128,85 @@
 ;;;
 ;;; Petalisp Vocabulary - Data Structure Constructors
 
-(defgeneric immediate (object &optional from-storage)
+(defgeneric make-immediate (data)
   (:documentation
    "Convert object to a Petalisp immediate with the same dimension, element
-   type and contents. If OBJECT is already a Petalisp data structure,
-   return OBJECT. Otherwise return a zero-dimensional Petalisp data
-   structure with OBJECT as its sole element.")
-  (:method ((object data-structure) &optional from-storage)
-    (assert (not from-storage))
-    object)
-  (:method ((object t) &optional from-storage)
-    (assert (not from-storage))
-    (immediate
-     (make-array () :initial-element object
-                    :element-type (type-of object)))))
+    type and contents. If DATA is already a Petalisp data structure, simply
+    return it.")
+  (:method ((data-structure data-structure)) data-structure)
+  (:method ((object t))
+    (make-immediate
+     (make-array () :initial-element object :element-type (type-of object)))))
+
+(defgeneric make-application (f a1 &rest a2...aN)
+  (:documentation
+   "Create an instance of a suitable subclass of application."))
+
+(defgeneric make-reduction (f a)
+  (:documentation
+   "Create an instance of a suitable subclass of reduction."))
+
+(defgeneric make-fusion (a1 &rest a2...aN)
+  (:documentation
+   "Create an instance of a suitable subclass of fusion."))
+
+(defgeneric make-reference (object space transformation)
+  (:documentation
+   "Create an instance of a suitable subclass of reference."))
 
 (defgeneric application (f a1 &rest a2...aN)
   (:documentation
-   "Return a (potentially optimized and simplified) data structure
-   equivalent to an instance of class APPLICATION.")
+   "Return a -- potentially optimized and simplified -- data structure
+    equivalent to an instance of class APPLICATION.")
+  (:method-combination or)
+  (:method or ((f function) (a1 data-structure) &rest a2...aN)
+    (apply #'make-application f a1 a2...aN))
   (:method :around ((f function) (a1 data-structure) &rest a2...aN)
     (let/de ((a1...aN (list* a1 a2...aN)))
       (assert (identical a1...aN :test #'equal? :key #'index-space)))
-    (or (apply #'optimize-application f a1 a2...aN)
-        (call-next-method))))
-
-(defgeneric optimize-application (f a1 &rest a2...aN)
-  (:documentation
-   "Return an optimized data-structure, or NIL.")
-  (:method-combination or)
-  (:method or ((f function) (a1 data-structure) &rest a2...aN)
-    (when (and (eq f #'identity) (null a2...aN)) a1)))
+    (call-next-method)))
 
 (defgeneric reduction (f a)
   (:documentation
-   "Return a (potentially optimized and simplified) data structure
-   equivalent to an instance of class REDUCTION.")
-  (:method :around ((f function) (a data-structure))
-    (assert (plusp (dimension a)))
-    (or (optimize-reduction f a)
-        (call-next-method))))
-
-(defgeneric optimize-reduction (f a)
-  (:documentation
-   "Return an optimized data-structure, or NIL.")
+   "Return a -- potentially optimized and simplified -- data structure
+    equivalent to an instance of class REDUCTION.")
   (:method-combination or)
   (:method or ((f function) (a data-structure))
-    (declare (ignore f a))
-    nil))
+    (make-reduction f a))
+  (:method :around ((f function) (a data-structure))
+    (assert (plusp (dimension a)))
+    (call-next-method)))
 
 (defgeneric fusion (a1 &rest a2...aN)
   (:documentation
-   "Return a (potentially optimized and simplified) data structure
-   equivalent to an instance of class FUSION.")
-  (:method :around ((a1 data-structure) &rest a2...aN)
-    (let/de ((a1...aN (list* a1 a2...aN)))
-      (assert (identical a1...aN :test #'= :key #'dimension))
-      (or (apply #'optimize-fusion a1 a2...aN)
-          (call-next-method)))))
-
-(defgeneric optimize-fusion (a1 &rest a2...aN)
-  (:documentation
-   "Return an optimized data-structure, or NIL.")
+   "Return a -- potentially optimized and simplified -- data structure
+    equivalent to an instance of class FUSION.")
   (:method-combination or)
   (:method or ((a1 data-structure) &rest a2...aN)
-    "One-argument fusions are equivalent to that argument."
-    (unless a2...aN a1)))
+    (if (not a2...aN)
+        a1
+        (apply #'make-fusion a1 a2...aN)))
+  (:method :around ((a1 data-structure) &rest a2...aN)
+    (let/de ((a1...aN (list* a1 a2...aN)))
+      (assert (identical a1...aN :test #'= :key #'dimension)))
+    (call-next-method)))
 
 (defgeneric reference (object space transformation)
   (:documentation
-   "Return a (potentially optimized and simplified) data structure
+   "Return a -- potentially optimized and simplified -- data structure
    equivalent to an instance of class REFERENCE.")
+  (:method-combination or)
+  (:method or ((object data-structure)
+               (space index-space)
+               (transformation transformation))
+    (make-reference object space transformation))
   (:method :around ((object data-structure)
                     (space index-space)
                     (transformation transformation))
-    (assert (= (dimension space) (input-dimension transformation)))
-    (or (optimize-reference object space transformation)
-        (call-next-method))))
-
-(defgeneric optimize-reference (object space transformation)
-  (:documentation
-   "Return an optimized data-structure, or NIL.")
-  (:method-combination or)
-  (:method or ((object data-structure) (space index-space) (transformation transformation)) nil)
+    (assert (= (dimension object) (dimension space) (input-dimension transformation)))
+    (call-next-method))
   (:method or ((object reference) (space index-space) (transformation transformation))
-    "Fold consecutive references. This method is crucial for Petalisp, as
-    it ensures there will never be two consecutive references."
+    ;; Combine consecutive references
     (reference (input object)
                space
                (composition (transformation object) transformation))))
@@ -225,21 +218,21 @@
 (defgeneric broadcast (object space)
   (:documentation
    "Return a broadcasting reference to the elements of OBJECT with the
-   shape of SPACE.")
+    shape of SPACE.")
   (:method :before ((object data-structure) (space index-space))
     (assert (<= (dimension object) (dimension space)))))
 
 (defgeneric common-broadcast-space (space &rest more-spaces)
   (:documentation
    "Return a space such that all objects whose index space is SPACE or in
-   MORE-SPACES can be broadcast to this space. Signal an error if there is
-   no such space."))
+    MORE-SPACES can be broadcast to this space. Signal an error if there is
+    no such space."))
 
 (defgeneric composition (g f)
   (:documentation
    "Return g ∘ f, i.e. return a function whose application to some
-   arguments is equivalent to the application of g to the result of the
-   application of f to these arguments.")
+    arguments is equivalent to the application of g to the result of the
+    application of f to these arguments.")
   (:method ((g function) (f function))
     (alexandria:compose g f))
   (:method :before ((g transformation) (f transformation))
@@ -248,7 +241,7 @@
 (defgeneric compute-operator-metadata (function &rest type-specifiers)
   (:documentation
    "Return metadata about calls to FUNCTION for inputs of the given
-   TYPE-SPECIFIERS. Signal an error if the call is erroneous.")
+    TYPE-SPECIFIERS. Signal an error if the call is erroneous.")
   (:method :around ((function function) &rest type-specifiers)
     (or (call-next-method)
         (error "Malformed call to ~A with arguments of types ~A."
@@ -263,7 +256,7 @@
 (defgeneric corresponding-immediate (data-structure)
   (:documentation
    "Return an immediate with the same shape and element type as
-   DATA-STRUCTURE.")
+    DATA-STRUCTURE.")
   (:method ((immediate immediate)) immediate))
 
 (defgeneric make-immediate! (data-structure)
@@ -276,8 +269,8 @@
 (defgeneric depetalispify (object)
   (:documentation
    "If OBJECT is a Petalisp data structure, return an array with the
-   dimension, element type and contents of OBJECT. Otherwise return
-   OBJECT.")
+    dimension, element type and contents of OBJECT. Otherwise return
+    OBJECT.")
   (:method ((object t)) object))
 
 (defgeneric difference (space-1 space-2)
@@ -310,15 +303,15 @@
 (defgeneric enlarge-index-space (from to)
   (:documentation
    "Given an index space FROM of dimension N and an index space TO of
-   dimension N+1, return an index space whose first dimensions are taken
-   from FROM, but with the last dimension of TO.")
+    dimension N+1, return an index space whose first dimensions are taken
+    from FROM, but with the last dimension of TO.")
   (:method :before ((from index-space) (to index-space))
     (assert (= (1+ (dimension from)) (dimension to)))))
 
 (defgeneric equal? (a b)
   (:documentation
    "Two objects are EQUAL? if their use in Petalisp will always result in
-  identical behavior.")
+    identical behavior.")
   (:method ((a t) (b t)) (eql a b))
   (:method ((a sequence) (b sequence)) (every #'equal? a b))
   (:method ((a structure-object) (b structure-object)) (equalp a b)))
@@ -388,13 +381,13 @@
 (defgeneric input-dimension (transformation)
   (:documentation
    "Return the number of dimensions that a data structure must have to be a
-   valid argument for TRANSFORMATION.")
+    valid argument for TRANSFORMATION.")
   (:method ((A matrix)) (matrix-n A)))
 
 (defgeneric intersection (space-1 space-2)
   (:documentation
    "Return an index space containing all indices that occur both in SPACE-1
-   and SPACE-2.")
+    and SPACE-2.")
   (:method :before ((space-1 index-space) (space-2 index-space))
     (assert (= (dimension space-1) (dimension space-2)))))
 
@@ -409,12 +402,12 @@
 (defgeneric inverse (transformation)
   (:documentation
    "Return a transformation whose composition with the argument of this
-function is the identity transformation."))
+    function is the identity transformation."))
 
 (defgeneric output-dimension (transformation)
   (:documentation
    "Return the number of dimensions of data structures generated by
-   TRANSFORMATION.")
+    TRANSFORMATION.")
   (:method ((A matrix)) (matrix-m A)))
 
 (defmethod print-object ((object data-structure) stream)
@@ -429,22 +422,25 @@ function is the identity transformation."))
   (:documentation
    "Make a copy of INSTANCE that is EQUAL? but not EQ to it.")
   (:method ((immediate immediate))
-    (if-let ((storage (storage immediate)))
-      (immediate storage (from-storage immediate))
-      (call-next-method)))
+    (make-instance (class-of immediate)
+      :index-space (index-space immediate)
+      :to-storage (to-storage immediate)
+      :from-storage (from-storage immediate)
+      :kernels (kernels immediate)
+      :storage (storage immediate)))
   (:method ((application application))
-    (apply #'application (operator application) (inputs application)))
+    (apply #'make-application (operator application) (inputs application)))
   (:method ((reduction reduction))
-    (reduction (operator reduction) (input reduction)))
+    (make-reduction (operator reduction) (input reduction)))
   (:method ((fusion fusion))
-    (apply #'fusion (inputs fusion)))
+    (apply #'make-fusion (inputs fusion)))
   (:method ((reference reference))
-    (reference (input reference) (index-space reference) (transformation reference))))
+    (make-reference (input reference) (index-space reference) (transformation reference))))
 
 (defgeneric size (object)
   (:documentation
-   "The size of a compound object, such as an array or hash-table, is
-   the number of its elements. All other objects have a size of 1.")
+   "The size of a compound object, such as an array or hash-table, is the
+    number of its elements. All other objects have a size of 1.")
   (:method ((object t)) 1)
   (:method ((object array)) (array-total-size object))
   (:method ((object hash-table)) (hash-table-count object))
@@ -459,7 +455,7 @@ function is the identity transformation."))
 (defgeneric vm/bind-memory (virtual-machine immediate)
   (:documentation
    "Instruct VIRTUAL-MACHINE to suitably set the STORAGE slot of
-   IMMEDIATE."))
+    IMMEDIATE."))
 
 (defgeneric vm/compile (virtual-machine blueprint)
   (:documentation
@@ -468,30 +464,30 @@ function is the identity transformation."))
 (defgeneric vm/compute (virtual-machine graph-roots)
   (:documentation
    "Instruct VIRTUAL-MACHINE to compute the sequence of data structures
-   GRAPH-ROOTS. Return the computed values of all GRAPH-ROOTS."))
+    GRAPH-ROOTS. Return the computed values of all GRAPH-ROOTS."))
 
 (defgeneric vm/evaluate (virtual-machine data-structure)
   (:documentation
    "Instruct VIRTUAL-MACHINE to evaluate the given data structure. The
-   exact semantics of this operation differ on each virtual machine."))
+    exact semantics of this operation differ on each virtual machine."))
 
 (defgeneric vm/execute (virtual-machine kernel)
   (:documentation
    "Instruct VIRTUAL-MACHINE to execute the given KERNEL, assuming that all
-   its sources and targets have already been allocated and computed."))
+    its sources and targets have already been allocated and computed."))
 
 (defgeneric vm/free-memory (virtual-machine immediate)
   (:documentation
    "Instruct VIRTUAL-MACHINE to reclaim the STORAGE of IMMEDIATE and set
-   the STORAGE slot of IMMEDIATE to NIL."))
+    the STORAGE slot of IMMEDIATE to NIL."))
 
 (defgeneric vm/schedule (virtual-machine targets recipes)
   (:documentation
    "Instruct VIRTUAL-MACHINE to compute all given GRAPH-ROOTS
-   asynchronously. Return an object of type REQUEST that can be used to
-   block until the task is complete.
+    asynchronously. Return an object of type REQUEST that can be used to
+    block until the task is complete.
 
-   This function is the only mandatory virtual machine instruction.")
+    This is the only mandatory virtual machine instruction.")
   (:method :before ((virtual-machine virtual-machine) (targets sequence) (recipes sequence))
     (assert (every #'immediate? targets))
     (assert (every #'data-structure? recipes))))
@@ -506,8 +502,8 @@ function is the identity transformation."))
 
 (defun subdivision (objects)
   "Return a list of disjoint objects. Each resulting object is a proper
-subspace of one or more of the arguments and their fusion covers all
-arguments."
+   subspace of one or more of the arguments and their fusion covers all
+   arguments."
   (flet ((shatter (dust object) ; dust is a list of disjoint objects
            (let* ((object-w/o-dust (list object))
                   (new-dust

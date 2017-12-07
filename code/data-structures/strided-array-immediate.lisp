@@ -11,26 +11,16 @@
     (setf (slot-value instance 'from-storage) from-storage)
     (setf (slot-value instance 'to-storage) (inverse from-storage))))
 
-(defmethod immediate
-    ((array array)
-     &optional (from-storage (from-storage-transformation (index-space array))))
-  (let* ((element-type (atomic-array-element-type-specifier array))
-         (to-storage (inverse from-storage))
-         (index-space (funcall from-storage (index-space array))))
+(defmethod make-immediate ((array array))
+  (let ((element-type (atomic-array-element-type-specifier array))
+        (index-space (index-space array))
+        (identity (identity-transformation (dimension array))))
     (make-instance 'strided-array-immediate
       :element-type element-type
       :index-space index-space
       :storage array
-      :to-storage to-storage
-      :from-storage from-storage)))
-
-(defmethod shallow-copy ((immediate strided-array-immediate))
-  (make-instance 'strided-array-immediate
-    :element-type (element-type immediate)
-    :index-space (index-space immediate)
-    :storage (storage immediate)
-    :to-storage (to-storage immediate)
-    :from-storage (from-storage immediate)))
+      :to-storage identity
+      :from-storage identity)))
 
 (defmethod depetalispify ((instance strided-array-immediate))
   (storage instance))
@@ -56,14 +46,14 @@
 (defmethod make-immediate! ((strided-array strided-array))
   (change-class strided-array 'strided-array-immediate))
 
-(defmethod optimize-application or ((f function) (a1 strided-array-immediate) &rest a2...aN)
+(defmethod application or ((f function) (a1 strided-array-immediate) &rest a2...aN)
   "Constant-fold operations on scalar values."
   (when (and (= 1 (size a1)) (every #'strided-array-immediate? a2...aN))
     (let ((value (apply f (row-major-aref (storage a1) 0)
                         (mapcar (λ ak (row-major-aref (storage ak) 0)) a2...aN))))
-      (broadcast (immediate value) (index-space a1)))))
+      (broadcast (make-immediate value) (index-space a1)))))
 
-(defmethod optimize-application or ((f function) (a1 strided-array-reference) &rest a2...aN)
+(defmethod application or ((f function) (a1 strided-array-reference) &rest a2...aN)
   "Constant-fold operations on references to scalar values."
   (flet ((scalar-reference? (a)
            (when (strided-array-reference? a)
@@ -73,7 +63,7 @@
     (when (and (scalar-reference? a1) (every #'scalar-reference? a2...aN))
       (let ((value (apply f (row-major-aref (storage (input a1)) 0)
                           (mapcar (λ ak (row-major-aref (storage (input ak)) 0)) a2...aN))))
-        (reference (immediate value) (index-space a1) (transformation a1))))))
+        (reference (make-immediate value) (index-space a1) (transformation a1))))))
 
 (defmethod print-object
     ((strided-array-immediate strided-array-immediate)
