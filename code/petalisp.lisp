@@ -14,7 +14,7 @@
   (:metaclass funcallable-standard-class)
   (:documentation
    "A transformation is an analytically tractable function from indices to
-   indices."))
+    indices."))
 
 (define-class operator-metadata ()
   ((result-type :type type-specifier)
@@ -29,15 +29,15 @@
    (refcount     :type non-negative-fixnum :initform 0 :accessor refcount))
   (:documentation
    "A data structure of dimension D is a mapping from elements of
-   INDEX-SPACE to values of type ELEMENT-TYPE.
+    INDEX-SPACE to values of type ELEMENT-TYPE.
 
-   INPUTS is a list of data structures on which the definition of this data
-   structure depends on.
+    INPUTS is a list of data structures on which the definition of this data
+    structure depends on.
 
-   REFCOUNT is an implementation detail. For ordinary data structures it
-   tracks how many times the data structure appears as an input of another
-   data structure. For immediate data structures, it tracks how many times
-   the data structure appears as the source of a kernel."))
+    REFCOUNT is an implementation detail. For ordinary data structures it
+    tracks how many times the data structure appears as an input of another
+    data structure. For immediate data structures, it tracks how many times
+    the data structure appears as the source of a kernel."))
 
 (defmethod initialize-instance :after ; reference counting
     ((instance data-structure) &key &allow-other-keys)
@@ -68,9 +68,9 @@
    (operator-metadata :type operator-metadata))
   (:documentation
    "Let F be a referentially transparent Common Lisp function that accepts
-   n arguments, and let A1...AN be data structures with index space Ω. The
-   the application of f to A1...AN is a data structure that maps each index
-   k ∈ Ω to (F (A1 k) ... (AN k))."))
+    n arguments, and let A1...AN be data structures with index space Ω. The
+    the application of f to A1...AN is a data structure that maps each
+    index k ∈ Ω to (F (A1 k) ... (AN k))."))
 
 (define-class reduction (data-structure)
   ((operator          :type function)
@@ -78,29 +78,29 @@
    (order             :type (member :up :down :arbitrary) :initform :up))
   (:documentation
    "Let F be a referentially transparent Common Lisp function that accepts
-   two arguments, and let A be a data structure of dimension n, i.e. a
-   mapping from each element of the cartesian product of the spaces S1,
-   ..., Sn to some values. Then the reduction of A by F is a data structure
-   of dimension n-1 that maps each element k of S1 ⨯ ... ⨯ Sn-1 to the
-   pairwise combination of the elements {a(i) | i ∈ k ⨯ Sn} by F in some
-   ORDER."))
+    two arguments, and let A be a data structure of dimension n, i.e. a
+    mapping from each element of the cartesian product of the spaces S1,
+    ..., Sn to some values. Then the reduction of A by F is a data
+    structure of dimension n-1 that maps each element k of S1 ⨯ ... ⨯ Sn-1
+    to the pairwise combination of the elements {a(i) | i ∈ k ⨯ Sn} by F in
+    some ORDER."))
 
 (define-class fusion (data-structure) ()
   (:documentation
    "Let A1...AN be strided arrays with equal dimension, each mapping from
-   an index space Ωk to a set of values.  Furthermore, let the sets Ω1...ΩN
-   be pairwise disjoint, and let Ωf = ∪ Ω1...Ωk be again a valid index
-   space. Then the fusion of A1...AN is a data structure that maps each
-   index i ∈ Ωf to the value of i of the unique strided array Ak whose
-   index space contains i."))
+    an index space Ωk to a set of values.  Furthermore, let the sets
+    Ω1...ΩN be pairwise disjoint, and let Ωf = ∪ Ω1...Ωk be again a valid
+    index space. Then the fusion of A1...AN is a data structure that maps
+    each index i ∈ Ωf to the value of i of the unique strided array Ak
+    whose index space contains i."))
 
 (define-class reference (data-structure)
   ((transformation :type transformation))
   (:documentation
    "Let A be a strided array with domain ΩA, let ΩB be a strided array
-   index space and let T be a transformation from ΩB to ΩA. Then the
-   reference of A by ΩB and T is a strided array that maps each index tuple
-   k \in ΩB to A(T(k))."))
+    index space and let T be a transformation from ΩB to ΩA. Then the
+    reference of A by ΩB and T is a strided array that maps each index
+    tuple k \in ΩB to A(T(k))."))
 
 (define-class kernel ()
   ((target          :type immediate)
@@ -109,9 +109,9 @@
    (sources         :type list))
   (:documentation
    "A kernel is the fundamental unit of work in Petalisp. It's BLUEPRINT
-   describes how elements of the storage of TARGET can be computed by using
-   elements of the storage of SOURCES. ITERATION-SPACE is a subspace of the
-   index space of the storage of TARGET."))
+    describes how elements of the storage of TARGET can be computed by
+    using elements of the storage of SOURCES. ITERATION-SPACE is a subspace
+    of the index space of the storage of TARGET."))
 
 (defmethod initialize-instance :after ; reference counting
     ((kernel kernel) &key &allow-other-keys)
@@ -120,9 +120,9 @@
 (define-class virtual-machine () ()
   (:documentation
    "A virtual machine is an abstraction over a set of hardware
-   resources. All handling of kernels --- such as performance analysis,
-   compilation and execution --- is done in the context of a particular
-   virtual machine."))
+    resources. All handling of kernels --- such as performance analysis,
+    compilation and execution --- is done in the context of a particular
+    virtual machine."))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -194,7 +194,7 @@
 (defgeneric reference (object space transformation)
   (:documentation
    "Return a -- potentially optimized and simplified -- data structure
-   equivalent to an instance of class REFERENCE.")
+    equivalent to an instance of class REFERENCE.")
   (:method-combination or)
   (:method or ((object data-structure)
                (space index-space)
@@ -354,7 +354,7 @@
                                   (mean ,zero)
                                   (standard-deviation ,one))
             "Return a generator for floating point numbers over a uniform
-           distribution with given MEAN and STANDARD-DEVIATION."
+             distribution with given MEAN and STANDARD-DEVIATION."
             (let (cache)
               (lambda ()
                 (or (shiftf cache nil)
