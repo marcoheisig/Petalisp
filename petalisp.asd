@@ -67,6 +67,8 @@
   :depends-on (:alexandria :petalisp :fiveam)
   :components
   ((:module "code"
-    :components ((:file "test-suite"))))
+    :components
+    ((:module "test-suite"
+      :components ((:file "test-suite"))))))
   :perform (test-op (o c)
                     (symbol-call "PETALISP-TEST-SUITE" "RUN-TEST-SUITE")))
