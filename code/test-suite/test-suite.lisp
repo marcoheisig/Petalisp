@@ -239,15 +239,19 @@
               (apply #'compute recipes))))
       (check (α #'+ 2 3))
       (check (α #'+ #(2 3 4) #(5 4 3)))
-      (check (-> #(1 2 3) (τ (i) ((- i))))))))
+      (check (-> #(1 2 3) (τ (i) ((- i)))))
+      (check (fuse* (-> 0.0 (σ (2 4) (2 4)))
+                    (-> 1.0 (σ (3 3) (3 3))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Test Suite Interface
 
-(defun run-test-suite ()
+(defun run-test-suite (&optional debug)
   (format t "~&== Testing Petalisp ==~%")
   (print-platform-information)
   (print-system-statistics :petalisp)
-  (print-package-statistics :petalisp)
-  (fiveam:run! 'petalisp))
+  (print-package-statistics :petalisp-internals)
+  (let ((*on-error*   (if debug :debug *on-error*))
+        (*on-failure* (if debug :debug *on-failure*)))
+    (fiveam:run! 'petalisp)))
