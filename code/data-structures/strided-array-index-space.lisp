@@ -92,12 +92,6 @@
               (ranges object-1)
               (ranges object-2))))
 
-(defmethod fusion or ((object strided-array-index-space) &rest more-objects)
-  (let ((objects (cons object more-objects)))
-    (with-memoization ((mapcar #'ranges objects) :test #'equalp)
-      (index-space
-       (apply #'vector (fuse-recursively objects))))))
-
 (defmethod index-space ((array array))
   (make-instance 'strided-array-index-space
     :ranges (map 'vector (λ end (range 0 1 (1- end)))
@@ -161,6 +155,12 @@
 (defmethod size ((object strided-array-index-space))
   (reduce #'* (ranges object) :key #'size))
 
+(defmethod union ((object strided-array-index-space) &rest more-objects)
+  (let ((objects (cons object more-objects)))
+    ;;(with-memoization ((mapcar #'ranges objects) :test #'equalp))
+    (index-space
+     (apply #'vector (fuse-recursively objects)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;;  fusion islands - specially annotated index spaces
@@ -182,11 +182,11 @@
                      (index-space
                       (subseq ranges 1))))))
               spaces))))
-      (let ((results (mapcar ; recurse
+      (let ((results (mapcar
                       (composition #'fuse-recursively #'spaces-to-fuse)
                       islands)))
         (assert (identical results :test #'equal? :key #'first))
-        (cons (apply #'fusion
+        (cons (apply #'union
                      (mapcar
                       (lambda (x)
                         (elt (ranges x) 0))
@@ -198,7 +198,7 @@
   (let ((result (call-next-method)))
     (when result
       (change-class result 'fusion-island
-                    :spaces-to-fuse (union (spaces-to-fuse space-1)
+                    :spaces-to-fuse (cl:union (spaces-to-fuse space-1)
                                            (spaces-to-fuse space-2))))))
 
 (defmethod difference :around ((space-1 fusion-island)

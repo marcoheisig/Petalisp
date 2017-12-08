@@ -409,6 +409,10 @@
   (:method ((space-1 t) (space-2 t))
     (equal? space-1 (intersection space-1 space-2))))
 
+(defgeneric union (set &rest more-sets)
+  (:documentation
+   "Return the set of all elements of all supplied sets."))
+
 (defgeneric vm/bind-memory (virtual-machine immediate)
   (:documentation
    "Instruct VIRTUAL-MACHINE to suitably set the STORAGE slot of

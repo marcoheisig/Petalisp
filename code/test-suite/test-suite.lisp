@@ -8,7 +8,7 @@
                 #:*on-error* #:*on-failure*
                 #:in-suite #:in-suite* #:test
                 #:is #:is-true #:is-false #:signals #:for-all)
-  (:shadowing-import-from :petalisp #:intersection))
+  (:shadowing-import-from :petalisp #:intersection #:union))
 
 (in-package :petalisp-test-suite)
 
@@ -142,7 +142,7 @@
   (for-all ((a (generator 'range :max-extent 100)))
     (for-all ((b (generator 'range :max-extent 100
                                   :intersecting a)))
-      (is (equal? a (apply #'fusion
+      (is (equal? a (apply #'union
                            (intersection a b)
                            (difference a b)))))))
 
@@ -182,7 +182,7 @@
                               :dimension 3
                               :intersecting a
                               :max-extent 40)))
-        (is (equal? a (apply #'fusion
+        (is (equal? a (apply #'union
                              (intersection a b)
                              (difference a b))))))))
 
@@ -227,8 +227,8 @@
                 result :length 2)
                (is (every #'null intersections)))
              ;; check for coverage
-             (let ((fusion (apply #'fusion result)))
-               (is (every (λ x (subspace? x fusion)) args))))))
+             (let ((union (apply #'union result)))
+               (is (every (λ x (subspace? x union)) args))))))
     (? (σ (1 1 4)) (σ (1 2 5)))
     (? (σ (1 1 10) (1 1 10))
        (σ (5 1 10) (5 1 10)))))

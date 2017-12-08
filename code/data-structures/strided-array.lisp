@@ -34,7 +34,7 @@
     (make-instance 'strided-array-fusion
       :element-type (element-type object)
       :inputs objects
-      :index-space (apply #'fusion (mapcar #'index-space objects)))))
+      :index-space (apply #'union (mapcar #'index-space objects)))))
 
 (defmethod make-reduction ((binary-operator function)
                            (unary-operator function)

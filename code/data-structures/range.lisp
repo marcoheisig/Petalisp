@@ -123,12 +123,12 @@ intersect it (potentially violating MAX-EXTENT)."
                                (maybe-push-range start step-1 end)))))))
           result))))
 
-(defmethod fusion or ((range range) &rest more-ranges)
+(defmethod union ((range range) &rest more-ranges)
   (let ((ranges (list* range more-ranges)))
     (flet ((fail ()
              (simple-program-error
               "Unable to fuse ranges:~%~{~A~%~}" ranges)))
-      ;; another generic method of FUSION asserts that the given ranges are
+      ;; another generic method of UNION asserts that the given ranges are
       ;; non-overlapping. Relying on this, the only possible fusion is
       ;; obtained by summing the number of elements, determining the
       ;; smallest and largest element of all sequences and choosing a step

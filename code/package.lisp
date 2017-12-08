@@ -5,7 +5,7 @@
 (defpackage :petalisp
   (:use :closer-common-lisp :alexandria :bordeaux-threads :trivial-garbage)
   ;; shadow CL:INTERSECTION with a generic method
-  (:shadow #:intersection)
+  (:shadow #:intersection #:union)
   ;; portable OS interface
   (:import-from :uiop #:run-program #:with-temporary-file #:native-namestring)
   ;; benchmark utilities

@@ -55,6 +55,7 @@
    GRAPHVIZ-GRAPH-PLIST, GRAPHVIZ-NODE-PLIST and GRAPHVIZ-EDGE-PLIST.")
   (:method (purpose graph-roots &optional stream)
     (let ((table (make-hash-table :test #'eq))
+          (*print-case* :downcase)
           (node-counter 0))
       (labels
           ((populate-node-table (node)
