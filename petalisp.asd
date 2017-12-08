@@ -19,11 +19,10 @@
   ((:module "code"
     :serial t
     :components
-    ((:file "package")
+    ((:file "packages")
      (:module "utilities"
       :components
       ((:file "array-element-types")
-       (:file "code-statistics")
        (:file "extended-euclid" :depends-on ("macros"))
        (:file "function-lambda-lists")
        (:file "fvector")
@@ -71,7 +70,9 @@
     ((:module "test-suite"
       :serial t
       :components
-      ((:file "generators")
+      ((:file "package")
+       (:file "generators")
+       (:file "code-statistics")
        (:file "test-suite"))))))
   :perform (test-op (o c)
                     (symbol-call "PETALISP-TEST-SUITE" "RUN-TEST-SUITE")))

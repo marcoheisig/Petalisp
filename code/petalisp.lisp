@@ -1,6 +1,6 @@
 ;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(in-package :petalisp)
+(in-package :petalisp-internals)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -349,7 +349,7 @@
    "Return whether some indices occur both in SPACE-1 and SPACE-2.")
   (:method :before ((space-1 index-space) (space-2 index-space))
     (assert (= (dimension space-1) (dimension space-2))))
-  (:method ((space-1 index-space) (space-2 index-space))
+  (:method (space-1 space-2)
     (and (intersection space-1 space-2) t)))
 
 (defgeneric inverse (transformation)

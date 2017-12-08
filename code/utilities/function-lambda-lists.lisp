@@ -1,6 +1,6 @@
 ;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(in-package :petalisp)
+(in-package :petalisp-internals)
 
 ;;; this function is derived from CLOCC, credit goes to Sam Steingold
 (defun function-lambda-list (function)

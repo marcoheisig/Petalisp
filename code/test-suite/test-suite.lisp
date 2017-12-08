@@ -1,22 +1,6 @@
 ;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(in-package :cl-user)
-
-(defpackage :petalisp-test-suite
-  (:use :alexandria :cl :petalisp)
-  (:import-from :fiveam
-                #:*on-error* #:*on-failure*
-                #:in-suite #:in-suite* #:test
-                #:is #:is-true #:is-false #:signals #:for-all)
-  (:shadowing-import-from :petalisp #:intersection #:union))
-
 (in-package :petalisp-test-suite)
-
-;; "inherit" all symbols from the :petalisp package
-#.(loop for symbol being the present-symbols of :petalisp
-        with package = (find-package :petalisp-test-suite) do
-          (ignore-errors
-           (import symbol package)))
 
 (in-suite* petalisp)
 
@@ -228,7 +212,7 @@
                (is (every #'null intersections)))
              ;; check for coverage
              (let ((union (apply #'union result)))
-               (is (every (λ x (subspace? x union)) args))))))
+               (is (every (lambda (x) (subspace? x union)) args))))))
     (? (σ (1 1 4)) (σ (1 2 5)))
     (? (σ (1 1 10) (1 1 10))
        (σ (5 1 10) (5 1 10)))))

@@ -1,6 +1,6 @@
 ;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(in-package :petalisp)
+(in-package :petalisp-internals)
 
 ;;; The purpose of the reference virtual machine is to compute reference
 ;;; solutions for automated testing. It is totally acceptable if this

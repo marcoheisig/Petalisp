@@ -1,6 +1,6 @@
 ;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(in-package :petalisp)
+(in-package :petalisp-internals)
 
 ;;; The goal is to translate a data flow graph into a graph of executable
 ;;; parts, called kernels. The data flow nodes form a directed acyclic

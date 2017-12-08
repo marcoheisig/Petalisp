@@ -1,6 +1,6 @@
 ;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(in-package :petalisp)
+(in-package :petalisp-internals)
 
 (defmacro λ (&rest symbols-and-expr)
   "A shorthand notation for lambda expressions, provided your Lisp

@@ -1,6 +1,6 @@
 ;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(in-package :petalisp)
+(in-package :petalisp-internals)
 
 (define-class common-lisp-virtual-machine
     (virtual-machine default-scheduler-mixin compile-cache-mixin)

@@ -1,8 +1,9 @@
 ;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(in-package :petalisp)
+(in-package :petalisp-internals)
 
-(defparameter *virtual-machine* (make-instance 'common-lisp-virtual-machine))
+(defparameter *virtual-machine*
+  (make-instance 'common-lisp-virtual-machine))
 
 (defun α (function object &rest more-objects)
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
