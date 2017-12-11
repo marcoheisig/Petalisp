@@ -104,6 +104,7 @@
                            `(loop
                               with accumulator
                                 = (let ((,(index-symbol depth) (range-start ,(range-symbol depth))))
+                                    (declare (ignorable ,(index-symbol depth)))
                                     (funcall ,unary-operator ,body))
                               for ,(index-symbol depth)
                               from (+ (range-start ,(range-symbol depth)) ,range-step)

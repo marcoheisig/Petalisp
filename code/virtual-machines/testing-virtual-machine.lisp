@@ -19,8 +19,7 @@
           (map 'vector
                (lambda (vm)
                  (let ((targets (map 'vector #'shallow-copy targets)))
-                   (wait
-                    (vm/schedule vm targets recipes))
+                   (wait (vm/schedule vm targets recipes))
                    targets))
                (virtual-machines vm))))
     (unless (identical results :test #'equal?)
