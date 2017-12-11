@@ -1,6 +1,7 @@
 *
 !/COPYING
 !/.gitignore
+!/examples
 !/README.org
 # limit the number of subdirectories
 !/*/
