@@ -205,17 +205,19 @@
            (let ((result (subdivision args)))
              ;; check for disjointness
              (let (intersections)
-               (map-combinations
-                (lambda (x)
-                  (push (apply #'intersection x) intersections))
-                result :length 2)
+               (when (> (length result) 1)
+                 (map-combinations
+                  (lambda (x)
+                    (push (apply #'intersection x) intersections))
+                  result :length 2))
                (is (every #'null intersections)))
              ;; check for coverage
              (let ((union (apply #'union result)))
-               (is (every (lambda (x) (subspace? x union)) args))))))
+               (is-true (every (lambda (x) (subspace? x union)) args))))))
     (? (σ (1 1 4)) (σ (1 2 5)))
     (? (σ (1 1 10) (1 1 10))
-       (σ (5 1 10) (5 1 10)))))
+       (σ (5 1 10) (5 1 10)))
+    (?  (σ (2 2 4)) (σ (3 1 3)) (σ (3 1 3)))))
 
 (test |(subspace? strided-array-index-space)|
   (is (subspace? (range 1 1 2) (range 0 1 3)))

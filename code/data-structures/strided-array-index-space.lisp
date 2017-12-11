@@ -114,10 +114,13 @@
 (defmethod intersection ((space-1 strided-array-index-space)
                          (space-2 strided-array-index-space))
   (make-instance 'strided-array-index-space
-    :ranges (map 'vector (λ a b (or (intersection a b)
-                                    (return-from intersection nil)))
-                 (ranges space-1)
-                 (ranges space-2))))
+    :ranges
+    (map 'vector
+         (lambda (a b)
+           (or (intersection a b)
+               (return-from intersection nil)))
+         (ranges space-1)
+         (ranges space-2))))
 
 (defmethod print-object ((object strided-array-index-space) stream)
   (flet ((range-list (range)
@@ -170,8 +173,7 @@
 
 (defun fuse-recursively (spaces)
   (unless (every (composition #'zerop #'dimension) spaces)
-    (let ((islands
-            (subdivision
+    (let* ((fusion-islands
              (mapcar
               (lambda (space)
                 (let ((ranges (ranges space)))
@@ -181,9 +183,10 @@
                     (list
                      (index-space
                       (subseq ranges 1))))))
-              spaces))))
+              spaces))
+           (islands (subdivision fusion-islands)))
       (let ((results (mapcar
-                      (composition #'fuse-recursively #'spaces-to-fuse)
+                      (compose #'fuse-recursively #'spaces-to-fuse)
                       islands)))
         (assert (identical results :test #'equal? :key #'first))
         (cons (apply #'union
@@ -199,7 +202,7 @@
     (when result
       (change-class result 'fusion-island
                     :spaces-to-fuse (cl:union (spaces-to-fuse space-1)
-                                           (spaces-to-fuse space-2))))))
+                                              (spaces-to-fuse space-2))))))
 
 (defmethod difference :around ((space-1 fusion-island)
                                (space-2 fusion-island))
