@@ -1,7 +1,7 @@
 
 (asdf:test-system :petalisp)
 
-(in-package :petalisp)
+(in-package :petalisp-internals)
 
 (defun ! (expression)
   (print (compute expression)))

@@ -43,27 +43,59 @@
 (defmethod make-immediate! ((strided-array strided-array))
   (change-class strided-array 'strided-array-immediate))
 
-(defmethod application or ((f function) (a1 strided-array-immediate) &rest a2...aN)
-  "Constant-fold operations on scalar values."
-  (when (and (= 1 (size a1)) (every #'strided-array-immediate? a2...aN))
-    (let ((value (apply f (row-major-aref (storage a1) 0)
-                        (mapcar (λ ak (row-major-aref (storage ak) 0)) a2...aN))))
-      (broadcast (make-immediate value) (index-space a1)))))
-
-(defmethod application or ((f function) (a1 strided-array-reference) &rest a2...aN)
-  "Constant-fold operations on references to scalar values."
-  (flet ((scalar-reference? (a)
-           (when (strided-array-reference? a)
-             (let ((input (input a)))
-               (and (strided-array-immediate? input)
-                    (= 1 (size input)))))))
-    (when (and (scalar-reference? a1) (every #'scalar-reference? a2...aN))
-      (let ((value (apply f (row-major-aref (storage (input a1)) 0)
-                          (mapcar (λ ak (row-major-aref (storage (input ak)) 0)) a2...aN))))
-        (reference (make-immediate value) (index-space a1) (transformation a1))))))
-
 (defmethod print-object
     ((strided-array-immediate strided-array-immediate)
      stream)
   (print-unreadable-object (strided-array-immediate stream :type t :identity t)
     (princ (storage strided-array-immediate) stream)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Constant Folding
+;;;
+;;; In Petalisp, constant folding works somewhat differently, because all
+;;; data is constant by definition. A greedy constant folding algorithm
+;;; would directly compute the roots of the scheduled data flow
+;;; graph. However, since constant folding happens in the high level
+;;; program, this would completely sidestep the scheduler and associated
+;;; optimization.
+;;;
+;;; The only case where serial and parallel execution are equally fast, is
+;;; for scalar values. Our conservative choice is therefore to fold only
+;;; applications to scalar values. Scalar values can be either immediates
+;;; of size one, or references to such immediates. Note, however, that such
+;;; references need themselves not be of size one -- they may also be
+;;; broadcasting references.
+
+(defun constant-fold-application-or-nil (function first-input all-inputs)
+  (labels
+      ((fail () (return-from constant-fold-application-or-nil))
+       (value-or-fail (input)
+         (typecase input
+           (strided-array-immediate
+            (row-major-aref (storage input) 0))
+           (strided-array-reference
+            (let ((predecessor (input input)))
+              (if (and (strided-array-immediate? predecessor)
+                       (= 1 (size predecessor)))
+                  (row-major-aref (storage predecessor) 0)
+                  (fail))))
+           (t (fail)))))
+    (let ((arguments (mapcar #'value-or-fail all-inputs)))
+      (broadcast
+       (make-immediate (apply function arguments))
+       (index-space first-input)))))
+
+(defmethod application or ((function function)
+                           (first-input strided-array-immediate)
+                           (all-inputs list))
+  "Constant-fold operations on scalar values."
+  (when (= 1 (size first-input))
+    (constant-fold-application-or-nil function first-input all-inputs)))
+
+(defmethod application or ((function function)
+                           (first-input strided-array-reference)
+                           (all-inputs list))
+  "Constant-fold operations on references to scalar values."
+  (constant-fold-application-or-nil function first-input all-inputs))
+

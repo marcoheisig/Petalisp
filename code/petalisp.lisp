@@ -141,7 +141,7 @@
     (make-immediate
      (make-array () :initial-element object :element-type (type-of object)))))
 
-(defgeneric make-application (f a1 &rest a2...aN)
+(defgeneric make-application (function first-input all-inputs)
   (:documentation
    "Create an instance of a suitable subclass of application."))
 
@@ -149,7 +149,7 @@
   (:documentation
    "Create an instance of a suitable subclass of reduction."))
 
-(defgeneric make-fusion (a1 &rest a2...aN)
+(defgeneric make-fusion (first-input all-inputs)
   (:documentation
    "Create an instance of a suitable subclass of fusion."))
 
@@ -157,16 +157,18 @@
   (:documentation
    "Create an instance of a suitable subclass of reference."))
 
-(defgeneric application (f a1 &rest a2...aN)
+(defgeneric application (function first-input all-inputs)
   (:documentation
    "Return a -- potentially optimized and simplified -- data structure
     equivalent to an instance of class APPLICATION.")
   (:method-combination or)
-  (:method or ((f function) (a1 data-structure) &rest a2...aN)
-    (apply #'make-application f a1 a2...aN))
-  (:method :around ((f function) (a1 data-structure) &rest a2...aN)
-    (let/de ((a1...aN (list* a1 a2...aN)))
-      (assert (identical a1...aN :test #'equal? :key #'index-space)))
+  (:method or ((function function) (first-input data-structure) (all-inputs list))
+    (make-application function first-input all-inputs))
+  (:method :around ((function function) first-input (all-inputs sequence))
+    (assert (eq first-input (elt all-inputs 0)))
+    (call-next-method))
+  (:method :around ((function function) (first-input data-structure) (all-inputs sequence))
+    (assert (identical all-inputs :test #'equal? :key #'index-space))
     (call-next-method)))
 
 (defgeneric reduction (f g a order)
@@ -180,18 +182,24 @@
     (assert (plusp (dimension a)))
     (call-next-method)))
 
-(defgeneric fusion (a1 &rest a2...aN)
+(defgeneric fusion (first-element all-elements)
   (:documentation
-   "Return a -- potentially optimized and simplified -- data structure
-    equivalent to an instance of class FUSION.")
+   "Return the fusion of the sequence ALL-ELEMENTS, i.e. a suitable object
+    that contains the entries of each element from ALL-ELEMENTS. The
+    elements of ALL-ELEMENTS must not intersect.
+
+    FIRST-ELEMENT must be EQ to the first element of ALL-ELEMENTS. Its sole
+    purpose is to dispatch on it.")
   (:method-combination or)
-  (:method or ((a1 data-structure) &rest a2...aN)
-    (if (not a2...aN)
-        a1
-        (apply #'make-fusion a1 a2...aN)))
-  (:method :around ((a1 data-structure) &rest a2...aN)
-    (let/de ((a1...aN (list* a1 a2...aN)))
-      (assert (identical a1...aN :test #'= :key #'dimension)))
+  (:method or ((first-element data-structure) (all-elements list))
+    (make-fusion first-element all-elements))
+  (:method :around (first-element all-elements)
+    (assert (eq first-element (elt all-elements 0)))
+    (if (= 1 (length all-elements))
+        first-element
+        (call-next-method)))
+  (:method :around ((first-element data-structure) all-elements)
+    (assert (identical all-elements :test #'= :key #'dimension))
     (call-next-method)))
 
 (defgeneric reference (object space transformation)
@@ -208,8 +216,8 @@
                     (transformation transformation))
     (assert (= (dimension space) (input-dimension transformation)))
     (call-next-method))
+  ;; Combine consecutive references
   (:method or ((object reference) (space index-space) (transformation transformation))
-    ;; Combine consecutive references
     (reference (input object)
                space
                (composition (transformation object) transformation))))
@@ -218,12 +226,12 @@
 ;;;
 ;;; Petalisp Vocabulary - Generic Functions
 
-(defgeneric broadcast (object space)
+(defgeneric broadcast (data-structure index-space)
   (:documentation
    "Return a broadcasting reference to the elements of OBJECT with the
     shape of SPACE.")
-  (:method :before ((object data-structure) (space index-space))
-    (assert (<= (dimension object) (dimension space)))))
+  (:method :before ((data-structure data-structure) (index-space index-space))
+    (assert (<= (dimension data-structure) (dimension index-space)))))
 
 (defgeneric common-broadcast-space (space &rest more-spaces)
   (:documentation
@@ -329,7 +337,8 @@
                                           (object index-space))
   (assert (= (input-dimension transformation) (dimension object))))
 
-(defmethod index-space ((index-space index-space)) index-space)
+(defmethod index-space ((index-space index-space))
+  index-space)
 
 (defgeneric input-dimension (transformation)
   (:documentation
@@ -350,7 +359,10 @@
   (:method :before ((space-1 index-space) (space-2 index-space))
     (assert (= (dimension space-1) (dimension space-2))))
   (:method (space-1 space-2)
-    (and (intersection space-1 space-2) t)))
+    (and (intersection space-1 space-2) t))
+  (:method ((data-structure-1 data-structure) (data-structure-2 data-structure))
+    (intersection? (index-space data-structure-1)
+                   (index-space data-structure-2))))
 
 (defgeneric inverse (transformation)
   (:documentation
@@ -369,7 +381,7 @@
 
 (defmethod print-object ((object kernel) stream)
   (print-unreadable-object (object stream :type t :identity t)
-    (princ (ranges (iteration-space object)) stream)))
+    (princ (iteration-space object) stream)))
 
 (defgeneric shallow-copy (instance)
   (:documentation
@@ -382,7 +394,8 @@
       :kernels (kernels immediate)
       :storage (storage immediate)))
   (:method ((application application))
-    (apply #'make-application (operator application) (inputs application)))
+    (let ((inputs (inputs application)))
+      (make-application (operator application) (first inputs) inputs)))
   (:method ((reduction reduction))
     (make-reduction
      (binary-operator reduction)
@@ -390,7 +403,8 @@
      (input reduction)
      (order reduction)))
   (:method ((fusion fusion))
-    (apply #'make-fusion (inputs fusion)))
+    (let ((inputs (inputs fusion)))
+      (make-fusion (first inputs) inputs)))
   (:method ((reference reference))
     (make-reference (input reference) (index-space reference) (transformation reference))))
 

@@ -16,25 +16,22 @@
 
 (define-class strided-array-reference (strided-array reference) ())
 
-(defmethod make-application ((operator function) (object strided-array)
-                             &rest more-objects)
-  (let* ((objects (cons object more-objects))
-         (operator-metadata
-           (apply #'compute-operator-metadata
-                  operator (mapcar #'element-type objects))))
+(defmethod make-application ((operator function) (first-input strided-array) all-inputs)
+  (let ((operator-metadata
+          (apply #'compute-operator-metadata
+                 operator (mapcar #'element-type all-inputs))))
     (make-instance 'strided-array-application
       :operator operator
       :element-type (result-type operator-metadata)
       :operator-metadata operator-metadata
-      :inputs objects
-      :index-space (index-space object))))
+      :inputs all-inputs
+      :index-space (index-space first-input))))
 
-(defmethod make-fusion ((object strided-array) &rest more-objects)
-  (let ((objects (cons object more-objects)))
-    (make-instance 'strided-array-fusion
-      :element-type (element-type object)
-      :inputs objects
-      :index-space (apply #'union (mapcar #'index-space objects)))))
+(defmethod make-fusion ((first-input strided-array) all-inputs)
+  (make-instance 'strided-array-fusion
+    :element-type (element-type first-input) ;; TODO compute type union
+    :inputs all-inputs
+    :index-space (apply #'union (mapcar #'index-space all-inputs))))
 
 (defmethod make-reduction ((binary-operator function)
                            (unary-operator function)

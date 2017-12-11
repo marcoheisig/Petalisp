@@ -9,11 +9,11 @@
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
 for Petalisp data structures. When the dimensions of some of the inputs
 mismatch, the smaller objects are broadcast."
-  (let ((objects (cons (make-immediate object) (mapcar #'make-immediate more-objects))))
-    (let ((space (apply #'common-broadcast-space (mapcar #'index-space objects))))
-      (apply #'application
-             function
-             (mapcar (λ object (broadcast object space)) objects)))))
+  (let* ((objects (cons (make-immediate object)
+                        (mapcar #'make-immediate more-objects)))
+         (space (apply #'common-broadcast-space (mapcar #'index-space objects)))
+         (inputs (mapcar (lambda (object) (broadcast object space)) objects)))
+    (application function (first inputs) inputs)))
 
 (defun β (f g object &optional (order :up))
   "Reduce the last dimension of OBJECT with F, using G to convert single
@@ -24,19 +24,22 @@ mismatch, the smaller objects are broadcast."
   "Combine OBJECTS into a single petalisp data structure. It is an error if
 some of the inputs overlap, or if there exists no suitable data structure
 to represent the fusion."
-  (apply #'fusion (mapcar #'make-immediate objects)))
+  (let ((immediates (mapcar #'make-immediate objects)))
+    (fusion (first immediates) immediates)))
 
 (defun fuse* (&rest objects)
   "Combine OBJECTS into a single petalisp data structure. When some OBJECTS
 overlap partially, the value of the rightmost object is used."
   (let ((objects (mapcar #'make-immediate objects)))
-    (let ((pieces (subdivision (mapcar #'index-space objects))))
-      (flet ((reference-origin (piece)
-               (reference
-                (find piece objects :from-end t :key #'index-space :test #'subspace?)
-                piece
-                (identity-transformation (dimension piece)))))
-        (apply #'fusion (mapcar #'reference-origin pieces))))))
+    (flet ((reference-origin (piece)
+             (reference
+              (find piece objects :from-end t :key #'index-space :test #'subspace?)
+              piece
+              (identity-transformation (dimension piece)))))
+      (let ((inputs
+              (mapcar #'reference-origin
+                      (subdivision (mapcar #'index-space objects)))))
+        (fusion (first inputs) inputs)))))
 
 (defun -> (data-structure &rest modifiers)
   "Manipulate DATA-STRUCTURE depending on the individual MODIFIERS. The

@@ -1,6 +1,6 @@
 ;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(in-package :petalisp)
+(in-package :petalisp-internals)
 
 (defun red-black-gauss-seidel (u &key (iterations 1)
                                    (h (/ (1- (expt (size u) (/ (dimension u))))))
