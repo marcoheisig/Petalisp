@@ -1,9 +1,9 @@
 #+TITLE: Petalisp
 
 Petalisp is an attempt to generate high performance code for parallel
-computers, by JIT-compiling definitions of data structures. It is not a
-full blown programming language, but rather a carefully crafted extension
-of Common Lisp that allows for extreme optimization and parallelization.
+computers by JIT-compiling array definitions. It is not a full blown
+programming language, but rather a carefully crafted extension of Common
+Lisp that allows for extreme optimization and parallelization.
 
 ** Showcases
 Petalisp is still under development, so the following examples may still

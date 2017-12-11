@@ -32,9 +32,9 @@
     ((virtual-machine common-lisp-virtual-machine)
      (blueprint ucons))
   (let ((code (translate-blueprint-to-lambda blueprint)))
-    (format t "~A~%" blueprint)
-    (format t "~A~%" code)
-    (finish-output)
+    ;(format t "~A~%" blueprint)
+    ;(format t "~A~%" code)
+    ;(finish-output)
     (compile nil code)))
 
 (defmethod vm/execute

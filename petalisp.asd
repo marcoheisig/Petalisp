@@ -70,13 +70,13 @@
     ((:module "test-suite"
       :serial t
       :components
-      ((:file "package")
-       (:file "generators")
-       (:file "code-statistics")
-       (:module "examples"
+      ((:module "examples"
         :components
                 ((:file "jacobi")
                  (:file "red-black-gauss-seidel")))
+       (:file "package")
+       (:file "generators")
+       (:file "code-statistics")
        (:file "test-suite"))))))
   :perform (test-op (o c)
                     (symbol-call "PETALISP-TEST-SUITE" "RUN-TEST-SUITE")))

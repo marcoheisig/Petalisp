@@ -225,7 +225,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Whole Programs
+;;; Whole Program Tests
 
 (defun compute! (&rest arguments)
   (is-true (apply #'compute arguments)))
@@ -253,9 +253,7 @@
 
 (test jacobi
   (with-testing-virtual-machine
-    (flet ((jacobi (&rest args)
-             (apply #'petalisp-test-suite/examples/jacobi:jacobi args))
-           (ndarray (n)
+    (flet ((ndarray (n)
              (generate 'array
                        :element-type 'double-float
                        :dimensions (make-list n :initial-element 10))))
@@ -266,16 +264,14 @@
 
 (test red-black-gauss-seidel
   (with-testing-virtual-machine
-    (flet ((rbgs (&rest args)
-             (apply #'petalisp-test-suite/examples/red-black-gauss-seidel:red-black-gauss-seidel args))
-           (ndarray (n)
+    (flet ((ndarray (n)
              (generate 'array
                        :element-type 'double-float
                        :dimensions (make-list n :initial-element 10))))
-      (compute! (rbgs (ndarray 1) :iterations 2))
-      (compute! (rbgs (ndarray 2) :iterations 2))
-      (compute! (rbgs (ndarray 3) :iterations 2))
-      (compute! (rbgs (ndarray 3) :iterations 5)))))
+      (compute! (red-black-gauss-seidel (ndarray 1) :iterations 2))
+      (compute! (red-black-gauss-seidel (ndarray 2) :iterations 2))
+      (compute! (red-black-gauss-seidel (ndarray 3) :iterations 2))
+      (compute! (red-black-gauss-seidel (ndarray 3) :iterations 5)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

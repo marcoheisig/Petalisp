@@ -3,7 +3,12 @@
 (in-package :common-lisp-user)
 
 (defpackage :petalisp-test-suite
-  (:use :alexandria :common-lisp :petalisp-internals)
+  (:use
+   :alexandria
+   :common-lisp
+   :petalisp-internals
+   :petalisp-test-suite/examples/jacobi
+   :petalisp-test-suite/examples/red-black-gauss-seidel)
   (:import-from :fiveam
                 #:*on-error* #:*on-failure*
                 #:in-suite #:in-suite* #:test
