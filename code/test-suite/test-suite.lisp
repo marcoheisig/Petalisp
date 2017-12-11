@@ -126,20 +126,21 @@
   (for-all ((a (generator 'range :max-extent 100)))
     (for-all ((b (generator 'range :max-extent 100
                                   :intersecting a)))
-      (is (equal? a (apply #'union
-                           (intersection a b)
-                           (difference a b)))))))
+      (is (equal? a (range-fusion
+                     (cons
+                      (range-intersection a b)
+                      (range-difference a b))))))))
 
 (test |(intersection range)|
   (let ((fiveam::*num-trials* (ceiling (sqrt fiveam::*num-trials*))))
     (for-all ((a (generator 'range :max-extent 10000)))
       (for-all ((b (generator 'range :max-extent 10000
                                      :intersecting a)))
-        (let ((intersection (intersection a b)))
-          (is-true (subspace? intersection a))
-          (is-true (subspace? intersection b))
-          (is (not (difference intersection a)))
-          (is (not (difference intersection b))))))))
+        (let ((intersection (range-intersection a b)))
+          (is-true (range-subspace? intersection a))
+          (is-true (range-subspace? intersection b))
+          (is (not (range-difference intersection a)))
+          (is (not (range-difference intersection b))))))))
 
 (test range
   (is (range? (range 0 0 0)))
@@ -148,7 +149,7 @@
             (step (generator 'integer :minimum 1))
             (end (generator 'integer)))
     (is (range? (range start step end)))
-    (is (= (size (range start step end))
+    (is (= (range-size (range start step end))
            (1+ (floor (abs (- start end)) (abs step)))))
     (is (equal? (range start step end)
                 (range start (- step) end)))))
@@ -220,8 +221,8 @@
     (?  (σ (2 2 4)) (σ (3 1 3)) (σ (3 1 3)))))
 
 (test |(subspace? strided-array-index-space)|
-  (is (subspace? (range 1 1 2) (range 0 1 3)))
-  (is (subspace? (range 0 4 8) (range 0 2 10)))
+  (is (subspace? (σ (1 1 2)) (σ (0 1 3))))
+  (is (subspace? (σ (0 4 8)) (σ (0 2 10))))
   (is (subspace? (σ (0 6 120) (1 1 100))
                  (σ (0 2 130) (0 1 101)))))
 

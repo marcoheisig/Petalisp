@@ -7,7 +7,8 @@
 
 (defmethod generator ((result-type (eql 'strided-array-index-space))
                       &key (dimension 3) (max-size 30) (max-extent 100) intersecting)
-  (assert (or (not intersecting) (= dimension (dimension intersecting))))
+  (assert (or (not intersecting)
+              (= dimension (dimension intersecting))))
   (let ((range-generators
           (if intersecting
               (map 'list (λ range (generator 'range :max-size max-size
@@ -65,7 +66,7 @@
              (for r1 in-vector (ranges space-1))
              (for r2 in-vector (ranges space-2))
              (for i from 0)
-             (iterate (for difference in (difference r1 r2))
+             (iterate (for difference in (range-difference r1 r2))
                       (let ((ranges (copy-array (ranges space-1))))
                         (replace ranges (ranges intersection) :end1 i)
                         (setf (aref ranges i) difference)
@@ -117,7 +118,7 @@
     :ranges
     (map 'vector
          (lambda (a b)
-           (or (intersection a b)
+           (or (range-intersection a b)
                (return-from intersection nil)))
          (ranges space-1)
          (ranges space-2))))
@@ -156,7 +157,7 @@
     (make-instance 'strided-array-index-space :ranges result)))
 
 (defmethod size ((object strided-array-index-space))
-  (reduce #'* (ranges object) :key #'size))
+  (reduce #'* (ranges object) :key #'range-size))
 
 (defmethod union ((object strided-array-index-space) &rest more-objects)
   (let ((objects (cons object more-objects)))
@@ -189,11 +190,11 @@
                       (compose #'fuse-recursively #'spaces-to-fuse)
                       islands)))
         (assert (identical results :test #'equal? :key #'first))
-        (cons (apply #'union
-                     (mapcar
-                      (lambda (x)
-                        (elt (ranges x) 0))
-                      islands))
+        (cons (range-fusion
+               (mapcar
+                (lambda (x)
+                  (elt (ranges x) 0))
+                islands))
               (first results))))))
 
 (defmethod intersection :around ((space-1 fusion-island)

@@ -127,9 +127,14 @@
    #:output-dimension
    #:queue?
    #:range #:range?
+   #:range-difference
    #:range-end
+   #:range-fusion
+   #:range-intersection
+   #:range-size
    #:range-start
    #:range-step
+   #:range-subspace?
    #:range-symbol
    #:range-symbol-list
    #:ranges

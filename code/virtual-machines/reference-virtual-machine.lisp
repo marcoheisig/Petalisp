@@ -19,7 +19,7 @@
     (for recipe in-sequence recipes)
     (setf (storage target)
           (make-array
-           (map 'list #'size (ranges (index-space target)))
+           (map 'list #'range-size (ranges (index-space target)))
            :element-type (element-type target)))
     (reference-vm/copy
      (vm/evaluate vm recipe)

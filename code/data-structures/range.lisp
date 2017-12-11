@@ -64,18 +64,19 @@ intersect it (potentially violating MAX-EXTENT)."
                                (range-step range)
                                (+ (range-end range) offset)))))))))))))
 
-(defmethod difference ((space-1 range) (space-2 range))
-  ;; we only care about the part of space-2 that intersects with space-1
-  (let ((space-2 (intersection space-1 space-2)))
-    ;; now space-2 is a proper subspace of space-1
-    (if (not space-2)
-        (list space-1)
-        (let ((start-1 (range-start space-1))
-              (step-1 (range-step space-1))
-              (end-1 (range-end space-1))
-              (start-2 (range-start space-2))
-              (step-2 (range-step space-2))
-              (end-2 (range-end space-2))
+(defun range-difference (range-1 range-2)
+  (declare (type range range-1 range-2))
+  ;; we only care about the part of range-2 that intersects with range-1
+  (let ((range-2 (range-intersection range-1 range-2)))
+    ;; range-2 is now a proper sub-range of range-1
+    (if (not range-2)
+        (list range-1)
+        (let ((start-1 (range-start range-1))
+              (step-1 (range-step range-1))
+              (end-1 (range-end range-1))
+              (start-2 (range-start range-2))
+              (step-2 (range-step range-2))
+              (end-2 (range-end range-2))
               result)
           (flet ((maybe-push-range (start step end)
                    (when (<= start-1 start end end-1)
@@ -86,7 +87,7 @@ intersect it (potentially violating MAX-EXTENT)."
                  ;; single element, where it is normalized to 1
                  (/= step-2 1)
                  (<= (the positive-integer (/ step-2 step-1))
-                     (size space-2)))
+                     (size range-2)))
                 ;; Case 1: create ranges with step size step-2
                 (iterate (for offset from step-1 by step-1 below step-2)
                          (for start = (let ((high (+ start-2 offset))
@@ -123,29 +124,28 @@ intersect it (potentially violating MAX-EXTENT)."
                                (maybe-push-range start step-1 end)))))))
           result))))
 
-(defmethod union ((range range) &rest more-ranges)
-  (let ((ranges (list* range more-ranges)))
-    (flet ((fail ()
-             (simple-program-error
-              "Unable to fuse ranges:~%~{~A~%~}" ranges)))
-      ;; another generic method of UNION asserts that the given ranges are
-      ;; non-overlapping. Relying on this, the only possible fusion is
-      ;; obtained by summing the number of elements, determining the
-      ;; smallest and largest element of all sequences and choosing a step
-      ;; size to yield the correct number of elements.
-      (iterate (for range in ranges)
-               (sum (size range) into number-of-elements)
-               (maximize (range-end range) into end)
-               (minimize (range-start range) into start)
-               (finally
-                (let ((step (if (= number-of-elements 1) 1
-                                (/ (- end start) (1- number-of-elements)))))
-                  (unless (integerp step) (fail))
-                  (let ((fusion (range start step end)))
-                    (when (notevery (λ range (subspace? range fusion)) ranges) (fail))
-                    (return fusion))))))))
+(defun range-fusion (ranges)
+  ;; Assuming that all supplied RANGES are non-overlapping, the only
+  ;; possible fusion is obtained by summing the number of elements,
+  ;; determining the smallest and largest element of all sequences and
+  ;; choosing a step size to yield the correct number of elements.
+  (loop for range in ranges
+        summing (range-size range) into number-of-elements
+        minimizing (range-start range) into start
+        maximizing (range-end range) into end
+        finally
+           (flet ((fail ()
+                    (simple-program-error
+                     "Unable to fuse ranges:~%~{~A~%~}" ranges)))
+             (let ((step (if (= number-of-elements 1) 1
+                             (/ (- end start) (1- number-of-elements)))))
+               (unless (integerp step) (fail))
+               (let ((result (range start step end)))
+                 (when (notevery (λ range (range-subspace? range result)) ranges) (fail))
+                 (return result))))))
 
-(defmethod intersection ((range-1 range) (range-2 range))
+(defun range-intersection (range-1 range-2)
+  (declare (range range-1 range-2))
   (let ((lb (max (range-start range-1) (range-start range-2)))
         (ub (min (range-end   range-1) (range-end   range-2))))
     (let ((a (range-step range-1))
@@ -161,9 +161,16 @@ intersect it (potentially violating MAX-EXTENT)."
               (when (<= lb start end ub)
                 (range start lcm end)))))))))
 
-(defmethod size ((object range))
-  (1+ (the integer (/ (- (range-end object) (range-start object))
-                      (range-step object)))))
+(defun range-size (range)
+  (declare (type range range))
+  (1+ (the integer (/ (- (range-end range) (range-start range))
+                      (range-step range)))))
+
+(defmethod size ((range range))
+  (range-size range))
+
+(defun range-subspace? (range-1 range-2)
+  (and (range-intersection range-1 range-2) t))
 
 (declaim (inline unary-range?))
 (defun unary-range? (range)
