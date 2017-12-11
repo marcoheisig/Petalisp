@@ -73,6 +73,10 @@
       ((:file "package")
        (:file "generators")
        (:file "code-statistics")
+       (:module "examples"
+        :components
+                ((:file "jacobi")
+                 (:file "red-black-gauss-seidel")))
        (:file "test-suite"))))))
   :perform (test-op (o c)
                     (symbol-call "PETALISP-TEST-SUITE" "RUN-TEST-SUITE")))

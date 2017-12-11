@@ -7,5 +7,5 @@
   (:import-from :fiveam
                 #:*on-error* #:*on-failure*
                 #:in-suite #:in-suite* #:test
-                #:is #:is-true #:is-false #:signals #:for-all)
+                #:is #:is-true #:is-false #:signals #:finishes #:for-all)
   (:shadowing-import-from :petalisp-internals #:intersection #:union))

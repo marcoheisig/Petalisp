@@ -1,6 +1,12 @@
 ;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(in-package :petalisp-internals)
+(in-package :common-lisp-user)
+
+(defpackage :petalisp-test-suite/examples/jacobi
+  (:use :cl :petalisp)
+  (:export #:jacobi))
+
+(in-package :petalisp-test-suite/examples/jacobi)
 
 (defun jacobi (u &key (iterations 1)
                    (h (/ (1- (expt (size u) (/ (dimension u))))))

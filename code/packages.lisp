@@ -196,8 +196,12 @@
     #:τ
     #:σ
     #:σ*
-    #:schedule
+    #:fuse
+    #:fuse*
     #:compute
+    #:schedule
+    #:size
+    #:dimension
     #:*virtual-machine*
     #:reference-virtual-machine
     #:common-lisp-virtual-machine

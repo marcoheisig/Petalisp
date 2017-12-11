@@ -227,21 +227,55 @@
 ;;;
 ;;; Whole Programs
 
-(test petalisp-api
+(defun compute! (&rest arguments)
+  (is-true (apply #'compute arguments)))
+
+(defmacro with-testing-virtual-machine (&body body)
+  `(call-with-testing-virtual-machine
+    (lambda () ,@body)))
+
+(defun call-with-testing-virtual-machine (thunk)
   (let ((*virtual-machine*
           (make-instance 'testing-virtual-machine
             :virtual-machines
             (list
              (make-instance 'reference-virtual-machine)
              (make-instance 'common-lisp-virtual-machine)))))
-    (flet ((check (&rest recipes)
-             (is-true
-              (apply #'compute recipes))))
-      (check (α #'+ 2 3))
-      (check (α #'+ #(2 3 4) #(5 4 3)))
-      (check (-> #(1 2 3) (τ (i) ((- i)))))
-      (check (fuse* (-> 0.0 (σ (2 4) (2 4)))
-                    (-> 1.0 (σ (3 3) (3 3))))))))
+    (funcall thunk)))
+
+(test petalisp-api
+  (with-testing-virtual-machine
+    (compute! (α #'+ 2 3))
+    (compute! (α #'+ #(2 3 4) #(5 4 3)))
+    (compute! (-> #(1 2 3) (τ (i) ((- i)))))
+    (compute! (fuse* (-> 0.0 (σ (2 4) (2 4)))
+                    (-> 1.0 (σ (3 3) (3 3)))))))
+
+(test jacobi
+  (with-testing-virtual-machine
+    (flet ((jacobi (&rest args)
+             (apply #'petalisp-test-suite/examples/jacobi:jacobi args))
+           (ndarray (n)
+             (generate 'array
+                       :element-type 'double-float
+                       :dimensions (make-list n :initial-element 10))))
+      (compute! (jacobi (ndarray 1) :iterations 2))
+      (compute! (jacobi (ndarray 2) :iterations 2))
+      (compute! (jacobi (ndarray 3) :iterations 2))
+      (compute! (jacobi (ndarray 3) :iterations 5)))))
+
+(test red-black-gauss-seidel
+  (with-testing-virtual-machine
+    (flet ((rbgs (&rest args)
+             (apply #'petalisp-test-suite/examples/red-black-gauss-seidel:red-black-gauss-seidel args))
+           (ndarray (n)
+             (generate 'array
+                       :element-type 'double-float
+                       :dimensions (make-list n :initial-element 10))))
+      (compute! (rbgs (ndarray 1) :iterations 2))
+      (compute! (rbgs (ndarray 2) :iterations 2))
+      (compute! (rbgs (ndarray 3) :iterations 2))
+      (compute! (rbgs (ndarray 3) :iterations 5)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

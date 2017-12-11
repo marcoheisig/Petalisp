@@ -1,6 +1,12 @@
 ;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(in-package :petalisp-internals)
+(in-package :common-lisp-user)
+
+(defpackage :petalisp-test-suite/examples/red-black-gauss-seidel
+  (:use :cl :petalisp)
+  (:export #:red-black-gauss-seidel))
+
+(in-package :petalisp-test-suite/examples/red-black-gauss-seidel)
 
 (defun red-black-gauss-seidel (u &key (iterations 1)
                                    (h (/ (1- (expt (size u) (/ (dimension u))))))
@@ -16,9 +22,9 @@
                           (-> u (τ (i) ((1+ i))) what)
                           (-> u (τ (i) ((1- i))) what)
                           (-> (α #'* (* h h) f) what)))))
-           (iterate (repeat iterations)
-                    (setf u (fuse* u (update u r)))
-                    (setf u (fuse* u (update u b))))
+           (loop repeat iterations do
+             (setf u (fuse* u (update u r)))
+             (setf u (fuse* u (update u b))))
            u)))
     (2 (let ((r1 (σ* u ((+ start 2) 2 (1- end)) ((+ start 2) 2 (1- end))))
              (r2 (σ* u ((+ start 1) 2 (1- end)) ((+ start 1) 2 (1- end))))
@@ -32,9 +38,9 @@
                           (-> u (τ (i j) (i (1+ j))) what)
                           (-> u (τ (i j) (i (1- j))) what)
                           (-> (α #'* (* h h) f) what)))))
-           (iterate (repeat iterations)
-                    (setf u (fuse* u (update u r1) (update u r2)))
-                    (setf u (fuse* u (update u b1) (update u b2))))
+           (loop repeat iterations do
+             (setf u (fuse* u (update u r1) (update u r2)))
+             (setf u (fuse* u (update u b1) (update u b2))))
            u)))
     (3 (let ((r1 (σ* u ((+ start 2) 2 (1- end)) ((+ start 2) 2 (1- end)) ((+ start 2) 2 (1- end))))
              (r2 (σ* u ((+ start 1) 2 (1- end)) ((+ start 1) 2 (1- end)) ((+ start 2) 2 (1- end))))
@@ -52,7 +58,7 @@
                           (-> u (τ (i j k) (i j (1+ k))) what)
                           (-> u (τ (i j k) (i j (1- k))) what)
                           (-> (α #'* (* h h) f) what)))))
-           (iterate (repeat iterations)
-                    (setf u (fuse* u (update u r1) (update u r2) (update u r3)))
-                    (setf u (fuse* u (update u b1) (update u b2) (update u b3))))
+           (loop repeat iterations do
+             (setf u (fuse* u (update u r1) (update u r2) (update u r3)))
+             (setf u (fuse* u (update u b1) (update u b2) (update u b3))))
            u)))))
