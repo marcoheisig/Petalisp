@@ -2,12 +2,33 @@
 
 (in-package :common-lisp-user)
 
+(defpackage :petalisp
+  (:documentation "The Petalisp API.")
+  (:export
+   #:α
+   #:β
+   #:->
+   #:τ
+   #:σ
+   #:σ*
+   #:fuse
+   #:fuse*
+   #:compute
+   #:schedule
+   #:size
+   #:dimension
+   #:*virtual-machine*
+   #:reference-virtual-machine
+   #:common-lisp-virtual-machine
+   #:testing-virtual-machine))
+
 (defpackage :petalisp-internals
   (:documentation
    "The internal methods and classes of Petalisp. This package exports all
     functionality required for testing, hacking new virtual machines or
     toying around with graph nodes and index spaces.")
-  (:use :closer-common-lisp :alexandria :bordeaux-threads :trivial-garbage)
+  (:use :closer-common-lisp :alexandria :bordeaux-threads :trivial-garbage
+        :petalisp)
   ;; shadow CL:INTERSECTION and CL:UNION with generic methods
   (:shadow #:intersection #:union)
   ;; portable OS interface
@@ -190,25 +211,3 @@
    #:vm/schedule
    #:wait
    #:α #:β #:σ #:σ* #:τ #:->))
-
-(defpackage :petalisp
-  (:documentation "The Petalisp API.")
-  (:import-from
-   :petalisp-internals . #1=
-   (#:α
-    #:β
-    #:->
-    #:τ
-    #:σ
-    #:σ*
-    #:fuse
-    #:fuse*
-    #:compute
-    #:schedule
-    #:size
-    #:dimension
-    #:*virtual-machine*
-    #:reference-virtual-machine
-    #:common-lisp-virtual-machine
-    #:testing-virtual-machine))
-  (:export . #1#))
