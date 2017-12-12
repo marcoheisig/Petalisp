@@ -243,6 +243,10 @@
     (lambda (&key ,@keyword-arguments)
       ,@body)))
 
+(defun print-iteration-space (iteration-space transformations)
+  (format t "~&Iteration Space: ~A~%" iteration-space)
+  (format t "~&Transformations: ~A~%" transformations))
+
 (defun kernelize-subtree-fragment (target root leaf-function index-space)
   "Return the kernel that computes the INDEX-SPACE of TARGET, according
    to the data flow graph prescribed by ROOT and LEAF-FUNCTION."
@@ -254,30 +258,37 @@
     ;; references are relative to this space and therefore also
     ;; arbitrary. Since we want computationally equivalent kernels to have
     ;; the same blueprint, we need to normalize the iteration space.
-    #+nil(let ((normalization (iteration-space-normalization iteration-space transformations))))
-    (make-instance 'kernel
-      :target target
-      :iteration-space iteration-space
-      ;;:unknown-operators unknown-operators
-      :sources sources
-      :blueprint
-      (flet ((range-info (range)
-               (let ((lb (log (size range) 2)))
-                 (ulist (expt (floor lb) 2)
-                        (expt (ceiling lb) 2)
-                        (range-step range))))
-             (memory-reference-info (source-id transformation)
-               (ulist* source-id (blueprint-indices transformation)))
-             (storage-info (immediate)
-               (ulist
-                (element-type immediate)
-                (dimension immediate))))
-        (ulist (map-ulist #'range-info (ranges iteration-space))
-               (storage-info target)
-               (memory-reference-info 0 (to-storage target))
-               (map-ulist #'storage-info sources)
-               (map-ulist #'memory-reference-info source-ids transformations)
-               body)))))
+    (let* ((normalization
+             (iteration-space-normalization iteration-space transformations))
+           (transformations
+             (map 'vector
+                  (lambda (transformation)
+                    (composition transformation normalization))
+                  transformations))
+           (iteration-space (funcall (inverse normalization) iteration-space)))
+      (make-instance 'kernel
+        :target target
+        :iteration-space iteration-space
+        ;;:unknown-operators unknown-operators
+        :sources sources
+        :blueprint
+        (flet ((range-info (range)
+                 (let ((lb (log (size range) 2)))
+                   (ulist (expt (floor lb) 2)
+                          (expt (ceiling lb) 2)
+                          (range-step range))))
+               (memory-reference-info (source-id transformation)
+                 (ulist* source-id (blueprint-indices transformation)))
+               (storage-info (immediate)
+                 (ulist
+                  (element-type immediate)
+                  (dimension immediate))))
+          (ulist (map-ulist #'range-info (ranges iteration-space))
+                 (storage-info target)
+                 (memory-reference-info 0 (composition (to-storage target) normalization))
+                 (map-ulist #'storage-info sources)
+                 (map-ulist #'memory-reference-info source-ids transformations)
+                 body))))))
 
 (defun call-with-subtree-fragment-information
     (root leaf-function index-space continuation)
@@ -351,27 +362,24 @@
             (funcall transformation iteration-space))))
     (let ((iteration-ranges (ranges iteration-space))
           (dimension (dimension iteration-space)))
-      (let ((gcd-vector (map 'vector #'range-step iteration-ranges))
-            (min-vector (map 'vector #'range-start iteration-ranges)))
+      (let ((scaling (map 'vector #'range-step iteration-ranges)))
         ;; TODO there is quite some potential for optimization here,
         ;; e.g. via a MAP-OVER-TRANSFORMED-RANGES function to reduce
         ;; consing
         (loop for transformation across transformations do
           (loop for range across (dependent-ranges transformation)
                 and i from 0 do
-                  (setf (aref gcd-vector i)
-                        (gcd (aref gcd-vector i)
-                             (range-step range)))
-                  (setf (aref  min-vector i)
-                        (min (aref min-vector i)
-                             (range-start range)))))
+                  (setf (aref scaling i)
+                        (gcd (aref scaling i)
+                             (range-step range)))))
         (let ((input-constraints (make-array dimension :initial-element nil))
+              (translation (map 'vector #'range-start iteration-ranges))
               (linear-operator
                 (let ((column-indices (make-array dimension)))
                   (loop for i below (length column-indices) do
                     (setf (aref column-indices i) i))
-                  (scaled-permutation-matrix dimension dimension column-indices gcd-vector))))
-          (affine-transformation input-constraints linear-operator min-vector))))))
+                  (scaled-permutation-matrix dimension dimension column-indices scaling))))
+          (affine-transformation input-constraints linear-operator translation))))))
 
 (defgeneric blueprint-indices (transformation)
   (:method ((transformation identity-transformation))

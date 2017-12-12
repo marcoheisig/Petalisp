@@ -161,9 +161,12 @@
 
 (defmethod union ((object strided-array-index-space) &rest more-objects)
   (let ((objects (cons object more-objects)))
-    ;;(with-memoization ((mapcar #'ranges objects) :test #'equalp))
-    (index-space
-     (apply #'vector (fuse-recursively objects)))))
+    ;; computing the index space union accounts easily for 50% of the
+    ;; runtime of a Petalisp program, making it a good target for
+    ;; memoization.
+    (with-memoization ((mapcar #'ranges objects) :test #'equalp)
+      (index-space
+       (apply #'vector (fuse-recursively objects))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
