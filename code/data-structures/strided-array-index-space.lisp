@@ -140,7 +140,7 @@
              (when input-constraint
                (assert (= (range-start range) input-constraint (range-end range)))))
     (let ((A (linear-operator transformation))
-          (b (translation-vector transformation)))
+          (b (translation transformation)))
       (declare (type scaled-permutation-matrix A)
                (type (simple-array number (*)) b))
       (with-unsafe-optimizations

@@ -33,12 +33,9 @@
   (let ((ranges (ranges index-space))
         (dimension (dimension index-space)))
     (affine-transformation
-     (make-array dimension :initial-element nil)
-     (scaled-permutation-matrix
-      dimension dimension
-      (apply #'vector (iota dimension))
-      (map 'vector #'range-step ranges))
-     (map 'vector #'range-start ranges))))
+     :input-dimension dimension
+     :scaling (map 'vector #'range-step ranges)
+     :translation (map 'vector #'range-start ranges))))
 
 (defmethod make-immediate! ((strided-array strided-array))
   (change-class strided-array 'strided-array-immediate))

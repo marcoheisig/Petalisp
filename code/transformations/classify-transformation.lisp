@@ -19,13 +19,13 @@
                (setf (aref arg-conses i) arg-cons))
       ;; Initially x is the zero vector (except for input constraints, which
       ;; are ignored by A), so f(x) = Ax + b = b
-      (let* ((translation-vector (multiple-value-call #'vector (apply f args)))
-             (output-dimension (length translation-vector))
+      (let* ((translation (multiple-value-call #'vector (apply f args)))
+             (output-dimension (length translation))
              ;; now determine the scaled permutation matrix A
              (column-indices (make-array output-dimension
                                          :element-type 'array-index
                                          :initial-element 0))
-             (values (make-array output-dimension
+             (scaling (make-array output-dimension
                                  :element-type 'rational
                                  :initial-element 0)))
         ;; set one input at a time from zero to one (ignoring those with
@@ -38,35 +38,17 @@
                    ;; find the row of A corresponding to the mutated input
                    (let ((results (multiple-value-call #'vector (apply f args))))
                      (iterate (for result in-vector results)
-                              (for offset in-vector translation-vector)
+                              (for offset in-vector translation)
                               (for row-index from 0)
                               (when (/= result offset)
                                 (setf (aref column-indices row-index) column-index)
-                                (setf (aref values row-index) (- result offset)))))
+                                (setf (aref scaling row-index) (- result offset)))))
                    (setf (car arg-cons) 0)))
-        (let ((linear-operator
-                (scaled-permutation-matrix
-                 output-dimension input-dimension column-indices values)))
-          ;; optional but oh so helpful: check whether the derived mapping
-          ;; satisfies other inputs, i.e. the mapping can indeed be represented
-          ;; as Ax + b
-          (iterate (for input-constraint in-vector input-constraints)
-                   (for arg-cons in-vector arg-conses)
-                   (unless input-constraint (setf (car arg-cons) 3)))
-          (let* ((result-1 (multiple-value-call #'vector (apply f args)))
-                 (Ax (matrix-product
-                      linear-operator
-                      (make-array input-dimension
-                                  :element-type 'rational
-                                  :initial-contents args)))
-                 (result-2 (map 'vector #'+ Ax translation-vector)))
-            (assert (every #'= result-1 result-2) ()
-                    "Not a valid transformation:~%  ~S"
-                    f))
-          (affine-transformation
-           input-constraints
-           linear-operator
-           translation-vector))))))
+        (affine-transformation
+         :input-constraints input-constraints
+         :translation translation
+         :scaling scaling
+         :permutation column-indices)))))
 
 ;; It is an error to classify a function that is not referentially
 ;; transparent. Furthermore transformations are immutable. As a result, the

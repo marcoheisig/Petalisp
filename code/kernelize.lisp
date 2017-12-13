@@ -258,14 +258,11 @@
     ;; references are relative to this space and therefore also
     ;; arbitrary. Since we want computationally equivalent kernels to have
     ;; the same blueprint, we need to normalize the iteration space.
-    (let* ((normalization
-             (iteration-space-normalization iteration-space transformations))
-           (transformations
-             (map 'vector
-                  (lambda (transformation)
-                    (composition transformation normalization))
-                  transformations))
-           (iteration-space (funcall (inverse normalization) iteration-space)))
+    (multiple-value-bind (iteration-space reads writes)
+        (normalize-iteration-space
+         iteration-space
+         transformations
+         (vector (to-storage target))) ;; TODO
       (make-instance 'kernel
         :target target
         :iteration-space iteration-space
@@ -285,9 +282,9 @@
                   (dimension immediate))))
           (ulist (map-ulist #'range-info (ranges iteration-space))
                  (storage-info target)
-                 (memory-reference-info 0 (composition (to-storage target) normalization))
+                 (memory-reference-info 0 (elt writes 0))
                  (map-ulist #'storage-info sources)
-                 (map-ulist #'memory-reference-info source-ids transformations)
+                 (map-ulist #'memory-reference-info source-ids reads)
                  body))))))
 
 (defun call-with-subtree-fragment-information
@@ -356,28 +353,36 @@
          :transformations transformations
          :body body)))))
 
-(defun iteration-space-normalization (iteration-space transformations)
+(defun normalize-iteration-space (iteration-space reads writes)
+  "Returns as multiple values
+1. a normalized iteration space
+2. normalized read transformations
+3. normalized write transformations"
   (let ((iteration-ranges (ranges iteration-space))
         (dimension (dimension iteration-space)))
     (let ((factors (map 'vector (constantly 1) iteration-ranges)))
-      (loop for transformation across transformations do
-        (map-transformation-into
-         transformation factors
-         (lambda (a b factor)
-           (declare (ignore b))
-           (if (not (integerp a))
-               (lcm (denominator a) factor)
-               factor))
-         factors))
-      (print factors)
-      (let ((input-constraints (make-array dimension :initial-element nil))
-            (translation (map 'vector #'range-start iteration-ranges))
-            (linear-operator
-              (let ((column-indices (make-array dimension)))
-                (loop for i below (length column-indices) do
-                  (setf (aref column-indices i) i))
-                (scaled-permutation-matrix dimension dimension column-indices factors))))
-        (affine-transformation input-constraints linear-operator translation)))))
+      (flet ((adapt-factors (transformation)
+               (map-transformation-into
+                transformation factors
+                (lambda (a b factor)
+                  (declare (ignore b))
+                  (if (not (integerp a))
+                      (lcm (denominator a) factor)
+                      factor))
+                factors)))
+        (map nil #'adapt-factors reads)
+        (map nil #'adapt-factors writes))
+      (let ((normalization
+              (affine-transformation
+               :input-dimension dimension
+               :translation (map 'vector #'range-start iteration-ranges)
+               :scaling factors)))
+        (flet ((normalize (transformation)
+                 (composition transformation normalization)))
+          (values
+           (funcall (inverse normalization) iteration-space)
+           (map 'vector #'normalize reads)
+           (map 'vector #'normalize writes)))))))
 
 (defgeneric blueprint-indices (transformation)
   (:method ((transformation identity-transformation))
@@ -392,6 +397,6 @@
       (iterate
         (for column in-vector (spm-column-indices (linear-operator transformation)) downto 0)
         (for value in-vector (spm-values (linear-operator transformation)) downto 0)
-        (for offset in-vector (translation-vector transformation) downto 0)
+        (for offset in-vector (translation transformation) downto 0)
         (setf result (ulist* (ulist column value offset) result)))
       result)))

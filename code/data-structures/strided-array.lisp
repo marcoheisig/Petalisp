@@ -71,25 +71,23 @@
   (let ((transformation
           (let ((input-dimension (dimension space))
                 (output-dimension (dimension object)))
-            (let ((translation-vector (make-array output-dimension :initial-element 0))
-                  (column-indices (make-array output-dimension :initial-element 0))
-                  (values (make-array output-dimension :initial-element 0)))
+            (let ((translation (make-array output-dimension :initial-element 0))
+                  (permutation (make-array output-dimension :initial-element 0))
+                  (scaling (make-array output-dimension :initial-element 0)))
               (iterate (for input-range in-vector (ranges (index-space object)))
                        (for output-range in-vector (ranges space))
                        (for index from 0)
-                       (setf (aref column-indices index) index)
+                       (setf (aref permutation index) index)
                        (cond ((unary-range? output-range)
-                              (setf (aref translation-vector index) (range-start output-range)))
+                              (setf (aref translation index) (range-start output-range)))
                              ((equal? input-range output-range)
-                              (setf (aref values index) 1))))
+                              (setf (aref scaling index) 1))))
               (affine-transformation
-               (make-array input-dimension :initial-element nil)
-               (scaled-permutation-matrix
-                output-dimension
-                input-dimension
-                column-indices
-                values)
-               translation-vector)))))
+               :output-dimension output-dimension
+               :input-dimension input-dimension
+               :permutation permutation
+               :scaling scaling
+               :translation translation)))))
     (reference object space transformation)))
 
 (defmethod equal? ((a strided-array) (b strided-array))

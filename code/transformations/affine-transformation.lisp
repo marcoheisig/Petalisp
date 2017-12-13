@@ -32,22 +32,68 @@
 (define-class affine-transformation (transformation)
   ((input-constraints :type (simple-array (or null integer) (*)))
    (linear-operator :type scaled-permutation-matrix)
-   (translation-vector :type (simple-array integer (*))))
+   (translation :type (simple-array integer (*))))
   (:metaclass funcallable-standard-class))
 
-(defun affine-transformation (input-constraints A b)
-  (declare (type scaled-permutation-matrix A)
-           (type simple-vector input-constraints b))
-  (if (and (= (length input-constraints) (matrix-n A) (matrix-m A) (length b))
-           (every #'null input-constraints)
-           (every #'zerop b)
-           (identity-matrix? A))
-      (identity-transformation (length input-constraints))
-      (with-memoization ((list input-constraints A b) :test #'equalp)
-        (make-instance 'affine-transformation
-          :input-constraints input-constraints
-          :linear-operator A
-          :translation-vector b))))
+(defun affine-transformation (&key input-dimension output-dimension
+                                input-constraints scaling translation permutation)
+  ;; derive/check input and output dimension
+  (macrolet
+      ((register (place vector-or-number)
+         (once-only (vector-or-number)
+           `(when ,vector-or-number
+              (let ((value (if (vectorp ,vector-or-number)
+                               (length ,vector-or-number)
+                               ,vector-or-number)))
+                (cond ((not ,place)
+                       (setf ,place value))
+                      ((/= ,place value)
+                       (error "Contradictory values for ~A." ',place))))))))
+    (register input-dimension input-constraints)
+    (register output-dimension scaling)
+    (register output-dimension translation)
+    (register output-dimension permutation))
+  (unless input-dimension
+    (error "Insufficient arguments to derive input dimension."))
+  (unless output-dimension
+    (error "Insufficient arguments to derive output dimension."))
+  ;; check for the identity transformation
+  (if (and (= input-dimension output-dimension)
+           (or (not input-constraints)
+               (every #'null input-constraints))
+           (or (not translation)
+               (every #'zerop translation))
+           (or (not scaling)
+               (every (lambda (x) (= x 1)) scaling))
+           (or (not permutation)
+               (loop for i from 0 and j across permutation
+                     always (= i j))))
+      (identity-transformation input-dimension)
+      ;; otherwise create a suitable affine transformation
+      (let ((input-constraints
+              (or input-constraints
+                  (make-array input-dimension :initial-element nil)))
+            (translation
+              (or translation
+                  (make-array output-dimension :initial-element 0)))
+            (scaling
+              (or scaling
+                  (make-array output-dimension :initial-element 1)))
+            (permutation
+              (or permutation
+                  (let ((permutation (make-array output-dimension)))
+                    (loop for index below output-dimension do
+                      (setf (aref permutation index) index))
+                    permutation))))
+        (with-memoization ((list input-constraints translation scaling permutation)
+                           :test #'equalp)
+          (make-instance 'affine-transformation
+            :input-constraints input-constraints
+            :linear-operator
+            (scaled-permutation-matrix
+             output-dimension input-dimension
+             permutation scaling)
+            :translation translation)))))
 
 (defmethod enlarge-transformation ((transformation affine-transformation))
   (let ((input-dimension (input-dimension transformation))
@@ -60,15 +106,16 @@
       (replace input-constraints (input-constraints transformation))
       (replace permutation       (spm-column-indices matrix))
       (replace scaling           (spm-values matrix))
-      (replace translation       (translation-vector transformation))
+      (replace translation       (translation transformation))
       (setf (aref input-constraints input-dimension) nil)
       (setf (aref permutation       output-dimension) input-dimension)
       (setf (aref scaling           output-dimension) 1)
       (setf (aref translation       output-dimension) 0)
       (affine-transformation
-       input-constraints
-       (scaled-permutation-matrix (1+ output-dimension) (1+ input-dimension) permutation scaling)
-       translation))))
+       :input-constraints input-constraints
+       :permutation permutation
+       :scaling scaling
+       :translation translation))))
 
 (defmethod generic-unary-funcall ((transformation affine-transformation)
                                   (s-expressions list))
@@ -77,33 +124,33 @@
                            ((eql b 0) Ax)
                            (t `(+ ,Ax ,b))))
        (matrix-product (linear-operator transformation) s-expressions)
-       (translation-vector transformation)))
+       (translation transformation)))
 
 (defmethod input-dimension ((instance affine-transformation))
   (length (input-constraints instance)))
 
 (defmethod output-dimension ((instance affine-transformation))
-  (length (translation-vector instance)))
+  (length (translation instance)))
 
 (defmethod initialize-instance :before ((instance affine-transformation)
                                         &key
                                           input-constraints
                                           linear-operator
-                                          translation-vector)
+                                          translation)
   (assert (and (= (input-dimension linear-operator)
                   (length input-constraints))
                (= (output-dimension linear-operator)
-                  (length translation-vector)))
-          (input-constraints linear-operator translation-vector)
+                  (length translation)))
+          (input-constraints linear-operator translation)
           "Incompatibe shapes:~%  ~S~%  ~S~%  ~S~%"
-          input-constraints linear-operator translation-vector))
+          input-constraints linear-operator translation))
 
 (defmethod equal? ((t1 affine-transformation)
                    (t2 affine-transformation))
   (and (equalp (input-constraints t1)
                (input-constraints t2))
-       (equalp (translation-vector t1)
-               (translation-vector t2))
+       (equalp (translation t1)
+               (translation t2))
        (equal? (linear-operator t1)
                (linear-operator t2))))
 
@@ -115,15 +162,16 @@
   ;; A2 (A1 x + b1) + b2 = A2 A1 x + A2 b1 + b2
   (let ((A1 (linear-operator f))
         (A2 (linear-operator g))
-        (b1 (translation-vector f))
-        (b2 (translation-vector g)))
+        (b1 (translation f))
+        (b2 (translation g)))
     (let ((input-constraints (input-constraints f))
           (linear-operator (matrix-product A2 A1))
-          (translation-vector (map 'vector #'+ (matrix-product A2 b1) b2)))
+          (translation (map 'vector #'+ (matrix-product A2 b1) b2)))
       (affine-transformation
-       input-constraints
-       linear-operator
-       translation-vector))))
+       :input-constraints input-constraints
+       :permutation (spm-column-indices linear-operator)
+       :scaling (spm-values linear-operator)
+       :translation translation))))
 
 (defgeneric invertible? (transformation)
   (:method ((transformation identity-transformation)) t)
@@ -147,7 +195,7 @@
   ;;    f(x) = (Ax + b)
   ;; f^-1(x) = A^-1(x - b) = A^-1 x - A^-1 b
   (let ((A (linear-operator object))
-        (b (translation-vector object))
+        (b (translation object))
         (input-constraints (make-array (output-dimension object)
                                        :initial-element nil
                                        :element-type '(or null integer))))
@@ -159,17 +207,18 @@
              (when (zerop value)
                (setf (aref input-constraints row-index) translation)))
     (let* ((linear-operator (matrix-inverse A))
-           (translation-vector (matrix-product linear-operator b)))
-      (map-into translation-vector #'- translation-vector) ; negate b
-      (iterate (for index below (length translation-vector))
+           (translation (matrix-product linear-operator b)))
+      (map-into translation #'- translation) ; negate b
+      (iterate (for index below (length translation))
                (for input-constraint in-vector (input-constraints object))
                (when input-constraint
-                 (assert (= (aref translation-vector index) 0))
-                 (setf (aref translation-vector index) input-constraint)))
+                 (assert (= (aref translation index) 0))
+                 (setf (aref translation index) input-constraint)))
       (affine-transformation
-       input-constraints
-       linear-operator
-       translation-vector))))
+       :input-constraints input-constraints
+       :permutation (spm-column-indices linear-operator)
+       :scaling (spm-values linear-operator)
+       :translation translation))))
 
 (defmethod map-transformation-into ((transformation affine-transformation)
                                     (result-sequence sequence)
@@ -179,7 +228,7 @@
     (loop for output-index from 0 below (length result-sequence)
           for input-index across (spm-column-indices matrix)
           for scaling across (spm-values matrix)
-          for offset across (translation-vector transformation)
+          for offset across (translation transformation)
           do (flet ((input-element (sequence)
                       (elt sequence input-index)))
                (setf (elt result-sequence output-index)
