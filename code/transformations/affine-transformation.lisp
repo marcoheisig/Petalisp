@@ -70,6 +70,15 @@
        (scaled-permutation-matrix (1+ output-dimension) (1+ input-dimension) permutation scaling)
        translation))))
 
+(defmethod generic-unary-funcall ((transformation affine-transformation)
+                                  (s-expressions list))
+  (map 'list (λ Ax b (cond ((eql Ax 0) b)
+                           ((numberp Ax) (+ Ax b))
+                           ((eql b 0) Ax)
+                           (t `(+ ,Ax ,b))))
+       (matrix-product (linear-operator transformation) s-expressions)
+       (translation-vector transformation)))
+
 (defmethod input-dimension ((instance affine-transformation))
   (length (input-constraints instance)))
 
@@ -162,14 +171,20 @@
        linear-operator
        translation-vector))))
 
-(defmethod generic-unary-funcall ((transformation affine-transformation)
-                                  (s-expressions list))
-  (map 'list (λ Ax b (cond ((eql Ax 0) b)
-                           ((numberp Ax) (+ Ax b))
-                           ((eql b 0) Ax)
-                           (t `(+ ,Ax ,b))))
-       (matrix-product (linear-operator transformation) s-expressions)
-       (translation-vector transformation)))
+(defmethod map-transformation-into ((transformation affine-transformation)
+                                    (result-sequence sequence)
+                                    (function function)
+                                    &rest sequences)
+  (let ((matrix (linear-operator transformation)))
+    (loop for output-index from 0 below (length result-sequence)
+          for input-index across (spm-column-indices matrix)
+          for scaling across (spm-values matrix)
+          for offset across (translation-vector transformation)
+          do (flet ((input-element (sequence)
+                      (elt sequence input-index)))
+               (setf (elt result-sequence output-index)
+                     (apply function scaling offset
+                            (mapcar #'input-element sequences)))))))
 
 (defmethod print-object ((object affine-transformation) stream)
   (let ((inputs

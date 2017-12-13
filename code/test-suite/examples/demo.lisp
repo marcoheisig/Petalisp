@@ -27,7 +27,7 @@
 
 (! (α #'* (-> 2 (σ (0 9))) 3))
 
-(! (β #'+ #'identity (α #'* (-> 2 (σ (0 9))) 3)))
+;(! (β #'+ #'identity (α #'* (-> 2 (σ (0 9))) 3)))
 
 (! (-> #(1 2 3 4) (τ (i) ((- i)))))
 
@@ -58,7 +58,7 @@
 
 (defparameter M (-> #(1 2 3 4 5 6) (σ (1 6) (1 6))))
 
-(! (matmul M (-> M (τ (m n) n m))))
+(! (matmul M (-> M (τ (m n) (n m)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -159,8 +159,9 @@
 (! (fuse* (-> 0.0 (σ (2 4) (2 4)))
           (-> 1.0 (σ (3 3) (3 3)))))
 
-(! (prolongate (fuse* (-> 0.0 (σ (2 4) (2 4)))
-                      (-> 1.0 (σ (3 3) (3 3))))))
+(! (prolongate
+    (prolongate (fuse* (-> 0.0 (σ (2 4) (2 4)))
+                       (-> 1.0 (σ (3 3) (3 3)))))))
 
 (defun restrict (u)
   (let ((selection (σ* u (start 2 end) (start 2 end)))
@@ -171,15 +172,15 @@
       (-> u selection)
       (α #'+
          (α #'* 0.25   (-> u selection inner))
-         (α #'* 0.125  (-> u (τ (i j) (1+ i) j) selection inner))
-         (α #'* 0.125  (-> u (τ (i j) (1- i) j) selection inner))
-         (α #'* 0.125  (-> u (τ (i j) i (1+ j)) selection inner))
-         (α #'* 0.125  (-> u (τ (i j) i (1- j)) selection inner))
-         (α #'* 0.0625 (-> u (τ (i j) (1+ i) (1+ j)) selection inner))
-         (α #'* 0.0625 (-> u (τ (i j) (1- i) (1+ j)) selection inner))
-         (α #'* 0.0625 (-> u (τ (i j) (1+ i) (1- j)) selection inner))
-         (α #'* 0.0625 (-> u (τ (i j) (1- i) (1- j)) selection inner))))
-     (τ (i j) (/ i 2) (/ j 2)))))
+         (α #'* 0.125  (-> u (τ (i j) ((1+ i) j)) selection inner))
+         (α #'* 0.125  (-> u (τ (i j) ((1- i) j)) selection inner))
+         (α #'* 0.125  (-> u (τ (i j) (i (1+ j))) selection inner))
+         (α #'* 0.125  (-> u (τ (i j) (i (1- j))) selection inner))
+         (α #'* 0.0625 (-> u (τ (i j) ((1+ i) (1+ j))) selection inner))
+         (α #'* 0.0625 (-> u (τ (i j) ((1- i) (1+ j))) selection inner))
+         (α #'* 0.0625 (-> u (τ (i j) ((1+ i) (1- j))) selection inner))
+         (α #'* 0.0625 (-> u (τ (i j) ((1- i) (1- j))) selection inner))))
+     (τ (i j) ((/ i 2) (/ j 2))))))
 
 (! (restrict (-> 0.0 (σ (0 8) (0 8)))))
 
@@ -199,10 +200,10 @@
               (α #'* (/ (* h h))
                  (α #'+
                     (-> (α #'* -4.0 u) inner)
-                    (-> u (τ (i j) (1+ i) j) inner)
-                    (-> u (τ (i j) (1- i) j) inner)
-                    (-> u (τ (i j) i (1+ j)) inner)
-                    (-> u (τ (i j) i (1- j)) inner)))))))
+                    (-> u (τ (i j) ((1+ i) j)) inner)
+                    (-> u (τ (i j) ((1- i) j)) inner)
+                    (-> u (τ (i j) (i (1+ j))) inner)
+                    (-> u (τ (i j) (i (1- j))) inner)))))))
 
 (let ((rhs (-> 0.0 (σ (0 8) (0 8))))
       (u0  (fuse* (-> 0.0 (σ (0 8) (0 8)))
@@ -230,8 +231,8 @@
   u)
 
 (defun inf-norm (u u-exact)
-  (β #'max
-     (β #'max
+  (β #'max #'identity
+     (β #'max #'identity
         (α #'abs
            (α #'- u u-exact)))))
 
@@ -241,4 +242,4 @@
                        (σ* f
                            ((1+ start) step (1- end))
                            ((1+ start) step (1- end)))))))
-  (view (mg u0 f 1)))
+  (! (mg u0 f 1)))

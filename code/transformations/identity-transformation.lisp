@@ -26,6 +26,15 @@
 
 (defmethod inverse ((transformation identity-transformation)) transformation)
 
+(defmethod map-transformation-into ((transformation identity-transformation)
+                                    (result-sequence sequence)
+                                    (function function)
+                                    &rest sequences)
+  (flet ((process-one-output (&rest inputs)
+           (declare (dynamic-extent inputs))
+           (apply function 1 0 inputs)))
+    (apply #'map-into result-sequence #'process-one-output sequences)))
+
 (defmethod output-dimension ((I identity-transformation)) (input-dimension I))
 
 (define-symbol-pool index-symbol "I")

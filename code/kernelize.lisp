@@ -357,29 +357,27 @@
          :body body)))))
 
 (defun iteration-space-normalization (iteration-space transformations)
-  (flet ((dependent-ranges (transformation)
-           (ranges
-            (funcall transformation iteration-space))))
-    (let ((iteration-ranges (ranges iteration-space))
-          (dimension (dimension iteration-space)))
-      (let ((scaling (map 'vector #'range-step iteration-ranges)))
-        ;; TODO there is quite some potential for optimization here,
-        ;; e.g. via a MAP-OVER-TRANSFORMED-RANGES function to reduce
-        ;; consing
-        (loop for transformation across transformations do
-          (loop for range across (dependent-ranges transformation)
-                and i from 0 do
-                  (setf (aref scaling i)
-                        (gcd (aref scaling i)
-                             (range-step range)))))
-        (let ((input-constraints (make-array dimension :initial-element nil))
-              (translation (map 'vector #'range-start iteration-ranges))
-              (linear-operator
-                (let ((column-indices (make-array dimension)))
-                  (loop for i below (length column-indices) do
-                    (setf (aref column-indices i) i))
-                  (scaled-permutation-matrix dimension dimension column-indices scaling))))
-          (affine-transformation input-constraints linear-operator translation))))))
+  (let ((iteration-ranges (ranges iteration-space))
+        (dimension (dimension iteration-space)))
+    (let ((factors (map 'vector (constantly 1) iteration-ranges)))
+      (loop for transformation across transformations do
+        (map-transformation-into
+         transformation factors
+         (lambda (a b factor)
+           (declare (ignore b))
+           (if (not (integerp a))
+               (lcm (denominator a) factor)
+               factor))
+         factors))
+      (print factors)
+      (let ((input-constraints (make-array dimension :initial-element nil))
+            (translation (map 'vector #'range-start iteration-ranges))
+            (linear-operator
+              (let ((column-indices (make-array dimension)))
+                (loop for i below (length column-indices) do
+                  (setf (aref column-indices i) i))
+                (scaled-permutation-matrix dimension dimension column-indices factors))))
+        (affine-transformation input-constraints linear-operator translation)))))
 
 (defgeneric blueprint-indices (transformation)
   (:method ((transformation identity-transformation))

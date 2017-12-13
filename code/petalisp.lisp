@@ -277,6 +277,22 @@
   (:method ((immediate immediate))
     immediate))
 
+(defgeneric map-transformation-into
+    (transformation result-sequence function &rest sequences)
+  (:documentation
+   "Destructively modify RESULT-SEQUENCE to contain the results of applying
+    FUNCTION to the scaling factor, the offset and the corresponding input
+    value of each element of SEQUENCES.")
+  (:method :around ((transformation transformation)
+                    (result-sequence sequence)
+                    (function function)
+                    &rest sequences)
+    (assert
+     (loop for sequence in sequences
+           always (typep sequence 'sequence)))
+    (call-next-method)
+    result-sequence))
+
 (defgeneric difference (space-1 space-2)
   (:documentation
    "Return a list of index spaces that denote exactly those indices of
