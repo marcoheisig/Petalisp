@@ -8,7 +8,8 @@
    :common-lisp
    :petalisp-internals
    :petalisp-test-suite/examples/jacobi
-   :petalisp-test-suite/examples/red-black-gauss-seidel)
+   :petalisp-test-suite/examples/red-black-gauss-seidel
+   :petalisp-test-suite/examples/linear-algebra)
   (:import-from :fiveam
                 #:*on-error* #:*on-failure*
                 #:in-suite #:in-suite* #:test

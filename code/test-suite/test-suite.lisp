@@ -233,6 +233,12 @@
 (defun compute! (&rest arguments)
   (is-true (apply #'compute arguments)))
 
+(defun ndarray (n &optional (length 10))
+  "Create a LENGTH^N array of double floats."
+  (generate 'array
+            :element-type 'double-float
+            :dimensions (make-list n :initial-element length)))
+
 (defmacro with-testing-virtual-machine (&body body)
   `(call-with-testing-virtual-machine
     (lambda () ,@body)))
@@ -256,25 +262,26 @@
 
 (test jacobi
   (with-testing-virtual-machine
-    (flet ((ndarray (n)
-             (generate 'array
-                       :element-type 'double-float
-                       :dimensions (make-list n :initial-element 10))))
-      (compute! (jacobi (ndarray 1) :iterations 2))
-      (compute! (jacobi (ndarray 2) :iterations 2))
-      (compute! (jacobi (ndarray 3) :iterations 2))
-      (compute! (jacobi (ndarray 3) :iterations 5)))))
+    (compute! (jacobi (ndarray 1) :iterations 2))
+    (compute! (jacobi (ndarray 2) :iterations 2))
+    (compute! (jacobi (ndarray 3) :iterations 2))
+    (compute! (jacobi (ndarray 3) :iterations 5))))
 
 (test red-black-gauss-seidel
   (with-testing-virtual-machine
-    (flet ((ndarray (n)
-             (generate 'array
-                       :element-type 'double-float
-                       :dimensions (make-list n :initial-element 10))))
-      (compute! (red-black-gauss-seidel (ndarray 1) :iterations 2))
-      (compute! (red-black-gauss-seidel (ndarray 2) :iterations 2))
-      (compute! (red-black-gauss-seidel (ndarray 3) :iterations 2))
-      (compute! (red-black-gauss-seidel (ndarray 3) :iterations 5)))))
+    (compute! (red-black-gauss-seidel (ndarray 1) :iterations 2))
+    (compute! (red-black-gauss-seidel (ndarray 2) :iterations 2))
+    (compute! (red-black-gauss-seidel (ndarray 3) :iterations 2))
+    (compute! (red-black-gauss-seidel (ndarray 3) :iterations 5))))
+
+(test linear-algebra
+  (with-testing-virtual-machine
+    (loop for dimension upto 2 do
+      (compute! (transpose (ndarray dimension))))
+    (let ((a (ndarray 2))
+          (b (ndarray 2)))
+      (compute! (matmul a b)))
+    (compute! (dot #(1 2 3) #(4 5 6)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

@@ -41,7 +41,10 @@ per row and column."
             (m column-indices values)
             "Expected matrix creation arguments of lenght ~D, found:~%  ~S and~%  ~S~%"
             m column-indices values)
-    (assert (every (λ column-index (< -1 column-index n)) column-indices)
+    (assert (every (λ column-index value
+                      (or (zerop value)
+                          (< -1 column-index n)))
+                   column-indices values)
             (n column-indices)
             "Some of the column indices in~%  ~S~%exceed the matrix width of ~D.~%"
             column-indices n)
@@ -61,36 +64,37 @@ per row and column."
   "For a given m times n  sparse matrix SPM and a n-vector VEC, this
 function returns the m-vector that is the dot product of SPM and VEC."
   (declare (type (simple-array number (*)) vector))
-  (with-unsafe-optimizations
-    (flet ((column-index (row-index)
-             (aref (spm-column-indices matrix) row-index))
-           (value (row-index)
-             (aref (spm-values matrix) row-index)))
-      (let* ((rows (matrix-m matrix))
-             (result (make-array rows :element-type 'number)))
-        (dotimes (row-index rows)
-          (setf (aref result row-index)
-                (* (value row-index)
-                   (aref vector (column-index row-index)))))
-        result))))
+  (flet ((column-index (row-index)
+           (aref (spm-column-indices matrix) row-index))
+         (value (row-index)
+           (aref (spm-values matrix) row-index)))
+    (let* ((rows (matrix-m matrix))
+           (result (make-array rows :element-type 'number)))
+      (dotimes (row-index rows)
+        (setf (aref result row-index)
+              (let ((value (value row-index)))
+                (if (= 0 value)
+                    0
+                    (* (value row-index)
+                       (aref vector (column-index row-index)))))))
+      result)))
 
 (defmethod matrix-product ((spm-1 scaled-permutation-matrix) (spm-2 scaled-permutation-matrix))
   (declare (type scaled-permutation-matrix spm-1 spm-2))
-  (with-unsafe-optimizations
-    (let* ((m (matrix-m spm-1))
-           (n (matrix-n spm-2))
-           (column-indices (make-array m :element-type 'array-index
-                                         :initial-element 0))
-           (values (make-array m :element-type 'number
-                                 :initial-element 0)))
-      (dotimes (i m)
-        (let* ((k (aref (spm-column-indices spm-1) i))
-               (j (aref (spm-column-indices spm-2) k)))
-          (setf (aref column-indices i) j)
-          (setf (aref values i)
-                (* (aref (spm-values spm-1) i)
-                   (aref (spm-values spm-2) k)))))
-      (scaled-permutation-matrix m n column-indices values))))
+  (let* ((m (matrix-m spm-1))
+         (n (matrix-n spm-2))
+         (column-indices (make-array m :element-type 'array-index
+                                       :initial-element 0))
+         (values (make-array m :element-type 'number
+                               :initial-element 0)))
+    (dotimes (i m)
+      (let* ((k (aref (spm-column-indices spm-1) i))
+             (j (aref (spm-column-indices spm-2) k)))
+        (setf (aref column-indices i) j)
+        (setf (aref values i)
+              (* (aref (spm-values spm-1) i)
+                 (aref (spm-values spm-2) k)))))
+    (scaled-permutation-matrix m n column-indices values)))
 
 (defmethod matrix-product ((spm scaled-permutation-matrix) (s-expressions list))
   (map 'list (λ col val
@@ -107,27 +111,26 @@ function returns the m-vector that is the dot product of SPM and VEC."
 ;;; vectors which are zero whenever the corresponding column is zero.
 (defmethod matrix-inverse ((spm scaled-permutation-matrix))
   (declare (type scaled-permutation-matrix spm))
-  (with-unsafe-optimizations
-    (let* ((original-column-indices (spm-column-indices spm))
-           (original-values (spm-values spm))
-           (m (matrix-n spm))
-           (n (matrix-m spm))
-           (column-indices (make-array m :element-type 'array-index
-                                         :initial-element 0))
-           (values (make-array m :element-type 'number
-                                 :initial-element 0)))
-      (dotimes (row-index m)
-        (let ((column-index
-                (loop for column across original-column-indices
-                      for value  across original-values
-                      for position from 0
-                        thereis (and (/= 0 value) (= column row-index) position))))
-          (when column-index
-            (setf (aref column-indices row-index) column-index)
-            (let ((value (aref original-values column-index)))
-              (setf (aref values row-index)
-                    (if (zerop value) 0 (/ value)))))))
-      (scaled-permutation-matrix m n column-indices values))))
+  (let* ((original-column-indices (spm-column-indices spm))
+         (original-values (spm-values spm))
+         (m (matrix-n spm))
+         (n (matrix-m spm))
+         (column-indices (make-array m :element-type 'array-index
+                                       :initial-element 0))
+         (values (make-array m :element-type 'number
+                               :initial-element 0)))
+    (dotimes (row-index m)
+      (let ((column-index
+              (loop for column across original-column-indices
+                    for value  across original-values
+                    for position from 0
+                      thereis (and (/= 0 value) (= column row-index) position))))
+        (when column-index
+          (setf (aref column-indices row-index) column-index)
+          (let ((value (aref original-values column-index)))
+            (setf (aref values row-index)
+                  (if (zerop value) 0 (/ value)))))))
+    (scaled-permutation-matrix m n column-indices values)))
 
 (defun identity-matrix? (spm)
   (let ((m (matrix-m spm)) (n (matrix-n spm)))

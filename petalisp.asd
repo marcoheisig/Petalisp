@@ -73,7 +73,8 @@
       ((:module "examples"
         :components
                 ((:file "jacobi")
-                 (:file "red-black-gauss-seidel")))
+                 (:file "red-black-gauss-seidel")
+                 (:file "linear-algebra")))
        (:file "package")
        (:file "generators")
        (:file "code-statistics")

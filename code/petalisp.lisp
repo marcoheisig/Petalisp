@@ -326,7 +326,7 @@
     dimension N+1, return an index space whose first dimensions are taken
     from FROM, but with the last dimension of TO.")
   (:method :before ((from index-space) (to index-space))
-    (assert (= (1+ (dimension from)) (dimension to)))))
+    (assert (< (dimension from) (dimension to)))))
 
 (defgeneric equal? (a b)
   (:documentation
