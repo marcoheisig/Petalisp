@@ -74,10 +74,29 @@
 (defmethod graphviz-node-plist plist-union
     ((purpose data-flow-graph) (kernel kernel))
   `(:shape "box"
-    :fillcolor "skyblue"))
+    :fillcolor "skyblue"
+    :label
+    ,(destructuring-bind (ranges target write sources reads body)
+         (ulist-shallow-copy (blueprint kernel))
+       (format nil "
+ranges: ~A~%
+target: ~A~%
+write: ~A~%
+sources: ~A~%
+reads: ~A~%
+body: ~A"
+               ranges target write sources reads body))))
 
 (defmethod graphviz-edge-plist plist-union
     ((purpose data-flow-graph) (node-1 data-structure) (node-2 data-structure))
+  `(:dir "back"))
+
+(defmethod graphviz-edge-plist plist-union
+    ((purpose data-flow-graph) (node-1 kernel) (node-2 data-structure))
+  `(:dir "back"))
+
+(defmethod graphviz-edge-plist plist-union
+    ((purpose data-flow-graph) (node-1 data-structure) (node-2 kernel))
   `(:dir "back"))
 
 (defmethod graphviz-edge-plist plist-union
