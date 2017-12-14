@@ -35,3 +35,6 @@
         (-> a (τ (m n) (m 1 n)))
         (-> b (τ (n k) (1 k n))))))
 
+(defun norm (x)
+  (α #'sqrt (dot x x)))
+
