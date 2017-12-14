@@ -37,6 +37,7 @@
 
 (defun affine-transformation (&key input-dimension output-dimension
                                 input-constraints scaling translation permutation)
+  (declare (type (or array-length null) input-dimension output-dimension))
   ;; derive/check input and output dimension
   (macrolet
       ((register (place vector-or-number)
@@ -70,6 +71,7 @@
                      always (= i j))))
       (identity-transformation input-dimension)
       ;; otherwise create a suitable affine transformation
+      ;; TODO there is a vast potential for memoizing trivial arrays
       (let ((input-constraints
               (or input-constraints
                   (make-array input-dimension :initial-element nil)))

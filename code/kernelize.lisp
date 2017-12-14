@@ -258,15 +258,16 @@
     ;; references are relative to this space and therefore also
     ;; arbitrary. Since we want computationally equivalent kernels to have
     ;; the same blueprint, we need to normalize the iteration space.
-    (multiple-value-bind (iteration-space reads writes)
-        (normalize-iteration-space
+    (multiple-value-bind (iteration-space read-info write-info)
+        (normalized-memory-references
          iteration-space
+         source-ids
          transformations
-         (vector (to-storage target))) ;; TODO
+         (to-storage target))
       (make-instance 'kernel
         :target target
         :iteration-space iteration-space
-        ;;:unknown-operators unknown-operators
+        ;; TODO :unknown-operators unknown-operators
         :sources sources
         :blueprint
         (flet ((range-info (range)
@@ -274,17 +275,15 @@
                    (ulist (expt (floor lb) 2)
                           (expt (ceiling lb) 2)
                           (range-step range))))
-               (memory-reference-info (source-id transformation)
-                 (ulist* source-id (blueprint-indices transformation)))
                (storage-info (immediate)
                  (ulist
                   (element-type immediate)
                   (dimension immediate))))
           (ulist (map-ulist #'range-info (ranges iteration-space))
                  (storage-info target)
-                 (memory-reference-info 0 (elt writes 0))
+                 write-info
                  (map-ulist #'storage-info sources)
-                 (map-ulist #'memory-reference-info source-ids reads)
+                 read-info
                  body))))))
 
 (defun call-with-subtree-fragment-information
@@ -353,50 +352,45 @@
          :transformations transformations
          :body body)))))
 
-(defun normalize-iteration-space (iteration-space reads writes)
+(defun normalized-memory-references (iteration-space source-ids reads write)
   "Returns as multiple values
-1. a normalized iteration space
-2. normalized read transformations
-3. normalized write transformations"
+1. the normalized iteration space
+2. the blueprint of normalized read transformations
+3. the blueprint of normalized write transformations"
   (let ((iteration-ranges (ranges iteration-space))
         (dimension (dimension iteration-space)))
-    (let ((factors (map 'vector (constantly 1) iteration-ranges)))
-      (flet ((adapt-factors (transformation)
+    (let ((scaling (make-array dimension :initial-element 1))
+          (translation (map 'vector #'range-start iteration-ranges)))
+      (flet ((adapt-scaling (transformation)
                (map-transformation-into
-                transformation factors
+                transformation scaling
                 (lambda (a b factor)
                   (declare (ignore b))
                   (if (not (integerp a))
                       (lcm (denominator a) factor)
                       factor))
-                factors)))
-        (map nil #'adapt-factors reads)
-        (map nil #'adapt-factors writes))
+                scaling)))
+        (map nil #'adapt-scaling reads)
+        (adapt-scaling write))
       (let ((normalization
               (affine-transformation
                :input-dimension dimension
-               :translation (map 'vector #'range-start iteration-ranges)
-               :scaling factors)))
-        (flet ((normalize (transformation)
-                 (composition transformation normalization)))
+               :translation translation
+               :scaling scaling))
+            (buffer (make-array dimension)))
+        (flet ((normalize-reference (source-id transformation)
+                 (map-transformation-into
+                  transformation buffer
+                  (lambda (a2 b2 input-index a1 b1)
+                    (ulist input-index (* a2 a1) (+ (* a2 b1) b2)))
+                  (iota dimension) scaling translation)
+                 (ulist*
+                  source-id
+                  (reduce #'ucons buffer
+                          :from-end t
+                          :end (output-dimension transformation)
+                          :initial-value nil))))
           (values
            (funcall (inverse normalization) iteration-space)
-           (map 'vector #'normalize reads)
-           (map 'vector #'normalize writes)))))))
-
-(defgeneric blueprint-indices (transformation)
-  (:method ((transformation identity-transformation))
-    (let ((dimension (input-dimension transformation)))
-      (let (result)
-        (iterate
-          (for index from (1- dimension) downto 0)
-          (setf result (ulist* (ulist index 1 0) result)))
-        result)))
-  (:method ((transformation affine-transformation))
-    (let (result)
-      (iterate
-        (for column in-vector (spm-column-indices (linear-operator transformation)) downto 0)
-        (for value in-vector (spm-values (linear-operator transformation)) downto 0)
-        (for offset in-vector (translation transformation) downto 0)
-        (setf result (ulist* (ulist column value offset) result)))
-      result)))
+           (map-ulist #'normalize-reference source-ids reads)
+           (normalize-reference 0 write)))))))
