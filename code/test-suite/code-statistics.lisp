@@ -10,6 +10,18 @@
     (asdf:required-components
      (asdf:find-system system)))))
 
+(defun system-git-revision (system)
+  (uiop:with-current-directory
+      ((asdf:system-source-directory
+        (asdf:find-system system)))
+    (multiple-value-bind (output error-output exit-code)
+        (uiop:run-program
+         (list "git" "rev-parse" "HEAD")
+         :output '(:string :stripped t)
+         :ignore-error-status t)
+      (declare (ignore error-output))
+      (when (= 0 exit-code) output))))
+
 (defun print-system-statistics (system &optional (stream *standard-output*))
   (loop
     for pathname in (system-source-file-pathnames system)
@@ -38,3 +50,4 @@
           (machine-type))
   (format stream "~@[ ~a~]~%"
           (machine-version)))
+

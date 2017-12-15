@@ -48,7 +48,7 @@
                        (class-of condition))))
 
 (defmethod report-condition
-    ((condition application-to-arrays-of-different-shape) stream)
+    ((condition application-to-data-structures-of-different-shape) stream)
   (format stream
           "All arguments of an application must have the same shape,~@
            but the following arguments were given:~@

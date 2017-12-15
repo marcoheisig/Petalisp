@@ -293,6 +293,7 @@
   (print-platform-information)
   (print-system-statistics :petalisp)
   (print-package-statistics :petalisp-internals)
+  (format t "~&Git revision: ~a" (system-git-revision :petalisp))
   (let ((*on-error*   (if debug :debug *on-error*))
         (*on-failure* (if debug :debug *on-failure*)))
     (fiveam:run! 'petalisp)))
