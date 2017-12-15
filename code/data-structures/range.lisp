@@ -13,14 +13,14 @@
 
 (defun range (start step-or-end &optional end)
   "Return a normalized range. If END is specified, STEP-OR-END denotes the
-  step size. If not, the step size defaults to one and STEP-OR-END denotes
-  the interval end. If the specified end is not congruent to start with
-  respect to the step size, it is replaced by the next congruent integer
-  closer to start.
+step size. If not, the step size defaults to one and STEP-OR-END denotes
+the interval end. If the specified end is not congruent to start with
+respect to the step size, it is replaced by the next congruent integer
+closer to start.
 
-  After normalization, start will be the smallest integer of the range, end
-  the largest integer and step a non-negative integer. If start equals
-  end, step is unconditionally set to one."
+After normalization, start will be the smallest integer of the range, end
+the largest integer and step a non-negative integer. If start equals end,
+step is unconditionally set to one."
   (let ((end (or end step-or-end))
         (step (if end step-or-end 1)))
     (when (and (zerop step) (/= start end))

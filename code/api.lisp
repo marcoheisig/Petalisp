@@ -17,7 +17,7 @@ mismatch, the smaller objects are broadcast."
 
 (defun β (f g object &optional (order :up))
   "Reduce the last dimension of OBJECT with F, using G to convert single
-   values to the appropriate result type."
+values to the appropriate result type."
   (reduction f g (make-immediate object) order))
 
 (defun fuse (&rest objects)

@@ -20,6 +20,7 @@
     :serial t
     :components
     ((:file "packages")
+     (:file "conditions")
      (:module "utilities"
       :components
       ((:file "array-element-types")

@@ -29,7 +29,7 @@
 
 (defun from-storage-transformation (index-space)
   "Return a non-permuting, affine transformation from a zero based array
-   with step size one to the given INDEX-SPACE."
+with step size one to the given INDEX-SPACE."
   (let ((ranges (ranges index-space))
         (dimension (dimension index-space)))
     (affine-transformation

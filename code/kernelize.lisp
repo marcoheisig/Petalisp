@@ -39,7 +39,7 @@
 
 (defun kernelize (graph-roots)
   "Translate the data flow graph specified by the given GRAPH-ROOTS to a
-   graph of immediates and kernels. Return the roots of this new graph."
+graph of immediates and kernels. Return the roots of this new graph."
   (kernelize-subtrees
    (lambda (target root leaf-function)
      (setf (kernels target)
@@ -94,13 +94,13 @@
 
 (defun kernelize-subtrees (subtree-fn graph-roots)
   "Invoke SUBTREE-FN on each subtree in the graph spanned by the supplied
-   GRAPH-ROOTS. For each subtree, SUBTREE-FN receives the following
-   arguments:
-   1. The target immediate
-   2. The root of the tree in the data flow graph
-   3. A function, mapping each tree leaf to its corresponding immediate
+GRAPH-ROOTS. For each subtree, SUBTREE-FN receives the following arguments:
 
-   Return the sequence of immediates corresponding to the GRAPH-ROOTS."
+1. The target immediate
+2. The root of the tree in the data flow graph
+3. A function, mapping each tree leaf to its corresponding immediate
+
+Return the sequence of immediates corresponding to the GRAPH-ROOTS."
   (let ((critical-node-table (make-hash-table :test #'eq)))
     ;; Naively, CRITICAL-NODE-TABLE would simply contain an entry for each
     ;; critical node, mapping it to its corresponding immediate value. But
@@ -171,9 +171,9 @@
 ;;; from this subspace is free of fusion nodes.
 
 (defun subtree-fragment-index-spaces (root leaf-function)
-  "Return a partitioning of the index space of ROOT, whose elements
-   describe the maximal fusion-free paths through the subgraph from ROOT to
-   some leaves, as determined by the supplied LEAF-FUNCTION."
+  "Returns a partitioning of the index space of ROOT, whose elements
+describe the maximal fusion-free paths through the subgraph from ROOT to
+some leaves, as determined by the supplied LEAF-FUNCTION."
   (labels
       ;; walk the tree starting from ROOT, up to the leaves as determined
       ;; by LEAF-FUNCTION. RELEVANT-SPACE is a subspace of the index space
