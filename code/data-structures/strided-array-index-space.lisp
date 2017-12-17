@@ -55,8 +55,8 @@
                           ((unary-range? broadcast-range)
                            (setf (aref result-ranges dimension) range))
                           (t
-                           (error "Illegal broadcasting in dimension ~D of argument ~D."
-                                  dimension argument)))))
+                           (error 'no-common-broadcast-space
+                                  :data-structures (cons space more-spaces))))))
       (index-space result-ranges))))
 
 (defmethod difference ((space-1 strided-array-index-space)

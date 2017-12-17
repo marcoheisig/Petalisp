@@ -167,10 +167,7 @@ equivalent to an instance of class APPLICATION.")
     (assert (eq first-input (elt all-inputs 0)))
     (call-next-method))
   (:method :around ((function function) (first-input data-structure) (all-inputs sequence))
-    (assert (identical all-inputs :test #'equal? :key #'index-space) (all-inputs)
-            'application-to-arrays-of-different-shape
-            :operator function
-            :inputs all-inputs)
+    (assert (identical all-inputs :test #'equal? :key #'index-space))
     (call-next-method)))
 
 (defgeneric reduction (f g a order)
@@ -220,14 +217,14 @@ equivalent to an instance of class REFERENCE.")
   (:method :around ((data-structure data-structure)
                     (index-space index-space)
                     (transformation transformation))
-    ;; TODO
-    #+nil
-    (assert (and (= (dimension index-space) (dimension data-structure))
-                 (subspace? index-space (index-space data-structure)))
-            (data-structure index-space)
-            'reference-to-non-subspace
-            :data-structure data-structure
-            :index-space index-space)
+    (let ((relevant-space (funcall transformation index-space))
+          (input-space (index-space data-structure)))
+      (assert (and (= (dimension relevant-space) (dimension input-space))
+                   (subspace? relevant-space input-space))
+              (data-structure index-space)
+              'reference-to-non-subspace
+              :data-structure data-structure
+              :index-space index-space))
     (assert (= (dimension index-space) (input-dimension transformation))
             (transformation)
             'reference-with-transformation-of-invalid-dimension
@@ -249,7 +246,11 @@ equivalent to an instance of class REFERENCE.")
    "Return a broadcasting reference to the elements of OBJECT with the
 shape of SPACE.")
   (:method :before ((data-structure data-structure) (index-space index-space))
-    (assert (<= (dimension data-structure) (dimension index-space)))))
+    (assert (<= (dimension data-structure) (dimension index-space))
+            (data-structure index-space)
+            'broadcast-with-invalid-dimensions
+            :data-structure data-structure
+            :index-space index-space)))
 
 (defgeneric common-broadcast-space (space &rest more-spaces)
   (:documentation
