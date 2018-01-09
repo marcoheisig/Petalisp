@@ -16,6 +16,22 @@
   ()
   (:report report-condition))
 
+(defun write-symbol-as-sentence (symbol stream)
+  (let ((name (symbol-name symbol)))
+    ;; upcase the first letter
+    (write-char (char-upcase (aref name 0)) stream)
+    ;; replace all hyphens in the body
+    (loop for index from 1 below (length name) do
+      (let ((char (aref name index)))
+        (if (char= char #\-)
+            (write-char #\space stream)
+            (write-char (char-downcase char) stream))))
+    ;; write the trailing dot
+    (write-char #\. stream)))
+
+(defmethod report-condition ((condition petalisp-user-error) stream)
+  (write-symbol-as-sentence (class-name (class-of condition)) stream))
+
 (define-condition broadcast-with-invalid-dimensions
   (petalisp-user-error)
   ((%data-structure :initarg :data-structure :reader data-structure)
@@ -42,12 +58,3 @@
     (petalisp-user-error)
   ((%data-structure :initarg :data-structure :reader data-structure)
    (%transformation :initarg :transformation :reader transformation)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Condition Reporters
-
-(defmethod report-condition
-    ((condition petalisp-user-error) stream)
-  (format stream "~A" (class-name
-                       (class-of condition))))
