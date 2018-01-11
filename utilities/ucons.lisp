@@ -1,7 +1,7 @@
 ;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
 (uiop:define-package :petalisp/utilities/ucons
-  (:use :closer-common-lisp :alexandria :iterate)
+  (:use :closer-common-lisp :alexandria)
   (:export
    #:ucons #:ucar #:ucdr #:ucaar #:ucadr #:ucdar #:ucddr
    #:ulist #:ulist* #:ulength
@@ -218,20 +218,6 @@
              (declare (ignorable ,var))
              ,result))))))
 
-(defmacro-driver (FOR var IN-ULIST u &optional BY (step ''ucdr))
-  "All the elements of a ulist."
-  (with-gensyms (ulist)
-    `(progn
-       (with ,ulist = ,u)
-       (,(if generate 'generate 'for)
-        ,var next
-        (progn
-          (if (not ,ulist)
-              (terminate)
-              (prog1 (ucar ,ulist)
-                (setf ,ulist
-                      (funcall-form ,step ,ulist)))))))))
-
 (declaim (inline map-ulist))
 (defun map-ulist (function &rest sequences)
   (declare (function function))
@@ -256,8 +242,8 @@
 (defun ulength (ulist)
   "Return the length of the given ulist."
   (declare (ulist ulist) (optimize speed))
-  (iterate (for elt in-ulist ulist)
-           (counting t)))
+  (loop counting t
+        while (setf ulist (ucdr ulist))))
 
 (defun ulist-shallow-copy (ulist)
   "Return a list of the elements of ULIST."
