@@ -7,3 +7,4 @@
   :in-order-to ((test-op (test-op :petalisp-test-suite))))
 
 (register-system-packages "closer-mop" '(:closer-common-lisp))
+(register-system-packages "petalisp/core/api" '(:petalisp))

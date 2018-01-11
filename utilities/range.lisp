@@ -1,7 +1,10 @@
 ;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
 (uiop:define-package :petalisp/utilities/range
-  (:use :closer-common-lisp :alexandria)
+  (:use :closer-common-lisp :alexandria :iterate)
+  (:use
+   :petalisp/utilities/extended-euclid
+   :petalisp/utilities/generators)
   (:export
    #:range
    #:range?
@@ -10,10 +13,10 @@
    #:range-end
    #:range-difference
    #:range-intersection
+   #:range-intersection?
    #:range-fusion
    #:range-size
-   #:size-one-range?
-   #:range-intersection?))
+   #:size-one-range?))
 
 (in-package :petalisp/utilities/range)
 
@@ -156,7 +159,8 @@ intersect it (potentially violating MAX-EXTENT)."
                              (/ (- end start) (1- number-of-elements)))))
                (unless (integerp step) (fail))
                (let ((result (range start step end)))
-                 (when (notevery (λ range (range-intersection? range result)) ranges) (fail))
+                 (when (notevery (lambda (range) (range-intersection? range result)) ranges)
+                   (fail))
                  (return result))))))
 
 (defun range-intersection-start-step-end (range-1 range-2)

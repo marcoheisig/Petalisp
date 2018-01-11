@@ -4,9 +4,9 @@
   (:use :closer-common-lisp :alexandria)
   (:use
    :petalisp/utilities/all
-   :petalisp/core/petalisp
    :petalisp/core/transformations/all
-   :petalisp/core/data-structures/all)
+   :petalisp/core/data-structures/all
+   :petalisp/core/virtual-machines/virtual-machine)
   (:export
    #:reference-virtual-machine))
 

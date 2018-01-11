@@ -1,72 +1,36 @@
 ;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(uiop:define-package :petalisp/core/petalisp
+(uiop:define-package :petalisp/core/data-structures/data-structure
   (:use :closer-common-lisp :alexandria)
   (:use
-   :petalisp/utilities/all)
+   :petalisp/utilities/all
+   :petalisp/core/transformations/all
+   :petalisp/core/data-structures/index-space)
   (:export
-   #:index-space
-   #:transformation
    #:data-structure
+   #:element-type
+   #:inputs
+   #:input
+   #:refcount
    #:immediate   #:make-immediate #:make-immediate!
    #:application #:make-application
    #:reduction   #:make-reduction
    #:fusion      #:make-fusion
    #:reference   #:make-reference
-   #:kernel
-   #:virtual-machine
-
-   #:blueprint
-   #:target
-   #:sources
-   #:iteration-space
-   #:inputs
-   #:input
-   #:element-type
-   #:refcount
    #:broadcast
-   #:common-broadcast-space
-   #:composition
    #:corresponding-immediate
-   #:dimension
-   #:input-dimension
-   #:output-dimension
-   #:size
-   #:map-transformation-into
+   #:data-structure-equality
    #:shallow-copy
-   #:subspace?
-   #:index-space-intersection
-   #:index-space-intersection?
-   #:index-space-union
-   #:equal?
-   #:enlarge-index-space
-   #:enlarge-transformation
-   #:vm/schedule
-   #:subdivision
-   #:inverse
+   #:size
    #:storage
-   #:operator
-   #:unary-operator
-   #:binary-operator
    #:to-storage
    #:from-storage
-   #:kernels))
+   #:kernels
+   #:operator
+   #:unary-operator
+   #:binary-operator))
 
-(in-package :petalisp/core/petalisp)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Petalisp Vocabulary - Classes
-
-(define-class index-space () ()
-  (:documentation
-   "An index space of dimension D is a set of D-tuples i1,...,iD."))
-
-(define-class transformation (unary-funcallable-object) ()
-  (:metaclass funcallable-standard-class)
-  (:documentation
-   "A transformation is an analytically tractable function from indices to
-indices."))
+(in-package :petalisp/core/data-structures/data-structure)
 
 (define-class data-structure ()
   ((element-type :type type-specifier      :initform t)
@@ -147,32 +111,6 @@ index space and let T be a transformation from ΩB to ΩA. Then the reference
 of A by ΩB and T is a strided array that maps each index tuple k \in ΩB to
 A(T(k))."))
 
-(define-class kernel ()
-  ((target          :type immediate)
-   (blueprint       :type ulist)
-   (iteration-space :type list)
-   (sources         :type list))
-  (:documentation
-   "A kernel is the fundamental unit of work in Petalisp. It's BLUEPRINT
-describes how elements of the storage of TARGET can be computed by using
-elements of the storage of SOURCES. ITERATION-SPACE is a subspace of the
-index space of the storage of TARGET."))
-
-(defmethod initialize-instance :after ; reference counting
-    ((kernel kernel) &key &allow-other-keys)
-  (incf (refcount (target kernel))))
-
-(define-class virtual-machine () ()
-  (:documentation
-   "A virtual machine is an abstraction over a set of hardware
-resources. All handling of kernels --- such as performance analysis,
-compilation and execution --- is done in the context of a particular
-virtual machine."))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Petalisp Vocabulary - Data Structure Constructors
-
 (defgeneric make-immediate (data)
   (:documentation
    "Convert object to a Petalisp immediate with the same dimension, element
@@ -182,6 +120,12 @@ return it.")
   (:method ((object t))
     (make-immediate
      (make-array () :initial-element object :element-type (type-of object)))))
+
+(defgeneric make-immediate! (data-structure)
+  (:documentation
+   "Change the class of DATA-STRUCTURE to a suitable subclass of
+immediate.")
+  (:method ((immediate immediate)) immediate))
 
 (defgeneric make-application (function first-input all-inputs)
   (:documentation
@@ -204,13 +148,13 @@ return it.")
    "Return a -- potentially optimized and simplified -- data structure
 equivalent to an instance of class APPLICATION.")
   (:method-combination or)
-  (:method or ((function function) (first-input data-structure) (all-inputs list))
+  (:method or (function (first-input data-structure) (all-inputs list))
     (make-application function first-input all-inputs))
-  (:method :around ((function function) first-input (all-inputs sequence))
+  (:method :around (function first-input (all-inputs sequence))
     (assert (eq first-input (elt all-inputs 0)))
     (call-next-method))
-  (:method :around ((function function) (first-input data-structure) (all-inputs sequence))
-    (assert (identical all-inputs :test #'equal? :key #'index-space))
+  (:method :around (function (first-input data-structure) (all-inputs sequence))
+    (assert (identical all-inputs :test #'index-space-equality :key #'index-space))
     (call-next-method)))
 
 (defgeneric reduction (f g a order)
@@ -218,9 +162,9 @@ equivalent to an instance of class APPLICATION.")
    "Return a -- potentially optimized and simplified -- data structure
 equivalent to an instance of class REDUCTION.")
   (:method-combination or)
-  (:method or ((f function) (g function) (a data-structure) order)
+  (:method or (f g (a data-structure) order)
     (make-reduction f g a order))
-  (:method :around ((f function) (g function) (a data-structure) order)
+  (:method :around (f g (a data-structure) order)
     (assert (plusp (dimension a)) (a)
             'reduction-of-data-structure-with-dimension-zero
             :input a)
@@ -280,10 +224,6 @@ equivalent to an instance of class REFERENCE.")
                index-space
                (composition (transformation reference) transformation))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Petalisp Vocabulary - Generic Functions
-
 (defgeneric broadcast (data-structure index-space)
   (:documentation
    "Return a broadcasting reference to the elements of OBJECT with the
@@ -295,58 +235,20 @@ shape of SPACE.")
             :data-structure data-structure
             :index-space index-space)))
 
-(defgeneric common-broadcast-space (space &rest more-spaces)
-  (:documentation
-   "Return a space such that all objects whose index space is SPACE or in
-MORE-SPACES can be broadcast to this space. Signal an error if there is no
-such space."))
-
-(defgeneric composition (g f)
-  (:documentation
-   "Return g ∘ f, i.e. return a function whose application to some
-arguments is equivalent to the application of g to the result of the
-application of f to these arguments.")
-  (:method ((g function) (f function))
-    (alexandria:compose g f))
-  (:method :before ((g transformation) (f transformation))
-    (assert (= (input-dimension g) (output-dimension f)))))
-
 (defgeneric corresponding-immediate (data-structure)
   (:documentation
    "Return an immediate with the same shape and element type as
 DATA-STRUCTURE.")
   (:method ((immediate immediate)) immediate))
 
-(defgeneric make-immediate! (data-structure)
+(defgeneric data-structure-equality (data-structure-1 data-structure-2)
+  (:method-combination and)
   (:documentation
-   "Change the class of DATA-STRUCTURE to a suitable subclass of
-immediate.")
-  (:method ((immediate immediate))
-    immediate))
-
-(defgeneric map-transformation-into
-    (transformation result-sequence function &rest sequences)
-  (:documentation
-   "Destructively modify RESULT-SEQUENCE to contain the results of applying
-FUNCTION to the scaling, the offset and the corresponding input value of
-each element of SEQUENCES.
-
-Important: When the scaling is zero, the values of the corresponding input
-values are undefined.")
-  (:method :around ((transformation transformation)
-                    (result-sequence sequence)
-                    (function function)
-                    &rest sequences)
-    (assert (loop for sequence in sequences always (typep sequence 'sequence)))
-    (call-next-method)
-    result-sequence))
-
-(defgeneric difference (space-1 space-2)
-  (:documentation
-   "Return a list of index spaces that denote exactly those indices of
-SPACE-1 that are not indices of SPACE-2.")
-  (:method :before ((space-1 index-space) (space-2 index-space))
-    (assert (= (dimension space-1) (dimension space-2)))))
+   "Return whether the given data structures are equal.")
+  (:method and ((data-structure-1 data-structure)
+                (data-structure-2 data-structure))
+    (index-space-equality (index-space data-structure-1)
+                          (index-space data-structure-2))))
 
 (defgeneric dimension (object)
   (:documentation
@@ -362,90 +264,9 @@ SPACE-1 that are not indices of SPACE-2.")
   (:method ((data-structure data-structure))
     (dimension (index-space data-structure))))
 
-(defgeneric enlarge-transformation (transformation)
-  (:documentation
-   "Given a transformation mapping from (i1 ... iN) to (j1 ... jM),
-return a transformation mapping from (i1 ... iN iN+1) to
-(j1 ... jM iN+1)."))
-
-(defgeneric enlarge-index-space (from to)
-  (:documentation
-   "Given an index space FROM of dimension N and an index space TO of
-dimension N+1, return an index space whose first dimensions are taken from
-FROM, but with the last dimension of TO.")
-  (:method :before ((from index-space) (to index-space))
-    (assert (< (dimension from) (dimension to)))))
-
-(defgeneric equal? (a b)
-  (:documentation
-   "Two objects are EQUAL? if their use in Petalisp will always result in
-identical behavior.")
-  (:method ((a t) (b t)) (eql a b))
-  (:method ((a sequence) (b sequence)) (every #'equal? a b))
-  (:method ((a structure-object) (b structure-object)) (equalp a b)))
-
-(defgeneric generate (result-type &key &allow-other-keys)
-  (:documentation
-   "Return a single, random object of type RESULT-TYPE, with properties
-according to the supplied keyword arguments.")
-  (:method ((result-type symbol) &rest arguments)
-    (funcall (apply #'generator result-type arguments))))
-
-(defgeneric generator (result-type &key &allow-other-keys)
-  (:documentation
-   "Return a function that returns on each invocation a new, random object
-of type RESULT-TYPE, with properties according to the supplied keyword
-arguments."))
-
-(defmethod generic-unary-funcall :before ((transformation transformation)
-                                          (object index-space))
-  (assert (= (input-dimension transformation) (dimension object))))
-
-(defmethod index-space ((index-space index-space))
-  index-space)
-
-(defgeneric input-dimension (transformation)
-  (:documentation
-   "Return the dimension that an index space must have to be a valid
-argument for TRANSFORMATION.")
-  (:method ((A matrix)) (matrix-n A)))
-
-(defgeneric index-space-intersection (space-1 space-2)
-  (:documentation
-   "Return an index space containing all indices that occur both in SPACE-1
-and SPACE-2.")
-  (:method :before ((space-1 index-space) (space-2 index-space))
-    (assert (= (dimension space-1) (dimension space-2)))))
-
-(defgeneric index-space-intersection? (space-1 space-2)
-  (:documentation
-   "Return whether some indices occur both in SPACE-1 and SPACE-2.")
-  (:method :before ((space-1 index-space) (space-2 index-space))
-    (assert (= (dimension space-1) (dimension space-2))))
-  (:method (space-1 space-2)
-    (and (index-space-intersection space-1 space-2) t)))
-
-(defgeneric inverse (transformation)
-  (:documentation
-   "Return a transformation whose composition with the argument of this
-function is the identity transformation."))
-
-(defgeneric output-dimension (transformation)
-  (:documentation
-   "Return the dimension of index spaces returned by TRANSFORMATION.")
-  (:method ((A matrix)) (matrix-m A)))
-
-(defmethod print-object ((object data-structure) stream)
-  (print-unreadable-object (object stream :type t :identity t)
-    (princ (index-space object) stream)))
-
-(defmethod print-object ((object kernel) stream)
-  (print-unreadable-object (object stream :type t :identity t)
-    (princ (iteration-space object) stream)))
-
 (defgeneric shallow-copy (instance)
   (:documentation
-   "Make a copy of INSTANCE that is EQUAL? but not EQ to it.")
+   "Make a copy of INSTANCE that behaves similarly, but is not EQ to it.")
   (:method ((immediate immediate))
     (make-instance (class-of immediate)
       :index-space (index-space immediate)
@@ -468,6 +289,16 @@ function is the identity transformation."))
   (:method ((reference reference))
     (make-reference (input reference) (index-space reference) (transformation reference))))
 
+(defun input (object)
+  "Return the unique input of OBJECT."
+  (destructuring-bind (input) (inputs object) input))
+
+(defmethod reference or ((object data-structure)
+                         (space index-space)
+                         (transformation identity-transformation))
+  "Drop references with no effect."
+  (when (index-space-equality (index-space object) space) object))
+
 (defgeneric size (object)
   (:documentation
    "The size of a compound object, such as an array or hash-table, is the
@@ -477,48 +308,6 @@ number of its elements. All other objects have a size of 1.")
   (:method ((object hash-table)) (hash-table-count object))
   (:method ((object data-structure)) (size (index-space object))))
 
-(defgeneric subspace? (space-1 space-2)
-  (:documentation
-   "Return true if every index in SPACE-1 also occurs in SPACE-2.")
-  (:method ((space-1 t) (space-2 t))
-    (equal? space-1 (index-space-intersection space-1 space-2))))
-
-(defgeneric index-space-union (set &rest more-sets)
-  (:documentation
-   "Return the set of all elements of all supplied sets."))
-
-(defgeneric vm/schedule (virtual-machine targets recipes)
-  (:documentation
-   "Instruct VIRTUAL-MACHINE to compute all given GRAPH-ROOTS
-asynchronously. Return an object of type REQUEST that can be used to block
-until the task is complete.")
-  (:method :before ((virtual-machine virtual-machine) (targets sequence) (recipes sequence))
-    (assert (every #'immediate? targets))
-    (assert (every #'data-structure? recipes))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Petalisp Vocabulary - Non-generic Functions
-
-(defun input (object)
-  "Return the unique input of OBJECT."
-  (destructuring-bind (input) (inputs object) input))
-
-(defun subdivision (objects)
-  "Return a list of disjoint objects. Each resulting object is a proper
-subspace of one or more of the arguments and their fusion covers all
-arguments."
-  (flet ((shatter (dust object) ; dust is a list of disjoint objects
-           (let* ((object-w/o-dust (list object))
-                  (new-dust
-                    (loop for particle in dust do
-                      (setf object-w/o-dust
-                            (loop for x in object-w/o-dust
-                                  append (difference x particle)))
-                          append (difference particle object)
-                          when (index-space-intersection particle object) collect it)))
-             (append object-w/o-dust new-dust))))
-    (cond ((emptyp objects) nil)
-          ((= 1 (length objects)) (list (elt objects 0)))
-          (t (reduce #'shatter objects :initial-value nil)))))
-
+(defmethod print-object ((object data-structure) stream)
+  (print-unreadable-object (object stream :type t :identity t)
+    (princ (index-space object) stream)))

@@ -4,10 +4,15 @@
   (:use :closer-common-lisp :alexandria :iterate)
   (:use
    :petalisp/utilities/all
-   :petalisp/core/petalisp
    :petalisp/core/data-structures/all
    :petalisp/core/transformations/all)
-  (:export #:kernelize))
+  (:export
+   #:kernel
+   #:target
+   #:blueprint
+   #:iteration-space
+   #:sources
+   #:kernelize))
 
 (in-package :petalisp/core/kernelize)
 
@@ -45,6 +50,25 @@
 ;;;
 ;;; Once every critical node and index space thereof has been processed,
 ;;; the algorithm terminates.
+
+(define-class kernel ()
+  ((target          :type immediate)
+   (blueprint       :type ulist)
+   (iteration-space :type list)
+   (sources         :type list))
+  (:documentation
+   "A kernel is the fundamental unit of work in Petalisp. It's BLUEPRINT
+describes how elements of the storage of TARGET can be computed by using
+elements of the storage of SOURCES. ITERATION-SPACE is a subspace of the
+index space of the storage of TARGET."))
+
+(defmethod initialize-instance :after ; reference counting
+    ((kernel kernel) &key &allow-other-keys)
+  (incf (refcount (target kernel))))
+
+(defmethod print-object ((object kernel) stream)
+  (print-unreadable-object (object stream :type t :identity t)
+    (princ (iteration-space object) stream)))
 
 (defun kernelize (graph-roots)
   "Translate the data flow graph specified by the given GRAPH-ROOTS to a
@@ -280,9 +304,9 @@ some leaves, as determined by the supplied LEAF-FUNCTION."
         :sources sources
         :blueprint
         (flet ((range-info (range)
-                 (let ((lb (log (size range) 2)))
-                   (ulist (expt (floor lb) 2)
-                          (expt (ceiling lb) 2)
+                 (let ((lb (floor (log (range-size range) 2))))
+                   (ulist (expt 2 lb)
+                          (expt 2 (1+ lb))
                           (range-step range))))
                (storage-info (immediate)
                  (ulist
@@ -324,7 +348,7 @@ some leaves, as determined by the supplied LEAF-FUNCTION."
                  (application
                   (flet ((traverse-input (input)
                            (traverse input relevant-space transformation)))
-                    (ulist* 'call (operator node) (map-ulist #'traverse-input (inputs node)))))
+                    (ulist* 'funcall (operator node) (map-ulist #'traverse-input (inputs node)))))
                  ;; increase the iteration space on each reduction
                  (reduction
                   (vector-push-extend (last-elt (ranges (index-space (input node)))) ranges)

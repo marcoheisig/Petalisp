@@ -5,4 +5,4 @@
   :class :package-inferred-system
   :depends-on ("petalisp/test-suite/test-suite")
   :perform
-  (test-op (o c) (symbol-call "PETALISP-TEST-SUITE" "RUN-TEST-SUITE")))
+  (test-op (o c) (symbol-call "PETALISP/TEST-SUITE/TEST-SUITE" "RUN-TEST-SUITE")))

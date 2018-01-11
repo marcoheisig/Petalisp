@@ -3,8 +3,10 @@
 (uiop:define-package :petalisp/utilities/all
   (:use-reexport
    :petalisp/utilities/atomic-types
+   :petalisp/utilities/code-statistics
    :petalisp/utilities/extended-euclid
    :petalisp/utilities/function-lambda-lists
+   :petalisp/utilities/generators
    :petalisp/utilities/generic-funcallable-object
    :petalisp/utilities/graphviz
    :petalisp/utilities/macros

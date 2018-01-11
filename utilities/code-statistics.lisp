@@ -1,6 +1,15 @@
-;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
+;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(in-package :petalisp-test-suite)
+(uiop:define-package :petalisp/utilities/code-statistics
+  (:use :closer-common-lisp :alexandria)
+  (:export
+   #:system-source-file-pathnames
+   #:system-git-revision
+   #:print-system-statistics
+   #:print-package-statistics
+   #:print-platform-information))
+
+(in-package :petalisp/utilities/code-statistics)
 
 (defun system-source-file-pathnames (system)
   (mapcar

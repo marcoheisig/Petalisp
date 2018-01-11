@@ -4,8 +4,10 @@
   (:use :closer-common-lisp :alexandria)
   (:use
    :petalisp/utilities/all
-   :petalisp/core/petalisp)
-  (:export #:identity-transformation))
+   :petalisp/core/transformations/transformation)
+  (:export
+   #:identity-transformation
+   #:identity-transformation?))
 
 (in-package :petalisp/core/transformations/identity-transformation)
 
@@ -22,10 +24,7 @@
 (defmethod composition ((g transformation) (f identity-transformation)) g)
 
 (defmethod enlarge-transformation ((transformation identity-transformation))
-  (identity-transformation (1+ (dimension transformation))))
-
-(defmethod equal? ((a identity-transformation) (b identity-transformation))
-  (= (dimension a) (dimension b)))
+  (identity-transformation (1+ (input-dimension transformation))))
 
 (defmethod generic-unary-funcall ((operator identity-transformation)
                                   (argument t))
@@ -49,8 +48,3 @@
     (format stream "~:<τ~2I ~:<~{i~D~^ ~:_~}~:> ~_~:<~{i~D~^ ~:_~}~:>~:>"
             (list (list indices) (list indices)))))
 
-(defmethod reference or ((object data-structure)
-                         (space index-space)
-                         (transformation identity-transformation))
-  "Drop references with no effect."
-  (when (equal? (index-space object) space) object))

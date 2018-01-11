@@ -2,11 +2,11 @@
 
 (in-package :common-lisp-user)
 
-(defpackage :petalisp-test-suite/examples/red-black-gauss-seidel
+(defpackage :petalisp/examples/red-black-gauss-seidel
   (:use :cl :petalisp)
   (:export #:red-black-gauss-seidel))
 
-(in-package :petalisp-test-suite/examples/red-black-gauss-seidel)
+(in-package :petalisp/examples/red-black-gauss-seidel)
 
 (defun red-black-gauss-seidel (u &key (iterations 1)
                                    (h (/ (1- (expt (size u) (/ (dimension u))))))

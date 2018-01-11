@@ -1,6 +1,25 @@
-;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
+;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(in-package :petalisp-internals)
+(uiop:define-package :petalisp/utilities/generators
+  (:use :closer-common-lisp :alexandria)
+  (:export
+   #:generate-instance
+   #:generator))
+
+(in-package :petalisp/utilities/generators)
+
+(defgeneric generate-instance (result-type &key &allow-other-keys)
+  (:documentation
+   "Return a single, random object of type RESULT-TYPE, with properties
+according to the supplied keyword arguments.")
+  (:method ((result-type symbol) &rest arguments)
+    (funcall (apply #'generator result-type arguments))))
+
+(defgeneric generator (result-type &key &allow-other-keys)
+  (:documentation
+   "Return a function that returns on each invocation a new, random object
+of type RESULT-TYPE, with properties according to the supplied keyword
+arguments."))
 
 (defmethod generator ((result-type (eql 'integer))
                       &key (minimum -1000) (maximum 1000))

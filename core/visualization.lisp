@@ -4,9 +4,9 @@
   (:use :closer-common-lisp :alexandria)
   (:use
    :petalisp/utilities/all
-   :petalisp/core/petalisp
    :petalisp/core/transformations/all
-   :petalisp/core/data-structures/all))
+   :petalisp/core/data-structures/all
+   :petalisp/core/kernelize))
 
 (in-package :petalisp/core/visualization)
 

@@ -2,6 +2,8 @@
 
 (uiop:define-package :petalisp/core/data-structures/all
   (:use-reexport
+   :petalisp/core/data-structures/index-space
+   :petalisp/core/data-structures/data-structure
    :petalisp/core/data-structures/strided-array
    :petalisp/core/data-structures/strided-array-index-space
    :petalisp/core/data-structures/strided-array-immediate))

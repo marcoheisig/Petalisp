@@ -11,25 +11,19 @@
 (defvar *function-designator-inferrers* (make-hash-table :test #'eq)
   "A hash table, mapping function designators to type inferrers.")
 
-(defun register-type-inference-function (function-designator inference-function)
+(defun register-type-inference-function (symbol inference-function)
+  (check-type symbol symbol)
   (check-type inference-function function)
-  (flet ((make-inferrer (second-argument)
-           (lambda (argument-types)
-             (values (funcall inference-function argument-types)
-                     second-argument)))
-         (register (key value)
+  (flet ((register (key value)
            (setf (gethash key *function-designator-inferrers*) value)))
-    (etypecase function-designator
-      (function
-       (register function-designator (make-inferrer function-designator)))
-      (symbol
-       (let* ((symbol function-designator)
-              (function (if (fboundp symbol)
-                            (symbol-function symbol)
-                            (error "Not a function designator: ~A" symbol)))
-              (inferrer (make-inferrer symbol)))
+    (let ((function (if (fboundp symbol)
+                        (symbol-function symbol)
+                        (error "Not a function designator: ~A" symbol)))
+          (inferrer
+            (lambda (argument-types)
+              (values symbol (funcall inference-function argument-types)))))
          (register symbol inferrer)
-         (register function inferrer))))))
+         (register function inferrer))))
 
 (defun infer-function-designator-and-type (function-designator argument-types)
    "Return a supertype of all possible results of applying OPERATOR to
@@ -48,4 +42,4 @@ Examples:
 => bit, *"
   (if-let ((inferrer (gethash function-designator *function-designator-inferrers*)))
     (funcall inferrer argument-types)
-    (values t function-designator)))
+    (values function-designator t)))

@@ -10,11 +10,11 @@
    #:matrix-product
    #:matrix-sum
    #:matrix-inverse
-   #:matrix-identity?
    #:scaled-permutation-matrix
    #:scaled-permutation-matrix?
    #:spm-column-indices
-   #:spm-values))
+   #:spm-values
+   #:identity-matrix?))
 
 (in-package :petalisp/utilities/matrix)
 
@@ -23,8 +23,6 @@
 (defgeneric matrix-sum (A B))
 
 (defgeneric matrix-inverse (M))
-
-(defgeneric matrix-identity? (M))
 
 (defstruct (matrix
             (:constructor nil)

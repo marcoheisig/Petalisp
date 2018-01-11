@@ -4,6 +4,7 @@
   (:use :closer-common-lisp :alexandria :iterate)
   (:use :petalisp/utilities/all)
   (:use-reexport
+   :petalisp/core/transformations/transformation
    :petalisp/core/transformations/affine-transformation
    :petalisp/core/transformations/identity-transformation)
   (:export #:classify-transformation #:τ))
@@ -22,9 +23,9 @@
           ;; vector pointing to the individual conses of ARGS for fast random
           ;; access.
           (arg-conses (make-array input-dimension)))
-      (iterate (for arg-cons on args)
-               (for i from 0)
-               (setf (aref arg-conses i) arg-cons))
+      (loop for arg-cons on args
+            for i from 0 do
+              (setf (aref arg-conses i) arg-cons))
       ;; Initially x is the zero vector (except for input constraints, which
       ;; are ignored by A), so f(x) = Ax + b = b
       (let* ((translation (multiple-value-call #'vector (apply f args)))

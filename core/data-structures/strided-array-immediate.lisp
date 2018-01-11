@@ -4,8 +4,9 @@
   (:use :closer-common-lisp :alexandria)
   (:use
    :petalisp/utilities/all
-   :petalisp/core/petalisp
    :petalisp/core/transformations/all
+   :petalisp/core/data-structures/index-space
+   :petalisp/core/data-structures/data-structure
    :petalisp/core/data-structures/strided-array
    :petalisp/core/data-structures/strided-array-index-space)
   (:export
@@ -37,6 +38,10 @@
   (make-instance 'strided-array-immediate
     :element-type (element-type strided-array)
     :index-space (index-space strided-array)))
+
+(defmethod data-structure-equality and ((a strided-array-immediate)
+                                        (b strided-array-immediate))
+  (equalp (storage a) (storage b)))
 
 (defun from-storage-transformation (index-space)
   "Return a non-permuting, affine transformation from a zero based array

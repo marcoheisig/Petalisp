@@ -5,7 +5,6 @@
   (:use :closer-common-lisp :alexandria)
   (:use
    :petalisp/utilities/all
-   :petalisp/core/petalisp
    :petalisp/core/transformations/all
    :petalisp/core/data-structures/all
    :petalisp/core/virtual-machines/all
@@ -58,6 +57,7 @@ to represent the fusion."
 (defun fuse* (&rest objects)
   "Combine OBJECTS into a single petalisp data structure. When some OBJECTS
 overlap partially, the value of the rightmost object is used."
+  (declare (optimize (debug 3)))
   (let ((objects (mapcar #'make-immediate objects)))
     (flet ((reference-origin (piece)
              (reference

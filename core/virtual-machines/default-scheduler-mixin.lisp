@@ -4,10 +4,10 @@
   (:use :closer-common-lisp :alexandria :iterate)
   (:use
    :petalisp/utilities/all
-   :petalisp/core/petalisp
-   :petalisp/core/kernelize
    :petalisp/core/transformations/all
-   :petalisp/core/data-structures/all)
+   :petalisp/core/data-structures/all
+   :petalisp/core/kernelize
+   :petalisp/core/virtual-machines/virtual-machine)
   (:export
    #:default-scheduler-mixin
    #:vm/bind-memory

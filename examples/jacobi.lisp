@@ -2,11 +2,11 @@
 
 (in-package :common-lisp-user)
 
-(defpackage :petalisp-test-suite/examples/jacobi
+(defpackage :petalisp/examples/jacobi
   (:use :cl :petalisp)
   (:export #:jacobi))
 
-(in-package :petalisp-test-suite/examples/jacobi)
+(in-package :petalisp/examples/jacobi)
 
 (defun jacobi (u &key (iterations 1)
                    (h (/ (1- (expt (size u) (/ (dimension u))))))

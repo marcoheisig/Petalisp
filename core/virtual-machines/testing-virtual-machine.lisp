@@ -4,9 +4,11 @@
   (:use :closer-common-lisp :alexandria)
   (:use
    :petalisp/utilities/all
-   :petalisp/core/petalisp
    :petalisp/core/transformations/all
-   :petalisp/core/data-structures/all))
+   :petalisp/core/data-structures/all
+   :petalisp/core/virtual-machines/virtual-machine)
+  (:export
+   #:testing-virtual-machine))
 
 (in-package :petalisp/core/virtual-machines/testing-virtual-machine)
 
@@ -30,7 +32,8 @@
                    (wait (vm/schedule vm targets recipes))
                    targets))
                (virtual-machines vm))))
-    (unless (identical results :test #'equal?)
+    (unless (identical results :test (lambda (v1 v2)
+                                       (every (lambda (a b) (data-structure-equality a b)) v1 v2)))
       (error "Different virtual machines compute different results for the same recipes:~%~A"
              results))
     (loop for target across targets

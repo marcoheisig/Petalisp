@@ -4,9 +4,10 @@
   (:use :closer-common-lisp :alexandria)
   (:use
    :petalisp/utilities/all
-   :petalisp/core/petalisp
    :petalisp/core/transformations/all
    :petalisp/core/data-structures/all
+   :petalisp/core/kernelize
+   :petalisp/core/virtual-machines/virtual-machine
    :petalisp/core/virtual-machines/compile-cache-mixin
    :petalisp/core/virtual-machines/default-scheduler-mixin)
   (:export
@@ -22,7 +23,7 @@
     ((virtual-machine common-lisp-virtual-machine)
      (immediate strided-array-immediate))
   (let ((array-dimensions
-          (map 'list #'size (ranges (index-space immediate))))
+          (map 'list #'range-size (ranges (index-space immediate))))
         (element-type (element-type immediate)))
     (setf (storage immediate)
           (or
@@ -118,12 +119,17 @@
                               with accumulator
                                 = (let ((,(index-symbol depth) (range-start ,(range-symbol depth))))
                                     (declare (ignorable ,(index-symbol depth)))
-                                    (funcall ,unary-operator ,body))
+                                    ,(if (symbolp unary-operator)
+                                         `(unary-operator ,body)
+                                         `(funcall ,unary-operator ,body)))
                               for ,(index-symbol depth)
                               from (+ (range-start ,(range-symbol depth)) ,range-step)
                                 to (range-end ,(range-symbol depth))
                               by ,range-step
-                              do (setf accumulator (funcall ,binary-operator ,body accumulator))
+                              do (setf accumulator
+                                       ,(if (symbolp binary-operator)
+                                            `(,binary-operator ,body accumulator)
+                                            `(funcall ,binary-operator ,body accumulator)))
                               finally (return accumulator))))
                        (translate (form depth)
                          (if (integerp form)
@@ -134,10 +140,13 @@
                                     (rest form)
                                   (reducing-for depth binary-operator unary-operator
                                                 (translate body (1+ depth)))))
-                               (call
+                               (funcall
                                 (flet ((recurse (input)
                                          (translate input depth)))
-                                  `(funcall ,(second form) ,@(mapcar #'recurse (cddr form)))))))))
+                                  (let ((operator (second form)))
+                                    (if (symbolp operator)
+                                        `(,operator ,@(mapcar #'recurse (cddr form)))
+                                        `(funcall ,(second form) ,@(mapcar #'recurse (cddr form)))))))))))
                     (for* (iota target-dimension)
                           `(setf ,(translate-target-reference target-reference)
                                  ,(translate body target-dimension))))))))))))

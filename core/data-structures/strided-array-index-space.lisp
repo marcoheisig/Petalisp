@@ -4,11 +4,14 @@
   (:use :closer-common-lisp :alexandria :iterate)
   (:use
    :petalisp/utilities/all
-   :petalisp/core/petalisp
-   :petalisp/core/transformations/all)
+   :petalisp/core/transformations/all
+   :petalisp/core/data-structures/data-structure
+   :petalisp/core/data-structures/index-space)
   (:export
    #:strided-array-index-space
-   #:ranges))
+   #:ranges
+   #:σ
+   #:σ*))
 
 (in-package :petalisp/core/data-structures/strided-array-index-space)
 
@@ -60,7 +63,7 @@
                         (for broadcast-range in-vector result-ranges)
                         (for dimension from 0)
                         (cond
-                          ((equal? range broadcast-range)) ; NOP
+                          ((equalp range broadcast-range)) ; NOP
                           ((size-one-range? range)) ; NOP
                           ((size-one-range? broadcast-range)
                            (setf (aref result-ranges dimension) range))
@@ -69,7 +72,7 @@
                                   :data-structures (cons space more-spaces))))))
       (index-space result-ranges))))
 
-(defmethod difference ((space-1 strided-array-index-space)
+(defmethod index-space-difference ((space-1 strided-array-index-space)
                        (space-2 strided-array-index-space))
   (if-let ((intersection (index-space-intersection space-1 space-2)))
     (iterate outer
@@ -96,8 +99,8 @@
     (replace new-ranges (ranges from))
     (index-space new-ranges)))
 
-(defmethod equal? ((object-1 strided-array-index-space)
-                   (object-2 strided-array-index-space))
+(defmethod index-space-equality ((object-1 strided-array-index-space)
+                                 (object-2 strided-array-index-space))
   (and (= (dimension object-1) (dimension object-2))
        (every #'equalp
               (ranges object-1)
@@ -188,7 +191,7 @@
   (spaces-to-fuse))
 
 (defun fuse-recursively (spaces)
-  (unless (every (composition #'zerop #'dimension) spaces)
+  (unless (zerop (dimension (first spaces)))
     (let* ((fusion-islands
              (mapcar
               (lambda (space)
@@ -204,7 +207,7 @@
       (let ((results (mapcar
                       (compose #'fuse-recursively #'spaces-to-fuse)
                       islands)))
-        (assert (identical results :test #'equal? :key #'first))
+        (assert (identical results :test #'equalp :key #'first))
         (cons (range-fusion
                (mapcar
                 (lambda (x)
@@ -220,8 +223,8 @@
                     :spaces-to-fuse (cl:union (spaces-to-fuse space-1)
                                               (spaces-to-fuse space-2))))))
 
-(defmethod difference :around ((space-1 fusion-island)
-                               (space-2 fusion-island))
+(defmethod index-space-difference :around ((space-1 fusion-island)
+                                           (space-2 fusion-island))
   (let ((result (call-next-method)))
     (mapcar
      (lambda (x)

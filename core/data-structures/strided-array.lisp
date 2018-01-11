@@ -4,9 +4,10 @@
   (:use :closer-common-lisp :alexandria :iterate)
   (:use
    :petalisp/utilities/all
-   :petalisp/core/petalisp
    :petalisp/core/transformations/all
    :petalisp/core/type-inference/all
+   :petalisp/core/data-structures/index-space
+   :petalisp/core/data-structures/data-structure
    :petalisp/core/data-structures/strided-array-index-space)
   (:export
    #:strided-array
@@ -32,7 +33,7 @@
 
 (define-class strided-array-reference (strided-array reference) ())
 
-(defmethod make-application ((operator function) (first-input strided-array) inputs)
+(defmethod make-application (operator (first-input strided-array) inputs)
   (multiple-value-bind (function-designator element-type)
       (let ((argument-types (mapcar #'element-type inputs)))
         (infer-function-designator-and-type operator argument-types))
@@ -90,7 +91,7 @@
                        (setf (aref permutation index) index)
                        (cond ((size-one-range? output-range)
                               (setf (aref translation index) (range-start output-range)))
-                             ((equal? input-range output-range)
+                             ((equalp input-range output-range)
                               (setf (aref scaling index) 1))))
               (affine-transformation
                :output-dimension output-dimension
@@ -99,7 +100,3 @@
                :scaling scaling
                :translation translation)))))
     (reference object space transformation)))
-
-(defmethod equal? ((a strided-array) (b strided-array))
-  (and (equal? (index-space a) (index-space b))
-       (equalp (storage a) (storage b))))

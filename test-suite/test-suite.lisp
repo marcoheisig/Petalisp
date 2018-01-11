@@ -1,6 +1,19 @@
-;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
+;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(in-package :petalisp-test-suite)
+(uiop:define-package :petalisp/test-suite/test-suite
+  (:use :closer-common-lisp :alexandria :fiveam)
+  (:use
+   :petalisp/utilities/all
+   :petalisp/core/data-structures/all
+   :petalisp/core/transformations/all
+   :petalisp/examples/jacobi
+   :petalisp/examples/red-black-gauss-seidel
+   :petalisp/examples/linear-algebra
+   :petalisp)
+  (:export
+   #:run-test-suite))
+
+(in-package :petalisp/test-suite/test-suite)
 
 (in-suite* petalisp)
 
@@ -76,41 +89,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Transformations
-
-(test identity-transformation
-  (let ((τ (τ (a b) (a b))))
-    (is (identity-transformation? τ))
-    (is (= 2 (input-dimension τ) (output-dimension τ))))
-  (let ((τ (τ (a b c d) (a b (ash (* 2 c) -1) (+ d 0)))))
-    (is (identity-transformation? τ))
-    (is (= 4 (input-dimension τ) (output-dimension τ))))
-  (for-all ((dimension (generator 'integer :minimum 0 :maximum 200)))
-    (let ((τ (identity-transformation dimension)))
-      (is (identity-transformation? τ))
-      (is (equal? τ τ))
-      (is (equal? τ (inverse τ)))
-      (is (equal? τ (composition τ τ))))))
-
-(test affine-transformation
-  (dolist (τ (list (τ (m n) (n m))
-                   (τ (m) ((* 2 m)))
-                   (τ (m) ((/ (+ (* 90 (+ 2 m)) 15) 2)))
-                   (τ (m) (m 1 2 3))
-                   (τ (m) (5 9 m 2))
-                   (τ (0 n 0) (n))
-                   (τ (i j 5) (i j))))
-    (let ((τ-inv (inverse τ)))
-      (is (affine-transformation? τ))
-      (is (equal? τ (inverse τ-inv)))
-      (when (and (every #'null (input-constraints τ))
-                 (every #'null (input-constraints τ-inv)))
-        (is (equal? (composition τ-inv τ)
-                    (identity-transformation
-                     (input-dimension τ))))))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
 ;;; Ranges
 
 (test |(generator 'range)|
@@ -126,7 +104,7 @@
   (for-all ((a (generator 'range :max-extent 100)))
     (for-all ((b (generator 'range :max-extent 100
                                   :intersecting a)))
-      (is (equal? a (range-fusion
+      (is (equalp a (range-fusion
                      (cons
                       (range-intersection a b)
                       (range-difference a b))))))))
@@ -137,8 +115,8 @@
       (for-all ((b (generator 'range :max-extent 10000
                                      :intersecting a)))
         (let ((intersection (range-intersection a b)))
-          (is-true (range-subspace? intersection a))
-          (is-true (range-subspace? intersection b))
+          (is-true (range-intersection? intersection a))
+          (is-true (range-intersection? intersection b))
           (is (not (range-difference intersection a)))
           (is (not (range-difference intersection b))))))))
 
@@ -151,14 +129,14 @@
     (is (range? (range start step end)))
     (is (= (range-size (range start step end))
            (1+ (floor (abs (- start end)) (abs step)))))
-    (is (equal? (range start step end)
+    (is (equalp (range start step end)
                 (range start (- step) end)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Strided Array Index Spaces
 
-(test |(difference strided-array-index-space)|
+(test |(index-space-difference strided-array-index-space)|
   (let ((fiveam::*num-trials* (ceiling (sqrt fiveam::*num-trials*))))
     (for-all ((a (generator 'strided-array-index-space
                             :dimension 3
@@ -167,21 +145,21 @@
                               :dimension 3
                               :intersecting a
                               :max-extent 40)))
-        (is (equal? a (apply #'union
-                             (intersection a b)
-                             (difference a b))))))))
+        (is (index-space-equality a (apply #'index-space-union
+                                           (index-space-intersection a b)
+                                           (index-space-difference a b))))))))
 
-(test |(intersection strided-array-index-space)|
+(test |(index-space-intersection strided-array-index-space)|
   (flet ((? (a b result)
-           (is (equal? result (intersection a b)))))
+           (is (index-space-equality result (index-space-intersection a b)))))
     (?  (σ) (σ) (σ))
     (? (σ (0 9) (0 9)) (σ (2 10) (2 10)) (σ (2 9) (2 9)))
     (? (σ (1 2 3) (0 3 6)) (σ (1 1 3) (0 2 6)) (σ (1 2 3) (0 6 6)))))
 
 (test |(generic-unery-funcall affine-transformation strided-array-index-space)|
   (flet ((? (object transformation result)
-           (is (equal? result (funcall transformation object)))
-           (is (equal? object (funcall (inverse transformation) result)))))
+           (is (index-space-equality result (funcall transformation object)))
+           (is (index-space-equality object (funcall (inverse transformation) result)))))
     (? (σ (1 1 1)) (τ (m) ((1+ m)))
        (σ (2 1 2)))
     (? (σ (0 9) (0 5)) (τ (m n) (n m))
@@ -209,11 +187,11 @@
                (when (> (length result) 1)
                  (map-combinations
                   (lambda (x)
-                    (push (apply #'intersection x) intersections))
+                    (push (apply #'index-space-intersection x) intersections))
                   result :length 2))
                (is (every #'null intersections)))
              ;; check for coverage
-             (let ((union (apply #'union result)))
+             (let ((union (apply #'index-space-union result)))
                (is-true (every (lambda (x) (subspace? x union)) args))))))
     (? (σ (1 1 4)) (σ (1 2 5)))
     (? (σ (1 1 10) (1 1 10))
@@ -235,9 +213,9 @@
 
 (defun ndarray (n &optional (length 10))
   "Create a LENGTH^N array of double floats."
-  (generate 'array
-            :element-type 'double-float
-            :dimensions (make-list n :initial-element length)))
+  (generate-instance 'array
+                     :element-type 'double-float
+                     :dimensions (make-list n :initial-element length)))
 
 (defmacro with-testing-virtual-machine (&body body)
   `(call-with-testing-virtual-machine
@@ -292,7 +270,7 @@
   (format t "~&== Testing Petalisp ==~%")
   (print-platform-information)
   (print-system-statistics :petalisp)
-  (print-package-statistics :petalisp-internals)
+  (print-package-statistics :petalisp)
   (format t "~&Git revision: ~a" (system-git-revision :petalisp))
   (let ((*on-error*   (if debug :debug *on-error*))
         (*on-failure* (if debug :debug *on-failure*)))

@@ -1,12 +1,14 @@
 ;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
 (uiop:define-package :petalisp/core/transformations/affine-transformation
-  (:use :closer-common-lisp :alexandria :iterate)
+  (:use :closer-common-lisp :alexandria)
   (:use
    :petalisp/utilities/all
+   :petalisp/core/transformations/transformation
    :petalisp/core/transformations/identity-transformation)
   (:export
    #:affine-transformation
+   #:affine-transformation?
    #:invertible?
    #:linear-operator
    #:input-constraints
@@ -159,15 +161,6 @@
           "Incompatibe shapes:~%  ~S~%  ~S~%  ~S~%"
           input-constraints linear-operator translation))
 
-(defmethod equal? ((t1 affine-transformation)
-                   (t2 affine-transformation))
-  (and (equalp (input-constraints t1)
-               (input-constraints t2))
-       (equalp (translation t1)
-               (translation t2))
-       (equal? (linear-operator t1)
-               (linear-operator t2))))
-
 (defmethod composition :around ((g affine-transformation) (f affine-transformation))
   (with-memoization ((cons f g) :test #'equal)
     (call-next-method)))
@@ -215,19 +208,19 @@
                                        :element-type '(or null integer))))
     ;; the new input constraints are the values of b whenever the
     ;; corresponding row of A is zero
-    (iterate (for value in-vector (spm-values A))
-             (for translation in-vector b)
-             (for row-index from 0)
-             (when (zerop value)
-               (setf (aref input-constraints row-index) translation)))
+    (loop for value across (spm-values A)
+          for translation across b
+          for row-index from 0 do
+            (when (zerop value)
+              (setf (aref input-constraints row-index) translation)))
     (let* ((linear-operator (matrix-inverse A))
            (translation (matrix-product linear-operator b)))
       (map-into translation #'- translation) ; negate b
-      (iterate (for index below (length translation))
-               (for input-constraint in-vector (input-constraints object))
-               (when input-constraint
-                 (assert (= (aref translation index) 0))
-                 (setf (aref translation index) input-constraint)))
+      (loop for index below (length translation)
+            for input-constraint across (input-constraints object) do
+              (when input-constraint
+                (assert (= (aref translation index) 0))
+                (setf (aref translation index) input-constraint)))
       (affine-transformation
        :input-constraints input-constraints
        :permutation (spm-column-indices linear-operator)
@@ -251,11 +244,10 @@
 
 (defmethod print-object ((object affine-transformation) stream)
   (let ((inputs
-          (iterate
-            (for input-constraint in-vector (input-constraints object))
-            (for i from 0)
-            (for index-symbol = (format-symbol :keyword "I~I" i))
-            (collect (or input-constraint index-symbol)))))
+          (loop for input-constraint across (input-constraints object)
+                for i from 0
+                for index-symbol = (format-symbol :keyword "I~I" i)
+                collect (or input-constraint index-symbol))))
     (prin1 `(τ ,inputs ,(funcall object inputs))
            stream)))
 

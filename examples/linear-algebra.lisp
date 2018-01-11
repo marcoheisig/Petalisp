@@ -2,7 +2,7 @@
 
 (in-package :common-lisp-user)
 
-(defpackage :petalisp-test-suite/examples/linear-algebra
+(defpackage :petalisp/examples/linear-algebra
   (:use :cl :petalisp)
   (:export
    #:transpose
@@ -10,7 +10,7 @@
    #:dot
    #:matmul))
 
-(in-package :petalisp-test-suite/examples/linear-algebra)
+(in-package :petalisp/examples/linear-algebra)
 
 (defun to-matrix (x)
   (ecase (dimension x)
