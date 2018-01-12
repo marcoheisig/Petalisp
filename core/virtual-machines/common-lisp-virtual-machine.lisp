@@ -76,16 +76,7 @@
 
 (defun translate-index (index)
   (destructuring-bind (id scale offset) index
-    (flet ((add (a b)
-             (cond ((and (eql a 0) (eql b 0)) 0)
-                   ((eql a 0) b)
-                   ((eql b 0) a)
-                   (t `(+ ,a ,b))))
-           (mul (a b)
-             (cond ((or (eql a 0) (eql b 0)) 0)
-                   ((eql b 1) a)
-                   (t `(* ,a ,b)))))
-      (add (mul (index-symbol id) scale) offset))))
+    (symbolic-+ (symbolic-* (index-symbol id) scale) offset)))
 
 (defun translate-source-reference (memory-reference)
   (destructuring-bind (id &rest indices) memory-reference
@@ -119,43 +110,42 @@
                        collect
                        `(,(range-symbol range-id)
                          (the range (aref ranges ,range-id)))))
-           (with-unsafe-optimizations*
-             ,(labels ((for (depth body)
-                         `(loop for ,(index-symbol depth) of-type fixnum
-                                from (range-start ,(range-symbol depth))
-                                  to (range-end ,(range-symbol depth))
-                                by ,(third (elt range-info depth))
-                                do ,body))
-                       (for* (depths body)
-                         (if (null depths)
-                             body
-                             (for (first depths)
-                                  (for* (rest depths) body))))
-                       (reducing-for (depth binary-operator unary-operator body)
-                         (let ((range-step (third (elt range-info depth))))
-                           `(loop
-                              with accumulator
-                                = (let ((,(index-symbol depth) (range-start ,(range-symbol depth))))
-                                    (declare (ignorable ,(index-symbol depth)))
-                                    (call ,unary-operator ,body))
-                              for ,(index-symbol depth) of-type fixnum
-                              from (+ (range-start ,(range-symbol depth)) ,range-step)
+           ,(labels ((for (depth body)
+                       `(loop for ,(index-symbol depth) of-type fixnum
+                              from (range-start ,(range-symbol depth))
                                 to (range-end ,(range-symbol depth))
-                              by ,range-step
-                              do (setf accumulator (call ,binary-operator ,body accumulator))
-                              finally (return accumulator))))
-                       (translate (form depth)
-                         (if (integerp form)
-                             (aref references form)
-                             (ecase (first form)
-                               (reduce
-                                (destructuring-bind (binary-operator unary-operator body) (rest form)
-                                  (reducing-for depth binary-operator unary-operator
-                                                (translate body (1+ depth)))))
-                               (funcall
-                                (flet ((recurse (input) (translate input depth)))
-                                  `(call ,(second form) ,@(mapcar #'recurse (cddr form)))))))))
-                (let ((target-dimension (second target-info)))
-                  (for* (iota target-dimension)
-                        `(setf ,(translate-target-reference target-reference)
-                               ,(translate body target-dimension)))))))))))
+                              by ,(third (elt range-info depth))
+                              do ,body))
+                     (for* (depths body)
+                       (if (null depths)
+                           body
+                           (for (first depths)
+                                (for* (rest depths) body))))
+                     (reducing-for (depth binary-operator unary-operator body)
+                       (let ((range-step (third (elt range-info depth))))
+                         `(loop
+                            with accumulator
+                              = (let ((,(index-symbol depth) (range-start ,(range-symbol depth))))
+                                  (declare (ignorable ,(index-symbol depth)))
+                                  (call ,unary-operator ,body))
+                            for ,(index-symbol depth) of-type fixnum
+                            from (+ (range-start ,(range-symbol depth)) ,range-step)
+                              to (range-end ,(range-symbol depth))
+                            by ,range-step
+                            do (setf accumulator (call ,binary-operator ,body accumulator))
+                            finally (return accumulator))))
+                     (translate (form depth)
+                       (if (integerp form)
+                           (aref references form)
+                           (ecase (first form)
+                             (reduce
+                              (destructuring-bind (binary-operator unary-operator body) (rest form)
+                                (reducing-for depth binary-operator unary-operator
+                                              (translate body (1+ depth)))))
+                             (funcall
+                              (flet ((recurse (input) (translate input depth)))
+                                `(call ,(second form) ,@(mapcar #'recurse (cddr form)))))))))
+              (let ((target-dimension (second target-info)))
+                (for* (iota target-dimension)
+                      `(setf ,(translate-target-reference target-reference)
+                             ,(translate body target-dimension))))))))))

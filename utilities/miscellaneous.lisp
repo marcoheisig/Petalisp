@@ -1,12 +1,14 @@
 ;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
 (uiop:define-package :petalisp/utilities/miscellaneous
-  (:use :closer-common-lisp :alexandria :agnostic-lizard)
+  (:use :closer-common-lisp :alexandria :agnostic-lizard :trivia)
   (:export
    #:asterisks
    #:identical
    #:free-variables
-   #:type-specifier))
+   #:type-specifier
+   #:symbolic-+
+   #:symbolic-*))
 
 (in-package :petalisp/utilities/miscellaneous)
 
@@ -45,3 +47,16 @@
                     (not (find form (metaenv-variable-like-entries env) :key #'first)))
            (pushnew form result)))))
     result))
+
+(defun symbolic-+ (&rest forms)
+  (match (remove 0 forms)
+    ((list) 0)
+    ((list form) form)
+    ( list `(+ ,@list))))
+
+(defun symbolic-* (&rest forms)
+  (or (find 0 forms)
+      (match (remove 1 forms)
+        ((list) 1)
+        ((list form) form)
+        ( list `(* ,@list)))))
