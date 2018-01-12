@@ -4,6 +4,7 @@
   (:use :closer-common-lisp :alexandria)
   (:use-reexport :petalisp/core/type-inference/inference)
   (:use
-   :petalisp/core/type-inference/numbers))
+   :petalisp/core/type-inference/numbers
+   :petalisp/core/type-inference/data-and-control-flow))
 
 (in-package :petalisp/core/type-inference/all)
