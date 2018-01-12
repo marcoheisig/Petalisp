@@ -45,9 +45,9 @@
     ((virtual-machine common-lisp-virtual-machine)
      (blueprint ucons))
   (let ((code (translate-blueprint-to-lambda blueprint)))
-    ;(format t "~A~%" blueprint)
-    ;(format t "~A~%" code)
-    ;(finish-output)
+    (format t "~A~%" blueprint)
+    (format t "~A~%" code)
+    (finish-output)
     (compile nil code)))
 
 (defmethod vm/execute
@@ -59,51 +59,69 @@
    (sources kernel)
    (ranges (iteration-space kernel))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; The kernel compiler
+
 (define-symbol-pool index-symbol "I")
 (define-symbol-pool range-symbol "RANGE-")
 (define-symbol-pool source-symbol "SOURCE-")
 (define-symbol-pool target-symbol "TARGET-")
 (define-symbol-pool accumulator-symbol "ACCUMULATOR-")
 
+(defmacro call (function-designator &rest arguments)
+  (if (symbolp function-designator)
+      `(,function-designator ,@arguments)
+      `(funcall ,function-designator ,@arguments)))
+
+(defun translate-index (index)
+  (destructuring-bind (id scale offset) index
+    (flet ((add (a b)
+             (cond ((and (eql a 0) (eql b 0)) 0)
+                   ((eql a 0) b)
+                   ((eql b 0) a)
+                   (t `(+ ,a ,b))))
+           (mul (a b)
+             (cond ((or (eql a 0) (eql b 0)) 0)
+                   ((eql b 1) a)
+                   (t `(* ,a ,b)))))
+      (add (mul (index-symbol id) scale) offset))))
+
+(defun translate-source-reference (memory-reference)
+  (destructuring-bind (id &rest indices) memory-reference
+      `(aref ,(source-symbol id) ,@(mapcar #'translate-index indices))))
+
+(defun translate-target-reference (memory-reference)
+  (destructuring-bind (id &rest indices) memory-reference
+      `(aref ,(target-symbol id) ,@(mapcar #'translate-index indices))))
+
+(defun translate-reference-info (info)
+  (destructuring-bind (element-type dimension) info
+    `(simple-array ,element-type ,(asterisks dimension))))
+
 (defun translate-blueprint-to-lambda (blueprint)
-  (destructuring-bind (range-info
-                       (target-type target-dimension) target-reference
-                       source-info source-references
-                       body)
+  (destructuring-bind
+      (range-info target-info target-reference source-infos source-references body)
       (ulist-deep-copy blueprint)
-    (labels
-        ((translate-memory-reference (memory-reference symbol-fn)
-           (flet ((translate-index (index)
-                    (destructuring-bind (index-id scale offset) index
-                      `(+ (* ,(index-symbol index-id) ,scale) ,offset))))
-             (destructuring-bind (id &rest indices) memory-reference
-               `(aref ,(funcall symbol-fn id) ,@(mapcar #'translate-index indices)))))
-         (translate-source-reference (reference)
-           (translate-memory-reference reference #'source-symbol))
-         (translate-target-reference (reference)
-           (translate-memory-reference reference #'target-symbol))
-         (asterisks (n)
-           (make-list n :initial-element '*)))
-      (let ((references (map 'vector #'translate-source-reference source-references)))
-        `(lambda (target sources ranges)
-           #+nil(declare (type (vector * ,(length source-info)) sources)
-                    (type (vector range ,(length range-info)) ranges)
-                    (type immediate target))
-           (let ((,(target-symbol 0)
-                   (the (simple-array ,target-type ,(asterisks target-dimension))
-                        (storage target))))
-             (let ,(loop for source-id from 0
-                         and (source-type source-dimension) in source-info
-                         collect
-                         `(,(source-symbol source-id)
-                           (the (simple-array ,source-type ,(asterisks source-dimension))
-                                (storage (aref sources ,source-id)))))
-               (let ,(loop for range-id below (length range-info)
-                           collect
-                           `(,(range-symbol range-id) (aref ranges ,range-id)))
-                 ,(labels
-                      ((for (depth body)
-                         `(loop for ,(index-symbol depth)
+    (let ((references (map 'vector #'translate-source-reference source-references)))
+      `(lambda (target sources ranges)
+         (declare (type (vector t) sources)
+                  (type (vector range) ranges))
+         (let ((,(target-symbol 0)
+                 (the ,(translate-reference-info target-info) (storage target)))
+               ,@(loop for source-id from 0
+                       for source-info in source-infos
+                       collect
+                       `(,(source-symbol source-id)
+                         (the ,(translate-reference-info source-info)
+                              (storage (aref sources ,source-id)))))
+               ,@(loop for range-id below (length range-info)
+                       collect
+                       `(,(range-symbol range-id)
+                         (the range (aref ranges ,range-id)))))
+           (with-unsafe-optimizations*
+             ,(labels ((for (depth body)
+                         `(loop for ,(index-symbol depth) of-type fixnum
                                 from (range-start ,(range-symbol depth))
                                   to (range-end ,(range-symbol depth))
                                 by ,(third (elt range-info depth))
@@ -119,34 +137,25 @@
                               with accumulator
                                 = (let ((,(index-symbol depth) (range-start ,(range-symbol depth))))
                                     (declare (ignorable ,(index-symbol depth)))
-                                    ,(if (symbolp unary-operator)
-                                         `(unary-operator ,body)
-                                         `(funcall ,unary-operator ,body)))
-                              for ,(index-symbol depth)
+                                    (call ,unary-operator ,body))
+                              for ,(index-symbol depth) of-type fixnum
                               from (+ (range-start ,(range-symbol depth)) ,range-step)
                                 to (range-end ,(range-symbol depth))
                               by ,range-step
-                              do (setf accumulator
-                                       ,(if (symbolp binary-operator)
-                                            `(,binary-operator ,body accumulator)
-                                            `(funcall ,binary-operator ,body accumulator)))
+                              do (setf accumulator (call ,binary-operator ,body accumulator))
                               finally (return accumulator))))
                        (translate (form depth)
                          (if (integerp form)
                              (aref references form)
                              (ecase (first form)
                                (reduce
-                                (destructuring-bind (binary-operator unary-operator body)
-                                    (rest form)
+                                (destructuring-bind (binary-operator unary-operator body) (rest form)
                                   (reducing-for depth binary-operator unary-operator
                                                 (translate body (1+ depth)))))
                                (funcall
-                                (flet ((recurse (input)
-                                         (translate input depth)))
-                                  (let ((operator (second form)))
-                                    (if (symbolp operator)
-                                        `(,operator ,@(mapcar #'recurse (cddr form)))
-                                        `(funcall ,(second form) ,@(mapcar #'recurse (cddr form)))))))))))
-                    (for* (iota target-dimension)
-                          `(setf ,(translate-target-reference target-reference)
-                                 ,(translate body target-dimension))))))))))))
+                                (flet ((recurse (input) (translate input depth)))
+                                  `(call ,(second form) ,@(mapcar #'recurse (cddr form)))))))))
+                (let ((target-dimension (second target-info)))
+                  (for* (iota target-dimension)
+                        `(setf ,(translate-target-reference target-reference)
+                               ,(translate body target-dimension)))))))))))

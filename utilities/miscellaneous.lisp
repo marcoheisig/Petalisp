@@ -3,11 +3,15 @@
 (uiop:define-package :petalisp/utilities/miscellaneous
   (:use :closer-common-lisp :alexandria :agnostic-lizard)
   (:export
+   #:asterisks
    #:identical
    #:free-variables
    #:type-specifier))
 
 (in-package :petalisp/utilities/miscellaneous)
+
+(defun asterisks (n)
+  (make-list n :initial-element '*))
 
 (deftype type-specifier () '(or symbol cons))
 
