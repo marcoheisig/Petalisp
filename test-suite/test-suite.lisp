@@ -98,7 +98,7 @@
                                        :max-size max-size)))
       (is (<= (abs (range-start range)) max-extent))
       (is (<= (abs (range-end range)) max-extent))
-      (is (<= (size range) max-size)))))
+      (is (<= (range-size range) max-size)))))
 
 (test |(difference range)|
   (for-all ((a (generator 'range :max-extent 100)))

@@ -21,7 +21,6 @@
    #:corresponding-immediate
    #:data-structure-equality
    #:shallow-copy
-   #:size
    #:storage
    #:to-storage
    #:from-storage
@@ -32,10 +31,11 @@
 
 (in-package :petalisp/core/data-structures/data-structure)
 
+(defgeneric inputs (data-structure))
+
 (define-class data-structure ()
   ((element-type :type type-specifier      :initform t)
    (index-space  :type index-space)
-   (inputs       :type list                :initform nil)
    (refcount     :type non-negative-fixnum :initform 0 :accessor refcount))
   (:documentation
    "A data structure of dimension D is a mapping from elements of
@@ -54,8 +54,7 @@ data structure appears as the source of a kernel."))
   (mapc (λ input (incf (refcount input))) (inputs instance)))
 
 (define-class immediate (data-structure)
-  ((inputs       :type null :initform nil)
-   (storage      :type t :initform nil :accessor storage)
+  ((storage      :type t :initform nil :accessor storage)
    (to-storage   :type transformation)
    (from-storage :type transformation)
    (kernels      :type list :initform nil :accessor kernels))
@@ -69,11 +68,12 @@ FROM-STORAGE is the inverse of TO-STORAGE.
 If KERNELS is a non-empty sequence, it denotes the set of kernels that must
 be executed before the immediate is fully initialized."))
 
-(defmethod shared-initialize :before
-    ((instance immediate) slot-names &key &allow-other-keys)
-  (setf (slot-value instance 'inputs) nil))
+(defmethod inputs ((immediate immediate)) nil)
 
-(define-class application (data-structure)
+(define-class non-immediate (data-structure)
+  ((inputs :type list)))
+
+(define-class application (non-immediate)
   ((operator          :type function))
   (:documentation
    "Let F be a referentially transparent Common Lisp function that accepts
@@ -81,7 +81,7 @@ n arguments, and let A1...AN be data structures with index space Ω. The the
 application of f to A1...AN is a data structure that maps each index k ∈ Ω
 to (F (A1 k) ... (AN k))."))
 
-(define-class reduction (data-structure)
+(define-class reduction (non-immediate)
   ((binary-operator          :type function)
    (unary-operator           :type function)
    (order                    :type (member :up :down :arbitrary)))
@@ -94,7 +94,7 @@ some values. Then the reduction of A by F is a data structure of dimension
 n-1 that maps each element k of S1 ⨯ ... ⨯ Sn-1 to the pairwise combination
 of the elements {a(i) | i ∈ k ⨯ Sn} by F in some ORDER."))
 
-(define-class fusion (data-structure) ()
+(define-class fusion (non-immediate) ()
   (:documentation
    "Let A1...AN be strided arrays with equal dimension, each mapping from
 an index space Ωk to a set of values.  Furthermore, let the sets Ω1...ΩN be
@@ -103,7 +103,7 @@ space. Then the fusion of A1...AN is a data structure that maps each index
 i ∈ Ωf to the value of i of the unique strided array Ak whose index space
 contains i."))
 
-(define-class reference (data-structure)
+(define-class reference (non-immediate)
   ((transformation :type transformation))
   (:documentation
    "Let A be a strided array with domain ΩA, let ΩB be a strided array
@@ -299,14 +299,8 @@ DATA-STRUCTURE.")
   "Drop references with no effect."
   (when (index-space-equality (index-space object) space) object))
 
-(defgeneric size (object)
-  (:documentation
-   "The size of a compound object, such as an array or hash-table, is the
-number of its elements. All other objects have a size of 1.")
-  (:method ((object t)) 1)
-  (:method ((object array)) (array-total-size object))
-  (:method ((object hash-table)) (hash-table-count object))
-  (:method ((object data-structure)) (size (index-space object))))
+(defmethod size ((data-structure data-structure))
+  (size (index-space data-structure)))
 
 (defmethod print-object ((object data-structure) stream)
   (print-unreadable-object (object stream :type t :identity t)

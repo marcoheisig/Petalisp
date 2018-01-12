@@ -35,7 +35,7 @@
     ((virtual-machine common-lisp-virtual-machine)
      (immediate strided-array-immediate))
   (let ((array-dimensions
-          (map 'list #'size (ranges (index-space immediate))))
+          (map 'list #'range-size (ranges (index-space immediate))))
         (element-type (element-type immediate)))
     (push (storage immediate)
           (gethash (cons element-type array-dimensions)

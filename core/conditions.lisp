@@ -12,8 +12,6 @@
 
 (in-package :petalisp/core/conditions)
 
-(defgeneric report-condition (condition stream))
-
 ;;; It is crucial to differentiate between two kinds of errors -- those
 ;;; triggered by improper usage of Petalisp and those occurring even though
 ;;; Petalisp has been used correctly. The former are expected to be far
@@ -21,6 +19,8 @@
 ;;; latter should ideally never arise. Consequentially, errors triggered by
 ;;; the user should emit a detailed and helpful report, while the latter do
 ;;; not even deserve their own condition type.
+
+(defgeneric report-condition (condition stream))
 
 (define-condition petalisp-user-error (error)
   ()

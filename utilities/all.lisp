@@ -2,6 +2,7 @@
 
 (uiop:define-package :petalisp/utilities/all
   (:use-reexport
+   :the-cost-of-nothing
    :petalisp/utilities/atomic-types
    :petalisp/utilities/code-statistics
    :petalisp/utilities/extended-euclid

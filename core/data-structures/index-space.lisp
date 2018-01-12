@@ -15,6 +15,7 @@
    #:index-space-equality
    #:dimension
    #:enlarge-index-space
+   #:size
    #:subspace?
    #:subdivision))
 
@@ -68,6 +69,13 @@ and SPACE-2.")
 (defgeneric index-space-equality (space-1 space-2)
   (:documentation
    "Return whether the two spaces denote the same set of indices."))
+
+(defgeneric size (object)
+  (:documentation
+   "The size of a compound object, such as an array or hash-table, is the
+number of its elements.")
+  (:method ((object array)) (array-total-size object))
+  (:method ((object hash-table)) (hash-table-count object)))
 
 (defgeneric subspace? (space-1 space-2)
   (:documentation
