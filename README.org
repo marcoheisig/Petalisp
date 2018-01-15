@@ -16,7 +16,7 @@ Example 1: transposing a matrix
   (-> A (τ (m n) (n m))))
 #+END_SRC
 
-Example 2: a simple matrix multiplication
+Example 2: matrix-matrix multiplication
 #+BEGIN_SRC lisp
 (defun matrix-multiplication (A B)
   (β #'+
@@ -42,6 +42,10 @@ Example 3: the numerical Jacobi scheme in two dimensions
          (- iterations 1)))))
 #+END_SRC
 
+** Performance
+
+Coming soon!
+
 ** Frequently Asked Questions
 
 *** Why is Petalisp licensed under AGPL?
@@ -49,10 +53,10 @@ I am aware that this license prevents some people from using or
 contributing to this piece of software, which is a shame. But unfortunately
 the majority of software developers have not yet understood that
 
-1. in a digital world, free software is a necessary prerequisite for a free
-   society
-2. when developing software, open collaboration is way more efficient than
-   competition
+1. In a digital world, free software is a necessary prerequisite for a free
+   society.
+2. When developing software, open collaboration is way more efficient than
+   competition.
 
 So as long as distribution of non-free software is socially accepted,
 copyleft licenses like the AGPL seem to be the lesser evil.
@@ -61,7 +65,7 @@ That being said, I am willing to discuss relicensing on an individual
 basis.
 
 *** Why is Petalisp written in Common Lisp?
-To my own surprise, Common Lisp is --- as of 2017 --- still the sweetest
-spot in the programming language design space. The language appears even
-more attractive if one considers its plethora of high quality libraries and
-implementations.
+To my own surprise, Common Lisp is --- as of 2018 --- still the sweetest
+spot in the programming language design space. Furthermore, the Common Lisp
+ecosystem is quite amazing, featuring libraries of unparalleled quality and
+originality.
