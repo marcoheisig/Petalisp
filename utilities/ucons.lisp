@@ -3,9 +3,14 @@
 (uiop:define-package :petalisp/utilities/ucons
   (:use :closer-common-lisp :alexandria)
   (:export
-   #:ucons #:ucar #:ucdr #:ucaar #:ucadr #:ucdar #:ucddr
-   #:ulist #:ulist* #:ulength
-   #:ulist-shallow-copy #:ulist-deep-copy
+   #:ucons
+   #:ucar
+   #:ucdr
+   #:ulist
+   #:ulist*
+   #:ulength
+   #:ulist-shallow-copy
+   #:ulist-deep-copy
    #:map-ulist
    #:do-ulist))
 
@@ -73,28 +78,11 @@
 (defstruct (ucons
             (:constructor make-fresh-ucons (car cdr))
             (:copier nil) ; this is the whole point, isn't it?
-            (:predicate uconsp))
+            (:predicate uconsp)
+            (:conc-name u))
   (cdr   nil :type ulist :read-only t)
   (car   nil :type ucar  :read-only t)
   (table nil :type (or list hash-table) :read-only nil))
-
-;;; provide classical slot readers like UCAR and UCADDR
-(macrolet
-    ((define-ucxr-accessors ()
-       (let (ucxr-forms)
-         (flet ((add-ucxr-form (&rest characters)
-                  (let ((name (intern (format nil "UC~{~C~}R" characters)))
-                        (body 'x))
-                    (dolist (char (reverse characters))
-                      (ecase char
-                        (#\A (setf body `(ucons-car ,body)))
-                        (#\D (setf body `(ucons-cdr ,body)))))
-                    (push `(defun ,name (x) (declare (ucons x)) ,body) ucxr-forms)
-                    (push `(declaim (inline ,name)) ucxr-forms))))
-           (map-product #'add-ucxr-form #1='(#\A #\D))
-           (map-product #'add-ucxr-form #1# #1#))
-         `(progn ,@ucxr-forms))))
-  (define-ucxr-accessors))
 
 (declaim (hash-table *ucons-leaf-table*))
 (defvar *ucons-leaf-table* (make-hash-table :test #'eq)
@@ -111,8 +99,8 @@
   (declare (type (or null ucons) cdr)
            (type ucar car))
   (let ((alist (and cdr
-                    (listp (ucons-table cdr))
-                    (ucons-table cdr))))
+                    (listp (utable cdr))
+                    (utable cdr))))
     (the ucons
          (or
           (loop for cons of-type (cons ucar ulist) in alist
@@ -127,7 +115,7 @@
            (type ucar car))
   (if (null cdr)
       (values (ensure-gethash car *ucons-leaf-table* (make-fresh-ucons car cdr)))
-      (let ((table (ucons-table cdr)))
+      (let ((table (utable cdr)))
         (etypecase table
           (hash-table
            (values (ensure-gethash car table (make-fresh-ucons car cdr))))
@@ -136,11 +124,11 @@
              (prog1 ucons
                (cond
                  ((> (length table) 8)
-                  (setf (ucons-table cdr)
+                  (setf (utable cdr)
                         (alist-hash-table table :test #'eql :size 16))
-                  (setf (gethash car (ucons-table cdr)) ucons))
+                  (setf (gethash car (utable cdr)) ucons))
                  (t
-                  (push (cons car ucons) (ucons-table cdr)))))))))))
+                  (push (cons car ucons) (utable cdr)))))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -249,19 +237,19 @@
   "Return a list of the elements of ULIST."
   (declare (ulist ulist))
   (loop while ulist
-        collect (ucons-car ulist)
-        do (setf ulist (ucons-cdr ulist))))
+        collect (ucar ulist)
+        do (setf ulist (ucdr ulist))))
 
 (defun ulist-deep-copy (ulist)
   "Return a tree of the same shape as ULIST, but where all occuring ulists
    have been converted to lists."
   (declare (ulist ulist))
   (loop while ulist
-        collect (let ((car (ucons-car ulist)))
+        collect (let ((car (ucar ulist)))
                   (if (uconsp car)
                       (ulist-deep-copy car)
                       car))
-        do (setf ulist (ucons-cdr ulist))))
+        do (setf ulist (ucdr ulist))))
 
 (defmethod print-object ((ulist ucons) stream)
   (cond (*print-pretty*
@@ -271,8 +259,8 @@
         (t
          (write-string "[" stream)
          (loop while ulist do
-           (write (ucons-car ulist) :stream stream)
-           (when (ucons-cdr ulist)
+           (write (ucar ulist) :stream stream)
+           (when (ucdr ulist)
              (write-string " " stream))
-           (setf ulist (ucons-cdr ulist)))
+           (setf ulist (ucdr ulist)))
          (write-string "]" stream))))
