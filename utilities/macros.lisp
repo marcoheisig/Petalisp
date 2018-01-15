@@ -4,9 +4,6 @@
   (:use :closer-common-lisp :alexandria :iterate)
   (:export
    #:λ
-   #:with-unsafe-optimizations
-   #:with-unsafe-optimizations*
-   #:dx-let
    #:define-class))
 
 (in-package :petalisp/utilities/macros)
@@ -20,26 +17,6 @@ Examples:
  (λ x y (+ x y)) -> (lambda (x y) (+ x y))"
   `(lambda ,(butlast symbols-and-expr)
      ,@(last symbols-and-expr)))
-
-(defmacro with-unsafe-optimizations* (&body body)
-  "Optimize the heck out of BODY. Use with caution!"
-  (let ((settings '((speed 3) (space 0) (debug 0) (safety 0) (compilation-speed 0))))
-    `(locally (declare (optimize ,@settings))
-       ,@body)))
-
-(defmacro with-unsafe-optimizations (&body body)
-  "Optimize the heck out of BODY. Use with caution!
-
-To preserve sanity, compiler efficiency hints are disabled by default. Use
-WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
-  `(locally (declare #+sbcl(sb-ext:muffle-conditions sb-ext:compiler-note))
-     (with-unsafe-optimizations* ,@body)))
-
-(defmacro dx-let (bindings &body body)
-  "Like LET, but declare every atom to have dynamic extent."
-  `(let ,bindings
-     (declare (dynamic-extent ,@(mapcar #'first bindings)))
-     ,@body))
 
 (defmacro define-class (class-name superclass-names slot-specifiers &rest class-options)
   "Defines a class using DEFCLASS, but defaulting to a :READER of SLOT-NAME

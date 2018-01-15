@@ -24,12 +24,12 @@
 ;;; system Maxima and the theorem prover ACL2.
 ;;;
 ;;; This particular implementation is intended for use cases where
-;;; performance is so critical, that even a single hash table access is too
-;;; expensive. To achieve such near-optimal speed, this implementation does
-;;; not actually provide conses, but uconses. A ucons has not only a car
-;;; and a cdr, but also a table of past users. Furthermore, the cdr of each
-;;; ucons is restricted to other uconses or NIL. This setup has several
-;;; advantages:
+;;; performance is so critical, that even a single hash table access per
+;;; cons is too expensive. To achieve such near-optimal speed, this library
+;;; does not actually provide conses, but uconses. A ucons has not only a
+;;; car and a cdr, but also a table of past users. Furthermore, the cdr of
+;;; each ucons is restricted to other uconses or NIL. This setup has
+;;; several advantages:
 ;;;
 ;;; - The check whether a certain ucons already exists is a single lookup
 ;;;   of its car in the table of its cdr.
@@ -89,9 +89,9 @@
   "The table of all uconses whose cdr is NIL.")
 
 (declaim (inline ucons)
-         (notinline ucons--slow)
+         (notinline ucons-slow)
          (ftype (function (ucar ulist) ucons) ucons)
-         (ftype (function (ucar ulist) ucons) ucons--slow))
+         (ftype (function (ucar ulist) ucons) ucons-slow))
 
 (defun ucons (car cdr)
   "Given a suitable CAR and CDR, return a UCONS that is EQ to all future
@@ -106,9 +106,9 @@
           (loop for cons of-type (cons ucar ulist) in alist
                 do (when (eq (car cons) car)
                      (return (cdr cons))))
-          (ucons--slow car cdr)))))
+          (ucons-slow car cdr)))))
 
-(defun ucons--slow (car cdr)
+(defun ucons-slow (car cdr)
   "Helper function of UCONS. Invoked when the UCONS-TABLE of CDR is not a
    list, or is a list but does not contain an entry for CAR."
   (declare (type (or ucons null) cdr)

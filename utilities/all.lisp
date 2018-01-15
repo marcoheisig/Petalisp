@@ -14,6 +14,7 @@
    :petalisp/utilities/matrix
    :petalisp/utilities/memoization
    :petalisp/utilities/miscellaneous
+   :petalisp/utilities/optimization
    :petalisp/utilities/queue
    :petalisp/utilities/range
    :petalisp/utilities/request

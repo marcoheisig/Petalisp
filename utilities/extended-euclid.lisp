@@ -3,7 +3,7 @@
 (uiop:define-package :petalisp/utilities/extended-euclid
   (:use :closer-common-lisp :alexandria)
   (:use
-   :petalisp/utilities/macros)
+   :petalisp/utilities/optimization)
   (:export #:extended-euclid))
 
 (in-package :petalisp/utilities/extended-euclid)
