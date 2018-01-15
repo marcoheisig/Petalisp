@@ -15,6 +15,6 @@
 
 (defmethod vm/compile :around
     ((virtual-machine compile-cache-mixin) blueprint)
-  (with-hash-table-memoization (blueprint :multiple-values nil)
+  (with-hash-table-memoization (blueprint)
       (compile-cache virtual-machine)
     (call-next-method)))
