@@ -6,7 +6,7 @@
    :petalisp/utilities/all
    :petalisp/core/transformations/all
    :petalisp/core/data-structures/all
-   :petalisp/core/kernelize))
+   :petalisp/core/kernel-creation/all))
 
 (in-package :petalisp/core/visualization)
 
@@ -22,7 +22,7 @@
 
 (defmethod graphviz-successors
     ((purpose data-flow-graph) (kernel kernel))
-  (sources kernel))
+  (cdr (map 'list #'identity (kernel-references kernel))))
 
 (defmethod graphviz-graph-plist plist-union
     ((purpose data-flow-graph))
@@ -85,7 +85,7 @@
     :fillcolor "skyblue"
     :label
     ,(destructuring-bind (ranges target write sources reads body)
-         (ulist-shallow-copy (blueprint kernel))
+         (ulist-shallow-copy (kernel-blueprint kernel))
        (format nil "
 ranges: ~A~%
 target: ~A~%

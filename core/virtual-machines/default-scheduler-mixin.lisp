@@ -6,7 +6,7 @@
    :petalisp/utilities/all
    :petalisp/core/transformations/all
    :petalisp/core/data-structures/all
-   :petalisp/core/kernelize
+   :petalisp/core/kernel-creation/all
    :petalisp/core/virtual-machines/virtual-machine)
   (:export
    #:default-scheduler-mixin
@@ -49,10 +49,10 @@ the STORAGE slot of IMMEDIATE to NIL."))
 (defmethod vm/schedule ((vm default-scheduler-mixin) targets recipes)
   (let ((request (make-request)))
     ;; TODO currently schedules synchronously for easier debugging
-    (iterate (for immediate in-sequence (kernelize recipes))
-             (for index from 0)
-             (setf (storage (aref targets index))
-                   (storage (evaluate-naively vm immediate))))
+    (loop for immediate across (kernelize recipes)
+          for index from 0 do
+            (setf (storage (aref targets index))
+                  (storage (evaluate-naively vm immediate))))
     (complete request)
     #+nil
     (prog1 request
@@ -64,21 +64,19 @@ the STORAGE slot of IMMEDIATE to NIL."))
   (unless (storage immediate)
     ;; evaluate all dependencies
     (let (dependencies)
-      (iterate
-        (for kernel in-sequence (kernels immediate))
-        (iterate
-          (for source in-vector (sources kernel))
-          (pushnew source dependencies)))
-      (map nil (λ dependency (evaluate-naively vm dependency)) dependencies))
+      (loop for kernel across (kernels immediate) do
+        (loop for index from 1 below (length (kernel-references kernel))
+              for source = (aref (kernel-references kernel) index) do
+                (pushnew source dependencies)))
+      (map nil (lambda (dependency) (evaluate-naively vm dependency))
+           dependencies))
     ;; allocate memory
     (vm/bind-memory vm immediate)
     ;; compute all kernels
-    (iterate
-      (for kernel in-sequence (kernels immediate))
+    (loop for kernel across (kernels immediate) do
       (vm/execute vm kernel)
-      ;; potentially release resources
-      (iterate
-        (for source in-vector (sources kernel))
-        (when (zerop (decf (refcount source)))
-          (vm/free-memory vm source)))))
+      (loop for index from 1 below (length (kernel-references kernel))
+            for source = (aref (kernel-references kernel) index) do
+              (when (zerop (decf (refcount source)))
+                (vm/free-memory vm source)))))
   immediate)

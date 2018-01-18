@@ -1,12 +1,12 @@
 ;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
 (uiop:define-package :petalisp/core/virtual-machines/common-lisp-virtual-machine
-  (:use :closer-common-lisp :alexandria)
+  (:use :closer-common-lisp :alexandria :trivia)
   (:use
    :petalisp/utilities/all
    :petalisp/core/transformations/all
    :petalisp/core/data-structures/all
-   :petalisp/core/kernelize
+   :petalisp/core/kernel-creation/all
    :petalisp/core/virtual-machines/virtual-machine
    :petalisp/core/virtual-machines/compile-cache-mixin
    :petalisp/core/virtual-machines/default-scheduler-mixin)
@@ -44,108 +44,124 @@
 (defmethod vm/compile
     ((virtual-machine common-lisp-virtual-machine)
      (blueprint ucons))
-  (let ((code (translate-blueprint-to-lambda blueprint)))
-    (format t "~A~%" blueprint)
-    (format t "~A~%" code)
-    (finish-output)
+  (let ((code (translate (ulist-deep-copy blueprint) 0)))
+    ;(format t "~A~%" blueprint)
+    ;(format t "~A~%" code)
+    ;(finish-output)
     (compile nil code)))
 
-(defmethod vm/execute
-  ((virtual-machine common-lisp-virtual-machine)
-   (kernel kernel))
-  (funcall
-   (vm/compile virtual-machine (blueprint kernel))
-   (target kernel)
-   (sources kernel)
-   (ranges (iteration-space kernel))))
+(defmethod vm/execute ((virtual-machine common-lisp-virtual-machine) (kernel kernel))
+  (funcall (vm/compile virtual-machine (kernel-blueprint kernel)) kernel))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; The kernel compiler
 
-(define-symbol-pool index-symbol "I")
-(define-symbol-pool range-symbol "RANGE-")
-(define-symbol-pool source-symbol "SOURCE-")
-(define-symbol-pool target-symbol "TARGET-")
-(define-symbol-pool accumulator-symbol "ACCUMULATOR-")
+(defun symbol-with-indices (name &rest indices)
+  (format-symbol
+   :petalisp/core/virtual-machines/common-lisp-virtual-machine
+   "~A~{~D~^-~}" name indices))
 
-(defmacro call (function-designator &rest arguments)
-  (if (symbolp function-designator)
-      `(,function-designator ,@arguments)
-      `(funcall ,function-designator ,@arguments)))
+(defun stride-symbol (array-id depth)
+  (symbol-with-indices "STRIDE" array-id depth))
 
-(defun translate-index (index)
-  (destructuring-bind (id scale offset) index
-    (symbolic-+ (symbolic-* (index-symbol id) scale) offset)))
+(defun base-index-symbol (depth reference-id)
+  (symbol-with-indices "BASE-INDEX" depth reference-id))
 
-(defun translate-source-reference (memory-reference)
-  (destructuring-bind (id &rest indices) memory-reference
-      `(aref ,(source-symbol id) ,@(mapcar #'translate-index indices))))
+(defun index-symbol (n)
+  (with-vector-memoization (n)
+    (symbol-with-indices "INDEX" n)))
 
-(defun translate-target-reference (memory-reference)
-  (destructuring-bind (id &rest indices) memory-reference
-      `(aref ,(target-symbol id) ,@(mapcar #'translate-index indices))))
+(defun array-symbol (n)
+  (with-vector-memoization (n)
+    (symbol-with-indices "ARRAY" n)))
 
-(defun translate-reference-info (info)
-  (destructuring-bind (element-type dimension) info
-    `(simple-array ,element-type ,(asterisks dimension))))
+(defun bound-symbol (n)
+  (with-vector-memoization (n)
+    (symbol-with-indices "BOUND" n)))
 
-(defun translate-blueprint-to-lambda (blueprint)
-  (destructuring-bind
-      (range-info target-info target-reference source-infos source-references body)
-      (ulist-deep-copy blueprint)
-    (let ((references (map 'vector #'translate-source-reference source-references)))
-      `(lambda (target sources ranges)
-         (declare (type (vector t) sources)
-                  (type (vector range) ranges))
-         (let ((,(target-symbol 0)
-                 (the ,(translate-reference-info target-info) (storage target)))
-               ,@(loop for source-id from 0
-                       for source-info in source-infos
-                       collect
-                       `(,(source-symbol source-id)
-                         (the ,(translate-reference-info source-info)
-                              (storage (aref sources ,source-id)))))
-               ,@(loop for range-id below (length range-info)
-                       collect
-                       `(,(range-symbol range-id)
-                         (the range (aref ranges ,range-id)))))
-           ,(labels ((for (depth body)
-                       `(loop for ,(index-symbol depth) of-type fixnum
-                              from (range-start ,(range-symbol depth))
-                                to (range-end ,(range-symbol depth))
-                              by ,(third (elt range-info depth))
-                              do ,body))
-                     (for* (depths body)
-                       (if (null depths)
-                           body
-                           (for (first depths)
-                                (for* (rest depths) body))))
-                     (reducing-for (depth binary-operator unary-operator body)
-                       (let ((range-step (third (elt range-info depth))))
-                         `(loop
-                            with accumulator
-                              = (let ((,(index-symbol depth) (range-start ,(range-symbol depth))))
-                                  (declare (ignorable ,(index-symbol depth)))
-                                  (call ,unary-operator ,body))
-                            for ,(index-symbol depth) of-type fixnum
-                            from (+ (range-start ,(range-symbol depth)) ,range-step)
-                              to (range-end ,(range-symbol depth))
-                            by ,range-step
-                            do (setf accumulator (call ,binary-operator ,body accumulator))
-                            finally (return accumulator))))
-                     (translate (form depth)
-                       (if (integerp form)
-                           (aref references form)
-                           (ecase (first form)
-                             (reduce
-                              (destructuring-bind (binary-operator unary-operator body) (rest form)
-                                (reducing-for depth binary-operator unary-operator
-                                              (translate body (1+ depth)))))
-                             (funcall
-                              (flet ((recurse (input) (translate input depth)))
-                                `(call ,(second form) ,@(mapcar #'recurse (cddr form)))))))))
-              (let ((target-dimension (second target-info)))
-                (for* (iota target-dimension)
-                      `(setf ,(translate-target-reference target-reference)
-                             ,(translate body target-dimension))))))))))
+(defun accumulator-symbol (n)
+  (with-vector-memoization (n)
+    (symbol-with-indices "ACC" n)))
+
+(defun translate (expression depth)
+  (ematch expression
+    ((list :blueprint bounds-metadata element-types body)
+     (let ((outer-dimension (- (length bounds-metadata)
+                               (count-reductions body))))
+       `(lambda (kernel)
+          (declare (kernel kernel)
+                   (optimize debug))
+          (let ((references (kernel-references kernel))
+                (unknown-functions (kernel-unknown-functions kernel))
+                (bounds (kernel-dimensions kernel)))
+            (declare (ignorable references unknown-functions bounds))
+            (let ( ;; bind the storage arrays of each referenced immediate
+                  ,@(loop for id from 0
+                          for element-type in element-types
+                          collect
+                          `(,(array-symbol id)
+                            (the (simple-array ,element-type)
+                                 (storage (aref references ,id)))))
+                  ;; bind the iteration space bounds of each dimension
+                  ,@(loop for id below (length bounds-metadata)
+                          for bounds-info in bounds-metadata
+                          collect
+                          `(,(bound-symbol id)
+                            ,(if (integerp bounds-info)
+                                 bounds-info
+                                 `(the array-index (aref bounds ,id))))))
+              ;; translate the body
+              (with-loops (0 ,outer-dimension)
+                ,(translate body outer-dimension)))))))
+    ((list* :call operator expressions)
+     (apply #'translate-function-call operator
+            (flet ((translate-expression (input)
+                     (translate input depth)))
+              (mapcar #'translate-expression expressions))))
+    ((list* :reference array-id indices)
+     `(aref
+       ,(array-symbol array-id)
+       ,@(flet ((translate-index (index-triple)
+                  (destructuring-bind (scale offset id) index-triple
+                    (symbolic-+
+                     offset
+                     (symbolic-* scale (index-symbol id))))))
+           (mapcar #'translate-index indices))))
+    ((list :reduce binary-operator unary-operator expression)
+     (let ((body (translate expression (1+ depth))))
+       `(loop with accumulator
+                = (let ((,(index-symbol depth) 0))
+                    (declare (ignorable ,(index-symbol depth)))
+                    ,(translate-function-call unary-operator body))
+              for ,(index-symbol depth) of-type fixnum from 1 to ,(bound-symbol depth)
+              do (setf accumulator
+                       ,(translate-function-call binary-operator 'accumulator body))
+              finally (return accumulator))))
+    ((list :store place expression)
+     `(setf ,(translate place depth) ,(translate expression depth)))))
+
+(defmacro with-loops ((current total) &body body)
+  (if (= current total)
+      `(progn ,@body)
+      `(dotimes (,(index-symbol current) ,(bound-symbol current))
+         (with-loops (,(1+ current) ,total)
+           ,@body))))
+
+(defun count-reductions (expression)
+  (ematch expression
+    ((list :reduce _ _ subexpression)
+     (1+ (count-reductions subexpression)))
+    ((list :store _ subexpression)
+     (count-reductions subexpression))
+    ((list* :reference _)
+     0)
+    ((list* :call _ subexpressions)
+     (reduce #'+ subexpressions :key #'count-reductions))
+    ((list :blueprint _ _ body)
+     (count-reductions body))))
+
+(defun translate-function-call (operator &rest arguments)
+  (etypecase operator
+    (symbol `(,operator ,@arguments))
+    (integer `(funcall (aref unknown-functions ,operator) ,@arguments))))

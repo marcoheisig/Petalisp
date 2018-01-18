@@ -67,11 +67,11 @@
     (register input-dimension input-constraints)
     (register output-dimension scaling)
     (register output-dimension translation)
-    (register output-dimension permutation))
+    (register output-dimension permutation)
+    (unless input-dimension (setf input-dimension output-dimension))
+    (unless output-dimension (setf output-dimension input-dimension)))
   (unless input-dimension
-    (error "Insufficient arguments to derive input dimension."))
-  (unless output-dimension
-    (error "Insufficient arguments to derive output dimension."))
+    (error "Insufficient arguments to derive transformation dimensions."))
   ;; check for the identity transformation
   (if (and (= input-dimension output-dimension)
            (or (not input-constraints)

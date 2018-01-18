@@ -15,8 +15,8 @@
 
 (in-package :petalisp/core/data-structures/strided-array-index-space)
 
-(defclass strided-array-index-space (index-space)
-  ((%ranges :initarg :ranges :reader ranges :type vector)))
+(define-class strided-array-index-space (index-space)
+  ((ranges :type vector)))
 
 (defmethod generator ((result-type (eql 'strided-array-index-space))
                       &key (dimension 3) (max-size 30) (max-extent 100) intersecting)
