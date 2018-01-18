@@ -18,7 +18,7 @@
 (defun kernelize (graph-roots)
   "Translate the data flow graph specified by the given GRAPH-ROOTS to a
 graph of immediates and kernels. Return the roots of this new graph."
-  (map-over-subtrees #'kernelize-subtree graph-roots))
+  (map-subtrees #'kernelize-subtree graph-roots))
 
 (defun kernelize-subtree (target root leaf-function)
   (dx-flet ((kernelize-iteration-space (iteration-space)

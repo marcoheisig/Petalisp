@@ -1,6 +1,6 @@
 ;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(uiop:define-package :petalisp/core/kernel-creation/map-over-subtrees
+(uiop:define-package :petalisp/core/kernel-creation/map-subtrees
   (:use :closer-common-lisp :alexandria)
   (:use
    :petalisp/utilities/all
@@ -8,11 +8,11 @@
    :petalisp/core/data-structures/all
    :petalisp/core/kernel-creation/kernel)
   (:export
-   #:map-over-subtrees))
+   #:map-subtrees))
 
-(in-package :petalisp/core/kernel-creation/map-over-subtrees)
+(in-package :petalisp/core/kernel-creation/map-subtrees)
 
-(defun map-over-subtrees (subtree-fn graph-roots)
+(defun map-subtrees (subtree-fn graph-roots)
   "Invoke SUBTREE-FN on each subtree in the graph spanned by the supplied
 GRAPH-ROOTS. For each subtree, SUBTREE-FN receives the following arguments:
 
