@@ -28,14 +28,14 @@
 ;;; REDUCTION          := [:reduce function function EXPRESSION]
 
 (defun blueprint/reference (id transformation)
-  (let* ((dimension (input-dimension transformation))
-         (buffer (make-array dimension)))
-    (map-transformation-into transformation buffer #'ulist (iota dimension))
+  (let (ulists)
+    (dx-flet ((store-triple (output-index input-index scale offset)
+                (declare (ignore output-index))
+                (push (ulist input-index scale offset) ulists)))
+      (do-outputs transformation #'store-triple))
     (ulist* :reference id
-            (reduce #'ucons buffer
-                    :from-end t
-                    :end (output-dimension transformation)
-                    :initial-value nil))))
+            (reduce (lambda (a b) (ucons b a))
+                    ulists :initial-value nil))))
 
 (defun blueprint/call (symbol-or-id input-blueprints)
   (ulist* :call symbol-or-id input-blueprints))

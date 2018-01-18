@@ -32,14 +32,18 @@
 
 (defmethod inverse ((transformation identity-transformation)) transformation)
 
-(defmethod map-transformation-into ((transformation identity-transformation)
-                                    (result-sequence sequence)
-                                    (function function)
-                                    &rest sequences)
-  (flet ((process-one-output (&rest inputs)
-           (declare (dynamic-extent inputs))
-           (apply function 1 0 inputs)))
-    (apply #'map-into result-sequence #'process-one-output sequences)))
+(defmethod do-outputs ((transformation identity-transformation)
+                       (function function)
+                       &rest sequences)
+  (let ((args (make-list (length sequences))))
+    (declare (list args))
+    (flet ((set-args! (index)
+             (loop for arg-cons on args
+                   and sequence in sequences do
+                     (setf (car arg-cons) (elt sequence index)))))
+      (loop for index below (input-dimension transformation) do
+        (set-args! index)
+        (apply function index index 1 0 args)))))
 
 (defmethod output-dimension ((I identity-transformation)) (input-dimension I))
 

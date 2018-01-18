@@ -228,20 +228,18 @@
        :scaling (spm-values linear-operator)
        :translation translation))))
 
-(defmethod map-transformation-into ((transformation affine-transformation)
-                                    (result-sequence sequence)
-                                    (function function)
-                                    &rest sequences)
+(defmethod do-outputs ((transformation affine-transformation)
+                       (function function)
+                       &rest sequences)
   (let ((matrix (linear-operator transformation)))
-    (loop for output-index from 0 below (length result-sequence)
+    (loop for output-index from 0
           for input-index across (spm-column-indices matrix)
           for scaling across (spm-values matrix)
-          for offset across (translation transformation)
-          do (flet ((input-element (sequence)
-                      (elt sequence input-index)))
-               (setf (elt result-sequence output-index)
-                     (apply function scaling offset
-                            (mapcar #'input-element sequences)))))))
+          for offset across (translation transformation) do
+            (apply function output-index input-index scaling offset
+                   (flet ((input-element (sequence)
+                            (elt sequence input-index)))
+                     (mapcar #'input-element sequences))))))
 
 (defmethod print-object ((object affine-transformation) stream)
   (let ((inputs

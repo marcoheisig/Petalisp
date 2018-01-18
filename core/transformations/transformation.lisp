@@ -10,7 +10,7 @@
    #:output-dimension
    #:composition
    #:inverse
-   #:map-transformation-into
+   #:do-outputs
    #:enlarge-transformation))
 
 (in-package :petalisp/core/transformations/transformation)
@@ -47,22 +47,15 @@ application of f to these arguments.")
    "Return a transformation whose composition with the argument of this
 function is the identity transformation."))
 
-(defgeneric map-transformation-into
-    (transformation result-sequence function &rest sequences)
+(defgeneric do-outputs
+    (transformation function &rest input-sequences)
   (:documentation
-   "Destructively modify RESULT-SEQUENCE to contain the results of applying
-FUNCTION to the scaling, the offset and the corresponding input value of
-each element of SEQUENCES.
+   "For each output of TRANSFORMATION, invoke FUNCTION with the output
+index, input index, the scaling, the offset and the corresponding values of
+each sequence in INPUT-SEQUENCES.
 
 Important: When the scaling is zero, the values of the corresponding input
-values are undefined.")
-  (:method :around ((transformation transformation)
-                    (result-sequence sequence)
-                    (function function)
-                    &rest sequences)
-    (assert (loop for sequence in sequences always (typep sequence 'sequence)))
-    (call-next-method)
-    result-sequence))
+values are undefined."))
 
 (defgeneric enlarge-transformation (transformation scale offset)
   (:documentation

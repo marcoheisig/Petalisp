@@ -123,7 +123,7 @@
      `(aref
        ,(array-symbol array-id)
        ,@(flet ((translate-index (index-triple)
-                  (destructuring-bind (scale offset id) index-triple
+                  (destructuring-bind (id scale offset) index-triple
                     (symbolic-+
                      offset
                      (symbolic-* scale (index-symbol id))))))
