@@ -43,7 +43,7 @@ some leaves, as determined by the supplied LEAF-FUNCTION."
              (reduction
               (let ((input (input node)))
                 (let ((relevant-space (enlarge-index-space relevant-space (index-space input)))
-                      (transformation (enlarge-transformation transformation)))
+                      (transformation (enlarge-transformation transformation 1 0)))
                   (fragment-spaces (input node) relevant-space transformation))))
              (application
               (let* ((number-of-fusing-subtrees 0)

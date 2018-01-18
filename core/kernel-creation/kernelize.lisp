@@ -62,10 +62,10 @@ and RELEVANT-SPACE."
          ;; this point.
          (references        (make-array 10 :fill-pointer 0))
          (unknown-functions (make-array 10 :fill-pointer 0))
-         (dimensions (make-array 10 :fill-pointer dimension :element-type 'array-index))
+         (bounds (make-array 10 :fill-pointer dimension :element-type 'array-index))
          (normalizing-transformation (index-space-normalization relevant-space)))
     ;; initialize MIN-INDICES and MAX-INDICES
-    (map-into dimensions #'range-size initial-ranges)
+    (map-into bounds #'range-size initial-ranges)
     ;; now traverse the tree
     (labels
         ((id (object vector)
@@ -89,18 +89,14 @@ and RELEVANT-SPACE."
                            (id operator unknown-functions))
                        (map-ulist #'walk-input (inputs node))))))
                  (reduction
-                  ;; each reduction adds a new entry to MIN-INDICES and
-                  ;; MAX-INDICES and increases the dimension of the
-                  ;; RELEVANT-SPACE and TRANSFORMATION.
-                  (break "TODO")
-                  #+nil
-                  (let ((reduction-range (the range (last-elt (ranges (index-space (input node)))))))
-                    (vector-push-extend min-indices (range-start reduction-range))
-                    (vector-push-extend max-indices (+ (range-start range) (range-size range))))
-                  (let ((input (input node)))
+                  (let* ((input (input node))
+                         (reduction-range (last-elt (ranges (index-space input))))
+                         (scale (range-step reduction-range))
+                         (offset (range-start reduction-range)))
+                    (vector-push-extend (range-size reduction-range) bounds)
                     (let ((relevant-space (enlarge-index-space relevant-space (index-space input)))
-                          (transformation (enlarge-transformation transformation)))
-                      (reduction-blueprint
+                          (transformation (enlarge-transformation transformation scale offset)))
+                      (blueprint/reduce
                        (binary-operator node)
                        (unary-operator node)
                        (walk input relevant-space transformation)))))
@@ -123,11 +119,11 @@ and RELEVANT-SPACE."
                (walk-reference target normalizing-transformation)
                (walk root relevant-space normalizing-transformation))))
         (make-kernel
-         :dimensions (subseq dimensions 0 nil)
+         :bounds (subseq bounds 0 nil)
          :references (subseq references 0 nil)
          :unknown-functions (subseq unknown-functions 0 nil)
          :blueprint
-         (blueprint/with-metadata dimensions references blueprint-body))))))
+         (blueprint/with-metadata bounds references blueprint-body))))))
 
 (defun index-space-normalization (index-space)
   (let ((ranges (ranges index-space)))

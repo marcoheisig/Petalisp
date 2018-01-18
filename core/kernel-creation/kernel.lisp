@@ -8,7 +8,7 @@
    #:make-kernel
    #:kernel
    #:kernel?
-   #:kernel-dimensions
+   #:kernel-bounds
    #:kernel-references
    #:kernel-unknown-functions
    #:kernel-blueprint))
@@ -20,7 +20,7 @@
             (:predicate kernel?))
   "A kernel is the fundamental unit of work in Petalisp. It describes how
 some array elements are derived from others."
-  (dimensions    nil :type (simple-array array-index (*)))
+  (bounds            nil :type (simple-array array-index (*)))
   (references        nil :type (simple-array t (*)))
   (unknown-functions nil :type (simple-array function (*)))
   (blueprint         nil :type ulist))

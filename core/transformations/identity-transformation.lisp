@@ -23,7 +23,7 @@
 
 (defmethod composition ((g transformation) (f identity-transformation)) g)
 
-(defmethod enlarge-transformation ((transformation identity-transformation))
+(defmethod enlarge-transformation ((transformation identity-transformation) scale offset)
   (identity-transformation (1+ (input-dimension transformation))))
 
 (defmethod generic-unary-funcall ((operator identity-transformation)

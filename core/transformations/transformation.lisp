@@ -64,7 +64,7 @@ values are undefined.")
     (call-next-method)
     result-sequence))
 
-(defgeneric enlarge-transformation (transformation)
+(defgeneric enlarge-transformation (transformation scale offset)
   (:documentation
    "Given a transformation mapping from (i1 ... iN) to (j1 ... jM),
 return a transformation mapping from (i1 ... iN iN+1) to

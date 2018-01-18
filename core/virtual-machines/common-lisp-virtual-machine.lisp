@@ -94,7 +94,7 @@
                    (optimize debug))
           (let ((references (kernel-references kernel))
                 (unknown-functions (kernel-unknown-functions kernel))
-                (bounds (kernel-dimensions kernel)))
+                (bounds (kernel-bounds kernel)))
             (declare (ignorable references unknown-functions bounds))
             (let ( ;; bind the storage arrays of each referenced immediate
                   ,@(loop for id from 0
@@ -134,7 +134,7 @@
                 = (let ((,(index-symbol depth) 0))
                     (declare (ignorable ,(index-symbol depth)))
                     ,(translate-function-call unary-operator body))
-              for ,(index-symbol depth) of-type fixnum from 1 to ,(bound-symbol depth)
+              for ,(index-symbol depth) of-type fixnum from 1 below ,(bound-symbol depth)
               do (setf accumulator
                        ,(translate-function-call binary-operator 'accumulator body))
               finally (return accumulator))))

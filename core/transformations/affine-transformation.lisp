@@ -111,7 +111,8 @@
              permutation scaling)
             :translation translation)))))
 
-(defmethod enlarge-transformation ((transformation affine-transformation))
+(defmethod enlarge-transformation
+    ((transformation affine-transformation) scale offset)
   (let ((input-dimension (input-dimension transformation))
         (output-dimension (output-dimension transformation))
         (matrix (linear-operator transformation)))
@@ -125,8 +126,8 @@
       (replace translation       (translation transformation))
       (setf (aref input-constraints input-dimension) nil)
       (setf (aref permutation       output-dimension) input-dimension)
-      (setf (aref scaling           output-dimension) 1)
-      (setf (aref translation       output-dimension) 0)
+      (setf (aref scaling           output-dimension) scale)
+      (setf (aref translation       output-dimension) offset)
       (affine-transformation
        :input-constraints input-constraints
        :permutation permutation
