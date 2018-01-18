@@ -51,7 +51,7 @@ data structure appears as the source of a kernel."))
 
 (defmethod initialize-instance :after ; reference counting
     ((instance data-structure) &key &allow-other-keys)
-  (mapc (λ input (incf (refcount input))) (inputs instance)))
+  (mapc (lambda (input) (incf (refcount input))) (inputs instance)))
 
 (define-class immediate (data-structure)
   ((storage      :type t :initform nil :accessor storage)

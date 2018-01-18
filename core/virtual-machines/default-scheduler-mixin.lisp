@@ -57,7 +57,8 @@ the STORAGE slot of IMMEDIATE to NIL."))
     #+nil
     (prog1 request
       (run-in-global-evaluator-thread
-       (λ (%schedule virtual-machine targets blueprints request))))))
+       (lambda ()
+         (%schedule virtual-machine targets blueprints request))))))
 
 (defun evaluate-naively (vm immediate)
   ;; only evaluate once

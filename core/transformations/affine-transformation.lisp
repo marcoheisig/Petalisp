@@ -136,10 +136,11 @@
 
 (defmethod generic-unary-funcall ((transformation affine-transformation)
                                   (s-expressions list))
-  (map 'list (λ Ax b (cond ((eql Ax 0) b)
-                           ((numberp Ax) (+ Ax b))
-                           ((eql b 0) Ax)
-                           (t `(+ ,Ax ,b))))
+  (map 'list (lambda (Ax b)
+               (cond ((eql Ax 0) b)
+                     ((numberp Ax) (+ Ax b))
+                     ((eql b 0) Ax)
+                     (t `(+ ,Ax ,b))))
        (matrix-product (linear-operator transformation) s-expressions)
        (translation transformation)))
 

@@ -24,9 +24,10 @@
               (= dimension (dimension intersecting))))
   (let ((range-generators
           (if intersecting
-              (map 'list (λ range (generator 'range :max-size max-size
-                                                    :max-extent max-extent
-                                                    :intersecting range))
+              (map 'list (lambda (range)
+                           (generator 'range :max-size max-size
+                                             :max-extent max-extent
+                                             :intersecting range))
                    (ranges intersecting))
               (make-list dimension :initial-element
                          (generator 'range :max-size max-size
@@ -108,7 +109,7 @@
 
 (defmethod index-space ((array array))
   (make-instance 'strided-array-index-space
-    :ranges (map 'vector (λ end (range 0 1 (1- end)))
+    :ranges (map 'vector (lambda (end) (range 0 1 (1- end)))
                  (array-dimensions array))))
 
 (defmethod index-space ((range-specifications list))
