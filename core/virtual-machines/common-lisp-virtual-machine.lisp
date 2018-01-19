@@ -16,7 +16,7 @@
 (in-package :petalisp/core/virtual-machines/common-lisp-virtual-machine)
 
 (define-class common-lisp-virtual-machine
-    (virtual-machine default-scheduler-mixin #+nil compile-cache-mixin)
+    (virtual-machine default-scheduler-mixin compile-cache-mixin)
   ((memory-pool :type hash-table :initform (make-hash-table :test #'equalp))))
 
 (defmethod vm/bind-memory
@@ -90,30 +90,30 @@
      (let ((outer-dimension (- (length bounds-metadata)
                                (count-reductions body))))
        `(lambda (kernel)
-          (declare (kernel kernel)
-                   (optimize debug))
-          (let ((references (kernel-references kernel))
-                (unknown-functions (kernel-unknown-functions kernel))
-                (bounds (kernel-bounds kernel)))
-            (declare (ignorable references unknown-functions bounds))
-            (let ( ;; bind the storage arrays of each referenced immediate
-                  ,@(loop for id from 0
-                          for element-type in element-types
-                          collect
-                          `(,(array-symbol id)
-                            (the (simple-array ,element-type)
-                                 (storage (aref references ,id)))))
-                  ;; bind the iteration space bounds of each dimension
-                  ,@(loop for id below (length bounds-metadata)
-                          for bounds-info in bounds-metadata
-                          collect
-                          `(,(bound-symbol id)
-                            ,(if (integerp bounds-info)
-                                 bounds-info
-                                 `(the array-index (aref bounds ,id))))))
-              ;; translate the body
-              (with-loops (0 ,outer-dimension)
-                ,(translate body outer-dimension)))))))
+          (declare (kernel kernel))
+          (with-unsafe-optimizations*
+            (let ((references (kernel-references kernel))
+                  (unknown-functions (kernel-unknown-functions kernel))
+                  (bounds (kernel-bounds kernel)))
+              (declare (ignorable references unknown-functions bounds))
+              (let ( ;; bind the storage arrays of each referenced immediate
+                    ,@(loop for id from 0
+                            for element-type in element-types
+                            collect
+                            `(,(array-symbol id)
+                              (the (simple-array ,element-type)
+                                   (storage (aref references ,id)))))
+                    ;; bind the iteration space bounds of each dimension
+                    ,@(loop for id below (length bounds-metadata)
+                            for bounds-info in bounds-metadata
+                            collect
+                            `(,(bound-symbol id)
+                              ,(if (integerp bounds-info)
+                                   bounds-info
+                                   `(the array-index (aref bounds ,id))))))
+                ;; translate the body
+                (with-loops (0 ,outer-dimension)
+                  ,(translate body outer-dimension))))))))
     ((list* :call operator expressions)
      (apply #'translate-function-call operator
             (flet ((translate-expression (input)
