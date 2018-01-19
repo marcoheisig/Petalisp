@@ -9,8 +9,8 @@
    #:complex-double-float
    #:complex-long-float
    . #.
-   (loop for type in (append (loop for i from 2 to 64 collect `(signed-byte ,i))
-                             (loop for i from 2 to 64 collect `(unsigned-byte ,i)))
+   (loop for type in (append (loop for i from 1 to 64 collect `(signed-byte ,i))
+                             (loop for i from 1 to 64 collect `(unsigned-byte ,i)))
          collect (make-symbol (format nil "~{~W~^-~}" type)))))
 
 (in-package :petalisp/utilities/atomic-types)
@@ -43,8 +43,8 @@
          "Return an atomic type specifier that is a supertype of TYPE."
          (match type
            ((type symbol) type)
-           ((list 'signed-byte n) (aref #(,@signed-atomics) n))
-           ((list 'unsigned-byte n) (aref #(,@unsigned-atomics) n))
+           ((list 'signed-byte n) (aref #(,@signed-atomics) (1- n)))
+           ((list 'unsigned-byte n) (aref #(,@unsigned-atomics) (1- n)))
            ((list 'complex 'short-float) 'complex-short-float)
            ((list 'complex 'single-float) 'complex-single-float)
            ((list 'complex 'double-float) 'complex-double-float)

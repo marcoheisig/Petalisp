@@ -16,7 +16,7 @@
 (in-package :petalisp/core/virtual-machines/common-lisp-virtual-machine)
 
 (define-class common-lisp-virtual-machine
-    (virtual-machine default-scheduler-mixin compile-cache-mixin)
+    (virtual-machine default-scheduler-mixin #+nil compile-cache-mixin)
   ((memory-pool :type hash-table :initform (make-hash-table :test #'equalp))))
 
 (defmethod vm/bind-memory
@@ -45,9 +45,9 @@
     ((virtual-machine common-lisp-virtual-machine)
      (blueprint ucons))
   (let ((code (translate (ulist-deep-copy blueprint) 0)))
-    ;(format t "~A~%" blueprint)
-    ;(format t "~A~%" code)
-    ;(finish-output)
+    ;;(format t "~A~%" blueprint)
+    ;;(format t "~A~%" code)
+    ;;(finish-output)
     (compile nil code)))
 
 (defmethod vm/execute ((virtual-machine common-lisp-virtual-machine) (kernel kernel))
