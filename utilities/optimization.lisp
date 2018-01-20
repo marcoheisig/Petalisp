@@ -29,7 +29,7 @@
 To preserve sanity, compiler efficiency hints are disabled by default. Use
 WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
   `(without-compiler-notes
-       (with-unsafe-optimizations* ,@body)))
+    (with-unsafe-optimizations* ,@body)))
 
 (defmacro dx-let (bindings &body body)
   "Like LET, but declare every variable to have dynamic extent."

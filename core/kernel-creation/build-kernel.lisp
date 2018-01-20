@@ -8,8 +8,7 @@
    :petalisp/core/data-structures/all
    :petalisp/core/kernel-creation/blueprint
    :petalisp/core/kernel-creation/kernel
-   :petalisp/core/kernel-creation/map-subtrees
-   :petalisp/core/kernel-creation/subtree-fragment-index-spaces)
+   :petalisp/core/kernel-creation/map-subtrees)
   (:export
    #:build-kernel))
 

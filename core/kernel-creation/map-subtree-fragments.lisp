@@ -35,11 +35,12 @@ fragment, FRAGMENT-FN receives the following arguments:
          (walk (node index-space transformation)
            ;; Case 1: Leaves
            (if (funcall leaf-function node)
-               (values 0 0)
+               (values t 0)
                (etypecase node
                  ;; Case 2: Fusions
                  (fusion
                   (let ((total-reductions 0))
+                    (declare (non-negative-fixnum total-reductions))
                     (dolist (input (inputs node))
                       (when-let ((subspace (index-space-intersection index-space (index-space input))))
                         (multiple-value-bind (fusion-free? n-reductions)
@@ -49,11 +50,11 @@ fragment, FRAGMENT-FN receives the following arguments:
                     (values nil total-reductions)))
                  ;; Case 3: References
                  (reference
-                  (when-let ((subspace (index-space-intersection index-space (index-space node))))
-                    (let ((transformation (composition (transformation node) transformation)))
-                      (multiple-value-bind (fusion-free? n-reductions)
-                          (walk (input node) subspace transformation)
-                        (values fusion-free? n-reductions)))))
+                  (let ((transformation (composition (transformation node) transformation))
+                        (subspace (index-space-intersection index-space (index-space node))))
+                    (multiple-value-bind (fusion-free? n-reductions)
+                        (walk (input node) subspace transformation)
+                      (values fusion-free? n-reductions))))
                  ;; Case 3: Reductions
                  (reduction
                   (let* ((input (input node))
@@ -66,6 +67,7 @@ fragment, FRAGMENT-FN receives the following arguments:
                  (application
                   (let ((every-fusion-free? t)
                         (total-reductions 0))
+                    (declare (non-negative-fixnum total-reductions))
                     (dolist (input (inputs node))
                       (multiple-value-bind (fusion-free? n-reductions)
                           (walk input index-space transformation)
@@ -73,5 +75,7 @@ fragment, FRAGMENT-FN receives the following arguments:
                           (setf every-fusion-free? nil))
                         (setf total-reductions (max n-reductions total-reductions))))
                     (values every-fusion-free? total-reductions)))))))
+      (declare (ftype (function (t t t) (values boolean non-negative-fixnum))
+                      walk walk-potential-outer-node))
       (walk-potential-outer-node root (index-space root) (identity-transformation (dimension root))))
     (subseq results 0 nil)))

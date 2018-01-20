@@ -4,7 +4,7 @@
   (:use :closer-common-lisp :alexandria)
   (:export
    #:register-type-inference-function
-   #:infer-function-designator-and-type))
+   #:infer-type))
 
 (in-package :petalisp/core/type-inference/inference)
 
@@ -21,11 +21,11 @@
                         (error "Not a function designator: ~A" symbol)))
           (inferrer
             (lambda (argument-types)
-              (values symbol (funcall inference-function argument-types)))))
+              (values (funcall inference-function argument-types) symbol))))
          (register symbol inferrer)
          (register function inferrer))))
 
-(defun infer-function-designator-and-type (function-designator argument-types)
+(defun infer-type (function-designator argument-types)
    "Return a supertype of all possible results of applying OPERATOR to
 arguments of the given ARGUMENT-TYPES.
 
@@ -42,4 +42,4 @@ Examples:
 => bit, *"
   (if-let ((inferrer (gethash function-designator *function-designator-inferrers*)))
     (funcall inferrer argument-types)
-    (values function-designator t)))
+    (values t function-designator)))

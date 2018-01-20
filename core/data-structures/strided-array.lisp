@@ -34,9 +34,9 @@
 (define-class strided-array-reference (strided-array reference) ())
 
 (defmethod make-application (operator (first-input strided-array) inputs)
-  (multiple-value-bind (function-designator element-type)
+  (multiple-value-bind (element-type function-designator)
       (let ((argument-types (mapcar #'element-type inputs)))
-        (infer-function-designator-and-type operator argument-types))
+        (infer-type operator argument-types))
     (make-instance 'strided-array-application
       :operator function-designator
       :element-type element-type
@@ -52,12 +52,12 @@
 (defmethod make-reduction (binary-operator unary-operator
                            (strided-array strided-array)
                            order)
-  (multiple-value-bind (unary-designator unary-element-type)
+  (multiple-value-bind (unary-element-type unary-designator)
       (dx-let ((argument-types (list (element-type strided-array))))
-        (infer-function-designator-and-type unary-operator argument-types))
-    (multiple-value-bind (binary-designator element-type)
+        (infer-type unary-operator argument-types))
+    (multiple-value-bind (element-type binary-designator)
         (dx-let ((argument-types (list (element-type strided-array) unary-element-type)))
-          (infer-function-designator-and-type binary-operator argument-types))
+          (infer-type binary-operator argument-types))
       (make-instance 'strided-array-reduction
         :binary-operator binary-designator
         :unary-operator unary-designator
