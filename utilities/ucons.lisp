@@ -31,13 +31,12 @@
 ;;; each ucons is restricted to other uconses or NIL. This setup has
 ;;; several advantages:
 ;;;
-;;; - The check whether a certain ucons already exists is a single lookup
-;;;   of its car in the table of its cdr.
+;;; - Checking whether a certain ucons already exists is a single lookup of
+;;;   its car in the table of its cdr.
 ;;;
-;;; - The immutability of the car and cdr of a ucons is enforced by the
-;;;   defstruct definition of ucar.
+;;; - The immutability of a ucons is enforced by its defstruct definition
 ;;;
-;;; - A compiler has reliable type information of the slots of a ucons.
+;;; - The compiler has reliable type information of the slots of a ucons.
 ;;;
 ;;; - Lists of uconses are neither circular, nor improper.
 ;;;
@@ -58,7 +57,7 @@
 ;;;   the memory consumption of an application by orders of magnitude.
 ;;;
 ;;; - checks for structural similarity can be done in constant time. Two
-;;;   ucons trees are equal if and only if their root uconses are EQ.
+;;;   ucons trees are equal if and only if their roots are EQ.
 ;;;
 ;;; Benchmarks:
 ;;; (SBCL 1.3.20, X86-64 Intel i7-5500U CPU @ 2.40GHz)
