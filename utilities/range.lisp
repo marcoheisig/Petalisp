@@ -193,9 +193,6 @@ intersect it (potentially violating MAX-EXTENT)."
   (1+ (the integer (/ (- (range-end range) (range-start range))
                       (range-step range)))))
 
-(defmethod size ((range range))
-  (range-size range))
-
 (declaim (inline unary-range?))
 (defun size-one-range? (range)
   (= (range-start range)
