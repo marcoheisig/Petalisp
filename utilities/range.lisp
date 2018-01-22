@@ -75,7 +75,7 @@ intersect it (potentially violating MAX-EXTENT)."
                     (flet ((random-element (range)
                              (+ (range-start range)
                                 (* (range-step range)
-                                   (random (size range))))))
+                                   (random (range-size range))))))
                       (let ((offset (- (random-element intersecting)
                                        (random-element range))))
                         (range (+ (range-start range) offset)
@@ -105,7 +105,7 @@ intersect it (potentially violating MAX-EXTENT)."
                  ;; single element, where it is normalized to 1
                  (/= step-2 1)
                  (<= (the positive-integer (/ step-2 step-1))
-                     (size range-2)))
+                     (range-size range-2)))
                 ;; Case 1: create ranges with step size step-2
                 (iterate (for offset from step-1 by step-1 below step-2)
                          (for start = (let ((high (+ start-2 offset))
