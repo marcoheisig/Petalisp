@@ -26,6 +26,7 @@ implementation has no means to determine the function's lambda list."
                 (typecase function
                   (symbol (fdefinition function))
                   (t function)))
+  #+ccl (ccl:arglist function)
   #+gcl (let ((f (etypecase function
                    (symbol function)
                    (function (si:compiled-function-name function)))))
@@ -33,7 +34,7 @@ implementation has no means to determine the function's lambda list."
   #+lispworks (lw:function-lambda-list function)
   #+lucid (lcl:arglist function)
   #+sbcl (sb-introspect:function-lambda-list function)
-  #-(or allegro clisp cmu scl cormanlisp gcl lispworks lucid sbcl)
+  #-(or allegro clisp cmu scl cormanlisp gcl lispworks lucid sbcl ccl)
   (error "Not implemented."))
 
 (defun lambda-list-arity (lambda-list)

@@ -20,7 +20,7 @@ fragment, FRAGMENT-FN receives the following arguments:
 1. the index space of the fragment, which is a subspace of the index space
    of root
 2. the dimension of the iteration space of the fragment"
-  (let ((results (make-array 8 :fill-pointer 0)))
+  (let ((results (make-array 8 :fill-pointer 0 :adjustable t)))
     (labels
         ((walk-potential-outer-node (node index-space transformation)
            (multiple-value-bind (fusion-free? n-reductions)

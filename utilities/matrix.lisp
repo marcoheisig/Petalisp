@@ -112,11 +112,11 @@ function returns the m-vector that is the dot product of SPM and VEC."
 
 (defmethod matrix-product ((spm scaled-permutation-matrix) (s-expressions list))
   (map 'list (lambda (col val)
-                (let ((sexp (elt s-expressions col)))
-                  (cond ((eql val 0) 0)
-                        ((eql val 1) sexp)
-                        ((numberp sexp) (* val sexp))
-                        (t `(* ,val ,sexp)))))
+               (if (eql val 0) 0
+                   (let ((sexp (elt s-expressions col)))
+                     (cond ((eql val 1) sexp)
+                           ((numberp sexp) (* val sexp))
+                           (t `(* ,val ,sexp))))))
        (spm-column-indices spm)
        (spm-values spm)))
 

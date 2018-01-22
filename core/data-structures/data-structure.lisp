@@ -57,7 +57,7 @@ data structure appears as the source of a kernel."))
   ((storage      :type t :initform nil :accessor storage)
    (to-storage   :type transformation)
    (from-storage :type transformation)
-   (kernels      :type list :initform nil :accessor kernels))
+   (kernels      :type t :initform nil :accessor kernels))
   (:documentation
    "An immediate is a data structure whose elements can be referenced in
 constant time. It has a STORAGE slot that contains its elements in some
@@ -74,7 +74,7 @@ be executed before the immediate is fully initialized."))
   ((inputs :type list)))
 
 (define-class application (non-immediate)
-  ((operator          :type function))
+  ((operator          :type (or function symbol)))
   (:documentation
    "Let F be a referentially transparent Common Lisp function that accepts
 n arguments, and let A1...AN be data structures with index space Ω. The the
@@ -82,8 +82,8 @@ application of f to A1...AN is a data structure that maps each index k ∈ Ω
 to (F (A1 k) ... (AN k))."))
 
 (define-class reduction (non-immediate)
-  ((binary-operator          :type function)
-   (unary-operator           :type function)
+  ((binary-operator          :type (or function symbol))
+   (unary-operator           :type (or function symbol))
    (order                    :type (member :up :down :arbitrary)))
   (:documentation
    ;; TODO outdated comment, reduce is now inspired by Richard Bird's foldrn function

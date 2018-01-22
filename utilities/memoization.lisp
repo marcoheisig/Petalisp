@@ -103,7 +103,9 @@
   (with-gensyms (pool goal-var)
     `(let ((,pool
              (load-time-value
-              (make-array 0 :fill-pointer 0 :element-type ',type)))
+              (make-array 3 :fill-pointer 0
+                            :element-type ',type
+                            :adjustable t)))
            (,goal-var ,var))
        (declare (type array-index ,var ,goal-var)
                 (type (vector ,type) ,pool))

@@ -43,8 +43,8 @@
 (defun build-kernel (target root leaf-function relevant-space dimension)
   "Convert the data flow subtree fragment specified by ROOT, LEAF-FUNCTION
 and RELEVANT-SPACE."
-  (let* ((references        (make-array 10 :fill-pointer 0))
-         (unknown-functions (make-array 10 :fill-pointer 0))
+  (let* ((references        (make-array 10 :fill-pointer 0 :adjustable t))
+         (unknown-functions (make-array 10 :fill-pointer 0 :adjustable t))
          (normalizing-transformation (index-space-normalization relevant-space))
          (bounds (make-array dimension :element-type 'array-index))
          (bounds-index (dimension relevant-space)))
@@ -104,6 +104,7 @@ and RELEVANT-SPACE."
               (blueprint/store
                (walk-reference target normalizing-transformation)
                (walk root relevant-space normalizing-transformation))))
+        (incf (refcount target))
         (make-kernel
          :bounds bounds
          :references (subseq references 0 nil)
