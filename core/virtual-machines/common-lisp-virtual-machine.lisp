@@ -80,7 +80,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Working with fixnums
+;;; Working with addresses and loops
 
 (declaim (inline %emit-index-+ %fixnum-*))
 
@@ -113,6 +113,12 @@
         ((list form) form)
         ( list `(index-* ,@list)))))
 
+(defmacro for ((index start step end) &body body)
+  (check-type index symbol)
+  `(loop for ,index of-type fixnum
+         from ,start by ,step below ,end
+         do ,@body))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -130,11 +136,11 @@
 
 (defmethod translate ((loop loop-statement))
   `(let* ,(loop-statement-bindings loop)
-     (loop for ,(loop-statement-index loop) of-type fixnum
-           from ,(loop-statement-start loop)
-           by ,(loop-statement-step loop)
-             below ,(loop-statement-end loop)
-           do ,(translate (loop-statement-body loop)))))
+     (for (,(loop-statement-index loop)
+           ,(loop-statement-start loop)
+           ,(loop-statement-step loop)
+           ,(loop-statement-end loop))
+       ,(translate (loop-statement-body loop)))))
 
 (defstruct (reduction-statement
             (:include loop-statement))
@@ -149,14 +155,14 @@
          (let ((,acc ,(translate-function-call
                        (reduction-statement-unary-operator loop)
                        `(,eval-body ,(loop-statement-start loop)))))
-           (loop for ,(loop-statement-index loop) of-type fixnum
-                 from (1+ ,(loop-statement-start loop))
-                 by ,(loop-statement-step loop)
-                   below ,(loop-statement-end loop)
-                 do (setf ,acc ,(translate-function-call
-                                 (reduction-statement-binary-operator loop)
-                                 acc
-                                 `(,eval-body ,(loop-statement-index loop)))))
+           (for (,(loop-statement-index loop)
+                 (1+ ,(loop-statement-start loop))
+                 ,(loop-statement-step loop)
+                 ,(loop-statement-end loop))
+                 (setf ,acc ,(translate-function-call
+                              (reduction-statement-binary-operator loop)
+                              acc
+                              `(,eval-body ,(loop-statement-index loop)))))
            ,acc)))))
 
 (defmethod translate ((s-expression list))
@@ -207,7 +213,7 @@
            (optimize-loops loops)
            `(lambda (kernel)
               (declare (kernel kernel))
-              (with-unsafe-optimizations*
+              (with-unsafe-optimizations
                 (let ((references (kernel-references kernel))
                       (unknown-functions (kernel-unknown-functions kernel))
                       (bounds (kernel-bounds kernel)))
