@@ -248,6 +248,6 @@
                 for i from 0
                 for index-symbol = (format-symbol :keyword "I~I" i)
                 collect (or input-constraint index-symbol))))
-    (prin1 `(τ ,inputs ,(funcall object inputs))
+    (princ `(τ ,inputs ,(funcall object inputs))
            stream)))
 

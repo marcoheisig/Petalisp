@@ -65,6 +65,10 @@
 ;;; (bench  (list 1 2 3 4 5 6 7 8)) -> 25.77 nanoseconds
 ;;; (bench (ulist 1 2 3 4 5 6 7 8)) -> 38.18 nanoseconds
 
+(declaim (hash-table *ucons-leaf-table*))
+(defvar *ucons-leaf-table* (make-hash-table :test #'eq)
+  "The table of all uconses whose cdr is NIL.")
+
 (deftype ucar ()
   "The type of all elements that may appear as the UCAR of a UCONS."
   ;; the type of things you can reasonably compare with EQ
@@ -75,7 +79,7 @@
             (:copier nil) ; this is the whole point, isn't it?
             (:predicate uconsp)
             (:conc-name u))
-  (cdr   nil :type '(or ucons null) :read-only t)
+  (cdr   nil :type (or structure-object null) :read-only t)
   (car   nil :type ucar  :read-only t)
   (table nil :type (or list hash-table) :read-only nil))
 
@@ -83,12 +87,10 @@
   "A list made of UCONSes, or NIL."
   '(or ucons null))
 
-(declaim (hash-table *ucons-leaf-table*))
-(defvar *ucons-leaf-table* (make-hash-table :test #'eq)
-  "The table of all uconses whose cdr is NIL.")
-
 (declaim (inline ucons)
          (notinline ucons-slow)
+         (ftype (function (ucons) ucar) ucar)
+         (ftype (function (ucons) ulist) ucdr)
          (ftype (function (ucar ulist) ucons) ucons)
          (ftype (function (ucar ulist) ucons) ucons-slow))
 

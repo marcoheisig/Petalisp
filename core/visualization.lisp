@@ -6,7 +6,9 @@
    :petalisp/utilities/all
    :petalisp/core/transformations/all
    :petalisp/core/data-structures/all
-   :petalisp/core/kernel-creation/all))
+   :petalisp/core/kernel-creation/all)
+  (:export
+   #:data-flow-graph))
 
 (in-package :petalisp/core/visualization)
 

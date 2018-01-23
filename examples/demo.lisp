@@ -1,19 +1,58 @@
 
 (asdf:test-system :petalisp)
 
-(in-package :petalisp-internals)
+(in-package :petalisp)
 
 (defun ! (expression)
-  (print (compute expression)))
+  (format t "~%=> ~A~%~%"
+          (etypecase expression
+            ((or array data-structure)
+             (let ((*virtual-machine* (make-instance 'reference-virtual-machine)))
+               (compute expression)))
+            (t expression))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;;  Introduction
+;;; Petalisp Basics
 
-(! (-> 5 (σ (0 9) (0 9))))
+;;; σ defines an index space
+
+(! (σ)) ; the empty space
+
+(! (σ (0 9))) ; the numbers from 0 to 9 (inclusive)
+
+(! (σ (0 3 8))) ; observe how the end is normalized
+
+(! (σ (0 9) (0 9) (0 9))) ; any number of dimensions is permitted
+
+;;; the -> operator can select, broadcast or transform values
+
+(! (-> #2a((1 2 3 4)
+           (5 6 7 8))
+       (σ (0 1) (1 2)))) ; selecting values
+
+(! (-> 5 (σ (0 6) (0 6)))) ; broadcasting
+
+(! (-> #2a((1 2 3 4)
+           (5 6 7 8))
+       (τ (i j) (j i)))) ; transforming
+
+(! (-> #2a((1 2 3 4)
+           (5 6 7 8))
+       ;; arbitrary affine transformations are permitted!
+       (τ (i j) (i (* j -1)))))
+
+;; arrays can be merged with fuse
+
+(! (fuse (-> 5 (σ (0 2)))
+         (-> 1 (σ (3 5)))))
+
+;; arrays can be overwritten with fuse*
 
 (! (fuse* (-> 0 (σ (0 9) (0 9)))
           (-> 1 (σ (2 7) (2 7)))))
+
+;; lazy arrays permit beautiful functional abstractions
 
 (defun chessboard (h w)
   (fuse (-> 0 (σ (0 2 h) (0 2 w)))
@@ -23,13 +62,26 @@
 
 (! (chessboard 8 5))
 
-(! (α #'* 2 3))
+;; α applies a Lisp function element-wise
 
-(! (α #'* (-> 2 (σ (0 9))) 3))
+(! (α #'+ #(1 2 3) #(1 1 1)))
 
-;(! (β #'+ #'identity (α #'* (-> 2 (σ (0 9))) 3)))
+(! (α #'* 2 3)) ; every operand is coerced to an array
 
-(! (-> #(1 2 3 4) (τ (i) ((- i)))))
+(! (α #'* 2 #(1 2 3))) ; α broadcasts automatically
+
+;; β reduces the last dimension of an array
+
+(! (β #'+ #'identity #(1 2 3 4 5 6 7 8 9 10)))
+
+(! (β #'+ #'identity
+      ;; only the last dimension is reduced
+      #2A((1 2 3) (4 5 6))))
+
+;; σ* computes relative index spaces
+
+(! (σ* #(1 2 3) (start (* step 2) (+ end 10))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -38,8 +90,8 @@
 (defun matmul (A B)
   (β #'+ #'identity
      (α #'*
-        (-> A (τ (m n) (m 1 n)))
-        (-> B (τ (n k) (1 k n))))))
+        (-> A (τ (m n) (m 0 n)))
+        (-> B (τ (n k) (0 k n))))))
 
 (defparameter MI #2a((1.0 0.0)
                      (0.0 1.0)))
@@ -56,9 +108,11 @@
 (! (matmul (-> 3.0 (σ (1 10) (1 10)))
            (-> 2.0 (σ (1 10) (1 10)))))
 
-(defparameter M (-> #(1 2 3 4 5 6) (σ (1 6) (1 6))))
+(defparameter M (-> #(1 2 3 4 5 6) (σ (0 5) (0 5))))
 
-(! (matmul M (->  (τ (m n) (n m)))))
+(! M)
+
+(! (matmul M (-> M (τ (m n) (n m)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -79,21 +133,15 @@
                         (-> grid (τ (i j) (i (1- j))) interior))))))
     grid))
 
-(! (jacobi-2d (-> 0.0 (σ (0 99) (0 99))) 2))
+(! (jacobi-2d (-> 0.0 (σ (0 9) (0 9))) 2))
 
 
-(graphviz 'data-flow-graph
-          (aref (kernelize (list (jacobi-2d
-                                  (fuse* (-> 0.0 (σ (0 4) (0 4)))
-                                         (-> 1.0 (σ (1 3) (0 4 4))))
-                                  1))) 0))
-
-(time
- (compute
-  (jacobi-2d (fuse* (-> 0.0 (σ (0 100) (0 100)))
-                    (-> 1.0 (σ (1 99) (0 0)))) 5)))
-
-
+(petalisp/utilities/graphviz:graphviz
+ 'petalisp/core/visualization:data-flow-graph
+ (jacobi-2d
+  (fuse* (-> 0.0 (σ (0 4) (0 4)))
+         (-> 1.0 (σ (1 3) (0 4 4))))
+  1))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
