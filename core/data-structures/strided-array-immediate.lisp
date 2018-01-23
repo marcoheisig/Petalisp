@@ -86,6 +86,7 @@ with step size one to the given INDEX-SPACE."
        (value-or-fail (input)
          (typecase input
            (strided-array-immediate
+            (when (/= 1 (size input)) (fail))
             (row-major-aref (storage input) 0))
            (strided-array-reference
             (let ((predecessor (input input)))
