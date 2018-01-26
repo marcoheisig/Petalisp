@@ -23,62 +23,54 @@ GRAPH-ROOTS. For each subtree, SUBTREE-FN receives the following arguments:
 Return the sequence of immediates corresponding to the GRAPH-ROOTS."
   (let ((critical-node-table (make-hash-table :test #'eq)))
     ;; Naively, CRITICAL-NODE-TABLE would simply contain an entry for each
-    ;; critical node, mapping it to its corresponding immediate value. But
+    ;; critical node, mapping it to its corresponding immediate value.  But
     ;; since there is initially some uncertainty about which nodes are
     ;; critical, the table will also contain an entry for each node with a
-    ;; refcount of two or higher, but with a value of NIL. Furthermore,
-    ;; immediates are not necessarily placed in the table, since they are
-    ;; always critical and only map to themselves.
+    ;; refcount of two or higher, but with a hash table value of NIL.
+    ;; Furthermore, immediates are not necessarily placed in the table,
+    ;; since they are always critical and only map to themselves.
     (labels ((register-critical-node (node)
-               (unless (gethash node critical-node-table)
+               (when (not (gethash node critical-node-table))
                  (setf (gethash node critical-node-table)
                        (corresponding-immediate node))
-                 (recurse-into node)
-                 (values nil)))
-             (register-potentially-critical-node (node)
-               (multiple-value-bind (value recurring)
+                 (visit-inputs node)))
+             (maybe-register-critical-node (node)
+               (multiple-value-bind (value recurring-p)
                    (gethash node critical-node-table)
-                 (unless value
+                 (when (not value)
                    (cond
-                     ((not recurring)
+                     ((not recurring-p)
                       (setf (gethash node critical-node-table) nil)
-                      (recurse-into node))
-                     (recurring
+                      (visit-inputs node))
+                     (recurring-p
                       (setf (gethash node critical-node-table)
-                            (corresponding-immediate node))
-                      (values nil))))))
-             (recurse-into (node)
-               (typecase node
-                 ;; deliberately ignore immediates
-                 (reduction (traverse (input node) nil))
-                 (reference (traverse (input node) (not (invertible? (transformation node)))))
-                 ((or application fusion)
-                  (let ((reductions
-                          (loop for input in (inputs node)
-                                count (traverse input nil))))
-                    (case reductions
-                      (0 (values nil))
-                      (1 (values t))
-                      (otherwise (register-critical-node node)))))))
-             (traverse (node critical?)
-               (cond
-                 (critical?             (register-critical-node node))
-                 ((> (refcount node) 1) (register-potentially-critical-node node))
-                 (t                     (recurse-into node)))))
+                            (corresponding-immediate node)))))))
+             (visit-inputs (node)
+               ;; The targets of broadcasting references are
+               ;; unconditionally turned into critical nodes.
+               (if (typep node 'reference)
+                   (if (invertible? (transformation node))
+                      (visit (input node))
+                      (register-critical-node (input node)))
+                   (mapc #'visit (inputs node))))
+             (visit (node)
+               (if (> (refcount node) 1)
+                   (maybe-register-critical-node node)
+                   (visit-inputs node))))
       (map nil #'register-critical-node graph-roots))
     ;; now call SUBTREE-FN for each subtree
     (labels ((lookup (node)
                (if (typep node 'immediate)
                    node
                    (values (gethash node critical-node-table))))
-             (process-hash-table-entry (tree-root target)
-               (when (and target (not (typep tree-root 'immediate)))
-                 (flet ((leaf-function (node)
-                          ;; the root is never a leaf
-                          (unless (eq node tree-root)
-                            (lookup node))))
-                   (declare (dynamic-extent #'leaf-function))
-                   (funcall subtree-fn target tree-root #'leaf-function)))))
+             (process-hash-table-entry (tree-root corresponding-immediate)
+               (when (and corresponding-immediate
+                          (not (typep tree-root 'immediate)))
+                 (dx-flet ((leaf-function (node)
+                             ;; the root is never a leaf
+                             (unless (eq node tree-root)
+                               (lookup node))))
+                   (funcall subtree-fn corresponding-immediate tree-root #'leaf-function)))))
       (maphash #'process-hash-table-entry critical-node-table)
       (map 'vector #'lookup graph-roots))))
 
