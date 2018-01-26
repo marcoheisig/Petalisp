@@ -15,7 +15,7 @@
 (defun to-matrix (x)
   (ecase (dimension x)
     (0 (-> x (τ ( ) (0 0))))
-    (1 (-> x (τ (i) (0 i))))
+    (1 (-> x (τ (i) (i 0))))
     (2 x)))
 
 (defun transpose (x)
