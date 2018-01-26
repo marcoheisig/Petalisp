@@ -58,7 +58,7 @@ and RELEVANT-SPACE."
          (walk-reference (immediate transformation)
            (blueprint/reference
             (id immediate references)
-            (composition (to-storage immediate) transformation)))
+            (composition (transformation immediate) transformation)))
          (walk (node relevant-space transformation)
            (when relevant-space
              (if-let ((leaf (funcall leaf-function node)))

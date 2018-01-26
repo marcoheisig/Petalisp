@@ -14,25 +14,21 @@
 
 (in-package :petalisp/core/data-structures/strided-array-immediate)
 
-(define-class strided-array-immediate (strided-array immediate)
-  ((storage :type (or array null))))
+(defclass strided-array-immediate (strided-array immediate) ())
 
 (defmethod shared-initialize :after
     ((instance strided-array-immediate) slot-names &key &allow-other-keys)
-  (let ((from-storage (from-storage-transformation (index-space instance))))
-    (setf (slot-value instance 'from-storage) from-storage)
-    (setf (slot-value instance 'to-storage) (inverse from-storage))))
+  (setf (transformation instance)
+        (inverse
+         (from-storage-transformation (index-space instance)))))
 
 (defmethod make-immediate ((array array))
-  (let ((element-type (atomic-type (array-element-type array)))
-        (index-space (index-space array))
-        (identity (identity-transformation (dimension array))))
-    (make-instance 'strided-array-immediate
-      :element-type element-type
-      :index-space index-space
-      :storage array
-      :to-storage identity
-      :from-storage identity)))
+  (make-instance 'strided-array-immediate
+    :element-type (atomic-type (array-element-type array))
+    :index-space (index-space array)
+    :storage array
+    :kernels nil
+    :transformation (identity-transformation (array-rank array))))
 
 (defmethod corresponding-immediate ((strided-array strided-array))
   (make-instance 'strided-array-immediate
@@ -90,7 +86,7 @@ with step size one to the given INDEX-SPACE."
             (row-major-aref (storage input) 0))
            (strided-array-reference
             (let ((predecessor (input input)))
-              (if (and (strided-array-immediate? predecessor)
+              (if (and (typep predecessor 'immediate)
                        (= 1 (size predecessor)))
                   (row-major-aref (storage predecessor) 0)
                   (fail))))

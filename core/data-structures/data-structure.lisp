@@ -22,8 +22,6 @@
    #:data-structure-equality
    #:shallow-copy
    #:storage
-   #:to-storage
-   #:from-storage
    #:kernels
    #:operator
    #:unary-operator
@@ -33,10 +31,16 @@
 
 (defgeneric inputs (data-structure))
 
-(define-class data-structure ()
-  ((element-type :type type-specifier      :initform t)
-   (index-space  :type index-space)
-   (refcount     :type non-negative-fixnum :initform 0 :accessor refcount))
+(defgeneric refcount (data-structure))
+
+(defgeneric element-type (data-structure))
+
+(defgeneric transformation (data-structure))
+
+(defclass data-structure ()
+  ((%element-type :initarg :element-type :reader element-type)
+   (%index-space :initarg :index-space :reader index-space)
+   (%refcount :initform 0 :accessor refcount))
   (:documentation
    "A data structure of dimension D is a mapping from elements of
 INDEX-SPACE to values of type ELEMENT-TYPE.
@@ -53,38 +57,36 @@ data structure appears as the source of a kernel."))
     ((instance data-structure) &key &allow-other-keys)
   (mapc (lambda (input) (incf (refcount input))) (inputs instance)))
 
-(define-class immediate (data-structure)
-  ((storage      :type t :initform nil :accessor storage)
-   (to-storage   :type transformation)
-   (from-storage :type transformation)
-   (kernels      :type t :initform nil :accessor kernels))
+(defclass immediate (data-structure)
+  ((%storage :initarg :storage :accessor storage :initform nil)
+   (%transformation :initarg :transformation :accessor transformation)
+   (%kernels :initarg :kernels :accessor kernels :initform nil))
   (:documentation
    "An immediate is a data structure whose elements can be referenced in
 constant time. It has a STORAGE slot that contains its elements in some
-unspecified format. The transformation TO-STORAGE maps indices referencing
-the immediate to indices referencing STORAGE. The transformation
-FROM-STORAGE is the inverse of TO-STORAGE.
+unspecified format. TRANSFORMATION maps indices referencing
+the immediate to indices referencing STORAGE.
 
 If KERNELS is a non-empty sequence, it denotes the set of kernels that must
 be executed before the immediate is fully initialized."))
 
 (defmethod inputs ((immediate immediate)) nil)
 
-(define-class non-immediate (data-structure)
-  ((inputs :type list)))
+(defclass non-immediate (data-structure)
+  ((%inputs :initarg :inputs :reader inputs)))
 
-(define-class application (non-immediate)
-  ((operator          :type (or function symbol)))
+(defclass application (non-immediate)
+  ((%operator :initarg :operator :reader operator))
   (:documentation
    "Let F be a referentially transparent Common Lisp function that accepts
 n arguments, and let A1...AN be data structures with index space Ω. The the
 application of f to A1...AN is a data structure that maps each index k ∈ Ω
 to (F (A1 k) ... (AN k))."))
 
-(define-class reduction (non-immediate)
-  ((binary-operator          :type (or function symbol))
-   (unary-operator           :type (or function symbol))
-   (order                    :type (member :up :down :arbitrary)))
+(defclass reduction (non-immediate)
+  ((%binary-operator :initarg :binary-operator :reader binary-operator)
+   (%unary-operator :initarg :unary-operator :reader unary-operator)
+   (%order :initarg :order :reader order :type (member :up :down :arbitrary)))
   (:documentation
    ;; TODO outdated comment, reduce is now inspired by Richard Bird's foldrn function
    "Let F be a referentially transparent Common Lisp function that accepts
@@ -94,7 +96,7 @@ some values. Then the reduction of A by F is a data structure of dimension
 n-1 that maps each element k of S1 ⨯ ... ⨯ Sn-1 to the pairwise combination
 of the elements {a(i) | i ∈ k ⨯ Sn} by F in some ORDER."))
 
-(define-class fusion (non-immediate) ()
+(defclass fusion (non-immediate) ()
   (:documentation
    "Let A1...AN be strided arrays with equal dimension, each mapping from
 an index space Ωk to a set of values.  Furthermore, let the sets Ω1...ΩN be
@@ -103,8 +105,8 @@ space. Then the fusion of A1...AN is a data structure that maps each index
 i ∈ Ωf to the value of i of the unique strided array Ak whose index space
 contains i."))
 
-(define-class reference (non-immediate)
-  ((transformation :type transformation))
+(defclass reference (non-immediate)
+  ((%transformation :initarg :transformation :reader transformation))
   (:documentation
    "Let A be a strided array with domain ΩA, let ΩB be a strided array
 index space and let T be a transformation from ΩB to ΩA. Then the reference
@@ -269,9 +271,9 @@ DATA-STRUCTURE.")
    "Make a copy of INSTANCE that behaves similarly, but is not EQ to it.")
   (:method ((immediate immediate))
     (make-instance (class-of immediate)
+      :element-type (element-type immediate)
       :index-space (index-space immediate)
-      :to-storage (to-storage immediate)
-      :from-storage (from-storage immediate)
+      :transformation (transformation immediate)
       :kernels (kernels immediate)
       :storage (storage immediate)))
   (:method ((application application))

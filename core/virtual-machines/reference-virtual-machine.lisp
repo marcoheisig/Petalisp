@@ -73,7 +73,7 @@ exact semantics of this operation differ on each virtual machine."))
             (strided-array-immediate strided-array-immediate))
     (loop for (indices . value) in internal-representation do
       (setf (apply #'aref (storage strided-array-immediate)
-                   (funcall (to-storage strided-array-immediate) indices))
+                   (funcall (transformation strided-array-immediate) indices))
             value))))
 
 (defmethod vm/evaluate :around
@@ -91,7 +91,7 @@ exact semantics of this operation differ on each virtual machine."))
           (cons
            indices
            (apply #'aref (storage node)
-                  (funcall (to-storage node) indices))))))
+                  (funcall (transformation node) indices))))))
 
 (defmethod vm/evaluate
     ((vm reference-virtual-machine) (node application))
