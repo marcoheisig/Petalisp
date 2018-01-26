@@ -29,7 +29,8 @@
           (or
            (pop (gethash (cons element-type array-dimensions)
                          (memory-pool virtual-machine)))
-           (make-array array-dimensions :element-type element-type)))))
+           (make-array array-dimensions :element-type element-type)))
+    (values)))
 
 (defmethod vm/free-memory
     ((virtual-machine common-lisp-virtual-machine)
@@ -39,7 +40,8 @@
         (element-type (element-type immediate)))
     (push (storage immediate)
           (gethash (cons element-type array-dimensions)
-                   (memory-pool virtual-machine)))))
+                   (memory-pool virtual-machine)))
+    (values)))
 
 (defmethod vm/compile
   ((virtual-machine common-lisp-virtual-machine)
@@ -213,27 +215,28 @@
            (optimize-loops loops)
            `(lambda (kernel)
               (declare (kernel kernel)
-                       (optimize (debug 3) (safety 3)))
-              (let ((references (kernel-references kernel))
-                    (unknown-functions (kernel-unknown-functions kernel))
-                    (bounds (kernel-bounds kernel)))
-                (declare (ignorable references unknown-functions bounds))
-                (let ( ;; bind the storage arrays of each referenced immediate
-                      ,@(loop for id from 0
-                              for element-type in element-types
-                              collect
-                              `(,(array-symbol id)
-                                (the (simple-array ,element-type)
-                                     (storage (aref references ,id)))))
-                      ;; bind the iteration space bounds of each dimension
-                      ,@(loop for id below (length bounds-metadata)
-                              for bounds-info in bounds-metadata
-                              collect
-                              `(,(bound-symbol id)
-                                ,(if (integerp bounds-info)
-                                     bounds-info
-                                     `(the array-index (aref bounds ,id))))))
-                  ,(translate body))))))))))
+                       #+nil(optimize (debug 3) (safety 3)))
+              (with-unsafe-optimizations
+                (let ((references (kernel-references kernel))
+                      (unknown-functions (kernel-unknown-functions kernel))
+                      (bounds (kernel-bounds kernel)))
+                  (declare (ignorable references unknown-functions bounds))
+                  (let ( ;; bind the storage arrays of each referenced immediate
+                        ,@(loop for id from 0
+                                for element-type in element-types
+                                collect
+                                `(,(array-symbol id)
+                                  (the (simple-array ,element-type)
+                                       (storage (aref references ,id)))))
+                        ;; bind the iteration space bounds of each dimension
+                        ,@(loop for id below (length bounds-metadata)
+                                for bounds-info in bounds-metadata
+                                collect
+                                `(,(bound-symbol id)
+                                  ,(if (integerp bounds-info)
+                                       bounds-info
+                                       `(the array-index (aref bounds ,id))))))
+                    ,(translate body)))))))))))
 
 (defun optimize-loops (loops)
   (loop
@@ -340,7 +343,7 @@
   (let ((stride 1))
     (declare (positive-fixnum stride))
     (loop for index of-type fixnum
-          from (- (array-rank array) 2)
-          downto axis do
+          from (1- (array-rank array))
+          downto (1+ axis) do
             (setf stride (* (array-dimension array index) stride)))
     stride))

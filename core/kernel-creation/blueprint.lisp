@@ -55,7 +55,7 @@
            (if (<= dimension 8)
                dimension
                (let ((lb (floor (log dimension 2))))
-                 (ulist (expt lb 2) (expt (1+ lb) 2)))))
+                 (ulist (expt 2 lb) (expt (1+ lb) 2)))))
          (reference-metadata (reference)
            (atomic-type (element-type reference))))
     (ulist :blueprint
