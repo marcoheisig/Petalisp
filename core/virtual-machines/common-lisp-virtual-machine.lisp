@@ -214,8 +214,7 @@
              (setf (aref loops loop-index) body))
            (optimize-loops loops)
            `(lambda (kernel)
-              (declare (kernel kernel)
-                       #+nil(optimize (debug 3) (safety 3)))
+              (declare (kernel kernel))
               (with-unsafe-optimizations
                 (let ((references (kernel-references kernel))
                       (unknown-functions (kernel-unknown-functions kernel))
@@ -277,7 +276,7 @@
                                   (prog1 expr
                                     (setf max-depth (max depth max-depth))))))))
                   (if (or (>= max-depth (length loops))
-                          (>= max-depth index))
+                          (> max-depth index))
                       (values hoisted-expression max-depth)
                       (values
                        (or
