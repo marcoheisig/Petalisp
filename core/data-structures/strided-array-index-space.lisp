@@ -4,6 +4,7 @@
   (:use :closer-common-lisp :alexandria :iterate)
   (:use
    :petalisp/utilities/all
+   :petalisp/core/error-handling
    :petalisp/core/transformations/all
    :petalisp/core/data-structures/data-structure
    :petalisp/core/data-structures/index-space)
@@ -53,6 +54,10 @@
            ,@(iterate (for form in dimensions)
                       (for d from 0)
                       (collect `(let ((,dim ,d)) (range ,@form))))))))))
+
+(define-condition no-common-broadcast-space
+  (petalisp-user-error)
+  ((%index-spaces :initarg :data-structures :reader index-spaces)))
 
 (defmethod common-broadcast-space ((space strided-array-index-space) &rest more-spaces)
   (let ((list-of-ranges (list* (ranges space) (mapcar #'ranges more-spaces))))

@@ -1,9 +1,10 @@
 ;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
 (uiop:define-package :petalisp/core/data-structures/data-structure
-  (:use :closer-common-lisp :alexandria)
+  (:use :closer-common-lisp :alexandria :trivia)
   (:use
    :petalisp/utilities/all
+   :petalisp/core/error-handling
    :petalisp/core/transformations/all
    :petalisp/core/data-structures/index-space)
   (:export
@@ -159,6 +160,10 @@ equivalent to an instance of class APPLICATION.")
     (assert (identical all-inputs :test #'index-space-equality :key #'index-space))
     (call-next-method)))
 
+(define-condition reduction-of-data-structure-with-dimension-zero
+    (petalisp-user-error)
+    ((%data-structure :initarg :data-structure :reader data-structure)))
+
 (defgeneric reduction (f g a order)
   (:documentation
    "Return a -- potentially optimized and simplified -- data structure
@@ -172,27 +177,65 @@ equivalent to an instance of class REDUCTION.")
             :input a)
     (call-next-method)))
 
-(defgeneric fusion (first-element all-elements)
-  (:documentation
-   "Return the fusion of the sequence ALL-ELEMENTS, i.e. a suitable object
-that contains the entries of each element from ALL-ELEMENTS. The elements
-of ALL-ELEMENTS must not intersect.
+(define-condition fusion-error (petalisp-user-error)
+  ((%index-spaces :initarg :index-spaces :reader index-spaces)))
 
-FIRST-ELEMENT must be EQ to the first element of ALL-ELEMENTS. Its sole
+(define-condition fusion-of-index-spaces-of-different-dimension
+  (fusion-error)
+  ())
+
+(define-condition fusion-of-intersecting-index-spaces
+  (fusion-error)
+  ((%intersecting-spaces :initarg :intersecting-spaces :reader intersecting-spaces)))
+
+(defgeneric fusion (first-index-space index-spaces)
+  (:documentation
+   "Return the fusion of the sequence INDEX-SPACES, i.e. a suitable object
+that contains the entries of each index-space from INDEX-SPACES. The index-spaces
+of INDEX-SPACES must not intersect.
+
+FIRST-INDEX-SPACE must be EQ to the first index-space of INDEX-SPACES. Its sole
 purpose is to dispatch on it.")
   (:method-combination or)
-  (:method or ((first-element data-structure) (all-elements list))
-    (make-fusion first-element all-elements))
-  (:method :around (first-element all-elements)
-    (assert (eq first-element (elt all-elements 0)))
-    (if (= 1 (length all-elements))
-        first-element
-        (call-next-method)))
-  (:method :around ((first-element data-structure) all-elements)
-    (assert (identical all-elements :test #'= :key #'dimension) (all-elements)
-            'fusion-of-elements-of-different-dimension
-            :elements all-elements)
-    (call-next-method)))
+  ;; by default, just call MAKE-FUSION
+  (:method or ((first-index-space data-structure) (index-spaces list))
+    (make-fusion first-index-space index-spaces))
+  ;; default error handling and optimizations
+  (:method :around (first-index-space index-spaces)
+    (assert (eq first-index-space (elt index-spaces 0)))
+    (assert (identical index-spaces :test #'= :key #'dimension) (index-spaces)
+            'fusion-of-index-spaces-of-different-dimension
+            :index-spaces index-spaces)
+    (map-combinations
+     (lambda-match
+      ((list a b)
+       (assert (not (index-space-intersection?
+                     (index-space a)
+                     (index-space b)))
+               (a b)
+               'fusion-of-intersecting-index-spaces
+               :index-spaces index-spaces
+               :intersecting-spaces (list a b))))
+     index-spaces
+     :length 2
+     :copy nil)
+    ;; ignore one-index-space fusions
+    (if (= 1 (length index-spaces))
+        first-index-space
+      (call-next-method))))
+
+(define-condition reference-error
+  (petalisp-user-error)
+  ((%data-structure :initarg :data-structure :reader data-structure)
+   (%index-space :initarg :index-space :reader index-space)))
+
+(define-condition rerence-to-non-subspace
+  (reference-error)
+  ())
+
+(define-condition reference-with-transformation-of-invalid-dimension
+  (reference-error)
+  ())
 
 (defgeneric reference (data-structure index-space transformation)
   (:documentation
@@ -225,6 +268,11 @@ equivalent to an instance of class REFERENCE.")
     (reference (input reference)
                index-space
                (composition (transformation reference) transformation))))
+
+(define-condition broadcast-with-invalid-dimensions
+  (petalisp-user-error)
+  ((%data-structure :initarg :data-structure :reader data-structure)
+   (%index-space :initarg :index-space :reader index-space)))
 
 (defgeneric broadcast (data-structure index-space)
   (:documentation
