@@ -175,60 +175,42 @@
 (defmethod size ((object strided-array-index-space))
   (reduce #'* (ranges object) :key #'range-size))
 
-(defmethod index-space-union ((object strided-array-index-space) &rest more-objects)
-  (let ((objects (cons object more-objects)))
-    ;; computing the index space union accounts easily for 50% of the
-    ;; runtime of a Petalisp program, making it a good target for
-    ;; memoization.
-    (with-memoization ((mapcar #'ranges objects) :test #'equalp)
-      (index-space
-       (apply #'vector (fuse-recursively objects))))))
+(defun index-space-union-range-oracle (&rest ranges)
+  (declare (dynamic-extent ranges))
+  ;; determine the bounding box
+  (loop for range in ranges
+        minimize (range-start range) into global-start
+        maximize (range-end range) into global-end
+        finally
+           (return
+             (if (= global-start global-end)
+                 (first ranges)
+                 ;; now determine the step size
+                 (let ((step-size (- global-end global-start)))
+                   (dolist (range ranges)
+                     (flet ((check (n)
+                              (setf step-size
+                                    (min step-size
+                                         (- n global-start)))))
+                       (if (> (range-start range) global-start)
+                           (check (range-start range))
+                           (unless (size-one-range? range)
+                             (check (+ (range-start range)
+                                       (range-step range)))))))
+                   (range global-start step-size global-end))))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;;  fusion islands - specially annotated index spaces
+(defmethod index-space-union
+    ((space-1 strided-array-index-space) &rest more-spaces)
+  (index-space
+   (apply #'map 'vector
+          #'index-space-union-range-oracle
+          (ranges space-1) (mapcar #'ranges more-spaces))))
 
-(define-class fusion-island (strided-array-index-space)
-  (spaces-to-fuse))
-
-(defun fuse-recursively (spaces)
-  (unless (zerop (dimension (first spaces)))
-    (let* ((fusion-islands
-             (mapcar
-              (lambda (space)
-                (let ((ranges (ranges space)))
-                  (make-instance 'fusion-island
-                    :ranges (subseq ranges 0 1)
-                    :spaces-to-fuse
-                    (list
-                     (index-space
-                      (subseq ranges 1))))))
-              spaces))
-           (islands (subdivision fusion-islands)))
-      (let ((results (mapcar
-                      (compose #'fuse-recursively #'spaces-to-fuse)
-                      islands)))
-        (assert (identical results :test #'equalp :key #'first))
-        (cons (range-fusion
-               (mapcar
-                (lambda (x)
-                  (elt (ranges x) 0))
-                islands))
-              (first results))))))
-
-(defmethod index-space-intersection :around ((space-1 fusion-island)
-                                             (space-2 fusion-island))
-  (let ((result (call-next-method)))
-    (when result
-      (change-class result 'fusion-island
-                    :spaces-to-fuse (cl:union (spaces-to-fuse space-1)
-                                              (spaces-to-fuse space-2))))))
-
-(defmethod index-space-difference :around ((space-1 fusion-island)
-                                           (space-2 fusion-island))
-  (let ((result (call-next-method)))
-    (mapcar
-     (lambda (x)
-       (change-class x 'fusion-island
-                     :spaces-to-fuse (spaces-to-fuse space-1)))
-     result)))
+(defmethod index-space-union :around
+    ((space-1 strided-array-index-space) &rest more-spaces)
+  (let ((union (call-next-method)))
+    (flet ((proper-subspace-p (space)
+             (subspace? space union)))
+      (assert (proper-subspace-p space-1))
+      (assert (every #'proper-subspace-p more-spaces))
+      union)))
