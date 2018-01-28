@@ -32,12 +32,6 @@
 
 (defgeneric inputs (data-structure))
 
-(defgeneric refcount (data-structure))
-
-(defgeneric element-type (data-structure))
-
-(defgeneric transformation (data-structure))
-
 (defclass data-structure ()
   ((%element-type :initarg :element-type :reader element-type)
    (%index-space :initarg :index-space :reader index-space)

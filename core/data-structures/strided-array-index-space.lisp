@@ -142,6 +142,13 @@
          (ranges space-1)
          (ranges space-2))))
 
+(defmethod index-space-intersection?
+    ((space-1 strided-array-index-space)
+     (space-2 strided-array-index-space))
+  (loop for range-1 across (ranges space-1)
+        for range-2 across (ranges space-2)
+        always (range-intersection? range-1 range-2)))
+
 (defmethod print-object ((object strided-array-index-space) stream)
   (flet ((range-list (range)
            (list (range-start range)
