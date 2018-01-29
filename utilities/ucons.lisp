@@ -71,7 +71,7 @@
 
 (deftype ucar ()
   "The type of all elements that may appear as the UCAR of a UCONS."
-  ;; the type of things you can reasonably compare with EQ
+  ;; AKA the type of things you can reasonably compare with EQ
   '(or fixnum symbol function character structure-object))
 
 (defstruct (ucons
@@ -88,48 +88,51 @@
   '(or ucons null))
 
 (declaim (inline ucons)
-         (notinline ucons-slow)
+         (notinline ucons-leaf ucons-hash ucons-list)
          (ftype (function (ucons) ucar) ucar)
          (ftype (function (ucons) ulist) ucdr)
          (ftype (function (ucar ulist) ucons) ucons)
-         (ftype (function (ucar ulist) ucons) ucons-slow))
+         (ftype (function (ucar) ucons) ucons-leaf)
+         (ftype (function (ucar ucons) ucons) ucons-hash ucons-list))
 
 (defun ucons (car cdr)
   "Given a suitable CAR and CDR, return a UCONS that is EQ to all future
-   and past invocation of this function with the same arguments."
-  (declare (type (or null ucons) cdr)
-           (type ucar car))
-  (let ((alist (and cdr
-                    (listp (utable cdr))
-                    (utable cdr))))
-    (the ucons
-         (or
-          (loop for cons of-type (cons ucar ulist) in alist
-                do (when (eq (car cons) car)
-                     (return (cdr cons))))
-          (ucons-slow car cdr)))))
-
-(defun ucons-slow (car cdr)
-  "Helper function of UCONS. Invoked when the UCONS-TABLE of CDR is not a
-   list, or is a list but does not contain an entry for CAR."
-  (declare (type (or ucons null) cdr)
-           (type ucar car))
+and past invocation of this function with the same arguments."
+  (declare (type ulist cdr)
+           (type ucar car)
+           (optimize (speed 3) (safety 0) (debug 0)))
   (if (null cdr)
-      (values (ensure-gethash car *ucons-leaf-table* (make-fresh-ucons car cdr)))
+      (ucons-leaf car)
       (let ((table (utable cdr)))
-        (etypecase table
-          (hash-table
-           (values (ensure-gethash car table (make-fresh-ucons car cdr))))
-          (list
-           (let ((ucons (make-fresh-ucons car cdr)))
-             (prog1 ucons
-               (cond
-                 ((> (length table) 8)
-                  (setf (utable cdr)
-                        (alist-hash-table table :test #'eql :size 16))
-                  (setf (gethash car (utable cdr)) ucons))
-                 (t
-                  (push (cons car ucons) (utable cdr)))))))))))
+        (if (listp table)
+            (loop for (ucar . ucdr) of-type (ucar . ucons) in table
+                  when (eq ucar car)
+                    do (return ucdr)
+                  finally (return (ucons-list car cdr)))
+            (ucons-hash car cdr)))))
+
+;;; Called for UCONSES with a CDR of NIL
+(defun ucons-leaf (car)
+  (declare (ucar car))
+  (values
+   (ensure-gethash car *ucons-leaf-table* (make-fresh-ucons car nil))))
+
+;;; Called if the UTABLE of CDR is a hash table
+(defun ucons-hash (car cdr)
+  (declare (ucar car) (ucons cdr))
+  (values
+   (ensure-gethash car (utable cdr) (make-fresh-ucons car cdr))))
+
+;;; Called if the UTABLE of CDR is an alist that does not contain CAR.
+(defun ucons-list (car cdr)
+  (declare (ucar car) (ucons cdr))
+  (let ((ucons (make-fresh-ucons car cdr)))
+    (prog1 ucons
+      (if (< (length (utable cdr)) 8)
+          (push (cons car ucons) (utable cdr))
+          (let ((hash-table (alist-hash-table (utable cdr) :test #'eq :size 16)))
+            (setf (gethash car hash-table) ucons)
+            (setf (utable cdr) hash-table))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
