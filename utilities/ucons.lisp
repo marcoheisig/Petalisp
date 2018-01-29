@@ -141,24 +141,14 @@ and past invocation of this function with the same arguments."
 (defun ulist (&rest args)
   "Return the ulist associated with the supplied arguments."
   (declare (dynamic-extent args))
-  (labels ((%ulist (first rest)
-             (if (null rest)
-                 (ucons first nil)
-                 (ucons first (%ulist (car rest) (cdr rest))))))
-    (unless (null args)
-      (%ulist (first args) (rest args)))))
+  (reduce #'ucons args :from-end t :initial-value nil))
 
-(define-compiler-macro ulist (&whole whole &rest arg-forms)
-  (if (> (length arg-forms) 9)
+(define-compiler-macro ulist (&whole whole &rest args)
+  (if (> (length args) 9)
       whole
-      (let ((gensyms
-              (loop for arg-form in arg-forms
-                    collect (gensym "ARG"))))
-        `(let* ,(mapcar #'list gensyms arg-forms)
-           ,(let (result-form)
-              (loop for gensym in (reverse gensyms)
-                    do (setf result-form `(ucons ,gensym ,result-form)))
-              result-form)))))
+      (flet ((symbolic-ucons (car cdr)
+               `(ucons ,car ,cdr)))
+        (reduce #'symbolic-ucons args :from-end t :initial-value nil))))
 
 (defun ulist* (&rest args)
   "Return the ulist associated with the supplied arguments, but using the
@@ -234,26 +224,25 @@ and past invocation of this function with the same arguments."
 (defun ulength (ulist)
   "Return the length of the given ulist."
   (declare (ulist ulist) (optimize speed))
-  (loop counting t
-        while (setf ulist (ucdr ulist))))
+  (loop for elt = ulist then (ucdr elt)
+        while elt count t))
 
 (defun ulist-shallow-copy (ulist)
   "Return a list of the elements of ULIST."
   (declare (ulist ulist))
-  (loop while ulist
-        collect (ucar ulist)
-        do (setf ulist (ucdr ulist))))
+  (loop for elt = ulist then (ucdr elt)
+        while elt collect (ucar elt)))
 
 (defun ulist-deep-copy (ulist)
   "Return a tree of the same shape as ULIST, but where all occuring ulists
    have been converted to lists."
   (declare (ulist ulist))
-  (loop while ulist
-        collect (let ((car (ucar ulist)))
-                  (if (uconsp car)
-                      (ulist-deep-copy car)
-                      car))
-        do (setf ulist (ucdr ulist))))
+  (loop for elt = ulist then (ucdr elt)
+        while elt
+        for car = (ucar elt)
+        collect (if (uconsp car)
+                    (ulist-deep-copy car)
+                    car)))
 
 (defmethod print-object ((ulist ucons) stream)
   (cond (*print-pretty*
