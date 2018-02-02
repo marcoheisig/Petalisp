@@ -2,6 +2,7 @@
 
 (uiop:define-package :petalisp/core/virtual-machines/common-lisp-virtual-machine
   (:use :closer-common-lisp :alexandria :trivia)
+  (:import-from :lparallel)
   (:use
    :petalisp/utilities/all
    :petalisp/core/transformations/all

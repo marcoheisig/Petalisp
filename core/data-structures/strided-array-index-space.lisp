@@ -7,6 +7,7 @@
    :petalisp/core/error-handling
    :petalisp/core/transformations/all
    :petalisp/core/data-structures/data-structure
+   :petalisp/core/data-structures/immediate
    :petalisp/core/data-structures/index-space)
   (:export
    #:strided-array-index-space
