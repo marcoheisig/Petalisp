@@ -17,7 +17,8 @@
 
 (define-class common-lisp-virtual-machine
     (virtual-machine default-scheduler-mixin compile-cache-mixin)
-  ((memory-pool :type hash-table :initform (make-hash-table :test #'equalp))))
+  ((memory-pool :type hash-table :initform (make-hash-table :test #'equalp))
+   (worker-pool :initform (lparallel:make-kernel 2))))
 
 (defmethod vm/bind-memory
     ((virtual-machine common-lisp-virtual-machine)
@@ -50,7 +51,8 @@
     (compile nil code)))
 
 (defmethod vm/execute ((virtual-machine common-lisp-virtual-machine) (kernel kernel))
-  (funcall (vm/compile virtual-machine (kernel-blueprint kernel)) kernel))
+  (let ((lparallel:*kernel* (worker-pool virtual-machine)))
+    (funcall (vm/compile virtual-machine (kernel-blueprint kernel)) kernel)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -144,6 +146,16 @@
            ,(loop-statement-end loop))
        ,(translate (loop-statement-body loop)))))
 
+(defstruct (parallel-loop-statement
+            (:include loop-statement)))
+
+(defmethod translate ((loop parallel-loop-statement))
+  `(let* ,(loop-statement-bindings loop)
+     (lparallel:pdotimes
+         (,(loop-statement-index loop)
+          ,(loop-statement-end loop))
+       ,(translate (loop-statement-body loop)))))
+
 (defstruct (reduction-statement
             (:include loop-statement))
   (binary-operator nil)
@@ -180,7 +192,13 @@
     ((list :blueprint bounds-metadata element-types body)
      (let* ((dimension (length bounds-metadata))
             (loops (make-array dimension))
-            (index (1- dimension)))
+            (index (1- dimension))
+            (min-size
+              (loop for bound in bounds-metadata
+                    counting
+                    (ematch bound
+                      ((list min _) min)
+                      ((and bound (type integer)) bound)))))
        (labels
            ((walk (expression)
               (ematch expression
@@ -204,13 +222,22 @@
                  `(setf ,(walk place) ,(walk expression))))))
          (let ((body (walk body)))
            (loop for loop-index from index downto 0 do
-             (setf body
-                   (make-loop-statement
-                    :index (index-symbol loop-index)
-                    :start 0
-                    :step 1
-                    :end (bound-symbol loop-index)
-                    :body body))
+             (if (and (= loop-index 0)
+                      (> min-size 1000))
+                 (setf body
+                       (make-parallel-loop-statement
+                        :index (index-symbol loop-index)
+                        :start 0
+                        :step 1
+                        :end (bound-symbol loop-index)
+                        :body body))
+                 (setf body
+                       (make-loop-statement
+                        :index (index-symbol loop-index)
+                        :start 0
+                        :step 1
+                        :end (bound-symbol loop-index)
+                        :body body)))
              (setf (aref loops loop-index) body))
            (optimize-loops loops)
            `(lambda (kernel)

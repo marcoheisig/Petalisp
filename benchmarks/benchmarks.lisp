@@ -62,26 +62,26 @@
 (defun jacobi-2d ()
   (let ((small-array (make-array '(5 5) :element-type 'double-float
                                         :initial-element 1.0d0))
-        (large-array (make-array '(502 502) :element-type 'double-float
+        (large-array (make-array '(1024 768) :element-type 'double-float
                                             :initial-element 1.0d0)))
     (iterative-benchmark
      :jacobi-2d
      (lambda (n) (values (jacobi small-array :iterations n)
                          (* n 3 3 4)))
      (lambda (n) (values (jacobi large-array :iterations n)
-                         (* n 500 500 4))))))
+                         (* n 1022 766 4))))))
 
 (defun rbgs-2d ()
   (let ((small-array (make-array '(5 5) :element-type 'double-float
                                         :initial-element 1.0d0))
-        (large-array (make-array '(200 200) :element-type 'double-float
+        (large-array (make-array '(502 502) :element-type 'double-float
                                             :initial-element 1.0d0)))
     (iterative-benchmark
      :rbgs-2d
      (lambda (n) (values (red-black-gauss-seidel small-array :iterations n)
                          (* n 3 3 4)))
      (lambda (n) (values (red-black-gauss-seidel large-array :iterations n)
-                         (* n 198 198 4))))))
+                         (* n 500 500 4))))))
 
 (defun jacobi-3d ()
   (let ((small-array (make-array '(5 5 5) :element-type 'double-float

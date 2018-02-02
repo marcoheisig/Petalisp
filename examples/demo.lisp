@@ -7,8 +7,7 @@
   (format t "~%=> ~A~%~%"
           (etypecase expression
             ((or array data-structure)
-             (let ((*virtual-machine* (make-instance 'reference-virtual-machine)))
-               (compute expression)))
+             (compute expression))
             (t expression))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
