@@ -1,4 +1,3 @@
-
 (asdf:test-system :petalisp)
 
 (in-package :petalisp)

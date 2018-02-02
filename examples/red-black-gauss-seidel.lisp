@@ -1,5 +1,3 @@
-;;; © 2016-2017 Marco Heisig - licensed under AGPLv3, see the file COPYING
-
 (in-package :common-lisp-user)
 
 (defpackage :petalisp/examples/red-black-gauss-seidel
