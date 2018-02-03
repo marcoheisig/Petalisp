@@ -1,7 +1,7 @@
 ;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
 (uiop:define-package :petalisp/core/virtual-machines/default-scheduler-mixin
-  (:use :closer-common-lisp :alexandria :iterate)
+  (:use :closer-common-lisp :alexandria :bordeaux-threads)
   (:use
    :petalisp/utilities/all
    :petalisp/core/transformations/all
@@ -20,7 +20,20 @@
 
 (define-class default-scheduler-mixin ()
   ((scheduler-queue :type queue :initform (make-queue))
-   (scheduler-thread :initform nil)))
+   (scheduler-thread :accessor scheduler-thread)
+   (worker-queue :type queue :initform (make-queue))
+   (worker-thread :accessor worker-thread)))
+
+(defmethod initialize-instance :after
+    ((vm default-scheduler-mixin) &key &allow-other-keys)
+  (flet ((schedule ()
+           (loop (funcall (dequeue (scheduler-queue vm))))))
+    (setf (scheduler-thread vm)
+          (make-thread #'schedule :name "Petalisp Scheduler Thread")))
+  (flet ((work ()
+           (loop (funcall (dequeue (worker-queue vm))))))
+    (setf (worker-thread vm)
+          (make-thread #'work :name "Petalisp Worker Thread"))))
 
 (defgeneric vm/bind-memory (virtual-machine immediate)
   (:documentation
@@ -48,17 +61,21 @@ the STORAGE slot of IMMEDIATE to NIL."))
 
 (defmethod vm/schedule ((vm default-scheduler-mixin) targets recipes)
   (let ((request (make-request)))
-    ;; TODO currently schedules synchronously for easier debugging
-    (loop for immediate across (kernelize recipes)
-          for index from 0 do
-            (setf (storage (aref targets index))
-                  (storage (evaluate-naively vm immediate))))
-    (complete request)
-    #+nil
     (prog1 request
-      (run-in-global-evaluator-thread
-       (lambda ()
-         (%schedule virtual-machine targets blueprints request))))))
+      (flet ((work (targets kernelized-immediates)
+               (enqueue
+                (lambda ()
+                  (loop for immediate across kernelized-immediates
+                        for index from 0
+                        unless (storage (aref targets index))
+                          do (setf (storage (aref targets index))
+                                   (storage (evaluate-naively vm immediate))))
+                  (complete request))
+                (worker-queue vm))))
+        (enqueue
+         (lambda ()
+           (work targets (kernelize recipes)))
+         (scheduler-queue vm))))))
 
 (defun evaluate-naively (vm immediate)
   ;; only evaluate once

@@ -110,7 +110,8 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
   "Instruct Petalisp to compute all given OBJECTS asynchronously."
   (let* ((recipes (map 'vector #'shallow-copy objects))
          (targets (map 'vector #'make-immediate! objects)))
-    (vm/schedule *virtual-machine* targets recipes)))
+    (vm/schedule *virtual-machine* targets recipes)
+    (values-list objects)))
 
 (defun compute (&rest objects)
   "Return the computed values of all OBJECTS."
