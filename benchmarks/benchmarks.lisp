@@ -26,89 +26,16 @@
 ;;;
 ;;; Actual Benchmarks
 
-(defun iterative-benchmark (name small-problem large-problem)
-  (let ((iterations 20))
-    (let* ((flops
-             (multiple-value-bind (problem flops)
-                 (funcall large-problem iterations)
-               (declare (ignore problem))
-               (/ flops (benchmark (compute (funcall large-problem iterations))))))
-           (definition-time
-             (/ (benchmark (funcall small-problem iterations))
-                iterations))
-           (total-time
-             (/ (benchmark (compute (funcall small-problem iterations)))
-                iterations))
-           (scheduler-time
-             (- total-time definition-time))
-           (definition-garbage
-             (/ (bytes-consed (funcall small-problem iterations))
-                iterations))
-           (total-garbage
-             (/ (bytes-consed (compute (funcall small-problem iterations)))
-                iterations))
-           (scheduler-garbage
-             (- total-garbage definition-garbage)))
-      (list
-       name
-       :flops flops
-       :definition-garbage definition-garbage
-       :scheduler-garbage scheduler-garbage
-       :total-garbage total-garbage
-       :definition-time definition-time
-       :scheduler-time scheduler-time
-       :total-time total-time))))
-
-(defun jacobi-2d ()
-  (let ((small-array (make-array '(5 5) :element-type 'double-float
-                                        :initial-element 1.0d0))
-        (large-array (make-array '(1024 768) :element-type 'double-float
-                                            :initial-element 1.0d0)))
-    (iterative-benchmark
-     :jacobi-2d
-     (lambda (n) (values (jacobi small-array :iterations n)
-                         (* n 3 3 4)))
-     (lambda (n) (values (jacobi large-array :iterations n)
-                         (* n 1022 766 4))))))
-
-(defun rbgs-2d ()
-  (let ((small-array (make-array '(5 5) :element-type 'double-float
-                                        :initial-element 1.0d0))
-        (large-array (make-array '(502 502) :element-type 'double-float
-                                            :initial-element 1.0d0)))
-    (iterative-benchmark
-     :rbgs-2d
-     (lambda (n) (values (red-black-gauss-seidel small-array :iterations n)
-                         (* n 3 3 4)))
-     (lambda (n) (values (red-black-gauss-seidel large-array :iterations n)
-                         (* n 500 500 4))))))
-
-(defun jacobi-3d ()
-  (let ((small-array (make-array '(5 5 5) :element-type 'double-float
-                                        :initial-element 1.0d0))
-        (large-array (make-array '(50 50 50) :element-type 'double-float
-                                             :initial-element 1.0d0)))
-    (iterative-benchmark
-     :jacobi-3d
-     (lambda (n) (values (jacobi small-array :iterations n)
-                         (* n 3 3 3 6)))
-     (lambda (n) (values (jacobi large-array :iterations n)
-                         (* n 48 48 48 6))))))
-
-(defun rbgs-3d ()
-  (let ((small-array (make-array '(5 5 5) :element-type 'double-float
-                                        :initial-element 1.0d0))
-        (large-array (make-array '(50 50 50) :element-type 'double-float
-                                             :initial-element 1.0d0)))
-    (iterative-benchmark
-     :rbgs-3d
-     (lambda (n) (values (red-black-gauss-seidel small-array :iterations n)
-                         (* n 3 3 3 6)))
-     (lambda (n) (values (red-black-gauss-seidel large-array :iterations n)
-                         (* n 48 48 48 6))))))
+(defun jacobi-2D-flops (&rest dim)
+  (let* ((iterations 1000)
+         (array (make-array dim :element-type 'double-float
+                                :initial-element 1.0d0)))
+    (/ (* iterations 4 (reduce #'* dim :key (lambda (dim) (- dim 2))))
+       (measure-execution-time-of-thunk
+        (lambda ()
+          (loop repeat (1+ (ceiling iterations 10))
+                for A = array then (schedule (jacobi A :iterations 10))
+                finally (compute A)))))))
 
 (defun benchmark-all ()
-  (print (jacobi-2d))
-  (print (jacobi-3d))
-  (print (rbgs-2d))
-  (print (rbgs-3d)))
+  (format t "Jacobi 2D flops: ~A" (jacobi-2D-flops 500 500)))
