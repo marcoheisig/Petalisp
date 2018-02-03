@@ -118,5 +118,10 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
   (let* ((recipes (map 'vector #'shallow-copy objects))
          (targets (map 'vector #'make-immediate! objects)))
     (wait (vm/schedule *virtual-machine* targets recipes))
-    (values-list (map 'list #'storage targets))))
+    (flet ((lispify (immediate)
+             (let ((array (storage immediate)))
+               (if (zerop (array-rank array))
+                   (aref array)
+                   array))))
+      (values-list (map 'list #'lispify targets)))))
 
