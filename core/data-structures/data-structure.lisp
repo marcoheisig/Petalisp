@@ -348,4 +348,4 @@ DATA-STRUCTURE.")
 
 (defmethod print-object ((object data-structure) stream)
   (print-unreadable-object (object stream :type t :identity t)
-    (princ (index-space object) stream)))
+    (format stream "~S ~S" (element-type object) (index-space object))))

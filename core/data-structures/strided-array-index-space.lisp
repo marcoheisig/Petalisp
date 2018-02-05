@@ -42,7 +42,7 @@
     (vector ,@(iterate (for spec in range-specifications)
                        (collect `(range ,@spec))))))
 
-(defmacro σ* (space-form &rest dimensions)
+(defmacro σ* (space-form &body dimensions)
   (with-gensyms (dim space)
     `(let ((,space (index-space (make-immediate ,space-form))))
        (symbol-macrolet
@@ -79,7 +79,7 @@
       (index-space result-ranges))))
 
 (defmethod index-space-difference ((space-1 strided-array-index-space)
-                       (space-2 strided-array-index-space))
+                                   (space-2 strided-array-index-space))
   (if-let ((intersection (index-space-intersection space-1 space-2)))
     (iterate outer
              (for r1 in-vector (ranges space-1))
@@ -132,7 +132,7 @@
         (call-next-method)))
 
 (defmethod index-space-intersection ((space-1 strided-array-index-space)
-                         (space-2 strided-array-index-space))
+                                     (space-2 strided-array-index-space))
   (make-instance 'strided-array-index-space
     :ranges
     (map 'vector
