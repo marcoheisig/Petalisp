@@ -2,7 +2,7 @@
 
 (uiop:define-package :petalisp/core/api
   (:nicknames :petalisp)
-  (:use :closer-common-lisp :alexandria)
+  (:use :closer-common-lisp :alexandria :trivia)
   (:use
    :petalisp/utilities/all
    :petalisp/core/transformations/all
@@ -42,10 +42,14 @@ mismatch, the smaller objects are broadcast."
          (inputs (mapcar (lambda (object) (broadcast object space)) objects)))
     (application function (first inputs) inputs)))
 
-(defun β (f g object &optional (order :up))
+(defun β (f &rest args)
   "Reduce the last dimension of OBJECT with F, using G to convert single
 values to the appropriate result type."
-  (reduction f g (make-immediate object) order))
+  (ematch args
+    ((list g object)
+     (reduction f g (make-immediate object) :up))
+    ((list object)
+     (reduction f #'identity (make-immediate object) :up))))
 
 (defun fuse (&rest objects)
   "Combine OBJECTS into a single petalisp data structure. It is an error if
