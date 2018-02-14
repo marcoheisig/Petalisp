@@ -56,10 +56,6 @@
                       (for d from 0)
                       (collect `(let ((,dim ,d)) (range ,@form))))))))))
 
-(define-condition no-common-broadcast-space
-  (petalisp-user-error)
-  ((%index-spaces :initarg :data-structures :reader index-spaces)))
-
 (defmethod common-broadcast-space ((space strided-array-index-space) &rest more-spaces)
   (let ((list-of-ranges (list* (ranges space) (mapcar #'ranges more-spaces))))
     (let ((result-ranges (copy-array (iterate (for ranges in list-of-ranges)
@@ -75,8 +71,10 @@
                           ((size-one-range? broadcast-range)
                            (setf (aref result-ranges dimension) range))
                           (t
-                           (error 'no-common-broadcast-space
-                                  :data-structures (cons space more-spaces))))))
+                           (demand nil
+                             "~@<There is no common broadcast space for the spaces ~
+                                 ~{~#[~;and ~S~;~S ~:;~S, ~]~}.~:@>"
+                             (cons space more-spaces))))))
       (index-space result-ranges))))
 
 (defmethod index-space-difference ((space-1 strided-array-index-space)
@@ -143,7 +141,7 @@
          (ranges space-1)
          (ranges space-2))))
 
-(defmethod index-space-intersection?
+(defmethod index-space-intersection-p
     ((space-1 strided-array-index-space)
      (space-2 strided-array-index-space))
   (loop for range-1 across (ranges space-1)
@@ -223,7 +221,7 @@
     ((space-1 strided-array-index-space) &rest more-spaces)
   (let ((union (call-next-method)))
     (flet ((proper-subspace-p (space)
-             (subspace? space union)))
+             (subspace-p space union)))
       (assert (proper-subspace-p space-1))
       (assert (every #'proper-subspace-p more-spaces))
       union)))

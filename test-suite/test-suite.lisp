@@ -192,17 +192,17 @@
                (is (every #'null intersections)))
              ;; check for coverage
              (let ((union (apply #'index-space-union result)))
-               (is-true (every (lambda (x) (subspace? x union)) args))))))
+               (is-true (every (lambda (x) (subspace-p x union)) args))))))
     (? (σ (1 1 4)) (σ (1 2 5)))
     (? (σ (1 1 10) (1 1 10))
        (σ (5 1 10) (5 1 10)))
     (?  (σ (2 2 4)) (σ (3 1 3)) (σ (3 1 3)))))
 
-(test |(subspace? strided-array-index-space)|
-  (is (subspace? (σ (1 1 2)) (σ (0 1 3))))
-  (is (subspace? (σ (0 4 8)) (σ (0 2 10))))
-  (is (subspace? (σ (0 6 120) (1 1 100))
-                 (σ (0 2 130) (0 1 101)))))
+(test |(subspace-p strided-array-index-space)|
+  (is (subspace-p (σ (1 1 2)) (σ (0 1 3))))
+  (is (subspace-p (σ (0 4 8)) (σ (0 2 10))))
+  (is (subspace-p (σ (0 6 120) (1 1 100))
+                  (σ (0 2 130) (0 1 101)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -236,7 +236,7 @@
     (compute! (α #'+ #(2 3 4) #(5 4 3)))
     (compute! (-> #(1 2 3) (τ (i) ((- i)))))
     (compute! (fuse* (-> 0.0 (σ (2 4) (2 4)))
-                    (-> 1.0 (σ (3 3) (3 3)))))))
+                     (-> 1.0 (σ (3 3) (3 3)))))))
 
 (test jacobi
   (with-testing-virtual-machine

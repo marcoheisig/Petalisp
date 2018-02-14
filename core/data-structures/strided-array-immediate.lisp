@@ -41,9 +41,9 @@
                                         (b strided-array-immediate))
   (equalp (storage a) (storage b)))
 
+;;; Return a non-permuting, affine transformation from a zero based array
+;;; with step size one to the given INDEX-SPACE.
 (defun from-storage-transformation (index-space)
-  "Return a non-permuting, affine transformation from a zero based array
-with step size one to the given INDEX-SPACE."
   (let ((ranges (ranges index-space))
         (dimension (dimension index-space)))
     (affine-transformation
@@ -101,13 +101,11 @@ with step size one to the given INDEX-SPACE."
 (defmethod application or ((function function)
                            (first-input strided-array-immediate)
                            (all-inputs list))
-  "Constant-fold operations on scalar values."
   (when (= 1 (size first-input))
     (constant-fold-application-or-nil function first-input all-inputs)))
 
 (defmethod application or ((function function)
                            (first-input strided-array-reference)
                            (all-inputs list))
-  "Constant-fold operations on references to scalar values."
   (constant-fold-application-or-nil function first-input all-inputs))
 

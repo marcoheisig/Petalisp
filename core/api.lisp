@@ -65,7 +65,7 @@ overlap partially, the value of the rightmost object is used."
   (let ((objects (mapcar #'make-immediate objects)))
     (flet ((reference-origin (piece)
              (reference
-              (find piece objects :from-end t :key #'index-space :test #'subspace?)
+              (find piece objects :from-end t :key #'index-space :test #'subspace-p)
               piece
               (identity-transformation (dimension piece)))))
       (let ((inputs
@@ -96,7 +96,7 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
              (etypecase modifier
                (index-space
                 (if (or (< (dimension data-structure) (dimension modifier))
-                        (subspace? (index-space data-structure) modifier))
+                        (subspace-p (index-space data-structure) modifier))
                     (broadcast data-structure modifier)
                     (reference
                      data-structure

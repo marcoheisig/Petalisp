@@ -3,12 +3,10 @@
 (uiop:define-package :petalisp/core/error-handling
   (:use :closer-common-lisp :alexandria)
   (:export
-   #:report-condition
-   #:petalisp-user-error))
+   #:petalisp-user-error
+   #:demand))
 
 (in-package :petalisp/core/error-handling)
-
-(defgeneric report-condition (condition stream))
 
 ;;; We differentiate between two kinds of errors -- those triggered by
 ;;; improper usage of Petalisp and those occurring even though Petalisp has
@@ -18,24 +16,14 @@
 ;;; should emit a detailed and helpful report, while the latter do not even
 ;;; deserve their own condition type.
 
-(define-condition petalisp-user-error (error) ()
-  (:report report-condition))
+(define-condition petalisp-user-error (simple-error) ())
 
-;;; For now, we define a default reporter that uses the name of the
-;;; condition as message.
-
-(defmethod report-condition ((condition petalisp-user-error) stream)
-  (write-symbol-as-sentence (class-name (class-of condition)) stream))
-
-(defun write-symbol-as-sentence (symbol stream)
-  (let ((name (symbol-name symbol)))
-    ;; upcase the first letter
-    (write-char (char-upcase (aref name 0)) stream)
-    ;; replace all hyphens in the body
-    (loop for index from 1 below (length name) do
-      (let ((char (aref name index)))
-        (if (char= char #\-)
-            (write-char #\space stream)
-            (write-char (char-downcase char) stream))))
-    ;; write the trailing dot
-    (write-char #\. stream)))
+;;; A wrapper around ASSERT, that signals a condition of type
+;;; PETALISP-USER-ERROR.
+(defmacro demand (test-form &body control-string-and-arguments)
+  (destructuring-bind (control-string &rest arguments)
+      control-string-and-arguments
+    (check-type control-string string)
+    `(assert ,test-form () 'petalisp-user-error
+             :format-control ,control-string
+             :format-arguments (list ,@arguments))))

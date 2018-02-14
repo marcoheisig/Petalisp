@@ -89,7 +89,7 @@ and RELEVANT-SPACE."
                  (fusion ;; the relevant space is already chosen to eliminate fusions
                   (let* ((input (find relevant-space (inputs node)
                                       :key #'index-space
-                                      :test #'index-space-intersection?))
+                                      :test #'index-space-intersection-p))
                          (relevant-space (index-space-intersection relevant-space (index-space input))))
                     (walk input relevant-space transformation)))
                  (reference ;; eliminate/lift references
