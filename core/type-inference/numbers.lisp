@@ -43,7 +43,42 @@
                 'double-float
                 'single-float)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Arithmetic Functions - CLHS Figure 12-1
+
 (register-type-inference-function '+ #'standard-numeric-type-inferrer)
 (register-type-inference-function '- #'standard-numeric-type-inferrer)
 (register-type-inference-function '* #'standard-numeric-type-inferrer)
 (register-type-inference-function '/ #'standard-numeric-type-inferrer)
+(register-type-inference-function '1+ #'standard-numeric-type-inferrer)
+(register-type-inference-function '1- #'standard-numeric-type-inferrer)
+(register-type-inference-function 'conjugate #'standard-numeric-type-inferrer)
+(register-type-inference-function 'gcd (constantly 'integer))
+(register-type-inference-function 'lcm (constantly 'integer))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Exponentials, Logarithms and Trigonometry  - CLHS Figure 12-2
+
+(register-type-inference-function 'abs #'standard-numeric-type-inferrer)
+;;; TODO
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Numeric Comparison and Predication - CLHS Figure 12-3
+
+(register-type-inference-function '< (constantly 'boolean))
+(register-type-inference-function '> (constantly 'boolean))
+(register-type-inference-function '<= (constantly 'boolean))
+(register-type-inference-function '>= (constantly 'boolean))
+(register-type-inference-function '/= (constantly 'boolean))
+(register-type-inference-function '= (constantly 'boolean))
+(register-type-inference-function 'evenp (constantly 'boolean))
+(register-type-inference-function 'max (constantly 'boolean))
+(register-type-inference-function 'min (constantly 'boolean))
+(register-type-inference-function 'minusp (constantly 'boolean))
+(register-type-inference-function 'plusp (constantly 'boolean))
+(register-type-inference-function 'zerop (constantly 'boolean))
+(register-type-inference-function 'oddp (constantly 'boolean))
+(register-type-inference-function 'evenp (constantly 'boolean))
