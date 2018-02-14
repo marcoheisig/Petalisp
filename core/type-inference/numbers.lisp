@@ -47,38 +47,38 @@
 ;;;
 ;;; Arithmetic Functions - CLHS Figure 12-1
 
-(register-type-inference-function '+ #'standard-numeric-type-inferrer)
-(register-type-inference-function '- #'standard-numeric-type-inferrer)
-(register-type-inference-function '* #'standard-numeric-type-inferrer)
-(register-type-inference-function '/ #'standard-numeric-type-inferrer)
-(register-type-inference-function '1+ #'standard-numeric-type-inferrer)
-(register-type-inference-function '1- #'standard-numeric-type-inferrer)
-(register-type-inference-function 'conjugate #'standard-numeric-type-inferrer)
-(register-type-inference-function 'gcd (constantly 'integer))
-(register-type-inference-function 'lcm (constantly 'integer))
+(register-type-inferrer '+ #'standard-numeric-type-inferrer)
+(register-type-inferrer '- #'standard-numeric-type-inferrer)
+(register-type-inferrer '* #'standard-numeric-type-inferrer)
+(register-type-inferrer '/ #'standard-numeric-type-inferrer)
+(register-type-inferrer '1+ #'standard-numeric-type-inferrer)
+(register-type-inferrer '1- #'standard-numeric-type-inferrer)
+(register-type-inferrer 'conjugate #'standard-numeric-type-inferrer)
+(register-type-inferrer 'gcd (constantly 'integer))
+(register-type-inferrer 'lcm (constantly 'integer))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Exponentials, Logarithms and Trigonometry  - CLHS Figure 12-2
 
-(register-type-inference-function 'abs #'standard-numeric-type-inferrer)
+(register-type-inferrer 'abs #'standard-numeric-type-inferrer)
 ;;; TODO
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Numeric Comparison and Predication - CLHS Figure 12-3
 
-(register-type-inference-function '< (constantly 'boolean))
-(register-type-inference-function '> (constantly 'boolean))
-(register-type-inference-function '<= (constantly 'boolean))
-(register-type-inference-function '>= (constantly 'boolean))
-(register-type-inference-function '/= (constantly 'boolean))
-(register-type-inference-function '= (constantly 'boolean))
-(register-type-inference-function 'evenp (constantly 'boolean))
-(register-type-inference-function 'max (constantly 'boolean))
-(register-type-inference-function 'min (constantly 'boolean))
-(register-type-inference-function 'minusp (constantly 'boolean))
-(register-type-inference-function 'plusp (constantly 'boolean))
-(register-type-inference-function 'zerop (constantly 'boolean))
-(register-type-inference-function 'oddp (constantly 'boolean))
-(register-type-inference-function 'evenp (constantly 'boolean))
+(register-type-inferrer '< (constantly 'boolean))
+(register-type-inferrer '> (constantly 'boolean))
+(register-type-inferrer '<= (constantly 'boolean))
+(register-type-inferrer '>= (constantly 'boolean))
+(register-type-inferrer '/= (constantly 'boolean))
+(register-type-inferrer '= (constantly 'boolean))
+(register-type-inferrer 'evenp (constantly 'boolean))
+(register-type-inferrer 'max (constantly 'boolean))
+(register-type-inferrer 'min (constantly 'boolean))
+(register-type-inferrer 'minusp (constantly 'boolean))
+(register-type-inferrer 'plusp (constantly 'boolean))
+(register-type-inferrer 'zerop (constantly 'boolean))
+(register-type-inferrer 'oddp (constantly 'boolean))
+(register-type-inferrer 'evenp (constantly 'boolean))

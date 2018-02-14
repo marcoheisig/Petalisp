@@ -8,4 +8,4 @@
 
 (in-package :petalisp/core/type-inference/data-and-control-flow)
 
-(register-type-inference-function 'identity #'identity)
+(register-type-inferrer 'identity #'identity)

@@ -5,8 +5,7 @@
   (:export
    #:function-lambda-list
    #:lambda-list-arity
-   #:function-arity
-   #:check-arity))
+   #:function-arity))
 
 (in-package :petalisp/utilities/function-lambda-lists)
 
@@ -78,17 +77,3 @@ implementation has no means to determine the function's lambda list."
    1. the number of mandatory arguments
    2. the maximal number of permissible arguments"
   (lambda-list-arity (function-lambda-list function)))
-
-(defun check-arity (function number-of-arguments)
-  "Signal an error of type SIMPLE-PROGRAM-ERROR if FUNCTION cannot be
-  called with ARITY arguments."
-  (multiple-value-bind (mandatory-arguments max-arguments)
-      (function-arity function)
-    (when (< number-of-arguments mandatory-arguments)
-      (simple-program-error
-       "Only ~R argument~:P given for a function with ~R mandatory argument~:P."
-       number-of-arguments mandatory-arguments))
-    (when (> number-of-arguments max-arguments)
-      (simple-program-error
-       "Received ~R argument~:P for a function that accepts at most ~R argument~:P."
-       number-of-arguments max-arguments))))
