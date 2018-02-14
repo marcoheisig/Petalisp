@@ -31,11 +31,10 @@
          (array (make-array dim :element-type 'double-float
                                 :initial-element 1.0d0)))
     (/ (* iterations 4 (reduce #'* dim :key (lambda (dim) (- dim 2))))
-       (measure-execution-time-of-thunk
-        (lambda ()
-          (loop repeat (1+ (ceiling iterations 10))
-                for A = array then (schedule (jacobi A :iterations 10))
-                finally (compute A)))))))
+       (benchmark
+         (loop repeat (1+ (ceiling iterations 10))
+               for A = array then (schedule (jacobi A :iterations 10))
+               finally (compute A))))))
 
 (defun benchmark-all ()
   (format t "Jacobi 2D flops: ~A" (jacobi-2D-flops 500 500)))

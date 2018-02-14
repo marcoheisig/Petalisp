@@ -19,7 +19,7 @@
 (define-class common-lisp-virtual-machine
     (virtual-machine default-scheduler-mixin compile-cache-mixin)
   ((memory-pool :type hash-table :initform (make-hash-table :test #'equalp))
-   (worker-pool :initform (lparallel:make-kernel 2))))
+   (worker-pool :initform (lparallel:make-kernel 4))))
 
 (defmethod vm/bind-memory
     ((virtual-machine common-lisp-virtual-machine)
@@ -194,6 +194,7 @@
      (let* ((dimension (length bounds-metadata))
             (loops (make-array dimension))
             (index (1- dimension))
+            #+nil
             (min-size
               (loop for bound in bounds-metadata
                     counting
@@ -223,22 +224,23 @@
                  `(setf ,(walk place) ,(walk expression))))))
          (let ((body (walk body)))
            (loop for loop-index from index downto 0 do
+             #+nil
              (if (and (= loop-index 0)
-                      (> min-size 1000))
+                      (> min-size 10000))
                  (setf body
                        (make-parallel-loop-statement
                         :index (index-symbol loop-index)
                         :start 0
                         :step 1
                         :end (bound-symbol loop-index)
-                        :body body))
-                 (setf body
-                       (make-loop-statement
-                        :index (index-symbol loop-index)
-                        :start 0
-                        :step 1
-                        :end (bound-symbol loop-index)
                         :body body)))
+             (setf body
+                   (make-loop-statement
+                    :index (index-symbol loop-index)
+                    :start 0
+                    :step 1
+                    :end (bound-symbol loop-index)
+                    :body body))
              (setf (aref loops loop-index) body))
            (optimize-loops loops)
            `(lambda (kernel)

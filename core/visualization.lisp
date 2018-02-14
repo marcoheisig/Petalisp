@@ -42,9 +42,9 @@
 
 (defmethod graphviz-node-plist plist-union
     ((purpose data-flow-graph) (node strided-array-immediate))
-  `(:shape "octagon"
-    :fillcolor "cornflowerblue"
-    ,@(when-let ((storage (storage node)))
+  `(:fillcolor "cadetblue1"
+               ,@(when-let ((storage (and (= 1 (size node))
+                                          (storage node))))
         (let ((*print-right-margin* 60))
           `(:label
             ,(format nil "~A~%~A~%~A"
@@ -59,7 +59,7 @@
                     (class-name (class-of node))
                     (operator node)
                     (index-space node))
-    :fillcolor "indianred1"))
+    :fillcolor "burlywood1"))
 
 (defmethod graphviz-node-plist plist-union
     ((purpose data-flow-graph) (node reduction))
@@ -67,7 +67,7 @@
                     (class-name (class-of node))
                     (operator node)
                     (index-space node))
-    :fillcolor "indianred3"))
+    :fillcolor "beige"))
 
 (defmethod graphviz-node-plist plist-union
     ((purpose data-flow-graph) (node fusion))
