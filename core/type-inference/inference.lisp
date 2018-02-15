@@ -32,29 +32,22 @@
 ;;; primary value of NIL can be returned to signal an invalid function
 ;;; call.
 
-;;; *INFERENCE-TABLE* is a hash table, mapping function
-;;; designators to type inferrers. Each function has two entries in this
-;;; table --- one for the function symbol and one for the corresponding
-;;; function object. Both have the same inference function as their
-;;; value. This allows the interchangeable use of symbols and functions as
-;;; function designators.
-
 (defvar *inference-table* (make-hash-table :test #'eq))
 
 (defun register-type-inferrer (symbol inferrer)
   (check-type symbol symbol)
   (check-type inferrer function)
-  (let ((function (if (fboundp symbol)
-                      (symbol-function symbol)
-                      (error "Not a function designator: ~A" symbol)))
-        (closure
-          (lambda (argument-types)
-            (values (funcall inferrer argument-types)
-                    symbol))))
+  (let ((function (coerce symbol 'function))
+        (entry (cons inferrer symbol)))
     (flet ((register (key value)
              (setf (gethash key *inference-table*) value)))
-      (register symbol closure)
-      (register function closure))))
+      (register symbol entry)
+      (register function entry))))
+
+(defun inferrer-and-function-designator (function-designator)
+  (if-let ((entry (gethash function-designator *inference-table*)))
+    (values (car entry) (cdr entry))
+    (values (constantly 't) function-designator)))
 
 (defun infer-type (function-designator argument-types)
   ;; Return a supertype of all possible results of applying OPERATOR to
@@ -71,24 +64,27 @@
   ;; => u16, +
   ;;  (infer-type '* '())
   ;; => bit, *
-  (let ((function (coerce function-designator 'function))
-        (number-of-arguments (length argument-types)))
-    (multiple-value-bind (mandatory-arguments max-arguments)
-        (function-arity function)
-      (demand (>= number-of-arguments mandatory-arguments)
-        "~@<Only ~R argument~:P given for ~S, with ~
-         ~R mandatory argument~:P.~:@>"
-        number-of-arguments function-designator mandatory-arguments)
-      (demand (<= number-of-arguments max-arguments)
-        "~@<Received ~R argument~:P for ~S, which ~
-          accepts at most ~R argument~:P.~:@>"
-        number-of-arguments function-designator max-arguments)))
-  (if-let ((inferrer (gethash function-designator *inference-table*)))
-    (multiple-value-bind (type symbol)
-        (funcall inferrer argument-types)
+  (multiple-value-bind (inferrer function-designator)
+      (inferrer-and-function-designator function-designator)
+    ;; Check the argument count.
+    (let ((number-of-arguments (length argument-types)))
+      (multiple-value-bind (mandatory-arguments max-arguments)
+          (function-arity function-designator)
+        (demand (>= number-of-arguments mandatory-arguments)
+          "~@<Only ~R argument~:P given for ~S, with ~
+              ~R mandatory argument~:P.~:@>"
+          number-of-arguments function-designator mandatory-arguments)
+        (demand (<= number-of-arguments max-arguments)
+          "~@<Received ~R argument~:P for ~S, which ~
+              expects ~:[at most~;exactly~] ~R argument~:P.~:@>"
+          number-of-arguments
+          function-designator
+          (= max-arguments mandatory-arguments)
+          max-arguments)))
+    ;; Infer the result type.
+    (let ((type (funcall inferrer argument-types)))
       (demand (not (null type))
         "~@<There is no valid way to call the function ~S ~
-             with arguments of type ~{~#[~;and ~S~;~S ~:;~S, ~]~}.~:@>"
-        symbol argument-types)
-      (values type symbol))
-    (values 't function-designator)))
+            with arguments of type ~{~#[~;and ~S~;~S ~:;~S, ~]~}.~:@>"
+        function-designator argument-types)
+      (values type function-designator))))

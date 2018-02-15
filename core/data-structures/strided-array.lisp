@@ -41,8 +41,7 @@
 
 (defmethod make-application (operator (first-input strided-array) inputs)
   (multiple-value-bind (element-type function-designator)
-      (let ((argument-types (mapcar #'element-type inputs)))
-        (infer-type operator argument-types))
+    (infer-type operator (mapcar #'element-type inputs))
     (make-instance 'strided-array-application
       :operator function-designator
       :element-type element-type
