@@ -246,7 +246,7 @@
   (let ((inputs
           (loop for input-constraint across (input-constraints object)
                 for i from 0
-                for index-symbol = (format-symbol :keyword "I~I" i)
+                for index-symbol = (format-symbol :keyword "I~D" i)
                 collect (or input-constraint index-symbol))))
     (princ `(τ ,inputs ,(funcall object inputs))
            stream)))

@@ -27,7 +27,6 @@
 ;;; data structure depends on.
 (defgeneric inputs (data-structure))
 
-
 ;;; A data structure of dimension D is a mapping from elements of
 ;;; INDEX-SPACE to values of type ELEMENT-TYPE.
 ;;;

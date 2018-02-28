@@ -55,7 +55,7 @@ fragment, FRAGMENT-FN receives the following arguments:
                     (multiple-value-bind (fusion-free? n-reductions)
                         (walk (input node) subspace transformation)
                       (values fusion-free? n-reductions))))
-                 ;; Case 3: Reductions
+                 ;; Case 4: Reductions
                  (reduction
                   (let* ((input (input node))
                          (index-space (enlarge-index-space index-space (index-space input)))
@@ -63,7 +63,7 @@ fragment, FRAGMENT-FN receives the following arguments:
                     (multiple-value-bind (fusion-free? n-reductions)
                         (walk input index-space transformation)
                       (values fusion-free? (1+ n-reductions)))))
-                 ;; Case 4: Applications
+                 ;; Case 5: Applications
                  (application
                   (let ((every-fusion-free? t)
                         (total-reductions 0))

@@ -65,7 +65,7 @@
     ((purpose data-flow-graph) (node reduction))
   `(:label ,(format nil "~A~%~A~%~A"
                     (class-name (class-of node))
-                    (operator node)
+                    (binary-operator node)
                     (index-space node))
     :fillcolor "beige"))
 
