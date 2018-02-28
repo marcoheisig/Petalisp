@@ -18,7 +18,7 @@
 ;;; For some applications, it may be desirable to use atomic type
 ;;; specifiers only. This library introduces atomic aliases for all
 ;;; upgraded array element types, and a function ATOMIC-TYPE to convert
-;;; type specifiers to their atomic equivalent
+;;; type specifiers to their atomic equivalent.
 
 (defmacro define-everything ()
   (let* ((compound-types

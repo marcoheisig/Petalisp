@@ -15,24 +15,26 @@
 implementation has no means to determine the function's lambda list."
   #+allegro (excl:arglist function)
   #+clisp (sys::arglist function)
+  #+ccl (ccl:arglist function)
+  #+lispworks (lw:function-lambda-list function)
+  #+lucid (lcl:arglist function)
+  #+sbcl (sb-introspect:function-lambda-list function)
   #+(or cmu scl)
   (let ((f (coerce function 'function)))
     (etypecase f
       (standard-generic-function (pcl:generic-function-lambda-list f))
       (eval:interpreted-function (eval:interpreted-function-arglist f))
       (function (read-from-string (kernel:%function-arglist f)))))
-  #+cormanlisp (ccl:function-lambda-list
-                (typecase function
-                  (symbol (fdefinition function))
-                  (t function)))
-  #+ccl (ccl:arglist function)
-  #+gcl (let ((f (etypecase function
-                   (symbol function)
-                   (function (si:compiled-function-name function)))))
-          (get f 'si:debug))
-  #+lispworks (lw:function-lambda-list function)
-  #+lucid (lcl:arglist function)
-  #+sbcl (sb-introspect:function-lambda-list function)
+  #+cormanlisp
+  (ccl:function-lambda-list
+   (typecase function
+     (symbol (fdefinition function))
+     (t function)))
+  #+gcl
+  (let ((f (etypecase function
+             (symbol function)
+             (function (si:compiled-function-name function)))))
+    (get f 'si:debug))
   #-(or allegro clisp cmu scl cormanlisp gcl lispworks lucid sbcl ccl)
   (error "Not implemented."))
 
@@ -45,11 +47,10 @@ implementation has no means to determine the function's lambda list."
         (upper-bound? t)
         (mandatory-increment 1)
         (max-increment 1))
-    (declare
-     (type (integer 0 #.call-arguments-limit)
-           mandatory-arguments max-arguments
-           mandatory-increment max-increment)
-     (type boolean upper-bound?))
+    (declare (type (integer 0 #.call-arguments-limit)
+                   mandatory-arguments max-arguments
+                   mandatory-increment max-increment)
+             (type boolean upper-bound?))
     (dolist (item lambda-list)
       (case item
         ((&key)

@@ -14,7 +14,7 @@ that u*u1 + v*u2 = u3 = gcd(u,v)."
   (declare (non-negative-integer u v))
   ;; This is a variant of Knuth's Algorithm X from TAOCP Volume 2, but
   ;; using tail recursion instead of iteration and dropping the redundant
-  ;; computation of u2
+  ;; computation of u2.
   (labels ((fixnum-euclid (u1 u3 v1 v3)
              (declare (fixnum u1 v1)
                       (non-negative-fixnum u3 v3))
@@ -36,7 +36,7 @@ that u*u1 + v*u2 = u3 = gcd(u,v)."
                     v1 v3
                     (- u1 (the integer (* q v1)))
                     (- u3 (the integer (* q v3))))))))
-    ;; the absolute values of all coefficients in this algorithm are
+    ;; The absolute values of all coefficients in this algorithm are
     ;; bounded by the least common multiple of U and V. Since computing the
     ;; latter is quite expensive, the product of U and V is used
     ;; instead. To see why (* u v) is unconditionally greater than (lcm u
