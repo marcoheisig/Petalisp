@@ -6,6 +6,7 @@
    :petalisp/utilities/all
    :petalisp/core/error-handling
    :petalisp/core/transformations/all
+   :petalisp/core/data-structures/data-structure-method-combination
    :petalisp/core/data-structures/index-space)
   (:export
    #:data-structure
@@ -19,6 +20,7 @@
    #:corresponding-immediate
    #:make-immediate
    #:make-immediate!
+   #:shallow-copy
    #:make-application
    #:make-reduction
    #:make-fusion
@@ -38,40 +40,29 @@
 
 (in-package :petalisp/core/data-structures/data-structure)
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Generic Functions on Data Structures
 
+(defgeneric make-immediate (data)
+  (:method-combination make-data-structure))
+
+(defgeneric make-application (function first-input all-inputs)
+  (:method-combination make-data-structure))
+
+(defgeneric make-reduction (f g a order)
+  (:method-combination make-data-structure))
+
+(defgeneric make-fusion (first-input all-inputs)
+  (:method-combination make-data-structure))
+
+(defgeneric make-reference (data-structure index-space transformation)
+  (:method-combination make-data-structure))
+
 (defgeneric corresponding-immediate (data-structure))
 
-(defgeneric make-immediate (data))
-
 (defgeneric make-immediate! (data))
-
-(defgeneric make-application (function first-input all-inputs))
-
-(defgeneric make-reduction (f g a order))
-
-(defgeneric make-fusion (first-input all-inputs))
-
-(defgeneric make-reference (data-structure index-space transformation))
-
-
-(defgeneric immediate (data)
-  (:method-combination or))
-
-(defgeneric application (function first-input all-inputs)
-  (:method-combination or))
-
-(defgeneric reduction (f g a order)
-  (:method-combination or))
-
-(defgeneric fusion (first-input all-inputs)
-  (:method-combination or))
-
-(defgeneric reference (data-structure index-space transformation)
-  (:method-combination or))
-
 
 (defgeneric element-type (data-structure))
 
@@ -92,6 +83,8 @@
 (defgeneric unary-operator (data-structure))
 
 (defgeneric broadcast (data-structure index-space))
+
+(defgeneric shallow-copy (data-structure))
 
 (defgeneric data-structure-equality (data-structure-1 data-structure-2)
   (:method-combination and))
@@ -216,6 +209,9 @@
 (defmethod inputs ((immediate immediate))
   nil)
 
+(defmethod make-immediate :optimize ((immediate immediate))
+  immediate)
+
 (defmethod make-immediate ((data-structure data-structure))
   ;; TODO doesn't make sense. The protocol needs to be redesigned...
   data-structure)
@@ -224,9 +220,6 @@
   (make-immediate
    (make-array () :initial-element object :element-type (type-of object))))
 
-(defmethod make-immediate! ((immediate immediate))
-  immediate)
-
 (defmethod corresponding-immediate ((immediate immediate))
   immediate)
 
@@ -234,37 +227,29 @@
 ;;;
 ;;; Methods related to instances of APPLICATION
 
-(defmethod application or (function (first-input data-structure) (all-inputs list))
-  (make-application function first-input all-inputs))
+(defmethod make-application :check
+    (function first-input (all-inputs sequence))
+  (assert (eq first-input (elt all-inputs 0))))
 
-(defmethod application :around (function first-input (all-inputs sequence))
-  (assert (eq first-input (elt all-inputs 0)))
-  (call-next-method))
-
-(defmethod application :around (function (first-input data-structure) (all-inputs sequence))
-  (assert (identical all-inputs :test #'index-space-equality :key #'index-space))
-  (call-next-method))
+(defmethod make-application :check
+    ((function function)
+     (first-input data-structure)
+     (all-inputs sequence))
+  (assert (identical all-inputs :test #'index-space-equality :key #'index-space)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Methods related to instances of REDUCTION
 
-(defmethod reduction or (f g (a data-structure) order)
-  (make-reduction f g a order))
-
-(defmethod reduction :around (f g (a data-structure) order)
+(defmethod make-reduction :check (f g (a data-structure) order)
   (demand (plusp (dimension a))
-    "~@<Can only reduce data structures with dimension greater than zero.~:@>")
-  (call-next-method))
+    "~@<Can only reduce data structures with dimension greater than zero.~:@>"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Methods related to instances of FUSION
 
-(defmethod fusion or ((first-index-space data-structure) (index-spaces list))
-  (make-fusion first-index-space index-spaces))
-
-(defmethod fusion :around (first-index-space index-spaces)
+(defmethod make-fusion :check (first-index-space (index-spaces sequence))
   (assert (eq first-index-space (elt index-spaces 0)))
   (map-combinations
    (lambda-match
@@ -286,24 +271,21 @@
           (index-space-intersection space-1 space-2)))))
    index-spaces
    :length 2
-   :copy nil)
-  ;; ignore one-index-space fusions
-  (if (= 1 (length index-spaces))
-      first-index-space
-      (call-next-method)))
+   :copy nil))
+
+;;; ignore one-index-space fusions
+(defmethod make-fusion :optimize (first-index-space (index-spaces sequence))
+  (when (= 1 (length index-spaces))
+    first-index-space))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Methods related to instances of REFERENCE
 
-(defmethod reference or ((object data-structure)
-                         (space index-space)
-                         (transformation transformation))
-  (make-reference object space transformation))
-
-(defmethod reference :around ((data-structure data-structure)
-                              (index-space index-space)
-                              (transformation transformation))
+(defmethod make-reference :check
+    ((data-structure data-structure)
+     (index-space index-space)
+     (transformation transformation))
   (let ((relevant-space (funcall transformation index-space))
         (input-space (index-space data-structure)))
     (demand (and (= (dimension relevant-space) (dimension input-space))
@@ -321,20 +303,63 @@
     index-space
     (dimension index-space)
     transformation
-    (input-dimension transformation))
-  (call-next-method))
+    (input-dimension transformation)))
 
 ;;; Combine consecutive references
-(defmethod reference or ((reference reference)
-                         (index-space index-space)
-                         (transformation transformation))
-  (reference (input reference)
-             index-space
-             (composition (transformation reference) transformation)))
+(defmethod make-reference :optimize
+    ((reference reference)
+     (index-space index-space)
+     (transformation transformation))
+  (make-reference (input reference)
+                  index-space
+                  (composition (transformation reference) transformation)))
 
 ;;; Drop references with no effect.
-(defmethod reference or ((object data-structure)
-                         (space index-space)
-                         (transformation identity-transformation))
-  (when (index-space-equality (index-space object) space)
-    object))
+(defmethod make-reference :optimize
+    ((data-structure data-structure)
+     (index-space index-space)
+     (identity-transformation identity-transformation))
+  (when (index-space-equality (index-space data-structure) index-space)
+    data-structure))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Creating shallow copies of data structures
+;;;
+;;; If Petalisp were entirely functional, there would be no need for such
+;;; devious functions as SHALLOW-COPY and MAKE-IMMEDIATE!. However, in
+;;; order to avoid endless reevaluation, the data flow graphs that define
+;;; each data structure must be cut from time to time. The current policy
+;;; is to cut the graph at all nodes that are passed to SCHEDULE and
+;;; COMPUTE. Ugh!
+
+(defmethod make-immediate! ((immediate immediate))
+  immediate)
+
+(defmethod shallow-copy ((immediate immediate))
+  (make-instance (class-of immediate)
+    :element-type (element-type immediate)
+    :index-space (index-space immediate)
+    :transformation (transformation immediate)
+    :kernels (kernels immediate)
+    :storage (storage immediate)))
+
+(defmethod shallow-copy ((application application))
+  (let ((inputs (inputs application)))
+    (make-application (operator application) (first inputs) inputs)))
+
+(defmethod shallow-copy ((reduction reduction))
+  (make-reduction
+   (binary-operator reduction)
+   (unary-operator reduction)
+   (input reduction)
+   (order reduction)))
+
+(defmethod shallow-copy ((fusion fusion))
+  (let ((inputs (inputs fusion)))
+    (make-fusion (first inputs) inputs)))
+
+(defmethod shallow-copy ((reference reference))
+  (make-reference (input reference)
+                  (index-space reference)
+                  (transformation reference)))

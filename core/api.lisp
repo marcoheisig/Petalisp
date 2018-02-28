@@ -40,23 +40,23 @@ mismatch, the smaller objects are broadcast."
                         (mapcar #'make-immediate more-objects)))
          (space (apply #'common-broadcast-space (mapcar #'index-space objects)))
          (inputs (mapcar (lambda (object) (broadcast object space)) objects)))
-    (application function (first inputs) inputs)))
+    (make-application function (first inputs) inputs)))
 
 (defun β (f &rest args)
   "Reduce the last dimension of OBJECT with F, using G to convert single
 values to the appropriate result type."
   (ematch args
     ((list g object)
-     (reduction f g (make-immediate object) :up))
+     (make-reduction f g (make-immediate object) :up))
     ((list object)
-     (reduction f #'identity (make-immediate object) :up))))
+     (make-reduction f #'identity (make-immediate object) :up))))
 
 (defun fuse (&rest objects)
   "Combine OBJECTS into a single petalisp data structure. It is an error if
 some of the inputs overlap, or if there exists no suitable data structure
 to represent the fusion."
   (let ((immediates (mapcar #'make-immediate objects)))
-    (fusion (first immediates) immediates)))
+    (make-fusion (first immediates) immediates)))
 
 (defun fuse* (&rest objects)
   "Combine OBJECTS into a single petalisp data structure. When some OBJECTS
@@ -64,14 +64,14 @@ overlap partially, the value of the rightmost object is used."
   (declare (optimize (debug 3)))
   (let ((objects (mapcar #'make-immediate objects)))
     (flet ((reference-origin (piece)
-             (reference
+             (make-reference
               (find piece objects :from-end t :key #'index-space :test #'subspace-p)
               piece
               (identity-transformation (dimension piece)))))
       (let ((inputs
               (mapcar #'reference-origin
                       (subdivision (mapcar #'index-space objects)))))
-        (fusion (first inputs) inputs)))))
+        (make-fusion (first inputs) inputs)))))
 
 (defun -> (data-structure &rest modifiers)
   "Manipulate DATA-STRUCTURE depending on the individual MODIFIERS. The
@@ -98,13 +98,13 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
                 (if (or (< (dimension data-structure) (dimension modifier))
                         (subspace-p (index-space data-structure) modifier))
                     (broadcast data-structure modifier)
-                    (reference
+                    (make-reference
                      data-structure
                      (index-space-intersection modifier (index-space data-structure))
                      (identity-transformation
                       (dimension data-structure)))))
                (transformation
-                (reference
+                (make-reference
                  data-structure
                  (funcall modifier (index-space data-structure))
                  (inverse modifier))))))

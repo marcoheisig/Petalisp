@@ -69,8 +69,8 @@
            (subseq ranges 0 (1- (length ranges)))))))))
 
 (defmethod make-reference ((object strided-array)
-                      (space strided-array-index-space)
-                      (transformation transformation))
+                           (space strided-array-index-space)
+                           (transformation transformation))
   (make-instance 'strided-array-reference
     :element-type (element-type object)
     :inputs (list object)
@@ -98,4 +98,4 @@
                :permutation permutation
                :scaling scaling
                :translation translation)))))
-    (reference object space transformation)))
+    (make-reference object space transformation)))

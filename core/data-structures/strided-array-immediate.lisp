@@ -96,14 +96,16 @@
        (make-immediate (apply function arguments))
        (index-space first-input)))))
 
-(defmethod application or ((function function)
-                           (first-input strided-array-immediate)
-                           (all-inputs list))
+(defmethod make-application :optimize
+    ((function function)
+     (first-input strided-array-immediate)
+     (all-inputs list))
   (when (= 1 (size first-input))
     (constant-fold-application-or-nil function first-input all-inputs)))
 
-(defmethod application or ((function function)
-                           (first-input strided-array-reference)
-                           (all-inputs list))
+(defmethod make-application :optimize
+    ((function function)
+     (first-input strided-array-reference)
+     (all-inputs list))
   (constant-fold-application-or-nil function first-input all-inputs))
 
