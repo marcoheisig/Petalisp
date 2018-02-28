@@ -9,24 +9,97 @@
    :petalisp/core/data-structures/index-space)
   (:export
    #:data-structure
+   #:immediate
+   #:non-immediate
+   #:application
+   #:reduction
+   #:fusion
+   #:reference
+
+   #:corresponding-immediate
+   #:make-immediate
+   #:make-immediate!
+   #:make-application
+   #:make-reduction
+   #:make-fusion
+   #:make-reference
    #:element-type
    #:inputs
    #:input
    #:refcount
-   #:broadcast
-   #:data-structure-equality
    #:storage
    #:kernels
+   #:order
    #:operator
+   #:binary-operator
    #:unary-operator
-   #:binary-operator))
+   #:broadcast
+   #:data-structure-equality))
 
 (in-package :petalisp/core/data-structures/data-structure)
 
-;;; INPUTS is a list of data structures on which the definition of this
-;;; data structure depends on.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Generic Functions on Data Structures
+
+(defgeneric corresponding-immediate (data-structure))
+
+(defgeneric make-immediate (data))
+
+(defgeneric make-immediate! (data))
+
+(defgeneric make-application (function first-input all-inputs))
+
+(defgeneric make-reduction (f g a order))
+
+(defgeneric make-fusion (first-input all-inputs))
+
+(defgeneric make-reference (data-structure index-space transformation))
+
+
+(defgeneric immediate (data)
+  (:method-combination or))
+
+(defgeneric application (function first-input all-inputs)
+  (:method-combination or))
+
+(defgeneric reduction (f g a order)
+  (:method-combination or))
+
+(defgeneric fusion (first-input all-inputs)
+  (:method-combination or))
+
+(defgeneric reference (data-structure index-space transformation)
+  (:method-combination or))
+
+
+(defgeneric element-type (data-structure))
+
 (defgeneric inputs (data-structure))
 
+(defgeneric refcount (data-structure))
+
+(defgeneric storage (data-structure))
+
+(defgeneric kernels (data-structure))
+
+(defgeneric order (reduction))
+
+(defgeneric operator (data-structure))
+
+(defgeneric binary-operator (data-structure))
+
+(defgeneric unary-operator (data-structure))
+
+(defgeneric broadcast (data-structure index-space))
+
+(defgeneric data-structure-equality (data-structure-1 data-structure-2)
+  (:method-combination and))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; The Class DATA-STRUCTURE and its Direct Subclasses
+;;;
 ;;; A data structure of dimension D is a mapping from elements of
 ;;; INDEX-SPACE to values of type ELEMENT-TYPE.
 ;;;
@@ -34,10 +107,61 @@
 ;;; tracks how many times the data structure appears as an input of another
 ;;; data structure. For immediate data structures, it tracks how many times the
 ;;; data structure appears as the source of a kernel.
+
 (defclass data-structure ()
   ((%element-type :initarg :element-type :reader element-type)
    (%index-space :initarg :index-space :reader index-space)
    (%refcount :initform 0 :accessor refcount)))
+
+;;; An immediate is a data structure whose elements can be referenced in
+;;; constant time. It has a STORAGE slot that contains its elements in some
+;;; unspecified format. TRANSFORMATION maps indices referencing
+;;; the immediate to indices referencing STORAGE.
+;;;
+;;; If KERNELS is a non-empty sequence, it denotes the set of kernels that must
+;;; be executed before the immediate is fully initialized.
+(defclass immediate (data-structure)
+  ((%storage :initarg :storage :accessor storage :initform nil)
+   (%transformation :initarg :transformation :accessor transformation)
+   (%kernels :initarg :kernels :accessor kernels :initform nil)))
+
+(defclass non-immediate (data-structure)
+  ((%inputs :initarg :inputs :reader inputs)))
+
+;;; Let F be a referentially transparent Common Lisp function that accepts
+;;; n arguments, and let A1...AN be data structures with index space Ω. The
+;;; the application of f to A1...AN is a data structure that maps each
+;;; index k ∈ Ω to (F (A1 k) ... (AN k)).
+(defclass application (non-immediate)
+  ((%operator :initarg :operator :reader operator)))
+
+;;; The reduction of a D-dimensional array A is a D-1 dimensional array,
+;;; where each element contains the result of reducing the last dimension
+;;; with BINARY-OPERATOR, using the result of UNARY-OPERATOR applied to the
+;;; first element as initial value.
+(defclass reduction (non-immediate)
+  ((%binary-operator :initarg :binary-operator :reader binary-operator)
+   (%unary-operator :initarg :unary-operator :reader unary-operator)
+   (%order :initarg :order :reader order :type (member :up :down :arbitrary))))
+
+;;; Let A1...AN be strided arrays with equal dimension, each mapping from
+;;; an index space Ωk to a set of values.  Furthermore, let the sets
+;;; Ω1...ΩN be pairwise disjoint, and let Ωf = ∪ Ω1...Ωk be again a valid
+;;; index space. Then the fusion of A1...AN is a data structure that maps
+;;; each index i ∈ Ωf to the value of i of the unique strided array Ak
+;;; whose index space contains i.
+(defclass fusion (non-immediate) ())
+
+;;; Let A be a strided array with domain ΩA, let ΩB be a strided array
+;;; index space and let T be a transformation from ΩB to ΩA. Then the
+;;; reference of A by ΩB and T is a strided array that maps each index
+;;; tuple k \in ΩB to A(T(k)).
+(defclass reference (non-immediate)
+  ((%transformation :initarg :transformation :reader transformation)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Methods applicable to instances of DATA-STRUCTURE
 
 ;;; Increase the REFCOUNT of each input of each data structure.
 (defmethod initialize-instance :after
@@ -46,31 +170,34 @@
 
 ;;; Return a broadcasting reference with the given INDEX-SPACE to the
 ;;; elements of DATA-STRUCTURE.
-(defgeneric broadcast (data-structure index-space)
-  (:method :before ((data-structure data-structure) (index-space index-space))
-    (demand (<= (dimension data-structure) (dimension index-space))
-      "~@<Invalid broadcasting reference with space ~A to ~
-          a data structure with space ~A.~:@>"
-      index-space (index-space data-structure))))
+(defmethod broadcast :before ((data-structure data-structure) (index-space index-space))
+  (demand (<= (dimension data-structure) (dimension index-space))
+    "~@<Invalid broadcasting reference with space ~A to ~
+        a data structure with space ~A.~:@>"
+    index-space (index-space data-structure)))
 
-(defgeneric data-structure-equality (data-structure-1 data-structure-2)
-  (:method-combination and)
-  (:method and ((data-structure-1 data-structure)
-                (data-structure-2 data-structure))
-    (index-space-equality (index-space data-structure-1)
-                          (index-space data-structure-2))))
+(defmethod data-structure-equality and ((data-structure-1 data-structure)
+                                        (data-structure-2 data-structure))
+  (index-space-equality (index-space data-structure-1)
+                        (index-space data-structure-2)))
 
-(defgeneric dimension (object)
-  (:method ((object t)) 0)
-  (:method ((list list)) (length list))
-  (:method ((array array)) (array-rank array))
-  (:method ((transformation transformation))
-    (let ((input-dimension (input-dimension transformation))
-          (output-dimension (output-dimension transformation)))
-      (assert (= input-dimension output-dimension))
-      input-dimension))
-  (:method ((data-structure data-structure))
-    (dimension (index-space data-structure))))
+(defmethod dimension ((object t))
+  0)
+
+(defmethod dimension ((list list))
+  (length list))
+
+(defmethod dimension ((array array))
+  (array-rank array))
+
+(defmethod dimension ((transformation transformation))
+  (let ((input-dimension (input-dimension transformation))
+        (output-dimension (output-dimension transformation)))
+    (assert (= input-dimension output-dimension))
+    input-dimension))
+
+(defmethod dimension ((data-structure data-structure))
+  (dimension (index-space data-structure)))
 
 (defun input (object)
   (destructuring-bind (input) (inputs object) input))
@@ -81,3 +208,133 @@
 (defmethod print-object ((object data-structure) stream)
   (print-unreadable-object (object stream :type t :identity t)
     (format stream "~S ~S" (element-type object) (index-space object))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Methods related to instances of IMMEDIATE
+
+(defmethod inputs ((immediate immediate))
+  nil)
+
+(defmethod make-immediate ((data-structure data-structure))
+  ;; TODO doesn't make sense. The protocol needs to be redesigned...
+  data-structure)
+
+(defmethod make-immediate ((object t))
+  (make-immediate
+   (make-array () :initial-element object :element-type (type-of object))))
+
+(defmethod make-immediate! ((immediate immediate))
+  immediate)
+
+(defmethod corresponding-immediate ((immediate immediate))
+  immediate)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Methods related to instances of APPLICATION
+
+(defmethod application or (function (first-input data-structure) (all-inputs list))
+  (make-application function first-input all-inputs))
+
+(defmethod application :around (function first-input (all-inputs sequence))
+  (assert (eq first-input (elt all-inputs 0)))
+  (call-next-method))
+
+(defmethod application :around (function (first-input data-structure) (all-inputs sequence))
+  (assert (identical all-inputs :test #'index-space-equality :key #'index-space))
+  (call-next-method))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Methods related to instances of REDUCTION
+
+(defmethod reduction or (f g (a data-structure) order)
+  (make-reduction f g a order))
+
+(defmethod reduction :around (f g (a data-structure) order)
+  (demand (plusp (dimension a))
+    "~@<Can only reduce data structures with dimension greater than zero.~:@>")
+  (call-next-method))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Methods related to instances of FUSION
+
+(defmethod fusion or ((first-index-space data-structure) (index-spaces list))
+  (make-fusion first-index-space index-spaces))
+
+(defmethod fusion :around (first-index-space index-spaces)
+  (assert (eq first-index-space (elt index-spaces 0)))
+  (map-combinations
+   (lambda-match
+     ((list a b)
+      (demand (= (dimension a) (dimension b))
+        "~@<The index spaces of the arguments to a fusion operation ~
+              must have the same dimension, but the supplied arguments are ~
+              ~R- and ~R-dimensional data structures.~:@>"
+        (dimension a)
+        (dimension b))
+      (let ((space-1 (index-space a))
+            (space-2 (index-space b)))
+        (demand (not (index-space-intersection-p space-1 space-2))
+          "~@<The index spaces of the arguments to a fusion operation ~
+                must be disjoint, but space ~S and space ~S have the ~
+                common subspace ~S.~:@>"
+          space-1
+          space-2
+          (index-space-intersection space-1 space-2)))))
+   index-spaces
+   :length 2
+   :copy nil)
+  ;; ignore one-index-space fusions
+  (if (= 1 (length index-spaces))
+      first-index-space
+      (call-next-method)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Methods related to instances of REFERENCE
+
+(defmethod reference or ((object data-structure)
+                         (space index-space)
+                         (transformation transformation))
+  (make-reference object space transformation))
+
+(defmethod reference :around ((data-structure data-structure)
+                              (index-space index-space)
+                              (transformation transformation))
+  (let ((relevant-space (funcall transformation index-space))
+        (input-space (index-space data-structure)))
+    (demand (and (= (dimension relevant-space) (dimension input-space))
+                 (subspace-p relevant-space input-space))
+      "~@<The index space referenced by the current reference is ~S, ~
+          which is not a subspace of ~S, the index space of the input of ~
+          the current reference.~:@>"
+      relevant-space
+      input-space))
+  (demand (= (dimension index-space) (input-dimension transformation))
+    "~@<The dimension of the index space of a reference operation must ~
+        be equal to the input dimension of its transformation. The ~
+        index space ~S has the dimension ~R, but the input dimension ~
+        of the transformation ~S is ~R.~:@>"
+    index-space
+    (dimension index-space)
+    transformation
+    (input-dimension transformation))
+  (call-next-method))
+
+;;; Combine consecutive references
+(defmethod reference or ((reference reference)
+                         (index-space index-space)
+                         (transformation transformation))
+  (reference (input reference)
+             index-space
+             (composition (transformation reference) transformation)))
+
+;;; Drop references with no effect.
+(defmethod reference or ((object data-structure)
+                         (space index-space)
+                         (transformation identity-transformation))
+  (when (index-space-equality (index-space object) space)
+    object))
