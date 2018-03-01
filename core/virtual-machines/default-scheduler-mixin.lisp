@@ -18,11 +18,19 @@
 
 (in-package :petalisp/core/virtual-machines/default-scheduler-mixin)
 
-(define-class default-scheduler-mixin ()
-  ((scheduler-queue :type queue :initform (make-queue))
-   (scheduler-thread :accessor scheduler-thread)
-   (worker-queue :type queue :initform (make-queue))
-   (worker-thread :accessor worker-thread)))
+(defclass default-scheduler-mixin ()
+  ((%scheduler-queue :reader scheduler-queue
+                     :initform (make-queue)
+                     :type queue)
+   (%scheduler-thread :initarg :scheduler-thread
+                      :reader scheduler-thread
+                      :accessor scheduler-thread)
+   (%worker-queue :reader worker-queue
+                  :initform (make-queue)
+                  :type queue)
+   (%worker-thread :initarg :worker-thread
+                   :reader worker-thread
+                   :accessor worker-thread)))
 
 (defmethod initialize-instance :after
     ((vm default-scheduler-mixin) &key &allow-other-keys)

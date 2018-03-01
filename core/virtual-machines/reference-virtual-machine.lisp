@@ -13,15 +13,17 @@
 (in-package :petalisp/core/virtual-machines/reference-virtual-machine)
 
 ;;; The purpose of the reference virtual machine is to compute reference
-;;; solutions for automated testing. It is totally acceptable if this
+;;; solutions for automated testing. It is totally acceptable that this
 ;;; implementation is slow or eagerly consing, as long as it is obviously
 ;;; correct.
 ;;;
 ;;; Internally, all evaluated arrays are represented as a list of conses of
 ;;; the form (indices . value), where indices is a list of integers.
 
-(define-class reference-virtual-machine (virtual-machine)
-  ((evaluated-nodes :type hash-table :initform (make-hash-table :test #'eq))))
+(defclass reference-virtual-machine (virtual-machine)
+  ((%evaluated-nodes :reader evaluated-nodes
+                     :initform (make-hash-table :test #'eq)
+                     :type hash-table)))
 
 (defgeneric vm/evaluate (virtual-machine data-structure)
   (:documentation

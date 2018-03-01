@@ -23,15 +23,15 @@
 ;;;
 ;;; STRIDED-ARRAY, its subclasses and corresponding constructors
 
-(define-class strided-array (data-structure) ())
+(defclass strided-array (data-structure) ())
 
-(define-class strided-array-application (strided-array application) ())
+(defclass strided-array-application (strided-array application) ())
 
-(define-class strided-array-fusion (strided-array fusion) ())
+(defclass strided-array-fusion (strided-array fusion) ())
 
-(define-class strided-array-reduction (strided-array reduction) ())
+(defclass strided-array-reduction (strided-array reduction) ())
 
-(define-class strided-array-reference (strided-array reference) ())
+(defclass strided-array-reference (strided-array reference) ())
 
 (defmethod make-application (operator (first-input strided-array) inputs)
   (multiple-value-bind (element-type function-designator)

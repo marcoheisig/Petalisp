@@ -10,7 +10,6 @@
    :petalisp/utilities/generators
    :petalisp/utilities/generic-funcallable-object
    :petalisp/utilities/graphviz
-   :petalisp/utilities/macros
    :petalisp/utilities/matrix
    :petalisp/utilities/memoization
    :petalisp/utilities/miscellaneous

@@ -10,8 +10,10 @@
 
 (in-package :petalisp/core/virtual-machines/compile-cache-mixin)
 
-(define-class compile-cache-mixin ()
-  ((compile-cache :type hash-table :initform (make-hash-table :test #'eq))))
+(defclass compile-cache-mixin ()
+  ((%compile-cache :reader compile-cache
+                   :initform (make-hash-table :test #'eq)
+                   :type hash-table)))
 
 (defmethod vm/compile :around
     ((virtual-machine compile-cache-mixin) blueprint)

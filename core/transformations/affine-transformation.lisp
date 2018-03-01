@@ -43,10 +43,16 @@
 ;;; nonzero entry per row and column. We call such a matrix
 ;;; `scaled-permutation-matrix'.
 
-(define-class affine-transformation (transformation)
-  ((input-constraints :type (simple-array (or null integer) (*)))
-   (linear-operator :type scaled-permutation-matrix)
-   (translation :type (simple-array integer (*))))
+(defclass affine-transformation (transformation)
+  ((%input-constraints :initarg :input-constraints
+                       :reader input-constraints
+                       :type (simple-array (or null integer) (*)))
+   (%linear-operator :initarg :linear-operator
+                     :reader linear-operator
+                     :type scaled-permutation-matrix)
+   (%translation :initarg :translation
+                 :reader translation
+                 :type (simple-array integer (*))))
   (:metaclass funcallable-standard-class))
 
 (defun affine-transformation (&key input-dimension output-dimension

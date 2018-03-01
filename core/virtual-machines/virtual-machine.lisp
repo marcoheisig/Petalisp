@@ -11,7 +11,7 @@
 
 (in-package :petalisp/core/virtual-machines/virtual-machine)
 
-(define-class virtual-machine () ()
+(defclass virtual-machine () ()
   (:documentation
    "A virtual machine is an abstraction over a set of hardware
 resources. All handling of kernels --- such as performance analysis,

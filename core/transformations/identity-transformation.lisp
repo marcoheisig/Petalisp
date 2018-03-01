@@ -11,8 +11,10 @@
 
 (in-package :petalisp/core/transformations/identity-transformation)
 
-(define-class identity-transformation (transformation)
-  ((input-dimension :type (integer 0 *)))
+(defclass identity-transformation (transformation)
+  ((%input-dimension :initarg :input-dimension
+                     :reader input-dimension
+                     :type (integer 0 *)))
   (:metaclass funcallable-standard-class))
 
 (defun identity-transformation (dimension)

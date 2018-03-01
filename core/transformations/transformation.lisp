@@ -15,7 +15,7 @@
 
 (in-package :petalisp/core/transformations/transformation)
 
-(define-class transformation (unary-funcallable-object) ()
+(defclass transformation (unary-funcallable-object) ()
   (:metaclass funcallable-standard-class))
 
 (defgeneric input-dimension (transformation)

@@ -16,10 +16,13 @@
 
 (in-package :petalisp/core/virtual-machines/common-lisp-virtual-machine)
 
-(define-class common-lisp-virtual-machine
+(defclass common-lisp-virtual-machine
     (virtual-machine default-scheduler-mixin compile-cache-mixin)
-  ((memory-pool :type hash-table :initform (make-hash-table :test #'equalp))
-   (worker-pool :initform (lparallel:make-kernel 4))))
+  ((%memory-pool :reader memory-pool
+                 :initform (make-hash-table :test #'equalp)
+                 :type hash-table)
+   (%worker-pool :reader worker-pool
+                 :initform (lparallel:make-kernel 4))))
 
 (defmethod vm/bind-memory
     ((virtual-machine common-lisp-virtual-machine)

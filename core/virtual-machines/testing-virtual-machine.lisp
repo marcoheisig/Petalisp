@@ -20,9 +20,11 @@
 ;;; these and the results are compared. If there is a mismatch, an error is
 ;;; signaled.
 
-(define-class testing-virtual-machine (virtual-machine)
-  ((virtual-machines :type sequence
-                     :initform (required-argument "virtual-machines"))))
+(defclass testing-virtual-machine (virtual-machine)
+  ((%virtual-machines :initarg :virtual-machines
+                      :reader virtual-machines
+                      :initform (required-argument "virtual-machines")
+                      :type sequence)))
 
 (defmethod vm/schedule ((vm testing-virtual-machine) targets recipes)
   (let ((results
