@@ -7,8 +7,7 @@
    :petalisp/utilities/all
    :petalisp/core/transformations/all
    :petalisp/core/data-structures/all
-   :petalisp/core/virtual-machines/all
-   :petalisp/core/visualization)
+   :petalisp/core/virtual-machines/all)
   (:export
    #:α
    #:β

@@ -9,7 +9,6 @@
    :petalisp/utilities/function-lambda-lists
    :petalisp/utilities/generators
    :petalisp/utilities/generic-funcallable-object
-   :petalisp/utilities/graphviz
    :petalisp/utilities/matrix
    :petalisp/utilities/memoization
    :petalisp/utilities/miscellaneous

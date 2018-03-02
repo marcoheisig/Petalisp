@@ -1,30 +1,92 @@
 ;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(uiop:define-package :petalisp/core/visualization
+(uiop:define-package :petalisp/development/visualization
   (:use :closer-common-lisp :alexandria)
   (:use
    :petalisp/utilities/all
    :petalisp/core/transformations/all
    :petalisp/core/data-structures/all
    :petalisp/core/kernel-creation/all)
+  (:import-from :cl-dot)
   (:export
+   #:graphviz
    #:data-flow-graph))
 
-(in-package :petalisp/core/visualization)
+(in-package :petalisp/development/visualization)
 
-(defclass data-flow-graph (graphviz-graph) ())
+(defvar *graphviz-viewer* "evince")
 
-(defmethod graphviz-successors
-    ((purpose data-flow-graph) (node data-structure))
-  (inputs node))
+(defvar *graphviz-format* :pdf)
 
-(defmethod graphviz-successors
-    ((purpose data-flow-graph) (node immediate))
-  (kernels node))
+(defun graphviz (graph-type &rest graph-roots)
+  (uiop:with-temporary-file (:pathname image-file)
+    (cl-dot:dot-graph
+     (cl-dot:generate-graph-from-roots graph-type graph-roots)
+     image-file
+     :format *graphviz-format*)
+    (uiop:run-program
+     (list *graphviz-viewer*
+           (uiop:native-namestring image-file)))))
 
-(defmethod graphviz-successors
-    ((purpose data-flow-graph) (kernel kernel))
-  (cdr (map 'list #'identity (kernel-references kernel))))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun merge-graphviz-attribute-plists (&rest plists)
+    (hash-table-plist
+     (plist-hash-table
+      (apply #'append plists) :test #'eq)))
+
+  (define-method-combination graphviz-attributes ()
+    ((primary ()))
+    (print
+     `(merge-graphviz-attribute-plists
+       ,@(loop for method in primary
+               collect `(call-method ,method))))))
+
+(defgeneric graphviz-node-attributes (graph node)
+  (:method-combination graphviz-attributes))
+
+(defclass data-flow-graph () ())
+
+(defmethod cl-dot:generate-graph-from-roots
+    ((graph (eql 'data-flow-graph))
+     objects &optional attributes)
+  (cl-dot:generate-graph-from-roots (make-instance graph) objects attributes))
+
+(defmethod cl-dot:graph-object-pointed-to-by
+    ((graph data-flow-graph)
+     (data-structure data-structure))
+  (inputs data-structure))
+
+(defmethod cl-dot:graph-object-pointed-to-by
+    ((graph data-flow-graph)
+     (immediate immediate))
+  (concatenate 'list
+               (call-next-method)
+               (kernels immediate)))
+
+(defmethod cl-dot:graph-object-pointed-to-by
+    ((graph data-flow-graph)
+     (kernel kernel))
+  (concatenate 'list
+               (call-next-method)
+               (kernel-references kernel)))
+
+(defmethod cl-dot:graph-object-node
+    ((graph data-flow-graph)
+     (node t))
+  (make-instance 'cl-dot:node
+    :attributes (graphviz-node-attributes graph node)))
+
+(defmethod graphviz-node-attributes
+    ((graph data-flow-graph)
+     (node t))
+  `(:shape :box :style :filled))
+
+(defmethod graphviz-node-attributes
+    ((graph data-flow-graph)
+     (data-structure data-structure))
+  `(:label ,(format nil "~A~%~A"
+                    (class-name (class-of data-structure))
+                    (index-space data-structure))))
 
 (defmethod graphviz-graph-plist plist-union
     ((purpose data-flow-graph))
@@ -32,13 +94,11 @@
 
 (defmethod graphviz-node-plist plist-union
     ((purpose data-flow-graph) (node t))
-  `(:shape "box" :style "filled"))
+  )
 
 (defmethod graphviz-node-plist plist-union
     ((purpose data-flow-graph) (node data-structure))
-  `(:label ,(format nil "~A~%~A"
-                    (class-name (class-of node))
-                    (index-space node))))
+  `(:label ))
 
 (defmethod graphviz-node-plist plist-union
     ((purpose data-flow-graph) (node strided-array-immediate))
@@ -96,18 +156,6 @@ sources: ~A~%
 reads: ~A~%
 body: ~A"
                ranges target write sources reads body))))
-
-(defmethod graphviz-edge-plist plist-union
-    ((purpose data-flow-graph) (node-1 data-structure) (node-2 data-structure))
-  `(:dir "back"))
-
-(defmethod graphviz-edge-plist plist-union
-    ((purpose data-flow-graph) (node-1 kernel) (node-2 data-structure))
-  `(:dir "back"))
-
-(defmethod graphviz-edge-plist plist-union
-    ((purpose data-flow-graph) (node-1 data-structure) (node-2 kernel))
-  `(:dir "back"))
 
 (defmethod graphviz-edge-plist plist-union
     ((purpose data-flow-graph) (a kernel) (b immediate))
