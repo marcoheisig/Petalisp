@@ -69,7 +69,7 @@
 ;;; program, this would completely sidestep the scheduler and associated
 ;;; optimization.
 ;;;
-;;; The only case where serial and parallel execution are equally fast, is
+;;; The only case where serial and parallel execution are equally fast is
 ;;; for scalar values. Our conservative choice is therefore to fold only
 ;;; applications to scalar values. Scalar values can be either immediates
 ;;; of size one, or references to such immediates. Note, however, that such
