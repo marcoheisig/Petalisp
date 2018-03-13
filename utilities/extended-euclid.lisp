@@ -41,6 +41,6 @@ that u*u1 + v*u2 = u3 = gcd(u,v)."
     ;; latter is quite expensive, the product of U and V is used
     ;; instead. To see why (* u v) is unconditionally greater than (lcm u
     ;; v), consider the prime factors of both numbers.
-    (if (<= (* u v) most-positive-fixnum)
+    (if (typep (* u v) 'non-negative-fixnum)
         (fixnum-euclid 1 u 0 v)
         (bignum-euclid 1 u 0 v))))

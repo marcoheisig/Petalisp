@@ -7,7 +7,7 @@
    :petalisp/utilities/generators)
   (:export
    #:range
-   #:range?
+   #:rangep
    #:range-start
    #:range-step
    #:range-end
@@ -16,14 +16,14 @@
    #:range-intersection?
    #:range-fusion
    #:range-size
-   #:size-one-range?))
+   #:size-one-range-p))
 
 (in-package :petalisp/utilities/range)
 
 (defstruct (range
             (:constructor %make-range (start step end))
             (:copier nil)
-            (:predicate range?))
+            (:predicate rangep))
   "A range denotes the set {x | ∃n ∈ N0, x = START + n STEP ∧ x <= END}."
   (start nil :type integer          :read-only t)
   (step  nil :type positive-integer :read-only t)
@@ -193,7 +193,7 @@ intersect it (potentially violating MAX-EXTENT)."
   (1+ (the integer (/ (- (range-end range) (range-start range))
                       (range-step range)))))
 
-(declaim (inline unary-range?))
-(defun size-one-range? (range)
+(declaim (inline size-one-range-p))
+(defun size-one-range-p (range)
   (= (range-start range)
      (range-end range)))

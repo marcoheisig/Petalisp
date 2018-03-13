@@ -121,12 +121,12 @@
           (is (not (range-difference intersection b))))))))
 
 (test range
-  (is (range? (range 0 0 0)))
+  (is (rangep (range 0 0 0)))
   (signals error (range 0 0 1))
   (for-all ((start (generator 'integer))
             (step (generator 'integer :minimum 1))
             (end (generator 'integer)))
-    (is (range? (range start step end)))
+    (is (rangep (range start step end)))
     (is (= (range-size (range start step end))
            (1+ (floor (abs (- start end)) (abs step)))))
     (is (equalp (range start step end)

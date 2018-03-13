@@ -68,8 +68,8 @@
                         (for dimension from 0)
                         (cond
                           ((equalp range broadcast-range)) ; NOP
-                          ((size-one-range? range)) ; NOP
-                          ((size-one-range? broadcast-range)
+                          ((size-one-range-p range)) ; NOP
+                          ((size-one-range-p broadcast-range)
                            (setf (aref result-ranges dimension) range))
                           (t
                            (demand nil
@@ -127,7 +127,7 @@
       :ranges (map 'vector #'rangeify range-specifications))))
 
 (defmethod index-space ((vector vector))
-    (if (every #'range? vector)
+    (if (every #'rangep vector)
         (make-instance 'strided-array-index-space :ranges vector)
         (call-next-method)))
 
@@ -206,7 +206,7 @@
                                          (- n global-start)))))
                        (if (> (range-start range) global-start)
                            (check (range-start range))
-                           (unless (size-one-range? range)
+                           (unless (size-one-range-p range)
                              (check (+ (range-start range)
                                        (range-step range)))))))
                    (range global-start step-size global-end))))))
