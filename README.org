@@ -5,6 +5,40 @@ computers by JIT-compiling array definitions. It is not a full blown
 programming language, but rather a carefully crafted extension of Common
 Lisp that allows for extreme optimization and parallelization.
 
+** Getting Started
+1. Install Lisp and a suitable IDE. The fastest way to get everything up
+   and running is to use [[https://portacle.github.io/][Portacle]].
+
+2. Download Petalisp and place it an the appropriate project directory.
+
+a) Portacle
+#+BEGIN_SRC sh
+cd ~/portacle/projects && git clone https://github.com/marcoheisig/Petalisp.git
+#+END_SRC
+
+b) Quicklisp
+#+BEGIN_SRC sh
+cd ~/quicklisp/local-projects && git clone https://github.com/marcoheisig/Petalisp.git
+#+END_SRC
+
+3. Start Lisp and load all dependencies
+
+#+BEGIN_SRC lisp
+(ql:quickload :petalisp)
+(ql:quickload :petalisp-test-suite)
+(ql:quickload :petalisp-benchmarks)
+#+END_SRC
+
+You may also want to run the Petalisp test suite.
+
+#+BEGIN_SRC lisp
+(asdf:test-system :petalisp)
+#+END_SRC
+
+4. Congratulations, you have now access to a highly experimental parallel
+   programming environment! A good next step is to study some of the
+   provided [[file:examples][examples]].
+
 ** Showcases
 Petalisp is still under development, so the following examples may still
 change slightly. Nevertheless they give a good glimpse on what programming
