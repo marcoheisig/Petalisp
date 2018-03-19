@@ -9,7 +9,10 @@ Lisp that allows for extreme optimization and parallelization.
 *** 1. Install Lisp and a suitable IDE.
 The fastest way to get everything up and running is to use [[https://portacle.github.io/][Portacle]].
 
-*** 2. Download Petalisp and place it an the appropriate project directory.
+*** 2. Download Petalisp.
+In order to be able to load Petalisp, you may have to place it in the
+appropriate project directory.
+
 For Portacle users
 #+BEGIN_SRC sh
 cd ~/portacle/projects && git clone https://github.com/marcoheisig/Petalisp.git
@@ -19,7 +22,8 @@ For Quicklisp users
 #+BEGIN_SRC sh
 cd ~/quicklisp/local-projects && git clone https://github.com/marcoheisig/Petalisp.git
 #+END_SRC
-*** 3. Start Lisp and load all dependencies
+*** 3. Load Petalisp
+Launch your Lisp IDE and evaluate the following commands:
 
 #+BEGIN_SRC lisp
 (ql:quickload :petalisp)
@@ -33,9 +37,10 @@ You may also want to run the Petalisp test suite.
 (asdf:test-system :petalisp)
 #+END_SRC
 
-*** 4. Congratulations, you have now access to a highly experimental parallel programming environment!
-We recommend to have a look at some [[file:examples][examples]] to get familiar with the API
-and the programming model.
+*** 4. Done!
+Congratulations, you have now access to a highly experimental parallel
+programming environment!  We recommend to have a look at some [[file:examples][examples]] to
+get familiar with the API and the programming model.
 
 ** Showcases
 Petalisp is still under development, so the following examples may still
