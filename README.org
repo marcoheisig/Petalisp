@@ -102,7 +102,7 @@ That being said, I am willing to discuss relicensing on an individual
 basis.
 
 *** Why is Petalisp written in Common Lisp?
-To my own surprise, Common Lisp is --- as of 2018 --- still the sweetest
-spot in the programming language design space. Furthermore, the Common Lisp
-ecosystem is quite amazing, featuring libraries of unparalleled quality and
-originality.
+I couldn't wish for a better tool for the job. Common Lisp is extremely
+rich in features, standardized, fast, safe and mature. The Lisp community
+is amazing and there are excellent libraries for every imaginable
+task.
