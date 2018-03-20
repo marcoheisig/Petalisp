@@ -88,7 +88,7 @@
                        (for output-range in-vector (ranges space))
                        (for index from 0)
                        (setf (aref permutation index) index)
-                       (cond ((size-one-range? output-range)
+                       (cond ((size-one-range-p output-range)
                               (setf (aref translation index) (range-start output-range)))
                              ((equalp input-range output-range)
                               (setf (aref scaling index) 1))))

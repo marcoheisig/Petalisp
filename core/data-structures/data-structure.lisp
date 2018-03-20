@@ -154,7 +154,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Methods applicable to instances of DATA-STRUCTURE
+;;; Methods specialized on DATA-STRUCTUREs
 
 ;;; Increase the REFCOUNT of each input of each data structure.
 (defmethod initialize-instance :after
@@ -204,7 +204,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Methods related to instances of IMMEDIATE
+;;; Methods specialized on IMMEDIATEs
 
 (defmethod inputs ((immediate immediate))
   nil)
@@ -225,7 +225,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Methods related to instances of APPLICATION
+;;; Methods specialized on APPLICATIONs
 
 (defmethod make-application :check
     (function first-input (all-inputs sequence))
@@ -239,7 +239,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Methods related to instances of REDUCTION
+;;; Methods specialized on REDUCTIONs
 
 (defmethod make-reduction :check (f g (a data-structure) order)
   (demand (plusp (dimension a))
@@ -247,7 +247,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Methods related to instances of FUSION
+;;; Methods specialized on FUSIONs
 
 (defmethod make-fusion :check (first-index-space (index-spaces sequence))
   (assert (eq first-index-space (elt index-spaces 0)))
@@ -280,7 +280,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Methods related to instances of REFERENCE
+;;; Methods specialized on REFERENCEs
 
 (defmethod make-reference :check
     ((data-structure data-structure)
