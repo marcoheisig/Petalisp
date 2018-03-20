@@ -1,7 +1,8 @@
 ;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
 (uiop:define-package :petalisp/utilities/function-lambda-lists
-  (:use :closer-common-lisp :alexandria)
+  (:use #:closer-common-lisp #:alexandria)
+  (:import-from #:trivial-arguments #:arglist)
   (:export
    #:function-lambda-list
    #:lambda-list-arity
@@ -13,30 +14,10 @@
 (defun function-lambda-list (function)
   "Return the lambda list of FUNCTION. Signal an error if the
 implementation has no means to determine the function's lambda list."
-  #+allegro (excl:arglist function)
-  #+clisp (sys::arglist function)
-  #+ccl (ccl:arglist function)
-  #+lispworks (lw:function-lambda-list function)
-  #+lucid (lcl:arglist function)
-  #+sbcl (sb-introspect:function-lambda-list function)
-  #+(or cmu scl)
-  (let ((f (coerce function 'function)))
-    (etypecase f
-      (standard-generic-function (pcl:generic-function-lambda-list f))
-      (eval:interpreted-function (eval:interpreted-function-arglist f))
-      (function (read-from-string (kernel:%function-arglist f)))))
-  #+cormanlisp
-  (ccl:function-lambda-list
-   (typecase function
-     (symbol (fdefinition function))
-     (t function)))
-  #+gcl
-  (let ((f (etypecase function
-             (symbol function)
-             (function (si:compiled-function-name function)))))
-    (get f 'si:debug))
-  #-(or allegro clisp cmu scl cormanlisp gcl lispworks lucid sbcl ccl)
-  (error "Not implemented."))
+  (let ((arglist (trivial-arguments:arglist function)))
+    (if (eq arglist :unknown)
+        (error "Unable to compute arglist")
+        arglist)))
 
 (defun lambda-list-arity (lambda-list)
   "Return two values:
@@ -44,13 +25,13 @@ implementation has no means to determine the function's lambda list."
    2. the maximal number of permissible arguments"
   (let ((mandatory-arguments 0)
         (max-arguments 0)
-        (upper-bound? t)
+        (upper-bound-p t)
         (mandatory-increment 1)
         (max-increment 1))
     (declare (type (integer 0 #.call-arguments-limit)
                    mandatory-arguments max-arguments
                    mandatory-increment max-increment)
-             (type boolean upper-bound?))
+             (type boolean upper-bound-p))
     (dolist (item lambda-list)
       (case item
         ((&key)
@@ -65,11 +46,11 @@ implementation has no means to determine the function's lambda list."
         ((&rest &allow-other-keys)
          (setf max-increment 0)
          (setf mandatory-increment 0)
-         (setf upper-bound? nil))
+         (setf upper-bound-p nil))
         (t
          (incf mandatory-arguments mandatory-increment)
          (incf max-arguments max-increment))))
-    (if upper-bound?
+    (if upper-bound-p
         (values mandatory-arguments max-arguments)
         (values mandatory-arguments call-arguments-limit))))
 
@@ -77,4 +58,5 @@ implementation has no means to determine the function's lambda list."
   "Return two values:
    1. the number of mandatory arguments
    2. the maximal number of permissible arguments"
-  (lambda-list-arity (function-lambda-list function)))
+  (lambda-list-arity
+   (function-lambda-list function)))
