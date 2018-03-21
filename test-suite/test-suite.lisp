@@ -134,6 +134,21 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; Transformations
+
+(test transformation
+  (is (transformationp (τ (i j 2 k) (k 3 j i))))
+  (is (transformation-equal
+       (invert-transformation (τ (2 2 j 3) (j)))
+       (τ (j) (2 2 j 3))))
+  (is (transformation-equal
+       (τ (i) (i))
+       (compose-transformations
+        (τ (i) ((1+ i)))
+        (τ (i) ((1- i)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; Strided Array Index Spaces
 
 (test |(index-space-difference strided-array-index-space)|

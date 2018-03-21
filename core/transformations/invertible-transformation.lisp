@@ -30,11 +30,23 @@
     ((transformation invertible-transformation))
   t)
 
+;; Somehow caching the inverse makes things break...
+#+nil
 (defmethod invert-transformation :around
     ((transformation cached-inverse-transformation-mixin))
-  (or (cached-inverse transformation)
-      (let ((computed-inverse (call-next-method)))
-        (prog1 computed-inverse
-          (when (typep computed-inverse 'cached-inverse-transformation-mixin)
-            (setf (cached-inverse computed-inverse) transformation))
-          (setf (cached-inverse transformation) computed-inverse)))))
+  (let ((cached-inverse (cached-inverse transformation)))
+    (let ((result (or cached-inverse
+                      (let ((computed-inverse (call-next-method)))
+                        (setf (cached-inverse computed-inverse) transformation)
+                        (setf (cached-inverse transformation) computed-inverse)
+                        computed-inverse))))
+      (assert (and (= (input-dimension result)
+                      (output-dimension transformation))
+                   (= (output-dimension result)
+                      (input-dimension transformation))))
+      result)))
+
+(defmethod invert-transformation
+    ((transformation transformation))
+  (error 'petalisp-user-error
+         "~:<The transformation ~W is not invertible.~:@>"))

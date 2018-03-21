@@ -161,11 +161,20 @@
                                   (index-space strided-array-index-space))
   (let ((output-ranges (make-array (output-dimension transformation)))
         (input-ranges (ranges index-space)))
-    (flet ((store-output-range (output-index input-index scaling offset)
+    (flet ((store-output-range (output-index input-index constraint scaling offset)
              (setf (svref output-ranges output-index)
-                   (if (zerop scaling)
+                   (if (and (zerop scaling)
+                            (null constraint))
                        (range offset 1 offset)
                        (let ((input-range (svref input-ranges input-index)))
+                         (unless (null constraint)
+                           (demand (= (range-start input-range)
+                                      (range-end input-range)
+                                      constraint)
+                             "~@<The range ~W does not satisfy the ~
+                                 ~:R input constraint, ~W, of the ~
+                                 transformation ~W.~:@>"
+                             input-range input-index constraint transformation))
                          (range
                           (+ offset (* scaling (range-start input-range)))
                           (* scaling (range-step input-range))

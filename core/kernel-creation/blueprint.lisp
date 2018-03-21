@@ -29,11 +29,12 @@
 
 (defun blueprint/reference (id transformation)
   (let (ulists)
-    (dx-flet ((store-triple (output-index input-index scale offset)
-                (declare (ignore output-index))
+    (dx-flet ((store-triple (output-index input-index constraint scale offset)
+                (declare (ignore output-index constraint))
                 ;; TODO WTF?! scale should never be a non-integer, yet
                 ;; somehow this can happen. The below fix is certainly not
                 ;; the solution. Need to fix this ASAP
+                (assert (integerp input-index))
                 (let ((scale (if (integerp scale) scale 1)))
                   (push (ulist input-index scale offset) ulists))))
       (map-transformation-outputs transformation #'store-triple))

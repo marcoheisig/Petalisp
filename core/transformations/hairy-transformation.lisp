@@ -78,7 +78,7 @@
 ;;; Replicate BODY 16 times for all the different possible array states.
 (defmacro with-hairy-transformation-refs
     ((&key
-        ((:input-constraints iref))
+        ((:input-constraints cref))
         ((:translation tref))
         ((:permutation pref))
         ((:scaling sref)))
@@ -90,7 +90,7 @@
              (,permutation (permutation ,transformation))
              (,scaling (scaling ,transformation)))
          (with-duplicate-body (null ,input-constraints)
-             ((,iref (index) nil `(the (or null integer) (aref ,',input-constraints ,index))))
+             ((,cref (index) nil `(the (or null integer) (aref ,',input-constraints ,index))))
            (with-duplicate-body (null ,translation)
                ((,tref (index) 0 `(the rational (aref ,',translation ,index))))
              (with-duplicate-body (null ,permutation)
@@ -152,36 +152,38 @@
        :translation translation))))
 
 (defmethod invert-transformation
-    ((object hairy-invertible-transformation))
+    ((transformation hairy-invertible-transformation))
   ;;    f(x) = (Ax + b)
   ;; f^-1(x) = A^-1(x - b) = A^-1 x - A^-1 b
-  (let ((A (linear-operator object))
-        (b (or (translation object)
-               (make-array (output-dimension object) :initial-element 0)))
-        (input-constraints (make-array (output-dimension object)
-                                       :initial-element nil
-                                       :element-type '(or null integer))))
-    ;; the new input constraints are the values of b whenever the
-    ;; corresponding row of A is zero
-    (loop for value across (spm-values A)
-          for translation across b
-          for row-index from 0 do
-            (when (zerop value)
-              (setf (aref input-constraints row-index) translation)))
-    (let* ((linear-operator (matrix-inverse A))
-           (translation (matrix-product linear-operator b)))
-      (map-into translation #'- translation) ; negate b
-      (loop for index below (length translation)
-            for input-constraint across (or (input-constraints object)
-                                            (make-array (length translation)
-                                                        :initial-element nil)) do
-              (when input-constraint
-                (assert (= (aref translation index) 0))
-                (setf (aref translation index) input-constraint)))
+  (let ((output-dimension (input-dimension transformation))
+        (input-dimension (output-dimension transformation))
+        (original-input-constraints (input-constraints transformation)))
+    (let ((input-constraints
+            (make-array input-dimension :initial-element nil))
+          (permutation
+            (make-array output-dimension :initial-element 0))
+          (scaling
+            (make-array output-dimension :initial-element 0))
+          (translation
+            (if (not original-input-constraints)
+                (make-array output-dimension :initial-element nil)
+                (copy-array (input-constraints transformation)))))
+      (flet ((set-inputs (output-index input-index constraint a b)
+               (declare (ignore constraint))
+               (cond
+                 ((zerop a)
+                  (setf (aref input-constraints output-index) b))
+                 ((/= 0 a)
+                  (setf (aref permutation input-index) output-index)
+                  (setf (aref scaling input-index) (/ a))
+                  (setf (aref translation input-index) (- (/ b a)))))))
+        (map-transformation-outputs transformation #'set-inputs))
       (make-transformation
+       :input-dimension input-dimension
+       :output-dimension output-dimension
        :input-constraints input-constraints
-       :permutation (spm-column-indices linear-operator)
-       :scaling (spm-values linear-operator)
+       :permutation permutation
+       :scaling scaling
        :translation translation))))
 
 (defmethod enlarge-transformation
@@ -224,16 +226,17 @@
      (function function))
   (let ((output-dimension (output-dimension transformation)))
     (with-hairy-transformation-refs
-        (:input-constraints iref
+        (:input-constraints cref
          :scaling sref
          :permutation pref
          :translation tref)
         transformation
       (loop for output-index below output-dimension
             for input-index = (pref output-index)
+            for constraint = (cref input-index)
             for scaling = (sref output-index)
             for offset = (tref output-index) do
-              (funcall function output-index input-index scaling offset)))))
+              (funcall function output-index input-index constraint scaling offset)))))
 
 (defmethod print-object
     ((transformation hairy-transformation) stream)
