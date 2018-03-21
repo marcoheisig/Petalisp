@@ -248,27 +248,27 @@
            (optimize-loops loops)
            `(lambda (kernel)
               (declare (kernel kernel))
-              (with-unsafe-optimizations
-                (let ((references (kernel-references kernel))
-                      (unknown-functions (kernel-unknown-functions kernel))
-                      (bounds (kernel-bounds kernel)))
-                  (declare (ignorable references unknown-functions bounds))
-                  (let ( ;; bind the storage arrays of each referenced immediate
-                        ,@(loop for id from 0
-                                for element-type in element-types
-                                collect
-                                `(,(array-symbol id)
-                                  (the (simple-array ,element-type)
-                                       (storage (aref references ,id)))))
-                        ;; bind the iteration space bounds of each dimension
-                        ,@(loop for id below (length bounds-metadata)
-                                for bounds-info in bounds-metadata
-                                collect
-                                `(,(bound-symbol id)
-                                  ,(if (integerp bounds-info)
-                                       bounds-info
-                                       `(the array-index (aref bounds ,id))))))
-                    ,(translate body)))))))))))
+              ;;(with-unsafe-optimizations)
+              (let ((references (kernel-references kernel))
+                    (unknown-functions (kernel-unknown-functions kernel))
+                    (bounds (kernel-bounds kernel)))
+                (declare (ignorable references unknown-functions bounds))
+                (let ( ;; bind the storage arrays of each referenced immediate
+                      ,@(loop for id from 0
+                              for element-type in element-types
+                              collect
+                              `(,(array-symbol id)
+                                (the (simple-array ,element-type)
+                                     (storage (aref references ,id)))))
+                      ;; bind the iteration space bounds of each dimension
+                      ,@(loop for id below (length bounds-metadata)
+                              for bounds-info in bounds-metadata
+                              collect
+                              `(,(bound-symbol id)
+                                ,(if (integerp bounds-info)
+                                     bounds-info
+                                     `(the array-index (aref bounds ,id))))))
+                  ,(translate body))))))))))
 
 (defun optimize-loops (loops)
   (loop

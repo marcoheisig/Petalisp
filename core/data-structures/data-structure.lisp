@@ -310,9 +310,12 @@
     ((reference reference)
      (index-space index-space)
      (transformation transformation))
-  (make-reference (input reference)
-                  index-space
-                  (composition (transformation reference) transformation)))
+  (make-reference
+   (input reference)
+   index-space
+   (compose-transformations
+    (transformation reference)
+    transformation)))
 
 ;;; Drop references with no effect.
 (defmethod make-reference :optimize

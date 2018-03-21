@@ -28,7 +28,7 @@ fragment, FRAGMENT-FN receives the following arguments:
              (when fusion-free?
                (vector-push-extend
                 (funcall fragment-fn
-                         (funcall (inverse transformation) index-space)
+                         (funcall (invert-transformation transformation) index-space)
                          (+ (dimension root) n-reductions))
                 results))
              (values fusion-free? n-reductions)))
@@ -50,7 +50,7 @@ fragment, FRAGMENT-FN receives the following arguments:
                     (values nil total-reductions)))
                  ;; Case 3: References
                  (reference
-                  (let ((transformation (composition (transformation node) transformation))
+                  (let ((transformation (compose-transformations (transformation node) transformation))
                         (subspace (index-space-intersection index-space (index-space node))))
                     (multiple-value-bind (fusion-free? n-reductions)
                         (walk (input node) subspace transformation)
@@ -77,5 +77,8 @@ fragment, FRAGMENT-FN receives the following arguments:
                     (values every-fusion-free? total-reductions)))))))
       (declare (ftype (function (t t t) (values boolean non-negative-fixnum))
                       walk walk-potential-outer-node))
-      (walk-potential-outer-node root (index-space root) (identity-transformation (dimension root))))
+      (walk-potential-outer-node
+       root
+       (index-space root)
+       (make-identity-transformation (dimension root))))
     (subseq results 0 nil)))

@@ -66,7 +66,7 @@ overlap partially, the value of the rightmost object is used."
              (make-reference
               (find piece objects :from-end t :key #'index-space :test #'subspace-p)
               piece
-              (identity-transformation (dimension piece)))))
+              (make-identity-transformation (dimension piece)))))
       (let ((inputs
               (mapcar #'reference-origin
                       (subdivision (mapcar #'index-space objects)))))
@@ -100,13 +100,13 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
                     (make-reference
                      data-structure
                      (index-space-intersection modifier (index-space data-structure))
-                     (identity-transformation
+                     (make-identity-transformation
                       (dimension data-structure)))))
                (transformation
                 (make-reference
                  data-structure
                  (funcall modifier (index-space data-structure))
-                 (inverse modifier))))))
+                 (invert-transformation modifier))))))
     (recurse (make-immediate data-structure) modifiers)))
 
 (defun schedule (&rest objects)

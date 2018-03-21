@@ -49,7 +49,7 @@ Return the sequence of immediates corresponding to the GRAPH-ROOTS."
                ;; The targets of broadcasting references are
                ;; unconditionally turned into critical nodes.
                (if (typep node 'reference)
-                   (if (invertible? (transformation node))
+                   (if (invertible-transformation-p (transformation node))
                       (visit (input node))
                       (register-critical-node (input node)))
                    (mapc #'visit (inputs node))))

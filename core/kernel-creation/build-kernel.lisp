@@ -58,7 +58,7 @@ and RELEVANT-SPACE."
          (walk-reference (immediate transformation)
            (blueprint/reference
             (id immediate references)
-            (composition (transformation immediate) transformation)))
+            (compose-transformations (transformation immediate) transformation)))
          (walk (node relevant-space transformation)
            (when relevant-space
              (if-let ((leaf (funcall leaf-function node)))
@@ -98,7 +98,7 @@ and RELEVANT-SPACE."
                            (index-space (input node))
                            (funcall (transformation node) relevant-space)))
                         (transformation
-                          (composition (transformation node) transformation)))
+                          (compose-transformations (transformation node) transformation)))
                     (walk (input node) relevant-space transformation))))))))
       (let ((blueprint-body
               (blueprint/store
@@ -114,6 +114,6 @@ and RELEVANT-SPACE."
 
 (defun index-space-normalization (index-space)
   (let ((ranges (ranges index-space)))
-    (affine-transformation
+    (make-transformation
      :translation (map 'vector #'range-start ranges)
      :scaling (map 'vector #'range-step ranges))))

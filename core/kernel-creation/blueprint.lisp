@@ -36,7 +36,7 @@
                 ;; the solution. Need to fix this ASAP
                 (let ((scale (if (integerp scale) scale 1)))
                   (push (ulist input-index scale offset) ulists))))
-      (do-outputs transformation #'store-triple))
+      (map-transformation-outputs transformation #'store-triple))
     (ulist* :reference id
             (reduce (lambda (a b) (ucons b a))
                     ulists :initial-value nil))))

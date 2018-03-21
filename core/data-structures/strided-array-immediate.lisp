@@ -19,7 +19,7 @@
 (defmethod shared-initialize :after
     ((instance strided-array-immediate) slot-names &key &allow-other-keys)
   (setf (transformation instance)
-        (inverse
+        (invert-transformation
          (from-storage-transformation (index-space instance)))))
 
 (defmethod make-immediate ((array array))
@@ -28,7 +28,7 @@
     :index-space (index-space array)
     :storage array
     :kernels nil
-    :transformation (identity-transformation (array-rank array))))
+    :transformation (make-identity-transformation (array-rank array))))
 
 (defmethod corresponding-immediate ((strided-array strided-array))
   (make-instance 'strided-array-immediate
@@ -44,7 +44,7 @@
 (defun from-storage-transformation (index-space)
   (let ((ranges (ranges index-space))
         (dimension (dimension index-space)))
-    (affine-transformation
+    (make-transformation
      :input-dimension dimension
      :scaling (map 'vector #'range-step ranges)
      :translation (map 'vector #'range-start ranges))))

@@ -43,12 +43,12 @@
             (:predicate scaled-permutation-matrix?))
   "A `scaled-permutation-matrix' is a matrix with at most one nonzero entry
 per row and column."
-  (column-indices nil :type (simple-array array-index (*)) :read-only t)
-  (values         nil :type (simple-array number      (*)) :read-only t))
+  (column-indices nil :type (simple-array number (*)) :read-only t)
+  (values         nil :type (simple-array number (*)) :read-only t))
 
 (defun scaled-permutation-matrix (m n column-indices values)
   (let ((column-indices
-          (coerce column-indices '(simple-array array-index (*))))
+          (coerce column-indices '(simple-array number (*))))
         (values
           (coerce values '(simple-array number (*)))))
     (assert (= m (length column-indices) (length values))
@@ -97,17 +97,19 @@ function returns the m-vector that is the dot product of SPM and VEC."
   (declare (type scaled-permutation-matrix spm-1 spm-2))
   (let* ((m (matrix-m spm-1))
          (n (matrix-n spm-2))
-         (column-indices (make-array m :element-type 'array-index
+         (column-indices (make-array m :element-type 'number
                                        :initial-element 0))
          (values (make-array m :element-type 'number
                                :initial-element 0)))
     (dotimes (i m)
-      (let* ((k (aref (spm-column-indices spm-1) i))
-             (j (aref (spm-column-indices spm-2) k)))
-        (setf (aref column-indices i) j)
-        (setf (aref values i)
-              (* (aref (spm-values spm-1) i)
-                 (aref (spm-values spm-2) k)))))
+      (if (zerop (aref (spm-values spm-1) i))
+          (values)
+          (let* ((k (aref (spm-column-indices spm-1) i))
+                 (j (aref (spm-column-indices spm-2) k)))
+            (setf (aref column-indices i) j)
+            (setf (aref values i)
+                  (* (aref (spm-values spm-1) i)
+                     (aref (spm-values spm-2) k))))))
     (scaled-permutation-matrix m n column-indices values)))
 
 (defmethod matrix-product ((spm scaled-permutation-matrix) (s-expressions list))
@@ -129,7 +131,7 @@ function returns the m-vector that is the dot product of SPM and VEC."
          (original-values (spm-values spm))
          (m (matrix-n spm))
          (n (matrix-m spm))
-         (column-indices (make-array m :element-type 'array-index
+         (column-indices (make-array m :element-type 'number
                                        :initial-element 0))
          (values (make-array m :element-type 'number
                                :initial-element 0)))

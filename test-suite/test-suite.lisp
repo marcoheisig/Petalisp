@@ -156,10 +156,10 @@
     (? (σ (0 9) (0 9)) (σ (2 10) (2 10)) (σ (2 9) (2 9)))
     (? (σ (1 2 3) (0 3 6)) (σ (1 1 3) (0 2 6)) (σ (1 2 3) (0 6 6)))))
 
-(test |(generic-unery-funcall affine-transformation strided-array-index-space)|
+(test |(generic-unery-funcall hairy-transformation strided-array-index-space)|
   (flet ((? (object transformation result)
            (is (index-space-equality result (funcall transformation object)))
-           (is (index-space-equality object (funcall (inverse transformation) result)))))
+           (is (index-space-equality object (funcall (invert-transformation transformation) result)))))
     (? (σ (1 1 1)) (τ (m) ((1+ m)))
        (σ (2 1 2)))
     (? (σ (0 9) (0 5)) (τ (m n) (n m))

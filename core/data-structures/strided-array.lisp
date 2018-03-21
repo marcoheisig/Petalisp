@@ -92,7 +92,7 @@
                               (setf (aref translation index) (range-start output-range)))
                              ((equalp input-range output-range)
                               (setf (aref scaling index) 1))))
-              (affine-transformation
+              (make-transformation
                :output-dimension output-dimension
                :input-dimension input-dimension
                :permutation permutation
