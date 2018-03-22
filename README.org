@@ -39,8 +39,7 @@ You may also want to run the Petalisp test suite.
 
 *** 4. Done!
 Congratulations, you have now access to a highly experimental parallel
-programming environment!  We recommend to have a look at some [[file:examples][examples]] to
-get familiar with the API and the programming model.
+programming environment! You should now be able to run the [[file:examples][examples]].
 
 ** Showcases
 Petalisp is still under development, so the following examples may still
