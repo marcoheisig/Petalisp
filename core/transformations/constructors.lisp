@@ -68,6 +68,8 @@
                             input-constraints)
                "~@<Invalid transformation input constraints: ~W~:@>"
                input-constraints)
+             ;; An input constraint vector is boring if it consists of NIL
+             ;; only.
              (if (every #'null input-constraints)
                  nil
                  (coerce input-constraints 'simple-vector))))
@@ -76,31 +78,52 @@
              (demand (every #'rationalp translation)
                "~@<Invalid transformation translation: ~W~:@>"
                translation)
+             ;; A translation vector is boring if its entries are all zero.
              (if (every #'zerop translation)
                  nil
                  (coerce translation 'simple-vector))))
+         (permutation
+           (when permutation-p
+             (demand
+              (every (lambda (p)
+                       (typep p '(or null array-index)))
+                     permutation)
+              "~@<Invalid transformation permutation: ~W~:@>"
+              permutation)
+             ;; A permutation vector is boring if it maps each index to
+             ;; itself.
+             (if (every (let ((i -1))
+                          (lambda (p)
+                            (eql p (incf i))))
+                        permutation)
+                 nil
+                 (coerce permutation 'simple-vector))))
          (scaling
            (when scaling-p
              (demand (every #'rationalp scaling)
                "~@<Invalid transformation scaling: ~W~:@>"
                scaling)
-             (if (every (lambda (x) (= x 1)) scaling)
+             (unless (not permutation)
+               (demand (every (lambda (p s)
+                                (or p (zerop s)))
+                              permutation
+                              scaling)
+                       "~@<The scaling ~W has nonzero entries in places ~
+                           where the permutation ~W is NIL.~:@>"
+                       scaling permutation))
+             ;; A scaling vector is boring if it is zero whenever the
+             ;; corresponding permutation entry is NIL and one otherwise.
+             (if (if permutation
+                     (every (lambda (s p)
+                              (if (null p)
+                                  (= s 0)
+                                  (= s 1)))
+                            scaling permutation)
+                     (every (lambda (s)
+                              (= s 1))
+                            scaling))
                  nil
-                 (coerce scaling 'simple-vector))))
-         (permutation
-           (when permutation-p
-             (demand (if (null scaling)
-                         (every (lambda (p)
-                                  (<= 0 p (1- input-dimension)))
-                                permutation)
-                         (every (lambda (s p)
-                                  (or (zerop s)
-                                      (<= 0 p (1- input-dimension))))
-                                scaling permutation))
-               "~@<Invalid transformation permutation: ~W~:@>"
-               permutation)
-             ;; TODO detect boring permutations
-             (coerce permutation 'simple-vector))))
+                 (coerce scaling 'simple-vector)))))
     ;; Step 3: Create the transformation
     (cond
       ;; Check whether we have an identity transformation
@@ -178,40 +201,56 @@
           ;; access.
           (arg-conses (make-array input-dimension)))
       (loop for arg-cons on args
-            for i from 0 do
-              (setf (aref arg-conses i) arg-cons))
+            for index from 0 do
+              (setf (aref arg-conses index) arg-cons))
       ;; Initially x is the zero vector (except for input constraints, which
       ;; are ignored by A), so f(x) = Ax + b = b
       (let* ((translation (multiple-value-call #'vector (apply function args)))
              (output-dimension (length translation))
-             ;; now determine the scaled permutation matrix A
-             (column-indices (make-array output-dimension
-                                         :element-type 'number
-                                         :initial-element 0))
+             (permutation (make-array output-dimension
+                                      :element-type 'number
+                                      :initial-element 0))
              (scaling (make-array output-dimension
                                   :element-type 'rational
                                   :initial-element 0)))
-        ;; set one input at a time from zero to one (ignoring those with
-        ;; constraints) and check how it changes the result
+        ;; Set one input at a time from zero to one (ignoring those with
+        ;; constraints) and check how it changes the output.
         (loop for input-constraint across input-constraints
               for arg-cons across arg-conses
               for column-index from 0
               when (not input-constraint) do
                 (setf (car arg-cons) 1)
-                ;; find the row of A corresponding to the mutated input
-                (let ((results (multiple-value-call #'vector (apply function args))))
-                  (loop for result across results
+                ;; Find the row of A corresponding to the mutated input. It
+                ;; is the only output that differs from b.
+                (let ((outputs (multiple-value-call #'vector (apply function args))))
+                  (loop for output across outputs
                         for offset across translation
                         for row-index from 0
-                        when (/= result offset) do
-                          (setf (aref column-indices row-index) column-index)
-                          (setf (aref scaling row-index) (- result offset))))
+                        when (/= output offset) do
+                          (setf (aref permutation row-index) column-index)
+                          (setf (aref scaling row-index) (- output offset))
+                          (return)))
+                ;; Restore the argument to zero.
                 (setf (car arg-cons) 0))
-        (make-transformation
-         :input-constraints input-constraints
-         :translation translation
-         :scaling scaling
-         :permutation column-indices)))))
+        ;; Finally, check whether the derived transformation behaves like
+        ;; the original function and signal an error if not.
+        (let ((transformation
+                (make-transformation
+                 :input-dimension input-dimension
+                 :output-dimension output-dimension
+                 :input-constraints input-constraints
+                 :translation translation
+                 :scaling scaling
+                 :permutation permutation)))
+          (loop for arg-cons on args
+                for input-constraint across input-constraints
+                when (not input-constraint) do
+                  (setf (car arg-cons) 2))
+          (demand (equalp (funcall transformation args)
+                          (multiple-value-list (apply function args)))
+            "~@<The function ~W is not affine-linear.~:@>"
+            function)
+          transformation)))))
 
 (define-compiler-macro make-transformation-from-function
     (&whole whole &environment environment

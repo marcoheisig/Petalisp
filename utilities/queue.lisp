@@ -2,7 +2,12 @@
 
 (uiop:define-package :petalisp/utilities/queue
   (:use :closer-common-lisp :alexandria :bordeaux-threads)
-  (:export #:make-queue #:queue? #:enqueue #:dequeue))
+  (:export
+   #:queue
+   #:make-queue
+   #:queue?
+   #:enqueue
+   #:dequeue))
 
 (in-package :petalisp/utilities/queue)
 
