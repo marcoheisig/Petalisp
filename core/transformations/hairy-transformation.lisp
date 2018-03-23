@@ -188,22 +188,36 @@
 
 (defmethod enlarge-transformation
     ((transformation hairy-transformation) scale offset)
-  (let ((input-dimension (input-dimension transformation))
-        (output-dimension (output-dimension transformation))
-        (matrix (linear-operator transformation)))
-    (let ((input-constraints (make-array (1+ input-dimension)))
-          (permutation       (make-array (1+ output-dimension)))
-          (scaling           (make-array (1+ output-dimension)))
-          (translation       (make-array (1+ output-dimension))))
-      (replace input-constraints (input-constraints transformation))
-      (replace permutation       (spm-column-indices matrix))
-      (replace scaling           (spm-values matrix))
-      (replace translation       (translation transformation))
-      (setf (aref input-constraints input-dimension) nil)
-      (setf (aref permutation       output-dimension) input-dimension)
-      (setf (aref scaling           output-dimension) scale)
-      (setf (aref translation       output-dimension) offset)
+  (let ((input-dimension (1+ (input-dimension transformation)))
+        (output-dimension (1+ (output-dimension transformation)))
+        (old-constraints (input-constraints transformation))
+        (old-translation (translation transformation))
+        (old-scaling (scaling transformation))
+        (old-permutation (permutation transformation)))
+    (let ((input-constraints (make-array input-dimension))
+          (permutation       (make-array output-dimension))
+          (scaling           (make-array output-dimension))
+          (translation       (make-array output-dimension)))
+      (if (not old-constraints)
+          (fill input-constraints nil)
+          (replace input-constraints old-constraints))
+      (if (not old-permutation)
+          (loop for index below output-dimension do
+            (setf (aref permutation index) index))
+          (replace permutation old-permutation))
+      (if (not old-scaling)
+          (fill scaling 1)
+          (replace scaling old-scaling))
+      (if (not old-translation)
+          (fill translation 0)
+          (replace translation old-translation))
+      (setf (aref input-constraints (1- input-dimension)) nil)
+      (setf (aref permutation       (1- output-dimension)) (1- input-dimension))
+      (setf (aref scaling           (1- output-dimension)) scale)
+      (setf (aref translation       (1- output-dimension)) offset)
       (make-transformation
+       :input-dimension input-dimension
+       :output-dimension output-dimension
        :input-constraints input-constraints
        :permutation permutation
        :scaling scaling
