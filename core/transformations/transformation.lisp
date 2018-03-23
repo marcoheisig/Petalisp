@@ -27,7 +27,7 @@
 ;;; (2) multiplying the indices by a constant
 ;;; (3) permuting the dimensions
 ;;; (4) introducing dimensions with a one element range
-;;; (5) removing dimensions with a one element range
+;;; (5) removing dimensions
 ;;;
 ;;; In linear algebra lingo, we have
 ;;;
@@ -53,12 +53,13 @@
 ;; they will be referenced before being defined.
 (declaim (ftype (function (&key (:input-dimension array-length)
                                 (:output-dimension array-length)
-                                (:input-constraints (or null simple-vector))
-                                (:translation (or null simple-vector))
-                                (:permutation (or null simple-vector))
-                                (:scaling (or null simple-vector))))
+                                (:input-constraints sequence)
+                                (:translation sequence)
+                                (:permutation sequence)
+                                (:scaling sequence))
+                          transformation)
                 make-transformation)
-         (ftype (function (array-length))
+         (ftype (function (array-length) transformation)
                 make-identity-transformation))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -10,7 +10,6 @@
 
 (in-package :petalisp/utilities/function-lambda-lists)
 
-;;; this function is derived from CLOCC, credit goes to Sam Steingold
 (defun function-lambda-list (function)
   "Return the lambda list of FUNCTION. Signal an error if the
 implementation has no means to determine the function's lambda list."

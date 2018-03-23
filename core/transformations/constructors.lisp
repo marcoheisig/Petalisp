@@ -9,12 +9,6 @@
    :petalisp/core/transformations/identity-transformation
    :petalisp/core/transformations/hairy-transformation)
   (:export
-   #:make-constrained-transformation
-   #:make-identity-transformation
-   #:make-translating-transformation
-   #:make-permuting-transformation
-   #:make-scaling-transformation
-   #:make-constrained-transformation
    #:make-transformation-from-function
    #:τ))
 
@@ -22,7 +16,12 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; The Primary Transformation Constructor
+;;; The Primary Transformation Constructors
+
+(defun make-identity-transformation (dimension)
+  (with-vector-memoization (dimension)
+    (make-instance 'identity-transformation
+      :dimension dimension)))
 
 (defun make-transformation
     (&key input-dimension output-dimension
@@ -86,9 +85,8 @@
            (when permutation-p
              ;; Permutation vectors are the most complicated to check. If
              ;; an output does not reference any input, the corresponding
-             ;; entry in the permutation vector is NIL. All other entries
-             ;; must be indices into the input. Each index must appear
-             ;; exactly once.
+             ;; entry in the permutation vector must be nil NIL. No index
+             ;; must appear more than once.
              (demand (and (every (lambda (p)
                                    (or (not p)
                                        (< -1 p input-dimension)))
@@ -172,27 +170,6 @@
          :scaling scaling
          :permutation permutation
          :translation translation)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Trivial Constructors
-
-(defun make-identity-transformation (dimension)
-  (with-vector-memoization (dimension)
-    (make-instance 'identity-transformation
-      :dimension dimension)))
-
-(defun make-translating-transformation (translation)
-  (make-transformation :translation translation))
-
-(defun make-permuting-transformation (permutation)
-  (make-transformation :permutation permutation))
-
-(defun make-scaling-transformation (scaling)
-  (make-transformation :scaling scaling))
-
-(defun make-constrained-transformation (input-constraints)
-  (make-transformation :input-constraints input-constraints))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
