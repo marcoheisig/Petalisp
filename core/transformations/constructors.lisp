@@ -84,12 +84,26 @@
                  (coerce translation 'simple-vector))))
          (permutation
            (when permutation-p
-             (demand
-              (every (lambda (p)
-                       (typep p '(or null array-index)))
-                     permutation)
-              "~@<Invalid transformation permutation: ~W~:@>"
-              permutation)
+             ;; Permutation vectors are the most complicated to check. If
+             ;; an output does not reference any input, the corresponding
+             ;; entry in the permutation vector is NIL. All other entries
+             ;; must be indices into the input. Each index must appear
+             ;; exactly once.
+             (demand (and (every (lambda (p)
+                                   (or (not p)
+                                       (< -1 p input-dimension)))
+                                 permutation)
+                          (if (not input-constraints)
+                              (loop for input-index below input-dimension
+                                    always (> 2 (count input-index permutation)))
+                              (loop for input-index below input-dimension
+                                    for input-constraint across input-constraints
+                                    always
+                                    (if (not input-constraint)
+                                        (> 2 (count input-index permutation))
+                                        (= 0 (count input-index permutation))))))
+               "~@<Invalid transformation permutation: ~W~:@>"
+               permutation)
              ;; A permutation vector is boring if it maps each index to
              ;; itself.
              (if (every (let ((i -1))
@@ -208,8 +222,8 @@
       (let* ((translation (multiple-value-call #'vector (apply function args)))
              (output-dimension (length translation))
              (permutation (make-array output-dimension
-                                      :element-type 'number
-                                      :initial-element 0))
+                                      :element-type '(or null array-index)
+                                      :initial-element nil))
              (scaling (make-array output-dimension
                                   :element-type 'rational
                                   :initial-element 0)))
@@ -263,7 +277,8 @@
             (declare (notinline make-transformation-from-function))
           (make-transformation-from-function
            ,function
-           ,@(when input-constraints-p `(,input-constraints)))))))
+           ,@(when input-constraints-p `(,input-constraints))))))
+  whole)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

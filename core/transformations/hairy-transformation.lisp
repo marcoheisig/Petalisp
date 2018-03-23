@@ -4,11 +4,16 @@
   (:use :closer-common-lisp :alexandria)
   (:use
    :petalisp/utilities/all
+   :petalisp/core/error-handling
    :petalisp/core/transformations/transformation
    :petalisp/core/transformations/invertible-transformation)
   (:export
    #:hairy-transformation
-   #:hairy-invertible-transformation))
+   #:hairy-invertible-transformation
+   #:input-constraints
+   #:translation
+   #:permutation
+   #:scaling))
 
 (in-package :petalisp/core/transformations/hairy-transformation)
 
@@ -94,7 +99,7 @@
            (with-duplicate-body (null ,translation)
                ((,tref (index) 0 `(the rational (aref ,',translation ,index))))
              (with-duplicate-body (null ,permutation)
-                 ((,pref (index) index `(the array-index (aref ,',permutation ,index))))
+                 ((,pref (index) index `(the (or null array-index) (aref ,',permutation ,index))))
                (with-duplicate-body (null ,scaling)
                    ((,sref (index) 1 `(the rational (aref ,',scaling ,index))))
                  ,@body))))))))
@@ -119,36 +124,44 @@
        (equalp (scaling transformation-1)
                (scaling transformation-2))))
 
-;; This function is just a temporary hack to simplify the transition to the
-;; new implementation of transformations. It will be removed once matrices
-;; are no longer a dependency.
-(defun linear-operator (transformation)
-  (scaled-permutation-matrix
-   (output-dimension transformation)
-   (input-dimension transformation)
-   (or (permutation transformation)
-       (apply #'vector (iota (output-dimension transformation))))
-   (or (scaling transformation)
-       (make-array (output-dimension transformation)
-                   :initial-element 1))))
-
 (defmethod compose-transformations
     ((g hairy-transformation) (f hairy-transformation))
   ;; A2 (A1 x + b1) + b2 = A2 A1 x + A2 b1 + b2
-  (let ((A1 (linear-operator f))
-        (A2 (linear-operator g))
-        (b1 (or (translation f)
-                (make-array (output-dimension f) :initial-element 0)))
-        (b2 (or (translation g)
-                (make-array (output-dimension g) :initial-element 0))))
-    (let ((input-constraints (or (input-constraints f)
-                                 (make-array (input-dimension f) :initial-element nil)))
-          (linear-operator (matrix-product A2 A1))
-          (translation (map 'vector #'+ (matrix-product A2 b1) b2)))
+  (let ((input-dimension (input-dimension f))
+        (output-dimension (output-dimension g)))
+    (let ((input-constraints
+            (if-let ((input-constraints (input-constraints f)))
+              (copy-array input-constraints)
+              (make-array input-dimension :initial-element nil)))
+          (permutation
+            (make-array output-dimension :initial-element nil))
+          (scaling
+            (make-array output-dimension :initial-element 0))
+          (translation
+            (make-array output-dimension :initial-element 0)))
+      (with-hairy-transformation-refs
+          (:input-constraints iref
+           :permutation pref
+           :scaling sref
+           :translation tref)
+          f
+        (flet ((set-output (output-index input-index a b)
+                 (cond ((null input-index)
+                        (setf (aref scaling output-index) b))
+                       ((and)
+                        (setf (aref permutation output-index)
+                              (pref input-index))
+                        (setf (aref scaling output-index)
+                              (* a (sref input-index)))
+                        (setf (aref translation output-index)
+                              (+ (* a (tref input-index)) b))))))
+          (map-transformation-outputs g #'set-output)))
       (make-transformation
+       :input-dimension input-dimension
+       :output-dimension output-dimension
        :input-constraints input-constraints
-       :permutation (spm-column-indices linear-operator)
-       :scaling (spm-values linear-operator)
+       :permutation permutation
+       :scaling scaling
        :translation translation))))
 
 (defmethod invert-transformation
@@ -161,17 +174,16 @@
     (let ((input-constraints
             (make-array input-dimension :initial-element nil))
           (permutation
-            (make-array output-dimension :initial-element 0))
+            (make-array output-dimension :initial-element nil))
           (scaling
             (make-array output-dimension :initial-element 0))
           (translation
             (if (not original-input-constraints)
-                (make-array output-dimension :initial-element nil)
+                (make-array output-dimension :initial-element 0)
                 (copy-array (input-constraints transformation)))))
-      (flet ((set-inputs (output-index input-index constraint a b)
-               (declare (ignore constraint))
+      (flet ((set-inputs (output-index input-index a b)
                (cond
-                 ((zerop a)
+                 ((not input-index)
                   (setf (aref input-constraints output-index) b))
                  ((/= 0 a)
                   (setf (aref permutation input-index) output-index)
@@ -206,7 +218,10 @@
             (setf (aref permutation index) index))
           (replace permutation old-permutation))
       (if (not old-scaling)
-          (fill scaling 1)
+          (loop for index below output-dimension
+                for p across permutation do
+            (setf (aref scaling index)
+                  (if (not p) 0 1)))
           (replace scaling old-scaling))
       (if (not old-translation)
           (fill translation 0)
@@ -223,17 +238,41 @@
        :scaling scaling
        :translation translation))))
 
+(defmethod generic-unary-funcall :before
+    ((transformation hairy-transformation)
+     (s-expressions list))
+  (when-let ((input-constraints (input-constraints transformation)))
+    (loop for s-expression in s-expressions
+          for constraint across input-constraints
+          for index from 0 do
+            (unless (not constraint)
+              (when (numberp s-expression)
+                (demand (= s-expression constraint)
+                  "~@<The number ~W violates the ~:R input constraint ~
+                      of the transformation ~W.~:@>"
+                  s-expression index transformation))))))
+
 (defmethod generic-unary-funcall
     ((transformation hairy-transformation)
      (s-expressions list))
-  (map 'list (lambda (Ax b)
-               (cond ((eql Ax 0) b)
-                     ((numberp Ax) (+ Ax b))
-                     ((eql b 0) Ax)
-                     (t `(+ ,Ax ,b))))
-       (matrix-product (linear-operator transformation) s-expressions)
-       (or (translation transformation)
-           (make-array (output-dimension transformation) :initial-element 0))))
+  (let ((result '()))
+    (flet ((push-output-expression (output-index input-index a b)
+             (declare (ignore output-index))
+             (let* ((x (if (not input-index)
+                           0
+                           (elt s-expressions input-index)))
+                    (a*x (cond ((= 1 a) x)
+                               ((numberp x) (* a x))
+                               ((and) `(* ,a ,x))))
+                    (a*x+b (cond ((eql a*x 0) b)
+                                 ((= b 0) a*x)
+                                 ((numberp a*x) (+ a*x b))
+                                 ((= b  1) `(1+ ,a*x))
+                                 ((= b -1) `(1- ,a*x))
+                                 ((and) `(+ ,a*x ,b)))))
+               (push A*x+b result))))
+      (map-transformation-outputs transformation #'push-output-expression)
+      (nreverse result))))
 
 (defmethod map-transformation-outputs
     ((transformation hairy-transformation)
@@ -247,10 +286,9 @@
         transformation
       (loop for output-index below output-dimension
             for input-index = (pref output-index)
-            for constraint = (cref input-index)
             for scaling = (sref output-index)
             for offset = (tref output-index) do
-              (funcall function output-index input-index constraint scaling offset)))))
+              (funcall function output-index input-index scaling offset)))))
 
 (defmethod print-object
     ((transformation hairy-transformation) stream)
@@ -265,4 +303,3 @@
                      collect (or input-constraint variable)))))
     (princ `(τ ,inputs ,(funcall transformation inputs))
            stream)))
-

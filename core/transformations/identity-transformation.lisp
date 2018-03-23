@@ -4,6 +4,7 @@
   (:use :closer-common-lisp :alexandria)
   (:use
    :petalisp/utilities/all
+   :petalisp/core/error-handling
    :petalisp/core/transformations/transformation
    :petalisp/core/transformations/invertible-transformation)
   (:export
@@ -49,7 +50,7 @@
 (defmethod map-transformation-outputs
     ((transformation identity-transformation) (function function))
   (loop for index below (input-dimension transformation) do
-    (funcall function index index nil 1 0)))
+    (funcall function index index 1 0)))
 
 (defmethod print-object ((object identity-transformation) stream)
   (let ((indices (iota (input-dimension object))))

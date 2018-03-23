@@ -27,51 +27,6 @@
   (is-true (identical '(1 2.0 6/2 4d0) :key #'numberp :test #'eq))
   (is-true (identical "aaaAaa" :test #'char= :key #'char-upcase)))
 
-(test scaled-permutation-matrix
-  (is (scaled-permutation-matrix?
-       (scaled-permutation-matrix 3 3 #(0 1 2) #(5 4 3))))
-  (signals error
-    (scaled-permutation-matrix 1 1 #(2) #(1)))
-  (signals error
-    (scaled-permutation-matrix 2 2 #(0 0) #(1 1))))
-
-(test |(matrix-product scaled-permutation-matrix vector)|
-  (is (equalp
-       #(10 8)
-       (matrix-product
-        (scaled-permutation-matrix 2 2 #(1 0) #(2 2))
-        #(4 5)))))
-
-(test |(matrix-product scaled-permutation-matrix scaled-permutation-matrix)|
-  (is (equalp
-       (scaled-permutation-matrix 2 2 #(0 1) #(8 6))
-       (matrix-product
-        (scaled-permutation-matrix 2 2 #(1 0) #(2 2))
-        (scaled-permutation-matrix 2 2 #(1 0) #(3 4)))))
-  (is (equalp
-       (scaled-permutation-matrix 3 5 #(0 0 0) #(0 0 0))
-       (matrix-product
-        (scaled-permutation-matrix 3 7 #(0 0 0) #(0 0 0))
-        (scaled-permutation-matrix 7 5 #(0 1 2 3 4 0 0) #(6 6 6 6 6 0 0))))))
-
-(test |(matrix-product scaled-permutation-matrix list)|
-  (is (equalp
-       '(0 foo 84 (* 3 foo))
-       (matrix-product
-        (scaled-permutation-matrix 4 4 #(0 1 2 3) #(0 1 2 3))
-        '(foo foo 42 foo)))))
-
-(test |(matrix-inverse scaled-permutation-matrix)|
-  (is (equalp
-       (scaled-permutation-matrix 4 4 #(2 0 1 3) #(2 3 4 5))
-       (matrix-inverse
-        (scaled-permutation-matrix 4 4 #(1 2 0 3) #(1/3 1/4 1/2 1/5))))))
-
-(test |(identity-matrix? scaled-permutation-matrix)|
-  (is-true  (identity-matrix? (scaled-permutation-matrix 3 3 #(0 1 2) #(1 1 1))))
-  (is-false (identity-matrix? (scaled-permutation-matrix 3 3 #(0 1 2) #(1 2 1))))
-  (is-false (identity-matrix? (scaled-permutation-matrix 3 3 #(1 0 2) #(1 1 1)))))
-
 (test |(extended-euclid)|
   (flet ((? (u v)
            (multiple-value-bind (u1 u3) (extended-euclid u v)

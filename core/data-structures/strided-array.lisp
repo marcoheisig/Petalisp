@@ -82,7 +82,7 @@
           (let ((input-dimension (dimension space))
                 (output-dimension (dimension object)))
             (let ((translation (make-array output-dimension :initial-element 0))
-                  (permutation (make-array output-dimension :initial-element 0))
+                  (permutation (make-array output-dimension :initial-element nil))
                   (scaling (make-array output-dimension :initial-element 0)))
               (iterate (for input-range in-vector (ranges (index-space object)))
                        (for output-range in-vector (ranges space))

@@ -157,24 +157,29 @@
     (prin1 `(σ ,@(map 'list #'range-list (ranges object)))
            stream)))
 
+(defmethod generic-unary-funcall :before
+    ((transformation hairy-transformation)
+     (index-space strided-array-index-space))
+  (when-let ((input-constraints (input-constraints transformation)))
+    (loop for range across (ranges index-space)
+          for constraint across input-constraints
+          for index from 0 do
+            (unless (not constraint)
+              (demand (and (= constraint (range-start range))
+                           (= constraint (range-end range)))
+                "~@<The ~:R dimension of the space ~W violates ~
+                    the input constraint ~W of the transformation ~W.~:@>"
+                index index-space constraint transformation)))))
+
 (defmethod generic-unary-funcall ((transformation hairy-transformation)
                                   (index-space strided-array-index-space))
   (let ((output-ranges (make-array (output-dimension transformation)))
         (input-ranges (ranges index-space)))
-    (flet ((store-output-range (output-index input-index constraint scaling offset)
+    (flet ((store-output-range (output-index input-index scaling offset)
              (setf (svref output-ranges output-index)
-                   (if (and (zerop scaling)
-                            (null constraint))
+                   (if (not input-index)
                        (range offset 1 offset)
                        (let ((input-range (svref input-ranges input-index)))
-                         (unless (null constraint)
-                           (demand (= (range-start input-range)
-                                      (range-end input-range)
-                                      constraint)
-                             "~@<The range ~W does not satisfy the ~
-                                 ~:R input constraint, ~W, of the ~
-                                 transformation ~W.~:@>"
-                             input-range input-index constraint transformation))
                          (range
                           (+ offset (* scaling (range-start input-range)))
                           (* scaling (range-step input-range))

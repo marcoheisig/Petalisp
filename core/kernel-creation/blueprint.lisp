@@ -29,8 +29,8 @@
 
 (defun blueprint/reference (id transformation)
   (let (ulists)
-    (dx-flet ((store-triple (output-index input-index constraint scale offset)
-                (declare (ignore output-index constraint))
+    (dx-flet ((store-triple (output-index input-index scale offset)
+                (declare (ignore output-index))
                 ;; TODO WTF?! scale should never be a non-integer, yet
                 ;; somehow this can happen. The below fix is certainly not
                 ;; the solution. Need to fix this ASAP
