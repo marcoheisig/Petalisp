@@ -1,13 +1,13 @@
 ;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(uiop:define-package :petalisp/core/virtual-machines/default-scheduler-mixin
+(uiop:define-package :petalisp/core/backends/default-scheduler-mixin
   (:use :closer-common-lisp :alexandria :bordeaux-threads)
   (:use
    :petalisp/utilities/all
    :petalisp/core/transformations/all
    :petalisp/core/data-structures/all
    :petalisp/core/kernel-creation/all
-   :petalisp/core/virtual-machines/virtual-machine)
+   :petalisp/core/backends/backend)
   (:export
    #:default-scheduler-mixin
    #:vm/bind-memory
@@ -16,7 +16,7 @@
    #:vm/execute
    #:vm/free-memory))
 
-(in-package :petalisp/core/virtual-machines/default-scheduler-mixin)
+(in-package :petalisp/core/backends/default-scheduler-mixin)
 
 (defclass default-scheduler-mixin ()
   ((%scheduler-queue :reader scheduler-queue
@@ -43,29 +43,23 @@
     (setf (worker-thread vm)
           (make-thread #'work :name "Petalisp Worker Thread"))))
 
-(defgeneric vm/bind-memory (virtual-machine immediate)
-  (:documentation
-   "Instruct VIRTUAL-MACHINE to suitably set the STORAGE slot of
-IMMEDIATE."))
+;;; Instruct BACKEND to suitably set the STORAGE slot of IMMEDIATE.
+(defgeneric vm/bind-memory (backend immediate))
 
-(defgeneric vm/compile (virtual-machine blueprint)
-  (:documentation
-   "Instruct VIRTUAL-MACHINE to prepare the given BLUEPRINT for execution."))
+;;; Instruct BACKEND to prepare the given BLUEPRINT for execution.
+(defgeneric vm/compile (backend blueprint))
 
-(defgeneric vm/compute (virtual-machine graph-roots)
-  (:documentation
-   "Instruct VIRTUAL-MACHINE to compute the sequence of data structures
-GRAPH-ROOTS. Return the computed values of all GRAPH-ROOTS."))
+;;; Instruct BACKEND to compute the sequence of data structures
+;;; GRAPH-ROOTS. Return the computed values of all GRAPH-ROOTS
+(defgeneric vm/compute (backend graph-roots))
 
-(defgeneric vm/execute (virtual-machine kernel)
-  (:documentation
-   "Instruct VIRTUAL-MACHINE to execute the given KERNEL, assuming that all
-its sources and targets have already been allocated and computed."))
+;;; Instruct BACKEND to execute the given KERNEL, assuming that all its
+;;; sources and targets have already been allocated and computed.
+(defgeneric vm/execute (backend kernel))
 
-(defgeneric vm/free-memory (virtual-machine immediate)
-  (:documentation
-   "Instruct VIRTUAL-MACHINE to reclaim the STORAGE of IMMEDIATE and set
-the STORAGE slot of IMMEDIATE to NIL."))
+;;; Instruct BACKEND to reclaim the STORAGE of IMMEDIATE and set the
+;;; STORAGE slot of IMMEDIATE to NIL.
+(defgeneric vm/free-memory (backend immediate))
 
 (defmethod vm/schedule ((vm default-scheduler-mixin) targets recipes)
   (let ((request (make-request)))

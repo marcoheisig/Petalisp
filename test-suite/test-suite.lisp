@@ -187,21 +187,21 @@
                      :element-type 'double-float
                      :dimensions (make-list n :initial-element length)))
 
-(defmacro with-testing-virtual-machine (&body body)
-  `(call-with-testing-virtual-machine
+(defmacro with-testing-backend (&body body)
+  `(call-with-testing-backend
     (lambda () ,@body)))
 
-(defun call-with-testing-virtual-machine (thunk)
-  (let ((*virtual-machine*
-          (make-instance 'testing-virtual-machine
-            :virtual-machines
+(defun call-with-testing-backend (thunk)
+  (let ((*backend*
+          (make-instance 'testing-backend
+            :backends
             (list
-             (make-instance 'reference-virtual-machine)
-             (make-instance 'common-lisp-virtual-machine)))))
+             (make-instance 'reference-backend)
+             (make-instance 'common-lisp-backend)))))
     (funcall thunk)))
 
 (test petalisp-api
-  (with-testing-virtual-machine
+  (with-testing-backend
     (compute! (α #'+ 2 3))
     (compute! (α #'+ #(2 3 4) #(5 4 3)))
     (compute! (-> #(1 2 3) (τ (i) ((- i)))))
@@ -209,21 +209,21 @@
                      (-> 1.0 (σ (3 3) (3 3)))))))
 
 (test jacobi
-  (with-testing-virtual-machine
+  (with-testing-backend
     (compute! (jacobi (ndarray 1) :iterations 2))
     (compute! (jacobi (ndarray 2) :iterations 2))
     (compute! (jacobi (ndarray 3) :iterations 2))
     (compute! (jacobi (ndarray 3) :iterations 5))))
 
 (test red-black-gauss-seidel
-  (with-testing-virtual-machine
+  (with-testing-backend
     (compute! (red-black-gauss-seidel (ndarray 1) :iterations 2))
     (compute! (red-black-gauss-seidel (ndarray 2) :iterations 2))
     (compute! (red-black-gauss-seidel (ndarray 3) :iterations 2))
     (compute! (red-black-gauss-seidel (ndarray 3) :iterations 5))))
 
 (test linear-algebra
-  (with-testing-virtual-machine
+  (with-testing-backend
     (loop for dimension upto 2 do
       (compute! (transpose (ndarray dimension))))
     (let ((a (ndarray 2))

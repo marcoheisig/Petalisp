@@ -1,18 +1,18 @@
 ;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(uiop:define-package :petalisp/core/virtual-machines/reference-virtual-machine
+(uiop:define-package :petalisp/core/backends/reference-backend
   (:use :closer-common-lisp :alexandria)
   (:use
    :petalisp/utilities/all
    :petalisp/core/transformations/all
    :petalisp/core/data-structures/all
-   :petalisp/core/virtual-machines/virtual-machine)
+   :petalisp/core/backends/backend)
   (:export
-   #:reference-virtual-machine))
+   #:reference-backend))
 
-(in-package :petalisp/core/virtual-machines/reference-virtual-machine)
+(in-package :petalisp/core/backends/reference-backend)
 
-;;; The purpose of the reference virtual machine is to compute reference
+;;; The purpose of the reference backend is to compute reference
 ;;; solutions for automated testing. It is totally acceptable that this
 ;;; implementation is slow or eagerly consing, as long as it is obviously
 ;;; correct.
@@ -20,17 +20,17 @@
 ;;; Internally, all evaluated arrays are represented as a list of conses of
 ;;; the form (indices . value), where indices is a list of integers.
 
-(defclass reference-virtual-machine (virtual-machine)
+(defclass reference-backend (backend)
   ((%evaluated-nodes :reader evaluated-nodes
                      :initform (make-hash-table :test #'eq)
                      :type hash-table)))
 
-(defgeneric vm/evaluate (virtual-machine data-structure)
+(defgeneric vm/evaluate (backend data-structure)
   (:documentation
-   "Instruct VIRTUAL-MACHINE to evaluate the given data structure. The
-exact semantics of this operation differ on each virtual machine."))
+   "Instruct BACKEND to evaluate the given data structure. The
+exact semantics of this operation differ on each backend."))
 
-(defmethod vm/schedule ((vm reference-virtual-machine) targets recipes)
+(defmethod vm/schedule ((vm reference-backend) targets recipes)
   (loop for target across targets
         for recipe across recipes do
           (setf (storage target)
@@ -44,7 +44,7 @@ exact semantics of this operation differ on each virtual machine."))
   (complete (make-request)))
 
 (defun reference-vm/normalize (result)
-  "Assert that RESULT satisfies the reference virtual machine array
+  "Assert that RESULT satisfies the reference backend array
    representation and ensure the canonical ordering of indices."
   (let ((dimension (length (car (first result)))))
     (loop for (indices . value) in result do
@@ -79,14 +79,14 @@ exact semantics of this operation differ on each virtual machine."))
             value))))
 
 (defmethod vm/evaluate :around
-    ((vm reference-virtual-machine) (node data-structure))
+    ((vm reference-backend) (node data-structure))
   (with-hash-table-memoization (node)
       (evaluated-nodes vm)
     (reference-vm/normalize
      (call-next-method))))
 
 (defmethod vm/evaluate
-    ((vm reference-virtual-machine) (node immediate))
+    ((vm reference-backend) (node immediate))
   (let ((list-of-indices (reference-vm/represent (index-space node))))
     (loop for indices in list-of-indices
           collect
@@ -96,7 +96,7 @@ exact semantics of this operation differ on each virtual machine."))
                   (funcall (transformation node) indices))))))
 
 (defmethod vm/evaluate
-    ((vm reference-virtual-machine) (node application))
+    ((vm reference-backend) (node application))
   (flet ((indices (input) (car input))
          (value (input) (cdr input))
          (evaluate (node)
@@ -111,7 +111,7 @@ exact semantics of this operation differ on each virtual machine."))
              (mapcar #'evaluate (inputs node))))))
 
 (defmethod vm/evaluate
-    ((vm reference-virtual-machine) (node reduction))
+    ((vm reference-backend) (node reduction))
   (let ((input (vm/evaluate vm (input node)))
         (binary-operator (binary-operator node))
         (unary-operator (unary-operator node))
@@ -125,13 +125,13 @@ exact semantics of this operation differ on each virtual machine."))
     result))
 
 (defmethod vm/evaluate
-    ((vm reference-virtual-machine) (node fusion))
+    ((vm reference-backend) (node fusion))
   (flet ((evaluate (node)
            (vm/evaluate vm node)))
     (apply #'append (mapcar #'evaluate (inputs node)))))
 
 (defmethod vm/evaluate
-    ((vm reference-virtual-machine) (node reference))
+    ((vm reference-backend) (node reference))
   (let ((list-of-indices (reference-vm/represent (index-space node)))
         (input (vm/evaluate vm (input node))))
     (loop for indices in list-of-indices

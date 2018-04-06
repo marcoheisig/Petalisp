@@ -1,6 +1,6 @@
 ;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
-(uiop:define-package :petalisp/core/virtual-machines/common-lisp-virtual-machine
+(uiop:define-package :petalisp/core/backends/common-lisp-backend
   (:use :closer-common-lisp :alexandria :trivia)
   (:import-from :lparallel)
   (:use
@@ -8,16 +8,16 @@
    :petalisp/core/transformations/all
    :petalisp/core/data-structures/all
    :petalisp/core/kernel-creation/all
-   :petalisp/core/virtual-machines/virtual-machine
-   :petalisp/core/virtual-machines/compile-cache-mixin
-   :petalisp/core/virtual-machines/default-scheduler-mixin)
+   :petalisp/core/backends/backend
+   :petalisp/core/backends/compile-cache-mixin
+   :petalisp/core/backends/default-scheduler-mixin)
   (:export
-   #:common-lisp-virtual-machine))
+   #:common-lisp-backend))
 
-(in-package :petalisp/core/virtual-machines/common-lisp-virtual-machine)
+(in-package :petalisp/core/backends/common-lisp-backend)
 
-(defclass common-lisp-virtual-machine
-    (virtual-machine default-scheduler-mixin compile-cache-mixin)
+(defclass common-lisp-backend
+    (backend default-scheduler-mixin compile-cache-mixin)
   ((%memory-pool :reader memory-pool
                  :initform (make-hash-table :test #'equalp)
                  :type hash-table)
@@ -25,7 +25,7 @@
                  :initform (lparallel:make-kernel 4))))
 
 (defmethod vm/bind-memory
-    ((virtual-machine common-lisp-virtual-machine)
+    ((backend common-lisp-backend)
      (immediate strided-array-immediate))
   (let ((array-dimensions
           (map 'list #'range-size (ranges (index-space immediate))))
@@ -33,30 +33,30 @@
     (setf (storage immediate)
           (or
            (pop (gethash (cons element-type array-dimensions)
-                         (memory-pool virtual-machine)))
+                         (memory-pool backend)))
            (make-array array-dimensions :element-type element-type)))
     (values)))
 
 (defmethod vm/free-memory
-    ((virtual-machine common-lisp-virtual-machine)
+    ((backend common-lisp-backend)
      (immediate strided-array-immediate))
   (let ((array-dimensions
           (map 'list #'range-size (ranges (index-space immediate))))
         (element-type (element-type immediate)))
     (push (storage immediate)
           (gethash (cons element-type array-dimensions)
-                   (memory-pool virtual-machine)))
+                   (memory-pool backend)))
     (values)))
 
 (defmethod vm/compile
-  ((virtual-machine common-lisp-virtual-machine)
+  ((backend common-lisp-backend)
    (blueprint ucons))
   (let ((code (translate-blueprint blueprint)))
     (compile nil code)))
 
-(defmethod vm/execute ((virtual-machine common-lisp-virtual-machine) (kernel kernel))
-  (let ((lparallel:*kernel* (worker-pool virtual-machine)))
-    (funcall (vm/compile virtual-machine (kernel-blueprint kernel)) kernel)))
+(defmethod vm/execute ((backend common-lisp-backend) (kernel kernel))
+  (let ((lparallel:*kernel* (worker-pool backend)))
+    (funcall (vm/compile backend (kernel-blueprint kernel)) kernel)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -64,7 +64,7 @@
 
 (defun symbol-with-indices (name &rest indices)
   (format-symbol
-   :petalisp/core/virtual-machines/common-lisp-virtual-machine
+   :petalisp/core/backends/common-lisp-backend
    "~A~{-~D~}" name indices))
 
 (defun base-index-symbol (depth reference-id)

@@ -7,7 +7,7 @@
    :petalisp/utilities/all
    :petalisp/core/transformations/all
    :petalisp/core/data-structures/all
-   :petalisp/core/virtual-machines/all)
+   :petalisp/core/backends/all)
   (:export
    #:α
    #:β
@@ -21,15 +21,15 @@
    #:schedule
    #:size
    #:dimension
-   #:*virtual-machine*
-   #:reference-virtual-machine
-   #:common-lisp-virtual-machine
-   #:testing-virtual-machine))
+   #:*backend*
+   #:reference-backend
+   #:common-lisp-backend
+   #:testing-backend))
 
 (in-package :petalisp/core/api)
 
-(defparameter *virtual-machine*
-  (make-instance 'common-lisp-virtual-machine))
+(defparameter *backend*
+  (make-instance 'common-lisp-backend))
 
 (defun α (function object &rest more-objects)
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
@@ -113,14 +113,14 @@ accordingly. For example applying the transformation (τ (m n) (n m) to a
   "Instruct Petalisp to compute all given OBJECTS asynchronously."
   (let* ((recipes (map 'vector #'shallow-copy objects))
          (targets (map 'vector #'make-immediate! objects)))
-    (vm/schedule *virtual-machine* targets recipes)
+    (vm/schedule *backend* targets recipes)
     (values-list objects)))
 
 (defun compute (&rest objects)
   "Return the computed values of all OBJECTS."
   (let* ((recipes (map 'vector #'shallow-copy objects))
          (targets (map 'vector #'make-immediate! objects)))
-    (wait (vm/schedule *virtual-machine* targets recipes))
+    (wait (vm/schedule *backend* targets recipes))
     (flet ((lispify (immediate)
              (let ((array (storage immediate)))
                (if (zerop (array-rank array))
