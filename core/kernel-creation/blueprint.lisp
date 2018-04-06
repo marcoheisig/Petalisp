@@ -31,12 +31,10 @@
   (let (ulists)
     (dx-flet ((store-triple (output-index input-index scale offset)
                 (declare (ignore output-index))
-                ;; TODO WTF?! scale should never be a non-integer, yet
-                ;; somehow this can happen. The below fix is certainly not
-                ;; the solution. Need to fix this ASAP
-                (assert (integerp input-index))
-                (let ((scale (if (integerp scale) scale 1)))
-                  (push (ulist input-index scale offset) ulists))))
+                (check-type input-index integer)
+                (check-type scale integer)
+                (check-type offset integer)
+                (push (ulist input-index scale offset) ulists)))
       (map-transformation-outputs transformation #'store-triple))
     (ulist* :reference id
             (reduce (lambda (a b) (ucons b a))

@@ -56,10 +56,9 @@
                                 (:input-constraints sequence)
                                 (:translation sequence)
                                 (:permutation sequence)
-                                (:scaling sequence))
-                          transformation)
+                                (:scaling sequence)))
                 make-transformation)
-         (ftype (function (array-length) transformation)
+         (ftype (function (array-length))
                 make-identity-transformation))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
