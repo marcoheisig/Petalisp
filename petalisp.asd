@@ -2,6 +2,7 @@
   :description "Elegant High Performance Computing"
   :author "Marco Heisig <marco.heisig@fau.de>"
   :license "AGPLv3"
+  :encoding :utf-8
   :class :package-inferred-system
   :depends-on
   ("petalisp/core/api"
