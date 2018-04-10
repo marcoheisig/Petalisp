@@ -47,6 +47,7 @@ WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
      (declare (dynamic-extent
                ,@(mapcar (lambda-ematch
                            ((list var _) var)
+                           ((list var) var)
                            (var var))
                          bindings)))
      ,@body))

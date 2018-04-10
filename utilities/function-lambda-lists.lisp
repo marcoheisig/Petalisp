@@ -15,7 +15,7 @@
 implementation has no means to determine the function's lambda list."
   (let ((arglist (trivial-arguments:arglist function)))
     (if (eq arglist :unknown)
-        (error "Unable to compute arglist")
+        '(&rest anything)
         arglist)))
 
 (defun lambda-list-arity (lambda-list)

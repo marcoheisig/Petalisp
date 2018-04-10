@@ -23,13 +23,11 @@
                      :initform (make-queue)
                      :type queue)
    (%scheduler-thread :initarg :scheduler-thread
-                      :reader scheduler-thread
                       :accessor scheduler-thread)
    (%worker-queue :reader worker-queue
                   :initform (make-queue)
                   :type queue)
    (%worker-thread :initarg :worker-thread
-                   :reader worker-thread
                    :accessor worker-thread)))
 
 (defmethod initialize-instance :after

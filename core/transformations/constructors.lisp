@@ -177,7 +177,10 @@
 
 (defun make-transformation-from-function
     (function &optional (input-constraints nil input-constraints-p))
-  (let* ((input-dimension (function-arity function))
+  (let* ((input-dimension
+           (if input-constraints-p
+               (length input-constraints)
+               (function-arity function)))
          (input-constraints
            (if (not input-constraints-p)
                (make-array input-dimension :initial-element nil)
