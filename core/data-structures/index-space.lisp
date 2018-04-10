@@ -28,6 +28,8 @@
 (defgeneric index-space (object)
   (:method ((index-space index-space)) index-space))
 
+(defgeneric dimension (object))
+
 ;;; Return a space such that all objects whose index space is SPACE or in
 ;;; MORE-SPACES can be broadcast to this space. Signal an error if there is no
 ;;; such space.

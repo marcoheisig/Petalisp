@@ -42,7 +42,7 @@ implementation has no means to determine the function's lambda list."
         ((&aux)
          (setf max-increment 0)
          (setf mandatory-increment 0))
-        ((&rest &allow-other-keys)
+        ((&rest &allow-other-keys #+ccl ccl::&lexpr)
          (setf max-increment 0)
          (setf mandatory-increment 0)
          (setf upper-bound-p nil))

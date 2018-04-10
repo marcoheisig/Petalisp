@@ -229,6 +229,7 @@
 
 (defmethod make-application :check
     (function first-input (all-inputs sequence))
+  (declare (ignore function))
   (assert (eq first-input (elt all-inputs 0))))
 
 (defmethod make-application :check
@@ -242,6 +243,7 @@
 ;;; Methods specialized on REDUCTIONs
 
 (defmethod make-reduction :check (f g (a data-structure) order)
+  (declare (ignore f g order))
   (demand (plusp (dimension a))
     "~@<Can only reduce data structures with dimension greater than zero.~:@>"))
 

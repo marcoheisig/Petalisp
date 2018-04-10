@@ -47,7 +47,7 @@ exact semantics of this operation differ on each backend."))
   "Assert that RESULT satisfies the reference backend array
    representation and ensure the canonical ordering of indices."
   (let ((dimension (length (car (first result)))))
-    (loop for (indices . value) in result do
+    (loop for (indices . nil) in result do
       (assert (= (length indices) dimension))))
   (flet ((list-lessp (list-1 list-2)
            (loop for element-1 in list-1

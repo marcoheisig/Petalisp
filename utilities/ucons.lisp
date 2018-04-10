@@ -105,7 +105,7 @@ and past invocation of this function with the same arguments."
       (ucons-leaf car)
       (let ((table (utable cdr)))
         (if (listp table)
-            (loop for (ucar . ucdr) of-type (ucar . ucons) in table
+            (loop for (ucar . ucdr) #-ccl of-type #-ccl (ucar . ucons) in table
                   when (eq ucar car)
                     do (return ucdr)
                   finally (return (ucons-list car cdr)))
@@ -162,20 +162,19 @@ and past invocation of this function with the same arguments."
     (%hlist* (first args) (rest args))))
 
 (define-compiler-macro ulist* (&whole whole &rest arg-forms)
-  (if (> (length arg-forms) 9)
-      whole
-      (let ((gensyms
-              (loop for arg-form in arg-forms
-                    collect (gensym "ARG"))))
-        `(let* ,(mapcar #'list gensyms arg-forms)
-           ,(let* ((rgensyms (reverse gensyms))
-                   (result-form
-                     `(prog1 ,(car rgensyms)
-                        (check-type ,(car rgensyms)
-                                    (or ucons null)))))
-              (loop for gensym in (cdr rgensyms)
-                    do (setf result-form `(ucons ,gensym ,result-form)))
-              result-form)))))
+  (let ((n (length arg-forms)))
+    (if (> n 9)
+        whole
+        (let ((gensyms (loop repeat n collect (gensym "ARG"))))
+          `(let* ,(mapcar #'list gensyms arg-forms)
+             ,(let* ((rgensyms (reverse gensyms))
+                     (result-form
+                       `(prog1 ,(car rgensyms)
+                          (check-type ,(car rgensyms)
+                                      (or ucons null)))))
+                (loop for gensym in (cdr rgensyms)
+                      do (setf result-form `(ucons ,gensym ,result-form)))
+                result-form))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

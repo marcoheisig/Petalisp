@@ -353,15 +353,15 @@
   (let ((quads (loop for |(id scale offset)| in indices
                      for dim from 0
                      collect (list* dim |(id scale offset)|))))
-    (sort quads #'< :key #'first)
+    (setf quads (sort quads #'< :key #'first))
     (let ((index-form
             (apply #'emit-index-+
-                   (loop for (dim id scale offset) in quads
+                   (loop for (dim nil nil offset) in quads
                          collect
                          (emit-index-*
                           `(stride ,(array-symbol array-id) ,dim)
                           offset)))))
-      (loop for (dim id scale offset) in quads do
+      (loop for (dim id scale nil) in quads do
         (setf index-form (emit-index-+
                           (emit-index-*
                            (index-symbol id)

@@ -95,12 +95,15 @@
 ;;; Methods
 
 (defmethod transformationp (object)
+  (declare (ignore object))
   nil)
 
 (defmethod transformationp ((transformation transformation))
+  (declare (ignore transformation))
   t)
 
 (defmethod invertible-transformation-p (object)
+  (declare (ignore object))
   nil)
 
 (defmethod compose-transformations :before

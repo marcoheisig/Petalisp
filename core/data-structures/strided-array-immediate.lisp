@@ -18,6 +18,7 @@
 
 (defmethod shared-initialize :after
     ((instance strided-array-immediate) slot-names &key &allow-other-keys)
+  (declare (ignore slot-names))
   (setf (transformation instance)
         (invert-transformation
          (from-storage-transformation (index-space instance)))))

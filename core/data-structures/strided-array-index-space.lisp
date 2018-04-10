@@ -58,25 +58,36 @@
                       (collect `(let ((,dim ,d)) (range ,@form))))))))))
 
 (defmethod common-broadcast-space ((space strided-array-index-space) &rest more-spaces)
-  (let ((list-of-ranges (list* (ranges space) (mapcar #'ranges more-spaces))))
-    (let ((result-ranges (copy-array (iterate (for ranges in list-of-ranges)
-                                              (finding ranges maximizing (length ranges))))))
-      (iterate (for ranges in list-of-ranges)
-               (for argument from 0)
-               (iterate (for range in-vector ranges)
-                        (for broadcast-range in-vector result-ranges)
-                        (for dimension from 0)
-                        (cond
-                          ((equalp range broadcast-range)) ; NOP
-                          ((size-one-range-p range)) ; NOP
-                          ((size-one-range-p broadcast-range)
-                           (setf (aref result-ranges dimension) range))
-                          (t
-                           (demand nil
-                             "~@<There is no common broadcast space for the spaces ~
+  (let* ((list-of-ranges
+           (list* (ranges space)
+                  (mapcar #'ranges more-spaces)))
+         (longest-ranges
+           (loop for longest = (first list-of-ranges) then longest
+                 for maxlen = (length longest) then maxlen
+                 for current in (rest list-of-ranges)
+                 for length = (length current)
+                 when (> length maxlen) do
+                   (setf longest current)
+                   (setf maxlen length)
+                 finally (return longest)))
+         (result-ranges
+           (copy-array longest-ranges)))
+    (loop for ranges in list-of-ranges
+          for argument from 0 do
+            (loop for range across ranges
+                  for broadcast-range across result-ranges
+                  for dimension from 0 do
+                    (cond
+                      ((equalp range broadcast-range)) ; NOP
+                      ((size-one-range-p range))       ; NOP
+                      ((size-one-range-p broadcast-range)
+                       (setf (aref result-ranges dimension) range))
+                      (t
+                       (demand nil
+                         "~@<There is no common broadcast space for the spaces ~
                                  ~{~#[~;and ~S~;~S ~:;~S, ~]~}.~:@>"
-                             (cons space more-spaces))))))
-      (index-space result-ranges))))
+                         (cons space more-spaces))))))
+    (index-space result-ranges)))
 
 (defmethod index-space-difference ((space-1 strided-array-index-space)
                                    (space-2 strided-array-index-space))
