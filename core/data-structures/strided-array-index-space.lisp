@@ -1,7 +1,7 @@
 ;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
 
 (uiop:define-package :petalisp/core/data-structures/strided-array-index-space
-  (:use :closer-common-lisp :alexandria :iterate)
+  (:use :closer-common-lisp :alexandria :trivia)
   (:use
    :petalisp/utilities/all
    :petalisp/core/error-handling
@@ -10,9 +10,7 @@
    :petalisp/core/data-structures/index-space)
   (:export
    #:strided-array-index-space
-   #:ranges
-   #:σ
-   #:σ*))
+   #:ranges))
 
 (in-package :petalisp/core/data-structures/strided-array-index-space)
 
@@ -38,24 +36,6 @@
     (lambda ()
       (index-space
        (map 'vector #'funcall range-generators)))))
-
-(defmacro σ (&rest range-specifications)
-  `(index-space
-    (vector ,@(iterate (for spec in range-specifications)
-                       (collect `(range ,@spec))))))
-
-(defmacro σ* (space-form &body dimensions)
-  (with-gensyms (dim space)
-    `(let ((,space (index-space (make-immediate ,space-form))))
-       (symbol-macrolet
-           ((,(intern "START") (range-start (aref (ranges ,space) ,dim)))
-            (,(intern "STEP") (range-step (aref (ranges ,space) ,dim)))
-            (,(intern "END") (range-end (aref (ranges ,space) ,dim))))
-         (index-space
-          (vector
-           ,@(iterate (for form in dimensions)
-                      (for d from 0)
-                      (collect `(let ((,dim ,d)) (range ,@form))))))))))
 
 (defmethod common-broadcast-space ((space strided-array-index-space) &rest more-spaces)
   (let* ((list-of-ranges
@@ -92,18 +72,17 @@
 (defmethod index-space-difference ((space-1 strided-array-index-space)
                                    (space-2 strided-array-index-space))
   (if-let ((intersection (index-space-intersection space-1 space-2)))
-    (iterate outer
-             (for r1 in-vector (ranges space-1))
-             (for r2 in-vector (ranges space-2))
-             (for i from 0)
-             (iterate (for difference in (range-difference r1 r2))
-                      (let ((ranges (copy-array (ranges space-1))))
-                        (replace ranges (ranges intersection) :end1 i)
-                        (setf (aref ranges i) difference)
-                        (in outer
-                            (collect
-                                (make-instance 'strided-array-index-space
-                                  :ranges ranges))))))
+    (let ((result '()))
+      (loop for r1 across (ranges space-1)
+            for r2 across (ranges space-2)
+            for i from 0 do
+              (loop for difference in (range-difference r1 r2) do
+                (let ((ranges (copy-array (ranges space-1))))
+                  (replace ranges (ranges intersection) :end1 i)
+                  (setf (aref ranges i) difference)
+                  (push (make-instance 'strided-array-index-space :ranges ranges)
+                        result)))
+            finally (return result)))
     (list space-1)))
 
 (defmethod dimension ((object strided-array-index-space))
@@ -125,17 +104,8 @@
 
 (defmethod index-space ((array array))
   (make-instance 'strided-array-index-space
-    :ranges (map 'vector (lambda (end) (range 0 1 (1- end)))
+    :ranges (map 'vector (lambda (end) (make-range 0 1 (1- end)))
                  (array-dimensions array))))
-
-(defmethod index-space ((range-specifications list))
-  (flet ((rangeify (spec)
-           (etypecase spec
-             (integer (range 0 spec))
-             (list (apply #'range spec))
-             (range spec))))
-    (make-instance 'strided-array-index-space
-      :ranges (map 'vector #'rangeify range-specifications))))
 
 (defmethod index-space ((vector vector))
     (if (every #'rangep vector)
@@ -160,13 +130,6 @@
         for range-2 across (ranges space-2)
         always (range-intersection? range-1 range-2)))
 
-(defmethod print-object ((object strided-array-index-space) stream)
-  (flet ((range-list (range)
-           (list (range-start range)
-                 (range-step range)
-                 (range-end range))))
-    (prin1 `(σ ,@(map 'list #'range-list (ranges object)))
-           stream)))
 
 (defmethod generic-unary-funcall :before
     ((transformation hairy-transformation)
@@ -189,9 +152,9 @@
     (flet ((store-output-range (output-index input-index scaling offset)
              (setf (svref output-ranges output-index)
                    (if (not input-index)
-                       (range offset 1 offset)
+                       (make-range offset 1 offset)
                        (let ((input-range (svref input-ranges input-index)))
-                         (range
+                         (make-range
                           (+ offset (* scaling (range-start input-range)))
                           (* scaling (range-step input-range))
                           (+ offset (* scaling (range-end input-range)))))))))
@@ -224,7 +187,7 @@
                            (unless (size-one-range-p range)
                              (check (+ (range-start range)
                                        (range-step range)))))))
-                   (range global-start step-size global-end))))))
+                   (make-range global-start step-size global-end))))))
 
 (defmethod index-space-union
     ((space-1 strided-array-index-space) &rest more-spaces)

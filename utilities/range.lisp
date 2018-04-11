@@ -7,6 +7,7 @@
    :petalisp/utilities/generators)
   (:export
    #:range
+   #:make-range
    #:rangep
    #:range-start
    #:range-step
@@ -29,26 +30,23 @@
   (step  nil :type positive-integer :read-only t)
   (end   nil :type integer          :read-only t))
 
-(defun range (start step-or-end &optional end)
-  "Return a normalized range. If END is specified, STEP-OR-END denotes the
-step size. If not, the step size defaults to one and STEP-OR-END denotes
-the interval end. If the specified end is not congruent to start with
-respect to the step size, it is replaced by the next congruent integer
-closer to start.
+(defun make-range (start step end)
+  "Return a normalized range. If the specified end is not congruent to
+start with respect to the step size, it is replaced by the next congruent
+integer closer to start.
 
 After normalization, start will be the smallest integer of the range, end
 the largest integer and step a non-negative integer. If start equals end,
 step is unconditionally set to one."
-  (let ((end (or end step-or-end))
-        (step (if end step-or-end 1)))
-    (when (and (zerop step) (/= start end))
-      (simple-program-error
-       "Bad step size 0 for range with start ~d and end ~d"
-       start end))
-    (let ((step (if (= start end) 1 (abs step))))
-      ;; ensure START and END are congruent relative to STEP
-      (let ((end (+ start (* step (truncate (- end start) step)))))
-        (%make-range (min start end) step (max start end))))))
+  (declare (integer start step end))
+  (when (and (zerop step) (/= start end))
+    (simple-program-error
+     "Bad step size 0 for range with start ~d and end ~d"
+     start end))
+  (let ((step (if (= start end) 1 (abs step))))
+    ;; ensure START and END are congruent relative to STEP
+    (let ((end (+ start (* step (truncate (- end start) step)))))
+      (%make-range (min start end) step (max start end)))))
 
 (defmethod generator ((result-type (eql 'range))
                       &key
@@ -66,21 +64,22 @@ intersect it (potentially violating MAX-EXTENT)."
       (let ((step (1+ (random max-step)))
             (size (1+ (random max-size)))
             (sign (- (* (random 2) 2) 1)))
-        (let ((extent (floor (* size step) 2)))
-          (let ((offset (* sign (random (max (- max-extent extent) 1)))))
-            (let ((start (- offset extent)))
-              (let ((range (range start step (+ start (* (1- size) step)))))
-                (if (not intersecting)
-                    range
-                    (flet ((random-element (range)
-                             (+ (range-start range)
-                                (* (range-step range)
-                                   (random (range-size range))))))
-                      (let ((offset (- (random-element intersecting)
-                                       (random-element range))))
-                        (range (+ (range-start range) offset)
-                               (range-step range)
-                               (+ (range-end range) offset)))))))))))))
+        (let* ((extent (floor (* size step) 2))
+               (offset (* sign (random (max (- max-extent extent) 1))))
+               (start (- offset extent))
+               (range (make-range start step (+ start (* (1- size) step)))))
+          (if (not intersecting)
+              range
+              (flet ((random-element (range)
+                       (+ (range-start range)
+                          (* (range-step range)
+                             (random (range-size range))))))
+                (let ((offset (- (random-element intersecting)
+                                 (random-element range))))
+                  (make-range
+                   (+ (range-start range) offset)
+                   (range-step range)
+                   (+ (range-end range) offset))))))))))
 
 (defun range-difference (range-1 range-2)
   (declare (type range range-1 range-2))
@@ -98,7 +97,7 @@ intersect it (potentially violating MAX-EXTENT)."
               result)
           (flet ((maybe-push-range (start step end)
                    (when (<= start-1 start end end-1)
-                     (push (range start step end) result))))
+                     (push (make-range start step end) result))))
             (if (and
                  ;; by the definition of INTERSECTION, step-2 is now a
                  ;; multiple of step-1, except when it contains only a
@@ -158,7 +157,7 @@ intersect it (potentially violating MAX-EXTENT)."
              (let ((step (if (= number-of-elements 1) 1
                              (/ (- end start) (1- number-of-elements)))))
                (unless (integerp step) (fail))
-               (let ((result (range start step end)))
+               (let ((result (make-range start step end)))
                  (when (notevery (lambda (range) (range-intersection? range result)) ranges)
                    (fail))
                  (return result))))))
@@ -183,7 +182,7 @@ intersect it (potentially violating MAX-EXTENT)."
 (defun range-intersection (range-1 range-2)
   (multiple-value-bind (start step end)
       (range-intersection-start-step-end range-1 range-2)
-    (when start (range start step end))))
+    (when start (make-range start step end))))
 
 (defun range-intersection? (range-1 range-2)
   (and (range-intersection-start-step-end range-1 range-2) t))

@@ -40,7 +40,6 @@
 
 (in-package :petalisp/core/data-structures/data-structure)
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Generic Functions on Data Structures

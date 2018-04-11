@@ -15,6 +15,7 @@
    #:invert-transformation
    #:input-dimension
    #:output-dimension
+   #:input-constraints
    #:map-transformation-outputs
    #:enlarge-transformation))
 
@@ -79,6 +80,8 @@
 
 (defgeneric output-dimension (transformation))
 
+(defgeneric input-constraints (transformation))
+
 ;;; For each output of TRANSFORMATION, invoke FUNCTION with the output
 ;;; index, input index and the scaling and offset necessary to project an
 ;;; input value at that input index to an output value at that output
@@ -110,3 +113,7 @@
     ((transformation-1 transformation) (transformation-2 transformation))
   (assert (= (output-dimension transformation-2)
              (input-dimension transformation-1))))
+
+(defmethod input-constraints (transformation)
+  (declare (ignore transformation))
+  nil)

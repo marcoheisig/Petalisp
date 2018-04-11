@@ -10,7 +10,6 @@
   (:export
    #:hairy-transformation
    #:hairy-invertible-transformation
-   #:input-constraints
    #:translation
    #:permutation
    #:scaling))
@@ -289,17 +288,3 @@
             for scaling = (sref output-index)
             for offset = (tref output-index) do
               (funcall function output-index input-index scaling offset)))))
-
-(defmethod print-object
-    ((transformation hairy-transformation) stream)
-  (let* ((variables
-           (loop for index below (input-dimension transformation)
-                 collect (format-symbol :keyword "I~D" index)))
-         (inputs
-           (if (null (input-constraints transformation))
-               variables
-               (loop for input-constraint across (input-constraints transformation)
-                     for variable in variables
-                     collect (or input-constraint variable)))))
-    (princ `(τ ,inputs ,(funcall transformation inputs))
-           stream)))

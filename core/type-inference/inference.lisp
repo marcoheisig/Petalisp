@@ -29,7 +29,7 @@
 ;;; functions. Each inference function is a closure that receives a list of
 ;;; type specifiers and returns two values: The inferred type and the
 ;;; function symbol of the function whose type is currently inferred. A
-;;; primary value of NIL can be returned to signal an invalid function
+;;; primary value of NIL can be returned to signal an erroneous function
 ;;; call.
 
 (defvar *inference-table* (make-hash-table :test #'eq))
