@@ -19,24 +19,6 @@
             :reader ranges
             :type vector)))
 
-(defmethod generator ((result-type (eql 'strided-array-index-space))
-                      &key (dimension 3) (max-size 30) (max-extent 100) intersecting)
-  (assert (or (not intersecting)
-              (= dimension (dimension intersecting))))
-  (let ((range-generators
-          (if intersecting
-              (map 'list (lambda (range)
-                           (generator 'range :max-size max-size
-                                             :max-extent max-extent
-                                             :intersecting range))
-                   (ranges intersecting))
-              (make-list dimension :initial-element
-                         (generator 'range :max-size max-size
-                                           :max-extent max-extent)))))
-    (lambda ()
-      (index-space
-       (map 'vector #'funcall range-generators)))))
-
 (defmethod common-broadcast-space ((space strided-array-index-space) &rest more-spaces)
   (let* ((list-of-ranges
            (list* (ranges space)

@@ -7,7 +7,6 @@
    :petalisp/utilities/code-statistics
    :petalisp/utilities/extended-euclid
    :petalisp/utilities/function-lambda-lists
-   :petalisp/utilities/generators
    :petalisp/utilities/generic-funcallable-object
    :petalisp/utilities/memoization
    :petalisp/utilities/miscellaneous
