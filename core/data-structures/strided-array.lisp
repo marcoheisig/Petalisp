@@ -44,7 +44,9 @@
 
 (defmethod make-fusion ((first-input strided-array) all-inputs)
   (make-instance 'strided-array-fusion
-    :element-type (element-type first-input) ;; TODO compute type union
+    :element-type (atomic-type
+                   (upgraded-array-element-type
+                    `(or ,@(mapcar #'element-type all-inputs))))
     :inputs all-inputs
     :index-space (apply #'index-space-union (mapcar #'index-space all-inputs))))
 

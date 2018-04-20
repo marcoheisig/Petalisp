@@ -15,17 +15,20 @@
 
 (in-package :petalisp/utilities/atomic-types)
 
-;;; For some applications, it may be desirable to use atomic type
-;;; specifiers only. This library introduces atomic aliases for all
-;;; upgraded array element types, and a function ATOMIC-TYPE to convert
-;;; type specifiers to their atomic equivalent.
+;;; For some applications, it is desirable to use atomic type specifiers
+;;; only. This library introduces atomic aliases for all upgraded array
+;;; element types, and a function ATOMIC-TYPE to convert type specifiers to
+;;; their atomic equivalent.
 
-(defmacro define-everything ()
+(deftype complex-short-float () '(complex short-float))
+(deftype complex-single-float () '(complex single-float))
+(deftype complex-double-float () '(complex double-float))
+(deftype complex-long-float () '(complex long-float))
+
+(defmacro define-atomic-integer-types ()
   (let* ((compound-types
            (append (loop for i from 1 to 64 collect `(signed-byte ,i))
-                   (loop for i from 1 to 64 collect `(unsigned-byte ,i))
-                   (loop for ftype in '(short-float single-float double-float long-float)
-                         collect `(complex ,ftype))))
+                   (loop for i from 1 to 64 collect `(unsigned-byte ,i))))
          (alist
            (loop for compound-type in compound-types
                  for atomic-type = (format-symbol *package* "~{~W~^-~}" compound-type)
@@ -39,19 +42,37 @@
                  when (eq (car compound-type) 'unsigned-byte)
                    collect atomic-type)))
     `(progn
-       (defun atomic-type (type)
-         "Return an atomic type specifier that is a supertype of TYPE."
-         (match type
-           ((type symbol) type)
-           ((list 'signed-byte n) (aref #(,@signed-atomics) (1- n)))
-           ((list 'unsigned-byte n) (aref #(,@unsigned-atomics) (1- n)))
-           ((list 'complex 'short-float) 'complex-short-float)
-           ((list 'complex 'single-float) 'complex-single-float)
-           ((list 'complex 'double-float) 'complex-double-float)
-           ((list 'complex 'long-float) 'complex-long-float)
-           (otherwise 't)))
        ;; define all the atomic types
        ,@(loop for (compound-type . atomic-type) in alist
-               collect `(deftype ,atomic-type () ',compound-type)))))
+               collect `(deftype ,atomic-type () ',compound-type))
+       (defun atomic-integer-type (signed-p bits)
+         (declare (unsigned-byte bits))
+         (if signed-p
+             (if (> bits 64)
+                 'signed-byte
+                 (aref #(,@signed-atomics) (1- bits)))
+             (if (> bits 64)
+                 'unsigned-byte
+                 (aref #(,@unsigned-atomics) (1- bits))))))))
 
-(define-everything)
+(define-atomic-integer-types)
+
+(defun atomic-type (type-specifier)
+  "Return an atomic type specifier that is a supertype of TYPE."
+  (match type-specifier
+    ((type symbol) type-specifier)
+    ((list 'signed-byte bits)
+     (atomic-integer-type t bits))
+    ((list 'unsigned-byte bits)
+     (atomic-integer-type nil bits))
+    ((list 'integer min max)
+     (let ((bits (max (integer-length min)
+                      (integer-length max))))
+       (if (minusp min)
+           (atomic-integer-type t bits)
+           (atomic-integer-type nil bits))))
+    ((list 'complex 'short-float) 'complex-short-float)
+    ((list 'complex 'single-float) 'complex-single-float)
+    ((list 'complex 'double-float) 'complex-double-float)
+    ((list 'complex 'long-float) 'complex-long-float)
+    (otherwise 't)))

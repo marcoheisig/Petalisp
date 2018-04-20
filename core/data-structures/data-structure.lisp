@@ -253,27 +253,28 @@
 
 (defmethod make-fusion :check (first-index-space (index-spaces sequence))
   (assert (eq first-index-space (elt index-spaces 0)))
-  (map-combinations
-   (lambda-match
-     ((list a b)
-      (demand (= (dimension a) (dimension b))
-        "~@<The index spaces of the arguments to a fusion operation ~
+  (unless (= 1 (length index-spaces))
+    (map-combinations
+     (lambda-match
+       ((list a b)
+        (demand (= (dimension a) (dimension b))
+          "~@<The index spaces of the arguments to a fusion operation ~
               must have the same dimension, but the supplied arguments are ~
               ~R- and ~R-dimensional data structures.~:@>"
-        (dimension a)
-        (dimension b))
-      (let ((space-1 (index-space a))
-            (space-2 (index-space b)))
-        (demand (not (index-space-intersection-p space-1 space-2))
-          "~@<The index spaces of the arguments to a fusion operation ~
+          (dimension a)
+          (dimension b))
+        (let ((space-1 (index-space a))
+              (space-2 (index-space b)))
+          (demand (not (index-space-intersection-p space-1 space-2))
+            "~@<The index spaces of the arguments to a fusion operation ~
                 must be disjoint, but space ~S and space ~S have the ~
                 common subspace ~S.~:@>"
-          space-1
-          space-2
-          (index-space-intersection space-1 space-2)))))
-   index-spaces
-   :length 2
-   :copy nil))
+            space-1
+            space-2
+            (index-space-intersection space-1 space-2)))))
+     index-spaces
+     :length 2
+     :copy nil)))
 
 ;;; ignore one-index-space fusions
 (defmethod make-fusion :optimize (first-index-space (index-spaces sequence))
