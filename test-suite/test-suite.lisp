@@ -9,7 +9,8 @@
    :petalisp/examples/jacobi
    :petalisp/examples/red-black-gauss-seidel
    :petalisp/examples/linear-algebra
-   :petalisp)
+   :petalisp
+   :petalisp/test-suite/generators)
   (:export
    #:run-test-suite))
 
@@ -76,16 +77,16 @@
           (is (not (range-difference intersection b))))))))
 
 (test range
-  (is (rangep (range 0 0 0)))
-  (signals error (range 0 0 1))
+  (is (rangep (make-range 0 0 0)))
+  (signals error (make-range 0 0 1))
   (for-all ((start (generator 'integer))
             (step (generator 'integer :minimum 1))
             (end (generator 'integer)))
-    (is (rangep (range start step end)))
-    (is (= (range-size (range start step end))
+    (is (rangep (make-range start step end)))
+    (is (= (range-size (make-range start step end))
            (1+ (floor (abs (- start end)) (abs step)))))
-    (is (equalp (range start step end)
-                (range start (- step) end)))))
+    (is (equalp (make-range start step end)
+                (make-range start (- step) end)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

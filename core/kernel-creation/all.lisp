@@ -5,5 +5,3 @@
   (:use-reexport
    :petalisp/core/kernel-creation/kernel
    :petalisp/core/kernel-creation/kernelize))
-
-(in-package :petalisp/core/kernel-creation/all)

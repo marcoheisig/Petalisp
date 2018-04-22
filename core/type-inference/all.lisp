@@ -6,5 +6,3 @@
   (:use
    :petalisp/core/type-inference/numbers
    :petalisp/core/type-inference/data-and-control-flow))
-
-(in-package :petalisp/core/type-inference/all)

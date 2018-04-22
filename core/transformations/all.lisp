@@ -6,7 +6,3 @@
    :petalisp/core/transformations/identity-transformation
    :petalisp/core/transformations/hairy-transformation
    :petalisp/core/transformations/constructors))
-
-
-
-

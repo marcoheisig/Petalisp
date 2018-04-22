@@ -58,8 +58,8 @@
          (setf output-dimension input-dimension))
         ((not input-dimension)
          (setf input-dimension output-dimension)))
-  ;; Step 2: Check that the content of each given vector is sane and ignore
-  ;; vectors whose content is boring.
+  ;; Step 2: Check that the content of each given sequence is sane and
+  ;; ignore vectors whose content is boring.
   (let* ((input-constraints
            (when input-constraints-p
              (demand (every (lambda (x)
@@ -67,8 +67,8 @@
                             input-constraints)
                "~@<Invalid transformation input constraints: ~W~:@>"
                input-constraints)
-             ;; An input constraint vector is boring if it consists of NIL
-             ;; only.
+             ;; An input constraint sequence is boring if it consists of
+             ;; NIL only.
              (if (every #'null input-constraints)
                  nil
                  (coerce input-constraints 'simple-vector))))
@@ -77,16 +77,16 @@
              (demand (every #'rationalp translation)
                "~@<Invalid transformation translation: ~W~:@>"
                translation)
-             ;; A translation vector is boring if its entries are all zero.
+             ;; A translation is boring if its entries are all zero.
              (if (every #'zerop translation)
                  nil
                  (coerce translation 'simple-vector))))
          (permutation
            (when permutation-p
-             ;; Permutation vectors are the most complicated to check. If
-             ;; an output does not reference any input, the corresponding
-             ;; entry in the permutation vector must be nil NIL. No index
-             ;; must appear more than once.
+             ;; Permutations are the most complicated sequences to
+             ;; check. If an output does not reference any input, the
+             ;; corresponding entry in the permutation must be nil NIL. No
+             ;; index must appear more than once.
              (demand (and (every (lambda (p)
                                    (or (not p)
                                        (< -1 p input-dimension)))
@@ -102,8 +102,7 @@
                                         (= 0 (count input-index permutation))))))
                "~@<Invalid transformation permutation: ~W~:@>"
                permutation)
-             ;; A permutation vector is boring if it maps each index to
-             ;; itself.
+             ;; A permutation is boring if it maps each index to itself.
              (if (every (let ((i -1))
                           (lambda (p)
                             (eql p (incf i))))
@@ -123,7 +122,7 @@
                        "~@<The scaling ~W has nonzero entries in places ~
                            where the permutation ~W is NIL.~:@>"
                        scaling permutation))
-             ;; A scaling vector is boring if it is zero whenever the
+             ;; A scaling is boring if it is zero whenever the
              ;; corresponding permutation entry is NIL and one otherwise.
              (if (if permutation
                      (every (lambda (s p)
@@ -138,7 +137,7 @@
                  (coerce scaling 'simple-vector)))))
     ;; Step 3: Create the transformation
     (cond
-      ;; Check whether we have an identity transformation
+      ;; Check whether we have an identity transformation.
       ((and (not input-constraints)
             (not translation)
             (not scaling)
@@ -162,6 +161,7 @@
          :scaling scaling
          :permutation permutation
          :translation translation))
+      ;; Default to a hairy, non-invertible transformation.
       (t
        (make-instance 'hairy-transformation
          :input-dimension input-dimension
@@ -259,26 +259,3 @@
            ,function
            ,@(when input-constraints-p `(,input-constraints))))))
   whole)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; The τ Macro
-
-(defmacro τ (input-forms output-forms)
-  (flet ((constraint (input-form)
-           (etypecase input-form
-             (integer input-form)
-             (symbol nil)))
-         (variable (input-form)
-           (etypecase input-form
-             (integer (gensym))
-             (symbol input-form))))
-    (let* ((input-constraints
-             (map 'vector #'constraint input-forms))
-           (variables
-             (map 'list #'variable input-forms)))
-      `(make-transformation-from-function
-        (lambda ,variables
-          (declare (ignorable ,@variables))
-          (values ,@output-forms))
-        ,input-constraints))))
