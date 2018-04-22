@@ -84,6 +84,13 @@ Coming soon!
 
 ** Frequently Asked Questions
 
+*** Why the Greek letters?
+There are several reasons:
+1. It underlines the beautiful, mathematical nature of this programming model.
+2. The α and β functions are a tribute to Connection Machine Lisp.
+3. Compared to programming a computer with billions of transistors and
+   terabytes of memory, typing Greek letters is easy. Right?
+
 *** Why is Petalisp licensed under AGPL?
 I am aware that this license prevents some people from using or
 contributing to this piece of software, which is a shame. But unfortunately
