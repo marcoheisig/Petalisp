@@ -30,8 +30,7 @@
 
 (defparameter *backend*
   (make-instance 'common-lisp-backend)
-  "This special variable decides on which backend Petalisp programs are
-executed.")
+  "The backend on which Petalisp programs are executed.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
