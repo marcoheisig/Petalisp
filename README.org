@@ -28,7 +28,6 @@ Launch your Lisp IDE and evaluate the following commands:
 #+BEGIN_SRC lisp
 (ql:quickload :petalisp)
 (ql:quickload :petalisp-test-suite)
-(ql:quickload :petalisp-benchmarks)
 #+END_SRC
 
 You may also want to run the Petalisp test suite.
