@@ -9,8 +9,7 @@
    :petalisp/core/transformations/identity-transformation
    :petalisp/core/transformations/hairy-transformation)
   (:export
-   #:make-transformation-from-function
-   #:τ))
+   #:make-transformation-from-function))
 
 (in-package :petalisp/core/transformations/constructors)
 

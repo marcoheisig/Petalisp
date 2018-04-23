@@ -224,4 +224,3 @@ values to the appropriate result type."
          (targets (map 'vector #'make-immediate! objects)))
     (vm/schedule *backend* targets recipes)
     (values-list objects)))
-
