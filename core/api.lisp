@@ -29,7 +29,9 @@
 (in-package :petalisp/core/api)
 
 (defparameter *backend*
-  (make-instance 'common-lisp-backend))
+  (make-instance 'common-lisp-backend)
+  "This special variable decides on which backend Petalisp programs are
+executed.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
