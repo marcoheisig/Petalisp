@@ -24,7 +24,11 @@
    #:*backend*
    #:reference-backend
    #:common-lisp-backend
-   #:testing-backend))
+   #:testing-backend
+   #:make-transformation
+   #:make-identity-transformation
+   #:invert-transformation
+   #:compose-transformations))
 
 (in-package :petalisp/core/api)
 
