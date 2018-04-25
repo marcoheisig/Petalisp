@@ -1,4 +1,4 @@
-;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING
+;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
 (uiop:define-package :petalisp/core/transformations/invertible-transformation
   (:use :closer-common-lisp :alexandria)

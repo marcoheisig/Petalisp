@@ -10,8 +10,5 @@
 # Lisp related files
 !*.lisp
 !*.asd
-# TeX related files
-!*.tex
-!*.cls
-!*.bib
-!*.bst
+# scripts
+*.sh
