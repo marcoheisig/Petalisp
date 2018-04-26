@@ -16,11 +16,13 @@
 ;;; Classes
 
 (defclass invertible-transformation (transformation)
-  ())
+  ()
+  (:metaclass funcallable-standard-class))
 
 (defclass cached-inverse-transformation-mixin ()
   ((%cached-inverse :accessor cached-inverse
-                    :initform nil)))
+                    :initform nil))
+  (:metaclass funcallable-standard-class))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
