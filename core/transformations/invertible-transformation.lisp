@@ -2,6 +2,7 @@
 
 (uiop:define-package :petalisp/core/transformations/invertible-transformation
   (:use :closer-common-lisp :alexandria)
+  (:import-from :bordeaux-threads)
   (:use
    :petalisp/utilities/all
    :petalisp/core/transformations/transformation)
@@ -32,21 +33,20 @@
     ((transformation invertible-transformation))
   t)
 
-;; Somehow caching the inverse makes things break...
-#+nil
+(defparameter *lock* (bt:make-lock "cached inverse lock"))
+
 (defmethod invert-transformation :around
     ((transformation cached-inverse-transformation-mixin))
-  (let ((cached-inverse (cached-inverse transformation)))
-    (let ((result (or cached-inverse
-                      (let ((computed-inverse (call-next-method)))
-                        (setf (cached-inverse computed-inverse) transformation)
-                        (setf (cached-inverse transformation) computed-inverse)
-                        computed-inverse))))
-      (assert (and (= (input-dimension result)
-                      (output-dimension transformation))
-                   (= (output-dimension result)
-                      (input-dimension transformation))))
-      result)))
+  (flet ((check-cache ()
+           (when-let ((cached-inverse (cached-inverse transformation)))
+             (return-from invert-transformation cached-inverse))))
+    (check-cache)
+    (bt:with-lock-held (*lock*)
+      (check-cache)
+      (let ((computed-inverse (call-next-method)))
+            (setf (cached-inverse computed-inverse) transformation)
+            (setf (cached-inverse transformation) computed-inverse)
+            computed-inverse))))
 
 (defmethod invert-transformation
     ((transformation transformation))

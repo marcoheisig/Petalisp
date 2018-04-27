@@ -61,8 +61,6 @@ according to the supplied keyword arguments.")
                                 &key
                                   (mean ,zero)
                                   (standard-deviation ,one))
-            "Return a generator for floating point numbers over a uniform
-             distribution with given MEAN and STANDARD-DEVIATION."
             (let (cache)
               (lambda ()
                 (or (shiftf cache nil)
