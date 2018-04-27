@@ -12,6 +12,74 @@
 
 (in-package :petalisp/core/kernel-creation/map-subtrees)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Finding Critical Nodes
+;;;
+;;; Critical nodes are those nodes/data-structures that must reside in main
+;;; memory in order to avoid redundant evaluation. There are three criteria
+;;; to determine whether a node is a critical node:
+;;;
+;;; 1. The node is one of the root nodes.
+;;; 2. The node is referenced by multiple other nodes.
+;;; 3. The node is the target of a broadcasting reference.
+
+;;; The critical node table serves two purposes. The primary purpose is
+;;; used to store one entry for each critical node, whose value is the
+;;; newly created corresponding immediate node. The secondary purpose is to
+;;; determine whether a potentially critical node (as determined by its
+;;; reference count) is indeed used more than once. To do so, whenever a
+;;; potentially critical node is encountered, it is registered in the table
+;;; with a value of NIL. On a second encounter, the value is changed to the
+;;; corresponding immediate node.
+(defvar *critical-node-table* nil)
+
+(defun process-critical-node (node)
+  (when (not (nth-value 1 (gethash node *critical-node-table*)))
+    (setf (gethash node *critical-node-table*)
+          (corresponding-immediate node))
+    (process-node-inputs node)))
+
+(defun process-potentially-critical-node (node)
+  (if (not (> (refcount node) 1))
+      (process-node-inputs node)
+      (multiple-value-bind (value recurring-p)
+          (gethash node *critical-node-table*)
+        (cond
+          ;; First encounter
+          ((not recurring-p)
+           (setf (gethash node *critical-node-table*) nil)
+           (process-node-inputs node))
+          ;; Second encounter
+          ((not value)
+           (setf (gethash node *critical-node-table*)
+                 (corresponding-immediate node)))))))
+
+(defun process-node-inputs (node)
+  (if (typep node 'reference)
+      ;; Turn targets of broadcasting references (those that are not
+      ;; invertible) into critical nodes.
+      (if (not (invertible-transformation-p (transformation node)))
+          (process-critical-node (input node))
+          (process-potentially-critical-node (input node)))
+      (loop for input in (inputs node) do
+        (process-potentially-critical-node input))))
+
+(defmacro with-critical-node-table ((graph-roots) &body body)
+  (once-only (graph-roots)
+    `(let ((*critical-node-table* (make-hash-table :test #'eq)))
+       (map nil #'process-critical-node ,graph-roots)
+       ,@body)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Walking Subtrees
+
+(defun lookup (node)
+  (if (typep node 'immediate)
+      (values node)
+      (values (gethash node *critical-node-table*))))
+
 (defun map-subtrees (subtree-fn graph-roots)
   "Invoke SUBTREE-FN on each subtree in the graph spanned by the supplied
 GRAPH-ROOTS. For each subtree, SUBTREE-FN receives the following arguments:
@@ -21,56 +89,20 @@ GRAPH-ROOTS. For each subtree, SUBTREE-FN receives the following arguments:
 3. A function, mapping each tree leaf to its corresponding immediate
 
 Return the sequence of immediates corresponding to the GRAPH-ROOTS."
-  (let ((critical-node-table (make-hash-table :test #'eq)))
-    ;; Naively, CRITICAL-NODE-TABLE would simply contain an entry for each
-    ;; critical node, mapping it to its corresponding immediate value.  But
-    ;; since there is initially some uncertainty about which nodes are
-    ;; critical, the table will also contain an entry for each node with a
-    ;; refcount of two or higher, but with a hash table value of NIL.
-    ;; Furthermore, immediates are not necessarily placed in the table,
-    ;; since they are always critical and only map to themselves.
-    (labels ((register-critical-node (node)
-               (when (not (gethash node critical-node-table))
-                 (setf (gethash node critical-node-table)
-                       (corresponding-immediate node))
-                 (visit-inputs node)))
-             (maybe-register-critical-node (node)
-               (multiple-value-bind (value recurring-p)
-                   (gethash node critical-node-table)
-                 (when (not value)
-                   (cond
-                     ((not recurring-p)
-                      (setf (gethash node critical-node-table) nil)
-                      (visit-inputs node))
-                     (recurring-p
-                      (setf (gethash node critical-node-table)
-                            (corresponding-immediate node)))))))
-             (visit-inputs (node)
-               ;; The targets of broadcasting references are
-               ;; unconditionally turned into critical nodes.
-               (if (typep node 'reference)
-                   (if (invertible-transformation-p (transformation node))
-                      (visit (input node))
-                      (register-critical-node (input node)))
-                   (mapc #'visit (inputs node))))
-             (visit (node)
-               (if (> (refcount node) 1)
-                   (maybe-register-critical-node node)
-                   (visit-inputs node))))
-      (map nil #'register-critical-node graph-roots))
-    ;; now call SUBTREE-FN for each subtree
-    (labels ((lookup (node)
-               (if (typep node 'immediate)
-                   node
-                   (values (gethash node critical-node-table))))
-             (process-hash-table-entry (tree-root corresponding-immediate)
-               (when (and corresponding-immediate
-                          (not (typep tree-root 'immediate)))
-                 (dx-flet ((leaf-function (node)
-                             ;; the root is never a leaf
-                             (unless (eq node tree-root)
-                               (lookup node))))
-                   (funcall subtree-fn corresponding-immediate tree-root #'leaf-function)))))
-      (maphash #'process-hash-table-entry critical-node-table)
-      (map 'vector #'lookup graph-roots))))
-
+  (with-critical-node-table (graph-roots)
+    (with-hash-table-iterator (generator *critical-node-table*)
+      (loop
+        (multiple-value-bind (more? tree-root corresponding-immediate) (generator)
+          (cond ((not more?) (return))
+                ;; Skip entries with NIL value
+                ((not corresponding-immediate))
+                ;; Skip immediate nodes
+                ((typep tree-root 'immediate))
+                ;; Each remaining key is the root of a non-empty subtree.
+                (t (dx-flet ((leaf-function (node)
+                               ;; the root is never a leaf
+                               (if (eq node tree-root)
+                                   nil
+                                   (lookup node))))
+                     (funcall subtree-fn corresponding-immediate tree-root #'leaf-function)))))))
+    (map 'vector #'lookup graph-roots)))
