@@ -147,6 +147,7 @@
        (make-identity-transformation input-dimension))
       ;; Check whether the transformation is invertible.
       ((or (not permutation)
+           (notany #'zerop scaling)
            (flet ((ignored-input-p (input-index)
                     (not (find input-index permutation))))
              (if (not input-constraints)
