@@ -12,16 +12,17 @@
 
 (defun to-matrix (x)
   (ecase (dimension x)
-    (0 (-> x (τ ( ) (0 0))))
-    (1 (-> x (τ (i) (i 0))))
+    (0 (transform x (τ () (0 0))))
+    (1 (transform x (τ (i) (i 0))))
     (2 x)))
 
 (defun transpose (x)
-  (-> (to-matrix x)
-      (τ (m n) (n m))))
+  (transform
+   (to-matrix x)
+   (τ (m n) (n m))))
 
 (defun dot (x y)
-  (->
+  (transform
    (matmul
     (transpose x)
     (to-matrix y))
@@ -30,8 +31,8 @@
 (defun matmul (a b)
   (β #'+ #'identity
      (α #'*
-        (-> (to-matrix a) (τ (m n) (m 0 n)))
-        (-> (to-matrix b) (τ (n k) (0 k n))))))
+        (transform (to-matrix a) (τ (m n) (m 0 n)))
+        (transform (to-matrix b) (τ (n k) (0 k n))))))
 
 (defun norm (x)
   (α #'sqrt (dot x x)))

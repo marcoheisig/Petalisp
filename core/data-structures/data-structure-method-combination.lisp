@@ -3,13 +3,13 @@
 (uiop:define-package :petalisp/core/data-structures/data-structure-method-combination
   (:use :closer-common-lisp :alexandria :trivia)
   (:export
-   #:make-data-structure))
+   #:data-structure-constructor))
 
 (in-package :petalisp/core/data-structures/data-structure-method-combination)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Data Structure Method Combination
+;;; Data Structure Construction Method Combination
 ;;;
 ;;; The construction of data structures in Petalisp happens according to
 ;;; the following protocol:
@@ -29,7 +29,7 @@
 
 (defvar *optimize* t)
 
-(define-method-combination make-data-structure ()
+(define-method-combination data-structure-constructor ()
   ((check (:check))
    (optimize (:optimize))
    (primary () :required t))

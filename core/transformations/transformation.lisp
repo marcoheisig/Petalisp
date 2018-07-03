@@ -5,6 +5,7 @@
   (:use
    :petalisp/utilities/all)
   (:export
+   #:canonicalize-transformation
    #:make-transformation
    #:make-identity-transformation
    #:transformation
@@ -66,6 +67,8 @@
 ;;;
 ;;; Generic Functions
 
+(defgeneric canonicalize-transformation (object))
+
 (defgeneric transformationp (object))
 
 (defgeneric invertible-transformation-p (object))
@@ -97,6 +100,13 @@
 ;;;
 ;;; Methods
 
+(defmethod canonicalize-transformation ((transformation transformation))
+  transformation)
+
+(defmethod canonicalize-transformation ((object t))
+  (error 'petalisp-user-error
+         "~@<~A is not a valid transformation.~:@>"))
+
 (defmethod transformationp (object)
   (declare (ignore object))
   nil)
@@ -117,3 +127,16 @@
 (defmethod input-constraints (transformation)
   (declare (ignore transformation))
   nil)
+
+(defmethod print-object ((transformation transformation) stream)
+  (let* ((variables
+           (loop for index below (input-dimension transformation)
+                 collect (format-symbol :keyword "I~D" index)))
+         (inputs
+           (if (null (input-constraints transformation))
+               variables
+               (loop for input-constraint across (input-constraints transformation)
+                     for variable in variables
+                     collect (or input-constraint variable)))))
+    (princ `(τ ,inputs ,(funcall transformation inputs))
+           stream)))

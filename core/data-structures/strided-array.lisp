@@ -1,7 +1,7 @@
 ;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
 (uiop:define-package :petalisp/core/data-structures/strided-array
-  (:use :closer-common-lisp :alexandria :iterate)
+  (:use :closer-common-lisp :alexandria)
   (:use
    :petalisp/utilities/all
    :petalisp/core/transformations/all
@@ -67,8 +67,8 @@
         :inputs (list strided-array)
         :index-space
         (let ((ranges (ranges (index-space strided-array))))
-          (index-space
-           (subseq ranges 0 (1- (length ranges)))))))))
+          (make-instance 'strided-array-index-space
+            :ranges (subseq ranges 0 (1- (length ranges)))))))))
 
 (defmethod make-reference ((object strided-array)
                            (space strided-array-index-space)
@@ -80,24 +80,61 @@
     :transformation transformation))
 
 (defmethod broadcast ((object strided-array) (space strided-array-index-space))
+  ;; The goal is to find a transformation that maps SPACE to the index
+  ;; space of OBJECT.
   (let ((transformation
-          (let ((input-dimension (dimension space))
-                (output-dimension (dimension object)))
-            (let ((translation (make-array output-dimension :initial-element 0))
-                  (permutation (make-array output-dimension :initial-element nil))
-                  (scaling (make-array output-dimension :initial-element 0)))
-              (iterate (for input-range in-vector (ranges (index-space object)))
-                       (for output-range in-vector (ranges space))
-                       (for index from 0)
-                       (setf (aref permutation index) index)
-                       (cond ((size-one-range-p output-range)
-                              (setf (aref translation index) (range-start output-range)))
-                             ((equalp input-range output-range)
-                              (setf (aref scaling index) 1))))
-              (make-transformation
-               :output-dimension output-dimension
-               :input-dimension input-dimension
-               :permutation permutation
-               :scaling scaling
-               :translation translation)))))
+          (let* ((input-ranges (ranges space))
+                 (output-ranges (ranges (index-space object)))
+                 (input-dimension (length input-ranges))
+                 (output-dimension (length output-ranges))
+                 (translation (make-array output-dimension :initial-element 0))
+                 (scaling (make-array output-dimension :initial-element 1))
+                 (input-constraints (map 'vector (lambda (range)
+                                                   (when (size-one-range-p range)
+                                                     (range-start range)))
+                                         input-ranges)))
+            (loop for index below output-dimension
+                  unless (>= index input-dimension) do
+                    (let* ((output-range (aref output-ranges index))
+                           (input-range (aref input-ranges index))
+                           (output-size (range-size output-range))
+                           (input-size (range-size input-range)))
+                      (cond ( ;; Select
+                             (> output-size input-size)
+                             (setf (aref translation index) 0)
+                             (setf (aref scaling index) 1))
+                            ( ;; Move
+                             (= output-size input-size)
+                             (setf (aref translation index)
+                                   (- (range-start output-range)
+                                      (range-start input-range)))
+                             (setf (aref scaling index)
+                                   (if (size-one-range-p output-range)
+                                       0
+                                       (/ (range-step output-range)
+                                          (range-step input-range)))))
+                            ( ;; Broadcast
+                             (= 1 output-size)
+                             (setf (aref translation index)
+                                   (- (range-start output-range)
+                                      (range-start input-range)))
+                             (setf (aref scaling index) 0)))))
+            (make-transformation
+             :output-dimension output-dimension
+             :input-dimension input-dimension
+             :translation translation
+             :scaling scaling
+             :input-constraints input-constraints))))
     (make-reference object space transformation)))
+
+(defmethod canonicalize-index-space ((array array))
+  (let* ((rank (array-rank array))
+         (ranges (make-array rank)))
+    (loop for axis below rank do
+      (setf (aref ranges axis)
+            (make-range 0 1 (1- (array-dimension array axis)))))
+    (make-instance 'strided-array-index-space
+      :ranges ranges)))
+
+(defmethod canonicalize-index-space ((strided-array strided-array))
+  (index-space strided-array))

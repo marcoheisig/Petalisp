@@ -134,5 +134,5 @@ intersect it (potentially violating MAX-EXTENT)."
                          (generator 'range :max-size max-size
                                            :max-extent max-extent)))))
     (lambda ()
-      (index-space
-       (map 'vector #'funcall range-generators)))))
+      (make-instance 'strided-array-index-space
+        :ranges (map 'vector #'funcall range-generators)))))

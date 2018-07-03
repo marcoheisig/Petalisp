@@ -8,6 +8,7 @@
    :petalisp/core/transformations/all)
   (:export
    #:index-space
+   #:canonicalize-index-space
    #:common-broadcast-space
    #:index-space-difference
    #:index-space-intersection
@@ -25,15 +26,15 @@
 ;;; An index space of dimension D is a set of D-tuples i1,...,iD.
 (defclass index-space () ())
 
-(defgeneric index-space (object)
-  (:method ((index-space index-space)) index-space))
-
 (defgeneric dimension (object))
 
 ;;; Return a space such that all objects whose index space is SPACE or in
 ;;; MORE-SPACES can be broadcast to this space. Signal an error if there is no
 ;;; such space.
 (defgeneric common-broadcast-space (space &rest more-spaces))
+
+(defgeneric canonicalize-index-space (index-space-designator)
+  (:method ((index-space index-space)) index-space))
 
 (defmethod generic-unary-funcall :before ((transformation transformation)
                                           (index-space index-space))

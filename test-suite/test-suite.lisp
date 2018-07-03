@@ -122,37 +122,45 @@
 
 (test |(index-space-intersection strided-array-index-space)|
   (flet ((? (a b result)
-           (is (index-space-equality result (index-space-intersection a b)))))
-    (?  (σ) (σ) (σ))
-    (? (σ (0 9) (0 9)) (σ (2 10) (2 10)) (σ (2 9) (2 9)))
-    (? (σ (1 2 3) (0 3 6)) (σ (1 1 3) (0 2 6)) (σ (1 2 3) (0 6 6)))))
+           (is (index-space-equality
+                (canonicalize-index-space result)
+                (index-space-intersection
+                 (canonicalize-index-space a)
+                 (canonicalize-index-space b))))))
+    (?  '() '() '())
+    (? '((0 9) (0 9)) '((2 10) (2 10)) '((2 9) (2 9)))
+    (? '((1 2 3) (0 3 6)) '((1 1 3) (0 2 6)) '((1 2 3) (0 6 6)))))
 
 (test |(generic-unery-funcall hairy-transformation strided-array-index-space)|
   (flet ((? (object transformation result)
-           (is (index-space-equality result (funcall transformation object)))
-           (is (index-space-equality object (funcall (invert-transformation transformation) result)))))
-    (? (σ (1 1 1)) (τ (m) ((1+ m)))
-       (σ (2 1 2)))
-    (? (σ (0 9) (0 5)) (τ (m n) (n m))
-       (σ (0 5) (0 9)))
-    (? (σ (1 1) (2 2) (3 3)) (τ (1 2 3) (4))
-       (σ (4 4)))
-    (? (σ (2 2)) (τ (m) (1 m 3))
-       (σ (1 1) (2 2) (3 3)))
-    (? (σ (0 5 10) (0 7 21))
+           (let ((object (canonicalize-index-space object))
+                 (transformation (canonicalize-transformation transformation))
+                 (result (canonicalize-index-space result)))
+             (is (index-space-equality result (funcall transformation object)))
+             (is (index-space-equality object (funcall (invert-transformation transformation) result))))))
+    (? '((1 1 1)) (τ (m) ((1+ m)))
+       '((2 1 2)))
+    (? '((0 9) (0 5)) (τ (m n) (n m))
+       '((0 5) (0 9)))
+    (? '((1 1) (2 2) (3 3)) (τ (1 2 3) (4))
+       '((4 4)))
+    (? '((2 2)) (τ (m) (1 m 3))
+       '((1 1) (2 2) (3 3)))
+    (? '((0 5 10) (0 7 21))
        (τ (m n)
           ((+ (* 2 n) 5)
            (+ (* 3 m) 99)))
-       (σ (5 14 47) (99 15 129)))
-    (? (σ (0 0) (0 0) (0 0) (0 0) (0 0))
+       '((5 14 47) (99 15 129)))
+    (? '((0 0) (0 0) (0 0) (0 0) (0 0))
        (τ (a 0 c 0 e) (0 a 0 c 0 e 0))
-       (σ (0 0) (0 0) (0 0) (0 0) (0 0) (0 0) (0 0)))
+       '((0 0) (0 0) (0 0) (0 0) (0 0) (0 0) (0 0)))
     (signals error
-      (funcall (τ (1 m) (m 1)) (σ (0 0) (0 0))))))
+      (funcall (τ (1 m) (m 1)) (canonicalize-index-space '((0 0) (0 0)))))))
 
 (test |(subdivide strided-array-index-space)|
   (flet ((? (&rest args)
-           (let ((result (subdivision args)))
+           (let* ((args (mapcar #'canonicalize-index-space args))
+                  (result (subdivision args)))
              ;; check for disjointness
              (let (intersections)
                (when (> (length result) 1)
@@ -164,16 +172,10 @@
              ;; check for coverage
              (let ((union (apply #'index-space-union result)))
                (is-true (every (lambda (x) (subspace-p x union)) args))))))
-    (? (σ (1 1 4)) (σ (1 2 5)))
-    (? (σ (1 1 10) (1 1 10))
-       (σ (5 1 10) (5 1 10)))
-    (?  (σ (2 2 4)) (σ (3 1 3)) (σ (3 1 3)))))
-
-(test |(subspace-p strided-array-index-space)|
-  (is (subspace-p (σ (1 1 2)) (σ (0 1 3))))
-  (is (subspace-p (σ (0 4 8)) (σ (0 2 10))))
-  (is (subspace-p (σ (0 6 120) (1 1 100))
-                  (σ (0 2 130) (0 1 101)))))
+    (? '((1 1 4)) '((1 2 5)))
+    (? '((1 1 10) (1 1 10))
+       '((5 1 10) (5 1 10)))
+    (?  '((2 2 4)) '((3 1 3)) '((3 1 3)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -205,9 +207,9 @@
   (with-testing-backend
     (compute! (α #'+ 2 3))
     (compute! (α #'+ #(2 3 4) #(5 4 3)))
-    (compute! (-> #(1 2 3) (τ (i) ((- i)))))
-    (compute! (fuse* (-> 0.0 (σ (2 4) (2 4)))
-                     (-> 1.0 (σ (3 3) (3 3)))))))
+    (compute! (transform #(1 2 3) (τ (i) ((- i)))))
+    (compute! (fuse* (reshape 0.0 '((2 4) (2 4)))
+                     (reshape 1.0 '((3 3) (3 3)))))))
 
 (test jacobi
   (with-testing-backend

@@ -18,7 +18,7 @@
    #:reference
 
    #:corresponding-immediate
-   #:make-immediate
+   #:canonicalize-data-structure
    #:make-immediate!
    #:shallow-copy
    #:make-application
@@ -44,20 +44,20 @@
 ;;;
 ;;; Generic Functions on Data Structures
 
-(defgeneric make-immediate (data)
-  (:method-combination make-data-structure))
+(defgeneric canonicalize-data-structure (data)
+  (:method-combination data-structure-constructor))
 
 (defgeneric make-application (function first-input all-inputs)
-  (:method-combination make-data-structure))
+  (:method-combination data-structure-constructor))
 
 (defgeneric make-reduction (f g a order)
-  (:method-combination make-data-structure))
+  (:method-combination data-structure-constructor))
 
 (defgeneric make-fusion (first-input all-inputs)
-  (:method-combination make-data-structure))
+  (:method-combination data-structure-constructor))
 
 (defgeneric make-reference (data-structure index-space transformation)
-  (:method-combination make-data-structure))
+  (:method-combination data-structure-constructor))
 
 (defgeneric corresponding-immediate (data-structure))
 
@@ -173,6 +173,13 @@
   (index-space-equality (index-space data-structure-1)
                         (index-space data-structure-2)))
 
+(defmethod canonicalize-data-structure ((data-structure data-structure))
+  data-structure)
+
+(defmethod canonicalize-data-structure ((object t))
+  (error 'petalisp-user-error
+         "~@<~A is not a valid data structure.~:@>"))
+
 (defmethod dimension ((object t))
   0)
 
@@ -207,17 +214,6 @@
 
 (defmethod inputs ((immediate immediate))
   nil)
-
-(defmethod make-immediate :optimize ((immediate immediate))
-  immediate)
-
-(defmethod make-immediate ((data-structure data-structure))
-  ;; TODO doesn't make sense. The protocol needs to be redesigned...
-  data-structure)
-
-(defmethod make-immediate ((object t))
-  (make-immediate
-   (make-array () :initial-element object :element-type (type-of object))))
 
 (defmethod corresponding-immediate ((immediate immediate))
   immediate)

@@ -21,15 +21,25 @@
   (declare (ignore slot-names))
   (setf (transformation instance)
         (invert-transformation
-         (from-storage-transformation (index-space instance)))))
+         (from-storage-transformation
+          (index-space instance)))))
 
-(defmethod make-immediate ((array array))
+(defmethod canonicalize-data-structure ((array array))
   (make-instance 'strided-array-immediate
     :element-type (atomic-type (array-element-type array))
-    :index-space (index-space array)
+    :index-space (canonicalize-index-space array)
     :storage array
     :kernels nil
     :transformation (make-identity-transformation (array-rank array))))
+
+(defmethod canonicalize-data-structure ((object t))
+  (make-instance 'strided-array-immediate
+    :element-type (atomic-type (type-of object))
+    :index-space (canonicalize-index-space '())
+    :storage (make-array () :initial-element object :element-type (type-of object))
+    :kernels nil
+    :transformation (make-identity-transformation 0)))
+
 
 (defmethod corresponding-immediate ((strided-array strided-array))
   (make-instance 'strided-array-immediate
@@ -94,7 +104,7 @@
            (t (fail)))))
     (let ((arguments (mapcar #'value-or-fail all-inputs)))
       (broadcast
-       (make-immediate (apply function arguments))
+       (canonicalize-data-structure (apply function arguments))
        (index-space first-input)))))
 
 (defmethod make-application :optimize

@@ -19,6 +19,9 @@
             :reader ranges
             :type vector)))
 
+(defmethod make-load-form ((object strided-array-index-space) &optional environment)
+  (make-load-form-saving-slots object :environment environment))
+
 (defmethod common-broadcast-space ((space strided-array-index-space) &rest more-spaces)
   (let* ((list-of-ranges
            (list* (ranges space)
@@ -49,7 +52,8 @@
                          "~@<There is no common broadcast space for the spaces ~
                                  ~{~#[~;and ~S~;~S ~:;~S, ~]~}.~:@>"
                          (cons space more-spaces))))))
-    (index-space result-ranges)))
+    (make-instance 'strided-array-index-space
+      :ranges result-ranges)))
 
 (defmethod index-space-difference ((space-1 strided-array-index-space)
                                    (space-2 strided-array-index-space))
@@ -73,9 +77,10 @@
 (defmethod enlarge-index-space
     ((from strided-array-index-space)
      (to strided-array-index-space))
-  (let ((new-ranges (copy-array (ranges (index-space to)))))
+  (let ((new-ranges (copy-array (ranges to))))
     (replace new-ranges (ranges from))
-    (index-space new-ranges)))
+    (make-instance 'strided-array-index-space
+      :ranges new-ranges)))
 
 (defmethod index-space-equality ((object-1 strided-array-index-space)
                                  (object-2 strided-array-index-space))
@@ -83,16 +88,6 @@
        (every #'equalp
               (ranges object-1)
               (ranges object-2))))
-
-(defmethod index-space ((array array))
-  (make-instance 'strided-array-index-space
-    :ranges (map 'vector (lambda (end) (make-range 0 1 (1- end)))
-                 (array-dimensions array))))
-
-(defmethod index-space ((vector vector))
-    (if (every #'rangep vector)
-        (make-instance 'strided-array-index-space :ranges vector)
-        (call-next-method)))
 
 (defmethod index-space-intersection ((space-1 strided-array-index-space)
                                      (space-2 strided-array-index-space))
@@ -112,9 +107,8 @@
         for range-2 across (ranges space-2)
         always (range-intersection? range-1 range-2)))
 
-
 (defmethod generic-unary-funcall :before
-    ((transformation hairy-transformation)
+    ((transformation transformation)
      (index-space strided-array-index-space))
   (when-let ((input-constraints (input-constraints transformation)))
     (loop for range across (ranges index-space)
@@ -173,10 +167,10 @@
 
 (defmethod index-space-union
     ((space-1 strided-array-index-space) &rest more-spaces)
-  (index-space
-   (apply #'map 'vector
-          #'index-space-union-range-oracle
-          (ranges space-1) (mapcar #'ranges more-spaces))))
+  (make-instance 'strided-array-index-space
+    :ranges (apply #'map 'vector
+                   #'index-space-union-range-oracle
+                   (ranges space-1) (mapcar #'ranges more-spaces))))
 
 (defmethod index-space-union :around
     ((space-1 strided-array-index-space) &rest more-spaces)
@@ -186,3 +180,31 @@
       (assert (proper-subspace-p space-1))
       (assert (every #'proper-subspace-p more-spaces))
       union)))
+
+(defmethod print-object ((object strided-array-index-space) stream)
+  (flet ((range-list (range)
+           (list (range-start range)
+                 (range-step range)
+                 (range-end range))))
+    (print-unreadable-object (object stream :type t)
+      (princ (map 'list #'range-list (ranges object)) stream))))
+
+(defmethod canonicalize-index-space ((list list))
+  (flet ((canonicalize-range-specifier (range-specifier)
+           (match range-specifier
+             ((list start step end)
+              (make-range start step end))
+             ((list start end)
+              (make-range start 1 end))
+             ((list start)
+              (once-only (start)
+                (make-range start 1 start)))
+             (length
+              (make-range 0 1 (1- length))))))
+    (make-instance 'strided-array-index-space
+      :ranges (map 'vector #'canonicalize-range-specifier list))))
+
+(defmethod canonicalize-index-space ((array array))
+  (make-instance 'strided-array-index-space
+    :ranges (map 'vector (lambda (end) (make-range 0 1 (1- end)))
+                 (array-dimensions array))))

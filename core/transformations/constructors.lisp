@@ -9,6 +9,7 @@
    :petalisp/core/transformations/identity-transformation
    :petalisp/core/transformations/hairy-transformation)
   (:export
+   #:τ
    #:make-identity-transformation
    #:make-transformation
    #:make-transformation-from-function))
@@ -261,3 +262,25 @@
            ,function
            ,@(when input-constraints-p `(,input-constraints))))))
   whole)
+
+(defmethod ensure-transformation ((function function))
+  (make-transformation-from-function function))
+
+(defmacro τ (input-forms output-forms)
+  (flet ((constraint (input-form)
+           (etypecase input-form
+             (integer input-form)
+             (symbol nil)))
+         (variable (input-form)
+           (etypecase input-form
+             (integer (gensym))
+             (symbol input-form))))
+    (let* ((input-constraints
+             (map 'vector #'constraint input-forms))
+           (variables
+             (map 'list #'variable input-forms)))
+      `(make-transformation-from-function
+        (lambda ,variables
+          (declare (ignorable ,@variables))
+          (values ,@output-forms))
+        ,input-constraints))))
