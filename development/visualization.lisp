@@ -1,18 +1,6 @@
 ;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
-(uiop:define-package :petalisp/development/visualization
-  (:use :closer-common-lisp :alexandria)
-  (:use
-   :petalisp/utilities/all
-   :petalisp/core/transformations/all
-   :petalisp/core/data-structures/all
-   :petalisp/core/kernel-creation/all)
-  (:import-from :cl-dot)
-  (:export
-   #:graphviz
-   #:data-flow-graph))
-
-(in-package :petalisp/development/visualization)
+(in-package :petalisp)
 
 (defvar *graphviz-viewer* "evince")
 

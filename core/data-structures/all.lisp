@@ -1,9 +1,0 @@
-;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
-
-(uiop:define-package :petalisp/core/data-structures/all
-  (:use-reexport
-   :petalisp/core/data-structures/index-space
-   :petalisp/core/data-structures/data-structure
-   :petalisp/core/data-structures/strided-array
-   :petalisp/core/data-structures/strided-array-index-space
-   :petalisp/core/data-structures/strided-array-immediate))
