@@ -31,8 +31,10 @@
                   for broadcast-range across result-ranges
                   for dimension from 0 do
                     (cond
-                      ((equalp range broadcast-range)) ; NOP
-                      ((size-one-range-p range))       ; NOP
+                      ((set-equal range broadcast-range)
+                       (values))
+                      ((size-one-range-p range)
+                       (values))
                       ((size-one-range-p broadcast-range)
                        (setf (aref result-ranges dimension) range))
                       (t
@@ -50,7 +52,7 @@
       (loop for r1 across (ranges space-1)
             for r2 across (ranges space-2)
             for i from 0 do
-              (loop for difference in (range-difference r1 r2) do
+              (loop for difference in (set-difference r1 r2) do
                 (let ((ranges (copy-array (ranges space-1))))
                   (replace ranges (ranges intersection) :end1 i)
                   (setf (aref ranges i) difference)
@@ -73,7 +75,7 @@
 (defmethod index-space-equality ((object-1 strided-array-index-space)
                                  (object-2 strided-array-index-space))
   (and (= (dimension object-1) (dimension object-2))
-       (every #'equalp
+       (every #'set-equal
               (ranges object-1)
               (ranges object-2))))
 
@@ -83,7 +85,7 @@
     :ranges
     (map 'vector
          (lambda (a b)
-           (or (range-intersection a b)
+           (or (set-intersection a b)
                (return-from index-space-intersection nil)))
          (ranges space-1)
          (ranges space-2))))
@@ -93,7 +95,7 @@
      (space-2 strided-array-index-space))
   (loop for range-1 across (ranges space-1)
         for range-2 across (ranges space-2)
-        always (range-intersection? range-1 range-2)))
+        always (set-intersectionp range-1 range-2)))
 
 (defmethod generic-unary-funcall :before
     ((transformation transformation)
@@ -127,7 +129,7 @@
       :ranges output-ranges)))
 
 (defmethod size ((object strided-array-index-space))
-  (reduce #'* (ranges object) :key #'range-size))
+  (reduce #'* (ranges object) :key #'set-size))
 
 (defun index-space-union-range-oracle (&rest ranges)
   (declare (dynamic-extent ranges))

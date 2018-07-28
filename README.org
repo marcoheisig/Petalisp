@@ -63,8 +63,7 @@ Example 2: matrix-matrix multiplication
 Example 3: the numerical Jacobi scheme in two dimensions
 #+BEGIN_SRC lisp
 (defun jacobi-2d (grid iterations)
-  (let ((interior (subspace grid (σ ((+ start 1) step (- end 1))
-                                    ((+ start 1) step (- end 1))))))
+  (let ((interior (interior grid)))
     (if (zerop iterations) grid
         (jacobi-2d
          (fuse x

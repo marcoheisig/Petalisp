@@ -1,6 +1,7 @@
 (in-package :common-lisp-user)
 
 (defpackage :petalisp/examples/red-black-gauss-seidel
+  (:shadowing-import-from :petalisp :set-difference)
   (:use :cl :petalisp)
   (:export #:red-black-gauss-seidel))
 

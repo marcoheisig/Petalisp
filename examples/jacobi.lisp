@@ -1,6 +1,7 @@
 (in-package :common-lisp-user)
 
 (defpackage :petalisp/examples/jacobi
+  (:shadowing-import-from :petalisp :set-difference)
   (:use :cl :petalisp)
   (:export #:jacobi))
 

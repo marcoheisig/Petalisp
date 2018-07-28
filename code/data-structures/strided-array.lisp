@@ -80,8 +80,8 @@
                   unless (>= index input-dimension) do
                     (let* ((output-range (aref output-ranges index))
                            (input-range (aref input-ranges index))
-                           (output-size (range-size output-range))
-                           (input-size (range-size input-range)))
+                           (output-size (set-size output-range))
+                           (input-size (set-size input-range)))
                       (cond ( ;; Select
                              (> output-size input-size)
                              (setf (aref translation index) 0)

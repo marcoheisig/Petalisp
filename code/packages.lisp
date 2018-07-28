@@ -2,6 +2,7 @@
 
 (cl:defpackage :petalisp
   (:use :closer-common-lisp :alexandria)
+  (:shadow cl:set-difference alexandria:set-equal)
   (:export
    #:α
    #:β
@@ -21,16 +22,25 @@
    #:common-lisp-backend
    #:testing-backend
 
-   ;; Set operations
-   #:make-range
+   ;; Set protocol
+   #:set-difference
+   #:set-elements
+   #:set-emptyp
+   #:set-intersection
+   #:set-intersectionp
+   #:set-size
+   #:set-union
+
+   ;; Range protocol
    #:range-start
    #:range-step
    #:range-end
-   #:range-size
+   #:make-range
+
    #:ranges
    #:canonicalize-index-space
 
-   ;; Transformations
+   ;; Transformation protocol
    #:canonicalize-transformation
    #:with-index-space-accessors
    #:make-transformation
@@ -40,7 +50,9 @@
    #:compose-transformations))
 
 (cl:defpackage :petalisp-native-backend
+  (:shadowing-import-from :petalisp :set-difference)
   (:use :closer-common-lisp :petalisp))
 
 (cl:defpackage :petalisp-user
+  (:shadowing-import-from :petalisp :set-difference)
   (:use :common-lisp :petalisp))

@@ -37,7 +37,7 @@ and RELEVANT-SPACE."
          (bounds (make-array dimension :element-type 'array-index))
          (bounds-index (dimension relevant-space)))
     ;; initialize the initial array bounds
-    (map-into bounds #'range-size (ranges relevant-space))
+    (map-into bounds #'set-size (ranges relevant-space))
     ;; now traverse the tree
     (labels
         ((id (object vector)
@@ -66,7 +66,7 @@ and RELEVANT-SPACE."
                          (scale (range-step reduction-range))
                          (offset (range-start reduction-range)))
                     (setf (aref bounds bounds-index)
-                          (range-size reduction-range))
+                          (set-size reduction-range))
                     (incf bounds-index)
                     (let ((relevant-space (enlarge-index-space relevant-space (index-space input)))
                           (transformation (enlarge-transformation transformation scale offset)))

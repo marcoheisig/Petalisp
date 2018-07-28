@@ -96,7 +96,7 @@ intersect it (potentially violating MAX-EXTENT)."
               (flet ((random-element (range)
                        (+ (range-start range)
                           (* (range-step range)
-                             (random (range-size range))))))
+                             (random (set-size range))))))
                 (let ((offset (- (random-element intersecting)
                                  (random-element range))))
                   (make-range

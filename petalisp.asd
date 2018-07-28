@@ -32,7 +32,6 @@
        (:file "generic-funcallable-object")
        (:file "miscellaneous")
        (:file "queue")
-       (:file "range")
        (:file "request")
        (:file "ucons")))
 
@@ -41,6 +40,12 @@
       ((:file "inference")
        (:file "numbers")
        (:file "data-and-control-flow")))
+
+     (:module "sets"
+      :components
+      ((:file "set-protocol")
+       (:file "range-protocol")
+       (:file "range-specialization")))
 
      (:module "transformations"
       :components

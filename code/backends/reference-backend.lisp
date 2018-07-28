@@ -25,7 +25,7 @@ exact semantics of this operation differ on each backend."))
         for recipe across recipes do
           (setf (storage target)
                 (make-array
-                 (map 'list #'range-size (ranges (index-space target)))
+                 (map 'list #'set-size (ranges (index-space target)))
                  :element-type (element-type target)))
           (reference-vm/copy
            (vm/evaluate vm recipe)

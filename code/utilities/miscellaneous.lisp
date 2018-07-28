@@ -51,3 +51,8 @@
         ((list) 1)
         ((list form) form)
         ( list `(* ,@list)))))
+
+(defmacro defalias (alias function)
+  `(progn (setf (fdefinition ',alias) #',function)
+          (setf (documentation ',alias 'function)
+                (documentation ',function 'function))))
