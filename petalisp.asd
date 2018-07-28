@@ -44,6 +44,7 @@
      (:module "sets"
       :components
       ((:file "set-protocol")
+       (:file "empty-set")
        (:file "range-protocol")
        (:file "range-specialization")))
 
