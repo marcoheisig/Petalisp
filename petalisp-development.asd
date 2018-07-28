@@ -6,12 +6,16 @@
   :depends-on ("petalisp"
                "cl-dot"
                "uiop")
-  :perform
-  (test-op (o c) (symbol-call "PETALISP/TEST-SUITE/TEST-SUITE" "RUN-TEST-SUITE"))
+  :in-order-to ((test-op (test-op :petalisp)))
 
   :serial t
   :components
-  ((:module "development"
+  ((:module "code"
     :components
-    ((:file "graphviz")
-     (file "visualization")))))
+    ((:module "graphviz"
+      :components
+      ((:file "utilities")
+       (:file "protocol")
+       (:file "data-flow-graph")
+       (:file "task-graph")
+       (:file "view")))))))
