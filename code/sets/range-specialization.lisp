@@ -23,10 +23,20 @@
   1)
 
 (defmethod make-range ((start integer) (step integer) (end integer))
-  (make-instance 'strided-range :start start :step step :end end))
-
-(defmethod make-range ((start integer) (step (eql 1)) (end integer))
-  (make-instance 'contiguous-range :start start :end end))
+  (if (zerop step)
+      (if (= start end)
+          (make-instance 'contiguous-range :start start :end start)
+          (error "Bad step size 0 for range with start ~d and end ~d" start end))
+      (let ((steps (truncate (- end start) step)))
+        (if (= steps 0)
+            (make-instance 'contiguous-range :start start :end start)
+            (let ((congruent-end (+ start (* step steps))))
+              (let ((step (abs step))
+                    (start (min start congruent-end))
+                    (end (max start congruent-end)))
+                (if (= 1 step)
+                    (make-instance 'contiguous-range :start start :end end)
+                    (make-instance 'strided-range :start start :step step :end end))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

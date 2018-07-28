@@ -42,23 +42,6 @@
        (= (range-end range-1)
           (range-end range-2))))
 
-(defmethod make-range :around
-    ((start integer) (step integer) (end integer))
-  (when (and (zerop step) (/= start end))
-    (error "Bad step size 0 for range with start ~d and end ~d" start end))
-  ;; ensure that step is positive
-  (let ((new-step (if (= start end) 1 (abs step))))
-    ;; ensure START and END are congruent relative to STEP
-    (let ((congruent-end (+ start (* new-step (truncate (- end start) new-step)))))
-      ;; ensure that end is bigger than start
-      (let ((new-start (min start congruent-end))
-            (new-end (max start congruent-end)))
-        (if (and (= new-start start)
-                 (= new-step step)
-                 (= new-end end))
-            (call-next-method start step end)
-            (make-range new-start new-step new-end))))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Difference of Ranges
