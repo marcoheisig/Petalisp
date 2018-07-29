@@ -1,0 +1,66 @@
+;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
+
+(in-package :petalisp)
+
+(defclass explicit-set (finite-set)
+  ((%table :initarg :table :reader set-element-table)))
+
+(defun set-from-sequence (sequence)
+  (if (emptyp sequence)
+      (empty-set)
+      (let ((table (make-hash-table :test #'equal)))
+        (flet ((insert (element)
+                 (setf (gethash element table) t)))
+          (map nil #'insert sequence))
+        (make-instance 'explicit-set :table table))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Methods on Explicit Sets
+
+(defmethod set-contains ((set explicit-set) (object t))
+  (values (gethash object (set-element-table set))))
+
+(defmethod set-difference ((set-1 explicit-set) (set-2 explicit-set))
+  (let ((table (copy-hash-table (set-element-table set-1))))
+    (loop for element being the hash-keys of (set-element-table set-2) do
+      (remhash element table))
+    (make-instance 'explicit-set :table table)))
+
+(defmethod set-elements ((set explicit-set))
+  (loop for element being the hash-keys of (set-element-table set)
+        collect element))
+
+(defmethod set-equal ((set-1 explicit-set) (set-2 explicit-set))
+  (let ((table-1 (set-element-table set-1))
+        (table-2 (set-element-table set-2)))
+    (and (= (hash-table-count table-1)
+            (hash-table-count table-2))
+         (loop for element being the hash-keys of table-1
+               always (gethash element table-2)))))
+
+(defmethod set-intersection ((set-1 explicit-set) (set-2 explicit-set))
+  (let ((table-1 (set-element-table set-1))
+        (table-2 (set-element-table set-2))
+        (result-table (make-hash-table :test #'equal)))
+    (loop for element being the hash-keys of table-1
+          when (gethash element table-2) do
+            (setf (gethash element result-table) t))
+    (if (zerop (hash-table-count result-table))
+        (empty-set)
+        (make-instance 'explicit-set :table result-table))))
+
+(defmethod set-intersectionp ((set-1 explicit-set) (set-2 explicit-set))
+  (let ((table-1 (set-element-table set-1))
+        (table-2 (set-element-table set-2)))
+    (loop for element being the hash-keys of table-1
+            thereis (gethash element table-2))))
+
+(defmethod set-size ((set explicit-set))
+  (hash-table-count (set-element-table set)))
+
+(defmethod set-union ((set-1 explicit-set) (set-2 explicit-set))
+  (let ((table (copy-hash-table (set-element-table set-1))))
+    (loop for element being the hash-keys of (set-element-table set-2) do
+      (setf (gethash element table) t))
+    (make-instance 'explicit-set :table table)))

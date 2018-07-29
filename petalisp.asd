@@ -43,10 +43,10 @@
 
      (:module "sets"
       :components
-      ((:file "set-protocol")
+      ((:file "set")
        (:file "empty-set")
-       (:file "range-protocol")
-       (:file "range-specialization")))
+       (:file "explicit-set")
+       (:file "range")))
 
      (:module "transformations"
       :components

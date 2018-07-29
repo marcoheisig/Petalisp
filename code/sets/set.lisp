@@ -2,9 +2,20 @@
 
 (in-package :petalisp)
 
+;;; This protocol for working with sets is fairly generic, with one
+;;; exception.  The set elements are always compared with EQUAL.  The
+;;; rationale for this is that otherwise we want to avoid the complexity of
+;;; dealing with equivalence classes, ordered sets and so on.  The
+;;; predicate EQUAL strikes a balance between flexibility and the principle
+;;; of least surprise.  It is general enough for a comparison of strings,
+;;; numbers, characters, and conses thereof, but, unlike EQUALP, does
+;;; distinguish the case of characters and strings.
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Generic Functions
+
+(defgeneric set-contains (set object))
 
 (defgeneric set-difference (set-1 set-2))
 
@@ -39,9 +50,6 @@
 ;;;
 ;;; Miscellaneous Other Methods
 
-(defmethod set-elements ((set infinite-set))
-  (error "Cannot enumerate the elements of an infinite set."))
-
 (defmethod set-emptyp ((set any-set))
   nil)
 
@@ -56,7 +64,3 @@
 
 (defmethod set-size ((set finite-set))
   (length (set-elements set)))
-
-(defmethod set-size ((set infinite-set))
-  (error "Cannot determine the size of an infinite set."))
-

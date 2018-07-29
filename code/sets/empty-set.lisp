@@ -13,6 +13,9 @@
 ;;;
 ;;; Methods on Empty Sets
 
+(defmethod set-contains ((set empty-set) (object t))
+  nil)
+
 (defmethod set-difference ((set-1 any-set) (set-2 empty-set))
   set-1)
 
