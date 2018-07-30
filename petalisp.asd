@@ -31,7 +31,6 @@
        (:file "function-lambda-lists")
        (:file "generic-funcallable-object")
        (:file "miscellaneous")
-       (:file "request")
        (:file "ucons")))
 
      (:module "type-inference"

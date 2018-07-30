@@ -110,7 +110,7 @@ values to the appropriate result type."
   "Return the computed values of all OBJECTS."
   (let* ((recipes (map 'vector #'shallow-copy objects))
          (targets (map 'vector #'make-immediate! objects)))
-    (wait (vm/schedule *backend* targets recipes))
+    (lparallel.promise:force (vm/schedule *backend* targets recipes))
     (flet ((lispify (immediate)
              (let ((array (storage immediate)))
                (if (zerop (array-rank array))

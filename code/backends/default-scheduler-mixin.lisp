@@ -42,8 +42,8 @@
 (defgeneric vm/free-memory (backend immediate))
 
 (defmethod vm/schedule ((vm default-scheduler-mixin) targets recipes)
-  (let ((request (make-request)))
-    (prog1 request
+  (let ((promise (lparallel.promise:promise)))
+    (prog1 promise
       (flet ((work (targets kernelized-immediates)
                (lparallel.queue:push-queue
                 (lambda ()
@@ -52,7 +52,7 @@
                         unless (storage (aref targets index))
                           do (setf (storage (aref targets index))
                                    (storage (evaluate-naively vm immediate))))
-                  (complete request))
+                  (lparallel.promise:fulfill promise))
                 (worker-queue vm))))
         (lparallel.queue:push-queue
          (lambda ()

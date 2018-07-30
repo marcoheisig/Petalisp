@@ -21,7 +21,7 @@
           (map 'vector
                (lambda (vm)
                  (let ((targets (map 'vector #'shallow-copy targets)))
-                   (wait (vm/schedule vm targets recipes))
+                   (lparallel.promise:force (vm/schedule vm targets recipes))
                    targets))
                (backends vm))))
     (unless (identical results :test (lambda (v1 v2)
@@ -30,5 +30,4 @@
              results))
     (loop for target across targets
           for vm-target across (elt results 0)
-          do (setf (storage target) (storage vm-target)))
-    (complete (make-request))))
+          do (setf (storage target) (storage vm-target)))))
