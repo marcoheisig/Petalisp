@@ -4,24 +4,22 @@
 
 (defclass default-scheduler-mixin ()
   ((%scheduler-queue :reader scheduler-queue
-                     :initform (make-queue)
-                     :type queue)
+                     :initform (lparallel.queue:make-queue))
    (%scheduler-thread :initarg :scheduler-thread
                       :accessor scheduler-thread)
    (%worker-queue :reader worker-queue
-                  :initform (make-queue)
-                  :type queue)
+                  :initform (lparallel.queue:make-queue))
    (%worker-thread :initarg :worker-thread
                    :accessor worker-thread)))
 
 (defmethod initialize-instance :after
     ((vm default-scheduler-mixin) &key &allow-other-keys)
   (flet ((schedule ()
-           (loop (funcall (dequeue (scheduler-queue vm))))))
+           (loop (funcall (lparallel.queue:pop-queue (scheduler-queue vm))))))
     (setf (scheduler-thread vm)
           (bt:make-thread #'schedule :name "Petalisp Scheduler Thread")))
   (flet ((work ()
-           (loop (funcall (dequeue (worker-queue vm))))))
+           (loop (funcall (lparallel.queue:pop-queue (worker-queue vm))))))
     (setf (worker-thread vm)
           (bt:make-thread #'work :name "Petalisp Worker Thread"))))
 
@@ -47,7 +45,7 @@
   (let ((request (make-request)))
     (prog1 request
       (flet ((work (targets kernelized-immediates)
-               (enqueue
+               (lparallel.queue:push-queue
                 (lambda ()
                   (loop for immediate across kernelized-immediates
                         for index from 0
@@ -56,7 +54,7 @@
                                    (storage (evaluate-naively vm immediate))))
                   (complete request))
                 (worker-queue vm))))
-        (enqueue
+        (lparallel.queue:push-queue
          (lambda ()
            (work targets (kernelize recipes)))
          (scheduler-queue vm))))))
