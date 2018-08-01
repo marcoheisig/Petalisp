@@ -187,8 +187,7 @@
              ((list start end)
               (make-range start 1 end))
              ((list start)
-              (once-only (start)
-                (make-range start 1 start)))
+              (make-range start 1 start))
              (length
               (make-range 0 1 (1- length))))))
     (make-instance 'strided-array-index-space

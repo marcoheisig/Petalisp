@@ -31,7 +31,7 @@ exact semantics of this operation differ on each backend."))
            (vm/evaluate vm recipe)
            target))
   (clrhash (evaluated-nodes vm))
-  (complete (make-request)))
+  (values))
 
 (defun reference-vm/normalize (result)
   "Assert that RESULT satisfies the reference backend array

@@ -4,12 +4,12 @@
 
 ;;; This protocol for working with sets is fairly generic, with one
 ;;; exception.  The set elements are always compared with EQUAL.  The
-;;; rationale for this is that otherwise we want to avoid the complexity of
-;;; dealing with equivalence classes, ordered sets and so on.  The
-;;; predicate EQUAL strikes a balance between flexibility and the principle
-;;; of least surprise.  It is general enough for a comparison of strings,
-;;; numbers, characters, and conses thereof, but, unlike EQUALP, does
-;;; distinguish the case of characters and strings.
+;;; rationale for this is that we want to avoid the complexity of dealing
+;;; with equivalence classes, ordered sets and so on.  The predicate EQUAL
+;;; strikes a balance between flexibility and the principle of least
+;;; surprise.  It is general enough for a comparison of strings, numbers,
+;;; characters, and conses thereof, but, unlike EQUALP, does distinguish
+;;; the case of characters and strings.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
