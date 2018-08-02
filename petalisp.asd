@@ -8,7 +8,6 @@
    "alexandria"
    "bordeaux-threads"
    "lparallel"
-   "iterate"
    "trivia"
    "trivial-arguments"
    "uiop")
