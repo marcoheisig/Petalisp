@@ -32,6 +32,7 @@
    #:set-union
 
    ;; Range protocol
+   #:range-start-step-end
    #:range-start
    #:range-step
    #:range-end
