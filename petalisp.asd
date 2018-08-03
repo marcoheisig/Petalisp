@@ -25,7 +25,6 @@
       :components
       ((:file "optimization")
        (:file "memoization")
-       (:file "extended-euclid")
        (:file "function-lambda-lists")
        (:file "miscellaneous")
        (:file "ucons")))
