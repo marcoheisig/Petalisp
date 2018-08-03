@@ -84,7 +84,7 @@ and RELEVANT-SPACE."
                   (let ((relevant-space
                           (index-space-intersection
                            (index-space (input node))
-                           (funcall (transformation node) relevant-space)))
+                           (transform relevant-space (transformation node))))
                         (transformation
                           (compose-transformations (transformation node) transformation)))
                     (walk (input node) relevant-space transformation))))))))

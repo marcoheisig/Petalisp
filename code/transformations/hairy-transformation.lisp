@@ -35,15 +35,13 @@
    (%scaling :initarg :scaling
              :reader scaling
              :initform nil
-             :type (or null simple-vector)))
-  (:metaclass funcallable-standard-class))
+             :type (or null simple-vector))))
 
 (defclass hairy-invertible-transformation
     (hairy-transformation
      invertible-transformation
      cached-inverse-transformation-mixin)
-  ()
-  (:metaclass funcallable-standard-class))
+  ())
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -223,29 +221,28 @@
        :scaling scaling
        :translation translation))))
 
-(defmethod generic-unary-funcall :before
-    ((transformation hairy-transformation)
-     (s-expressions list))
+(defmethod transform :before
+    ((list list)
+     (transformation hairy-transformation))
   (when-let ((input-constraints (input-constraints transformation)))
-    (loop for s-expression in s-expressions
+    (loop for item in list
           for constraint across input-constraints
-          for index from 0 do
-            (unless (not constraint)
-              (when (numberp s-expression)
-                (demand (= s-expression constraint)
-                  "~@<The number ~W violates the ~:R input constraint ~
+          for index from 0
+          when (and constraint (numberp item)) do
+            (demand (= item constraint)
+              "~@<The number ~W violates the ~:R input constraint ~
                       of the transformation ~W.~:@>"
-                  s-expression index transformation))))))
+              item index transformation))))
 
-(defmethod generic-unary-funcall
-    ((transformation hairy-transformation)
-     (s-expressions list))
+(defmethod transform
+    ((list list)
+     (transformation hairy-transformation))
   (let ((result '()))
     (flet ((push-output-expression (output-index input-index a b)
              (declare (ignore output-index))
              (let* ((x (if (not input-index)
                            0
-                           (elt s-expressions input-index)))
+                           (elt list input-index)))
                     (a*x (cond ((= 1 a) x)
                                ((numberp x) (* a x))
                                ((and) `(* ,a ,x))))

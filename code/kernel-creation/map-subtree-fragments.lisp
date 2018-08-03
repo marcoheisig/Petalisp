@@ -18,7 +18,7 @@ fragment, FRAGMENT-FN receives the following arguments:
              (when fusion-free?
                (vector-push-extend
                 (funcall fragment-fn
-                         (funcall (invert-transformation transformation) index-space)
+                         (transform index-space (invert-transformation transformation))
                          (+ (dimension root) n-reductions))
                 results))
              (values fusion-free? n-reductions)))

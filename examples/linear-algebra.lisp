@@ -32,8 +32,8 @@
 (defun matmul (a b)
   (β #'+ #'identity
      (α #'*
-        (transform (to-matrix a) (τ (m n) (m 0 n)))
-        (transform (to-matrix b) (τ (n k) (0 k n))))))
+        (transform (to-matrix a) (τ (m n) (n m 0)))
+        (transform (to-matrix b) (τ (n k) (n 0 k))))))
 
 (defun norm (x)
   (α #'sqrt (dot x x)))

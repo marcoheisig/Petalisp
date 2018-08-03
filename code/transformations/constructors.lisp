@@ -91,10 +91,11 @@
                "~@<Invalid transformation permutation: ~W~:@>"
                permutation)
              ;; A permutation is boring if it maps each index to itself.
-             (if (every (let ((i -1))
-                          (lambda (p)
-                            (eql p (incf i))))
-                        permutation)
+             (if (and (every (let ((i -1))
+                               (lambda (p)
+                                 (eql p (incf i))))
+                             permutation)
+                      (= (length permutation) input-dimension output-dimension))
                  nil
                  (coerce permutation 'simple-vector))))
          (scaling
@@ -110,17 +111,8 @@
                        "~@<The scaling ~W has nonzero entries in places ~
                            where the permutation ~W is NIL.~:@>"
                        scaling permutation))
-             ;; A scaling is boring if it is zero whenever the
-             ;; corresponding permutation entry is NIL and one otherwise.
-             (if (if permutation
-                     (every (lambda (s p)
-                              (if (null p)
-                                  (= s 0)
-                                  (= s 1)))
-                            scaling permutation)
-                     (every (lambda (s)
-                              (= s 1))
-                            scaling))
+             ;; A scaling is boring if it is always one
+             (if (every (lambda (x) (= x 1)) scaling)
                  nil
                  (coerce scaling 'simple-vector)))))
     ;; Step 3: Create the transformation
@@ -133,16 +125,9 @@
             (= input-dimension output-dimension))
        (make-identity-transformation input-dimension))
       ;; Check whether the transformation is invertible.
-      ((or (not permutation)
-           (notany #'zerop scaling)
-           (flet ((ignored-input-p (input-index)
-                    (not (find input-index permutation))))
-             (if (not input-constraints)
-                 (loop for input-index below input-dimension
-                       never (ignored-input-p input-index))
-                 (loop for input-index below input-dimension
-                       never (and (ignored-input-p input-index)
-                                  (not (svref input-constraints input-index)))))))
+      ((or (null permutation)
+           (= (- output-dimension (count-if #'zerop scaling))
+              (- input-dimension (count-if #'numberp input-constraints))))
        (make-instance 'hairy-invertible-transformation
          :input-dimension input-dimension
          :output-dimension output-dimension
@@ -229,7 +214,7 @@
                 for input-constraint across input-constraints
                 when (not input-constraint) do
                   (setf (car arg-cons) 2))
-          (demand (equalp (funcall transformation args)
+          (demand (equalp (transform args transformation)
                           (multiple-value-list (apply function args)))
             "~@<The function ~W is not affine-linear.~:@>"
             function)

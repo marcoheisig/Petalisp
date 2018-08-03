@@ -20,6 +20,8 @@ values or non-permuting references to immediate values."))
 
 (defgeneric compute-immediates (data-structures backend))
 
+(defgeneric overwrite-instance (instance substitute))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes
@@ -66,8 +68,25 @@ backend."))
             (mapcar #'transform data-structures collapsing-transformations)
             backend)))
     (mapcar (lambda (data-structure collapsing-transformation immediate)
-              (change-class data-structure 'reference
-                :transformation collapsing-transformation
-                :inputs (list immediate)))
+              (overwrite-instance
+               data-structure
+               (make-reference
+                immediate
+                (index-space data-structure)
+                collapsing-transformation)))
             data-structures collapsing-transformations immediates)
     immediates))
+
+(defmethod overwrite-instance ((instance reference) (substitute reference))
+  (reinitialize-instance instance
+    :transformation (transformation substitute)
+    :inputs (inputs substitute)))
+
+(defmethod overwrite-instance (instance (substitute reference))
+  (change-class instance (class-of substitute)
+    :transformation (transformation substitute)
+    :inputs (inputs substitute)))
+
+(defmethod overwrite-instance (instance (substitute immediate))
+  (change-class instance (class-of substitute)
+    :storage (storage substitute)))

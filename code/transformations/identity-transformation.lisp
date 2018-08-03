@@ -6,12 +6,11 @@
   ((%dimension :initarg :dimension
                :reader input-dimension
                :reader output-dimension
-               :type (integer 0 *)))
-  (:metaclass funcallable-standard-class))
+               :type (integer 0 *))))
 
-(defmethod generic-unary-funcall
-    ((operator identity-transformation) argument)
-  argument)
+(defmethod transform ((list list)
+                      (operator identity-transformation))
+  list)
 
 (defmethod transformation-equal
     ((transformation-1 identity-transformation)

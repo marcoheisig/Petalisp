@@ -20,10 +20,6 @@
 ;;; Finally, the variables *CHECK* and *OPTIMIZE* can be used to
 ;;; dynamically disable these stages if performance demands it.
 
-(defvar *check* t)
-
-(defvar *optimize* t)
-
 (define-method-combination data-structure-constructor ()
   ((check (:check))
    (optimize (:optimize))
@@ -32,6 +28,6 @@
            (loop for method in methods
                  collect `(call-method ,method))))
     `(progn
-       (when *check* ,@(call-methods (reverse check)))
-       (or (when *optimize* ,@(call-methods optimize))
+       ,@(call-methods (reverse check))
+       (or ,@(call-methods optimize)
            (call-method ,(first primary) ,(rest primary))))))

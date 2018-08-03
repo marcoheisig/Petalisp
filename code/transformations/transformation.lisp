@@ -25,26 +25,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Classes
-
-(defclass transformation (unary-funcallable-object)
-  ()
-  (:metaclass funcallable-standard-class))
-
-;; Forward declaration of the primary transformation constructors, because
-;; they will be referenced before being defined.
-(declaim (ftype (function (&key (:input-dimension array-length)
-                                (:output-dimension array-length)
-                                (:input-constraints sequence)
-                                (:translation sequence)
-                                (:permutation sequence)
-                                (:scaling sequence)))
-                make-transformation)
-         (ftype (function (array-length))
-                make-identity-transformation))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
 ;;; Generic Functions
 
 (defgeneric canonicalize-transformation (object))
@@ -75,6 +55,27 @@
 ;;; return a transformation mapping from (i1 ... iN iN+1) to
 ;;; (j1 ... jM iN+1).
 (defgeneric enlarge-transformation (transformation scale offset))
+
+(defgeneric transform (object transformation))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Classes
+
+(defclass transformation ()
+  ())
+
+;; Forward declaration of the primary transformation constructors, because
+;; they will be referenced before being defined.
+(declaim (ftype (function (&key (:input-dimension array-length)
+                                (:output-dimension array-length)
+                                (:input-constraints sequence)
+                                (:translation sequence)
+                                (:permutation sequence)
+                                (:scaling sequence)))
+                make-transformation)
+         (ftype (function (array-length))
+                make-identity-transformation))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -118,5 +119,8 @@
                (loop for input-constraint across (input-constraints transformation)
                      for variable in variables
                      collect (or input-constraint variable)))))
-    (princ `(τ ,inputs ,(funcall transformation inputs))
+    (princ `(τ ,inputs ,(transform inputs transformation))
            stream)))
+
+(defmethod transform ((sequence sequence) (transformation transformation))
+  (assert (= (length sequence) (input-dimension transformation))))

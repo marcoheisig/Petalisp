@@ -15,9 +15,9 @@
 (defgeneric canonicalize-index-space (index-space-designator)
   (:method ((index-space index-space)) index-space))
 
-(defmethod generic-unary-funcall :before ((transformation transformation)
-                                          (index-space index-space))
-  (demand (= (input-dimension transformation) (dimension index-space))
+(defmethod transform :before ((index-space index-space)
+                              (transformation transformation))
+  (demand (= (dimension index-space) (input-dimension transformation))
     "~@<Cannot apply the transformation ~A with input dimension ~R ~
         to the index space ~A with dimension ~R.~:@>"
     transformation

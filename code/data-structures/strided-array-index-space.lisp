@@ -12,9 +12,12 @@
 
 (defmethod set-elements ((set strided-array-index-space))
   (if (emptyp (ranges set))
-      ()
+      (list '())
       (apply #'map-product #'list
              (map 'list #'set-elements (ranges set)))))
+
+(defmethod set-size ((object strided-array-index-space))
+  (size object))
 
 (defmethod common-broadcast-space ((space strided-array-index-space) &rest more-spaces)
   (let* ((list-of-ranges
@@ -103,9 +106,9 @@
         for range-2 across (ranges space-2)
         always (set-intersectionp range-1 range-2)))
 
-(defmethod generic-unary-funcall :before
-    ((transformation transformation)
-     (index-space strided-array-index-space))
+(defmethod transform :before
+    ((index-space strided-array-index-space)
+     (transformation transformation))
   (when-let ((input-constraints (input-constraints transformation)))
     (loop for range across (ranges index-space)
           for constraint across input-constraints
@@ -117,8 +120,8 @@
                     the input constraint ~W of the transformation ~W.~:@>"
                 index index-space constraint transformation)))))
 
-(defmethod generic-unary-funcall ((transformation hairy-transformation)
-                                  (index-space strided-array-index-space))
+(defmethod transform ((index-space strided-array-index-space)
+                      (transformation hairy-transformation))
   (let ((output-ranges (make-array (output-dimension transformation)))
         (input-ranges (ranges index-space)))
     (flet ((store-output-range (output-index input-index scaling offset)
@@ -198,3 +201,11 @@
               (make-range 0 1 (1- length))))))
     (make-instance 'strided-array-index-space
       :ranges (map 'vector #'canonicalize-range-specifier list))))
+
+(defmethod transform ((index-space index-space)
+                      (operator identity-transformation))
+  index-space)
+
+(defmethod transform ((data-structure data-structure)
+                      (operator identity-transformation))
+  data-structure)

@@ -12,10 +12,24 @@
 
 (defgeneric evaluate (data-structure backend))
 
+(defgeneric convert-to-immediate (data-structure backend))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Classes
+
 (defclass reference-backend (backend)
   ((%memoization-table :reader memoization-table
                        :initform (make-hash-table :test #'eq)
                        :type hash-table)))
+
+(defclass simple-immediate (immediate)
+  ((%table :initarg :table :reader table))
+  (:default-initargs :element-type t))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Methods
 
 (defmethod compute-immediates :after
     (data-structure (backend reference-backend))
@@ -23,94 +37,97 @@
 
 
 (defmethod compute-immediates ((data-structures list) (backend reference-backend))
-  (mapcar (lambda (x)
-            (canonicalize-data-structure
-             (array-from-ir
-              (evaluate x backend))))
-          data-structures))
+  (loop for data-structure in data-structures
+        collect (convert-to-immediate (evaluate data-structure backend) backend)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Conversion between arrays and internal representation
-
-(defun ir-from-array (array)
-  (if (null (array-dimensions array))
-      (list
-       (cons '() (aref array)))
-      (loop for indices in (apply #'map-product #'list
-                                  (mapcar #'iota (array-dimensions array)))
-            collect (cons indices (apply #'aref array indices)))))
-
-(defun array-from-ir (ir &key (element-type t))
-  (let* ((array-dimensions
-           (mapcar #'1+
-                   (if (null ir)
-                       ()
-                       (reduce (lambda (l1 l2) (mapcar #'max l1 l2)) ir
-                               :key #'first))))
-         (array
-           (make-array array-dimensions :element-type element-type)))
-    (loop for (indices . value) in ir do
-      (setf (apply #'aref array indices) value))
-    array))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Evaluation
-
-(defun normalize (representation)
-  (assert (petalisp::identical representation :key (compose #'length #'first)))
-  (sort (copy-list representation)
-        (lambda (l1 l2) (every #'<= l1 l2))
-        :key #'first))
+(defmethod convert-to-immediate ((simple-immediate simple-immediate)
+                                 (backend reference-backend))
+  (let ((storage (make-array (map 'list #'set-size (ranges (shape simple-immediate))))))
+    (loop for indices in (set-elements (shape simple-immediate)) do
+      (setf (apply #'aref storage indices)
+            (gethash-or-die indices (table simple-immediate))))
+    (canonicalize-data-structure storage)))
 
 (defmethod evaluate :around
     ((data-structure data-structure)
      (backend reference-backend))
   (petalisp::with-hash-table-memoization (data-structure)
       (memoization-table backend)
-    (normalize (call-next-method))))
+    (let ((table (call-next-method)))
+      (assert (= (hash-table-count table)
+                 (set-size (shape data-structure))))
+      (make-instance 'simple-immediate
+        :index-space (shape data-structure)
+        :element-type (element-type data-structure)
+        :table table))))
 
-(defmethod evaluate ((immediate immediate) (backend reference-backend))
-  (ir-from-array (storage-array immediate)))
+(defmethod evaluate ((strided-array-immediate strided-array-immediate)
+                     (backend reference-backend))
+  (let ((storage (storage-array strided-array-immediate))
+        (shape (shape strided-array-immediate))
+        (table (make-hash-table :test #'equal)))
+    (loop for indices in (set-elements shape) do
+      (setf (gethash indices table)
+            (apply #'aref storage indices)))
+    table))
 
 (defmethod evaluate ((application application) (backend reference-backend))
-  (let ((operator (application-operator application)))
-    (apply #'mapcar
-           (lambda (&rest inputs)
-             (assert (petalisp::identical inputs :test #'equal :key #'first))
-             (cons (first (first inputs))
-                   (apply operator (mapcar #'rest inputs))))
-           (mapcar (lambda (x) (evaluate x backend))
-                   (inputs application)))))
+  (let ((input-tables
+          (loop for input in (inputs application)
+                collect (table (evaluate input backend))))
+        (table
+          (make-hash-table :test #'equal)))
+    (loop for indices being the hash-keys of (first input-tables) do
+      (setf (gethash indices table)
+            (apply (application-operator application)
+                   (mapcar (lambda (input-table) (gethash-or-die indices input-table))
+                           input-tables))))
+    table))
 
 (defmethod evaluate ((reduction reduction) (backend reference-backend))
   (let ((binop (reduction-binary-operator reduction))
         (unop (reduction-unary-operator reduction))
+        (predicate (ecase (reduction-order reduction)
+                     (:up #'<)
+                     (:down #'>)
+                     (:arbitrary #'<)))
         (table (make-hash-table :test #'equal)))
-    (loop for (indices . value) in (evaluate (input reduction) backend) do
-      (multiple-value-bind (accumulator present-p)
-          (gethash (rest indices) table)
-        (if (not present-p)
-            (setf (gethash (first indices) table)
-                  (funcall unop value))
-            (setf (gethash (first indices) table)
-                  (funcall binop accumulator value)))))
-    (maphash #'cons table)))
+    ;; Build a hash table of alists.
+    (maphash
+     (lambda (indices value)
+       (push (cons (car indices) value)
+             (gethash (cdr indices) table)))
+     (table (evaluate (input reduction) backend)))
+    ;; Sort and evaluate each alist in-place.
+    (maphash
+     (lambda (indices value)
+       (setf (gethash indices table)
+             (let ((alist (sort (gethash-or-die indices table) predicate :key #'car)))
+               (reduce binop (cdr alist)
+                       :key #'cdr
+                       :initial-value (funcall unop (cdar alist))))))
+     table)
+    table))
 
 (defmethod evaluate ((fusion fusion) (backend reference-backend))
-  (apply #'append (mapcar (lambda (x) (evaluate x backend))
-                          (inputs fusion))))
+  (alist-hash-table
+   (loop for input in (inputs fusion)
+         append (hash-table-alist
+                 (table
+                  (evaluate input backend))))
+   :test #'equal))
 
 (defmethod evaluate ((reference reference) (backend reference-backend))
-  (let ((table (make-hash-table :test #'equal))
-        (transformation (transformation reference)))
-    (loop for (indices . value) in (evaluate (input reference) backend) do
-      (setf (gethash indices table) value))
-    (loop for indices in (set-elements (shape reference))
-          for input-indices = (funcall transformation indices)
-          collect (cons indices
-                        (multiple-value-bind (value present-p)
-                            (gethash  input-indices table)
-                          (assert present-p)
-                          value)))))
+  (let ((transformation (transformation reference))
+        (input-table (table (evaluate (input reference) backend)))
+        (table (make-hash-table :test #'equal)))
+    (loop for indices in (set-elements (shape reference)) do
+      (setf (gethash indices table)
+            (gethash-or-die (transform indices transformation) input-table)))
+    table))
+
+(defun gethash-or-die (key hash-table)
+  (multiple-value-bind (value present-p)
+      (gethash key hash-table)
+    (assert present-p)
+    value))

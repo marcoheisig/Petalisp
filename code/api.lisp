@@ -42,6 +42,7 @@ Examples:
          (space (canonicalize-index-space shape)))
     (broadcast data space)))
 
+#+nil
 (defun transform (data-structure transformation)
   "Reorder the index-value entries of DATA-STRUCTURE by applying
 TRANSFORMATION to each index.
@@ -53,7 +54,7 @@ Examples:
  (transform A #'flip) ; Flip the sign of each index"
   (let* ((data-structure (canonicalize-data-structure data-structure))
          (transformation (canonicalize-transformation transformation))
-         (space (funcall transformation (index-space data-structure)))
+         (space (transform (index-space data-structure) transformation))
          (transformation (invert-transformation transformation)))
     (make-reference data-structure space transformation)))
 
@@ -108,8 +109,10 @@ values to the appropriate result type."
 
 (defun compute (&rest data-structures)
   "Return the computed values of all OBJECTS."
-  (lparallel.promise:force
-   (apply #'schedule data-structures)))
+  (values-list
+   (mapcar #'storage-array
+           (lparallel.promise:force
+            (apply #'schedule data-structures)))))
 
 (defun schedule (&rest data-structures)
   "Instruct Petalisp to compute all given OBJECTS asynchronously."

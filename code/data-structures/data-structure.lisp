@@ -76,7 +76,6 @@
 ;;; be executed before the immediate is fully initialized.
 (defclass immediate (data-structure)
   ((%storage :initarg :storage :accessor storage :initform nil :accessor storage-array)
-   (%transformation :initarg :transformation :accessor transformation)
    (%kernels :initarg :kernels :accessor kernels :initform nil)))
 
 (defclass non-immediate (data-structure)
@@ -96,7 +95,7 @@
 (defclass reduction (non-immediate)
   ((%binary-operator :initarg :binary-operator :reader binary-operator :reader reduction-binary-operator)
    (%unary-operator :initarg :unary-operator :reader unary-operator :reader reduction-unary-operator)
-   (%order :initarg :order :reader order :type (member :up :down :arbitrary))))
+   (%order :initarg :order :reader order :type (member :up :down :arbitrary) :reader reduction-order)))
 
 ;;; Let A1...AN be strided arrays with equal dimension, each mapping from
 ;;; an index space Ωk to a set of values.  Furthermore, let the sets
@@ -242,7 +241,7 @@
     ((data-structure data-structure)
      (index-space index-space)
      (transformation transformation))
-  (let ((relevant-space (funcall transformation index-space))
+  (let ((relevant-space (transform index-space transformation))
         (input-space (index-space data-structure)))
     (demand (and (= (dimension relevant-space) (dimension input-space))
                  (subspace-p relevant-space input-space))
@@ -280,45 +279,3 @@
      (identity-transformation identity-transformation))
   (when (index-space-equality (index-space data-structure) index-space)
     data-structure))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Creating shallow copies of data structures
-;;;
-;;; If Petalisp were entirely functional, there would be no need for such
-;;; devious functions as SHALLOW-COPY and MAKE-IMMEDIATE!. However, in
-;;; order to avoid endless reevaluation, the data flow graphs that define
-;;; each data structure must be cut from time to time. The current policy
-;;; is to cut the graph at all nodes that are passed to SCHEDULE and
-;;; COMPUTE. Ugh!
-
-(defmethod make-immediate! ((immediate immediate))
-  immediate)
-
-(defmethod shallow-copy ((immediate immediate))
-  (make-instance (class-of immediate)
-    :element-type (element-type immediate)
-    :index-space (index-space immediate)
-    :transformation (transformation immediate)
-    :kernels (kernels immediate)
-    :storage (storage immediate)))
-
-(defmethod shallow-copy ((application application))
-  (let ((inputs (inputs application)))
-    (make-application (operator application) (first inputs) inputs)))
-
-(defmethod shallow-copy ((reduction reduction))
-  (make-reduction
-   (binary-operator reduction)
-   (unary-operator reduction)
-   (input reduction)
-   (order reduction)))
-
-(defmethod shallow-copy ((fusion fusion))
-  (let ((inputs (inputs fusion)))
-    (make-fusion (first inputs) inputs)))
-
-(defmethod shallow-copy ((reference reference))
-  (make-reference (input reference)
-                  (index-space reference)
-                  (transformation reference)))

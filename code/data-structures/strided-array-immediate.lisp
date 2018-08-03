@@ -4,29 +4,19 @@
 
 (defclass strided-array-immediate (strided-array immediate) ())
 
-(defmethod shared-initialize :after
-    ((instance strided-array-immediate) slot-names &key &allow-other-keys)
-  (declare (ignore slot-names))
-  (setf (transformation instance)
-        (invert-transformation
-         (from-storage-transformation
-          (index-space instance)))))
-
 (defmethod canonicalize-data-structure ((array array))
   (make-instance 'strided-array-immediate
     :element-type (atomic-type (array-element-type array))
     :index-space (canonicalize-index-space array)
     :storage array
-    :kernels nil
-    :transformation (make-identity-transformation (array-rank array))))
+    :kernels nil))
 
 (defmethod canonicalize-data-structure ((object t))
   (make-instance 'strided-array-immediate
     :element-type (atomic-type (type-of object))
     :index-space (canonicalize-index-space '())
     :storage (make-array () :initial-element object :element-type (type-of object))
-    :kernels nil
-    :transformation (make-identity-transformation 0)))
+    :kernels nil))
 
 
 (defmethod corresponding-immediate ((strided-array strided-array))
@@ -112,3 +102,12 @@
      (all-inputs list))
   (constant-fold-application-or-nil function first-input all-inputs))
 
+(defmethod transform ((array array) (transformation transformation))
+  (transform (canonicalize-data-structure array) transformation))
+
+(defmethod transform ((data-structure data-structure)
+                      (transformation transformation))
+  (make-reference
+   data-structure
+   (transform (index-space data-structure) transformation)
+   (invert-transformation transformation)))

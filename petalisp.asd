@@ -28,7 +28,6 @@
        (:file "atomic-types")
        (:file "extended-euclid")
        (:file "function-lambda-lists")
-       (:file "generic-funcallable-object")
        (:file "miscellaneous")
        (:file "ucons")))
 

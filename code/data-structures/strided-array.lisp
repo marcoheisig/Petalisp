@@ -51,7 +51,7 @@
         :index-space
         (let ((ranges (ranges (index-space strided-array))))
           (make-instance 'strided-array-index-space
-            :ranges (subseq ranges 0 (1- (length ranges)))))))))
+            :ranges (subseq ranges 1 (length ranges))))))))
 
 (defmethod make-reference ((object strided-array)
                            (space strided-array-index-space)
