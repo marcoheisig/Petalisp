@@ -21,32 +21,32 @@
                 (check-type input-index integer)
                 (check-type scale integer)
                 (check-type offset integer)
-                (push (ulist input-index scale offset) ulists)))
+                (push (ucons:ulist input-index scale offset) ulists)))
       (map-transformation-outputs transformation #'store-triple))
-    (ulist* :reference id
-            (reduce (lambda (a b) (ucons b a))
+    (ucons:ulist* :reference id
+            (reduce (lambda (a b) (ucons:ucons b a))
                     ulists :initial-value nil))))
 
 (defun blueprint/call (symbol-or-id input-blueprints)
-  (ulist* :call symbol-or-id input-blueprints))
+  (ucons:ulist* :call symbol-or-id input-blueprints))
 
 (defun blueprint/reduce (binary-operator unary-operator input)
-  (ulist :reduce binary-operator unary-operator input))
+  (ucons:ulist :reduce binary-operator unary-operator input))
 
 (defun blueprint/store (place expression)
-  (ulist :store place expression))
+  (ucons:ulist :store place expression))
 
 (defun blueprint/with-metadata (dimensions references body)
   (flet ((dimension-metadata (dimension)
            (if (<= dimension 8)
                dimension
                (let ((lb (floor (log dimension 2))))
-                 (ulist (expt 2 lb) (expt (1+ lb) 2)))))
+                 (ucons:ulist (expt 2 lb) (expt (1+ lb) 2)))))
          (reference-metadata (reference)
            (atomic-type (element-type reference))))
-    (ulist :blueprint
-           (map-ulist #'dimension-metadata dimensions)
-           (map-ulist #'reference-metadata references)
-           body)))
+    (ucons:ulist :blueprint
+                 (ucons:map-ulist #'dimension-metadata dimensions)
+                 (ucons:map-ulist #'reference-metadata references)
+                 body)))
 
 

@@ -10,4 +10,4 @@ some array elements are derived from others."
   (bounds            nil :type (simple-array array-index (*)))
   (references        nil :type (simple-array t (*)))
   (unknown-functions nil :type (simple-array function (*)))
-  (blueprint         nil :type ulist))
+  (blueprint         nil :type ucons:ulist))

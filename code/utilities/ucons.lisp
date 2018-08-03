@@ -1,6 +1,20 @@
 ;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
-(in-package :petalisp)
+(cl:defpackage :ucons
+  (:use :cl :alexandria)
+  (:export
+   #:ucons
+   #:ucar
+   #:ucdr
+   #:ulist
+   #:ulist*
+   #:do-ulist
+   #:map-ulist
+   #:ulength
+   #:copy-ulist
+   #:copy-utree))
+
+(in-package :ucons)
 
 ;;; ucons - unique conses
 ;;;
@@ -212,13 +226,13 @@ and past invocation of this function with the same arguments."
   (loop for elt = ulist then (ucdr elt)
         while elt count t))
 
-(defun ulist-shallow-copy (ulist)
+(defun copy-ulist (ulist)
   "Return a list of the elements of ULIST."
   (declare (ulist ulist))
   (loop for elt = ulist then (ucdr elt)
         while elt collect (ucar elt)))
 
-(defun ulist-deep-copy (ulist)
+(defun copy-utree (ulist)
   "Return a tree of the same shape as ULIST, but where all occuring ulists
    have been converted to lists."
   (declare (ulist ulist))
@@ -226,12 +240,12 @@ and past invocation of this function with the same arguments."
         while elt
         for car = (ucar elt)
         collect (if (uconsp car)
-                    (ulist-deep-copy car)
+                    (copy-utree car)
                     car)))
 
 (defmethod print-object ((ulist ucons) stream)
   (cond (*print-pretty*
-         (let ((list (ulist-shallow-copy ulist)))
+         (let ((list (ucons:copy-ulist ulist)))
            (pprint-logical-block (stream list :prefix "[" :suffix "]")
              (pprint-fill stream list nil))))
         (t

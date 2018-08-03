@@ -59,7 +59,7 @@ and RELEVANT-SPACE."
                        (if (symbolp operator)
                            operator
                            (id operator unknown-functions))
-                       (map-ulist #'walk-input (inputs node))))))
+                       (ucons:map-ulist #'walk-input (inputs node))))))
                  (reduction
                   (let* ((input (input node))
                          (reduction-range (last-elt (ranges (index-space input))))

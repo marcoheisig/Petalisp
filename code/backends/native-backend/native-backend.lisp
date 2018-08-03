@@ -36,7 +36,7 @@
 
 (defmethod vm/compile
   ((backend common-lisp-backend)
-   (blueprint ucons))
+   (blueprint ucons:ucons))
   (let ((code (translate-blueprint blueprint)))
     (compile nil code)))
 
@@ -176,7 +176,7 @@
 (defmethod translate ((integer integer)) integer)
 
 (defun translate-blueprint (blueprint)
-  (trivia:ematch (ulist-deep-copy blueprint)
+  (trivia:ematch (ucons:copy-utree blueprint)
     ((list :blueprint bounds-metadata element-types body)
      (let* ((dimension (length bounds-metadata))
             (loops (make-array dimension))
