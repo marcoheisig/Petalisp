@@ -188,7 +188,8 @@
     ((function function)
      (first-input data-structure)
      (all-inputs sequence))
-  (assert (identical all-inputs :test #'index-space-equality :key #'index-space)))
+  (assert (identical all-inputs :test #'index-space-equality
+                                :key #'index-space)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

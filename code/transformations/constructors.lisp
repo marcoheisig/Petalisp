@@ -255,3 +255,16 @@
           (declare (ignorable ,@variables))
           (values ,@output-forms))
         ,input-constraints))))
+
+(defun free-variables (form &optional environment)
+  (let (result)
+    (agnostic-lizard:walk-form
+     form environment
+     :on-every-atom
+     (lambda (form env)
+       (prog1 form
+         (when (and (symbolp form)
+                    (not (find form (agnostic-lizard:metaenv-variable-like-entries env)
+                               :key #'first)))
+           (pushnew form result)))))
+    result))

@@ -189,15 +189,15 @@ that u*u1 + v*u2 = u3 = gcd(u,v)."
   ;; computation of u2.
   (labels ((fixnum-euclid (u1 u3 v1 v3)
              (declare (fixnum u1 v1)
-                      (non-negative-fixnum u3 v3))
-             (with-unsafe-optimizations
-               (if (zerop v3)
-                   (values u1 u3)
-                   (let ((q (floor u3 v3)))
-                     (fixnum-euclid
-                      v1 v3
-                      (- u1 (the fixnum (* q v1)))
-                      (- u3 (the fixnum (* q v3))))))))
+                      (non-negative-fixnum u3 v3)
+                      (optimize (speed 3) (safety 0)))
+             (if (zerop v3)
+                 (values u1 u3)
+                 (let ((q (floor u3 v3)))
+                   (fixnum-euclid
+                    v1 v3
+                    (- u1 (the fixnum (* q v1)))
+                    (- u3 (the fixnum (* q v3)))))))
            (bignum-euclid (u1 u3 v1 v3)
              (declare (integer u1 v1)
                       (non-negative-integer u3 v3))
