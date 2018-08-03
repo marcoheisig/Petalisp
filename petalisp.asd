@@ -25,6 +25,8 @@
       :components
       ((:file "optimization")
        (:file "memoization")
+       (:file "extended-euclid")
+       (:file "identical")
        (:file "miscellaneous")
        (:file "symmetric-function")
        (:file "ucons")))

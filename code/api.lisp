@@ -6,8 +6,7 @@
 ;;;
 ;;; Special Variables
 
-(defparameter *backend*
-  (make-instance 'reference-backend)
+(defparameter *backend* (make-instance 'reference-backend)
   "The backend on which Petalisp programs are executed.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
