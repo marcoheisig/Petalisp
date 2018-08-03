@@ -6,7 +6,7 @@
 ;;; different backends and compare the result.
 ;;;
 ;;; The testing backend is constructed from a sequence of other
-;;; backends. Each VM/SCHEDULE instruction is then dispatched among
+;;; backends. Each COMPUTE-IMMEDIATES instruction is then dispatched among
 ;;; these and the results are compared. If there is a mismatch, an error is
 ;;; signaled.
 
@@ -16,18 +16,14 @@
               :initform (required-argument "backends")
               :type sequence)))
 
-(defmethod vm/schedule ((vm testing-backend) targets recipes)
+(defmethod compute-immediates (data-structures (backend testing-backend))
   (let ((results
-          (map 'vector
-               (lambda (vm)
-                 (let ((targets (map 'vector #'shallow-copy targets)))
-                   (lparallel.promise:force (vm/schedule vm targets recipes))
-                   targets))
-               (backends vm))))
+          (mapcar
+           (lambda (backend)
+             (compute-immediates data-structures backend))
+           (backends backend))))
     (unless (identical results :test (lambda (v1 v2)
                                        (every (lambda (a b) (data-structure-equality a b)) v1 v2)))
       (error "Different backends compute different results for the same recipes:~%~A"
              results))
-    (loop for target across targets
-          for vm-target across (elt results 0)
-          do (setf (storage target) (storage vm-target)))))
+    (first results)))

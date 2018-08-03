@@ -64,7 +64,7 @@
 
 (defclass data-structure ()
   ((%element-type :initarg :element-type :reader element-type)
-   (%index-space :initarg :index-space :reader index-space)
+   (%index-space :initarg :index-space :reader index-space :reader shape)
    (%refcount :initform 0 :accessor refcount)))
 
 ;;; An immediate is a data structure whose elements can be referenced in
@@ -75,7 +75,7 @@
 ;;; If KERNELS is a non-empty sequence, it denotes the set of kernels that must
 ;;; be executed before the immediate is fully initialized.
 (defclass immediate (data-structure)
-  ((%storage :initarg :storage :accessor storage :initform nil)
+  ((%storage :initarg :storage :accessor storage :initform nil :accessor storage-array)
    (%transformation :initarg :transformation :accessor transformation)
    (%kernels :initarg :kernels :accessor kernels :initform nil)))
 
@@ -87,15 +87,15 @@
 ;;; the application of f to A1...AN is a data structure that maps each
 ;;; index k ∈ Ω to (F (A1 k) ... (AN k)).
 (defclass application (non-immediate)
-  ((%operator :initarg :operator :reader operator)))
+  ((%operator :initarg :operator :reader operator :reader application-operator)))
 
 ;;; The reduction of a D-dimensional array A is a D-1 dimensional array,
 ;;; where each element contains the result of reducing the last dimension
 ;;; with BINARY-OPERATOR, using the result of UNARY-OPERATOR applied to the
 ;;; first element as initial value.
 (defclass reduction (non-immediate)
-  ((%binary-operator :initarg :binary-operator :reader binary-operator)
-   (%unary-operator :initarg :unary-operator :reader unary-operator)
+  ((%binary-operator :initarg :binary-operator :reader binary-operator :reader reduction-binary-operator)
+   (%unary-operator :initarg :unary-operator :reader unary-operator :reader reduction-unary-operator)
    (%order :initarg :order :reader order :type (member :up :down :arbitrary))))
 
 ;;; Let A1...AN be strided arrays with equal dimension, each mapping from

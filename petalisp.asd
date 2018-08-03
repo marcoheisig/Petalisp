@@ -74,10 +74,11 @@
      (:module "backends"
       :components
       ((:file "backend")
-       (:file "default-scheduler-mixin")
-       (:file "compile-cache-mixin")
        (:file "reference-backend")
        (:file "testing-backend")
+
+       (:file "default-scheduler-mixin")
+       (:file "compile-cache-mixin")
        (:file "common-lisp-backend")))
 
      (:file "api")))))

@@ -3,21 +3,13 @@
 (in-package :petalisp)
 
 (defclass default-scheduler-mixin ()
-  ((%scheduler-queue :reader scheduler-queue
-                     :initform (lparallel.queue:make-queue))
-   (%scheduler-thread :initarg :scheduler-thread
-                      :accessor scheduler-thread)
-   (%worker-queue :reader worker-queue
+  ((%worker-queue :reader worker-queue
                   :initform (lparallel.queue:make-queue))
    (%worker-thread :initarg :worker-thread
                    :accessor worker-thread)))
 
 (defmethod initialize-instance :after
     ((vm default-scheduler-mixin) &key &allow-other-keys)
-  (flet ((schedule ()
-           (loop (funcall (lparallel.queue:pop-queue (scheduler-queue vm))))))
-    (setf (scheduler-thread vm)
-          (bt:make-thread #'schedule :name "Petalisp Scheduler Thread")))
   (flet ((work ()
            (loop (funcall (lparallel.queue:pop-queue (worker-queue vm))))))
     (setf (worker-thread vm)
@@ -41,25 +33,13 @@
 ;;; STORAGE slot of IMMEDIATE to NIL.
 (defgeneric vm/free-memory (backend immediate))
 
-(defmethod vm/schedule ((vm default-scheduler-mixin) targets recipes)
-  (let ((promise (lparallel.promise:promise)))
-    (prog1 promise
-      (flet ((work (targets kernelized-immediates)
-               (lparallel.queue:push-queue
-                (lambda ()
-                  (loop for immediate across kernelized-immediates
-                        for index from 0
-                        unless (storage (aref targets index))
-                          do (setf (storage (aref targets index))
-                                   (storage (evaluate-naively vm immediate))))
-                  (lparallel.promise:fulfill promise))
-                (worker-queue vm))))
-        (lparallel.queue:push-queue
-         (lambda ()
-           (work targets (kernelize recipes)))
-         (scheduler-queue vm))))))
+(defmethod compute-immediates
+    ((data-structures list)
+     (backend default-scheduler-mixin))
+  (loop for immediate across (kernelize data-structures)
+        collect (evaluate-naively immediate backend)))
 
-(defun evaluate-naively (vm immediate)
+(defun evaluate-naively (immediate backend)
   ;; only evaluate once
   (unless (storage immediate)
     ;; evaluate all dependencies
@@ -68,15 +48,15 @@
         (loop for index from 1 below (length (kernel-references kernel))
               for source = (aref (kernel-references kernel) index) do
                 (pushnew source dependencies)))
-      (map nil (lambda (dependency) (evaluate-naively vm dependency))
+      (map nil (lambda (dependency) (evaluate-naively dependency backend))
            dependencies))
     ;; allocate memory
-    (vm/bind-memory vm immediate)
+    (vm/bind-memory backend immediate)
     ;; compute all kernels
     (loop for kernel across (kernels immediate) do
-      (vm/execute vm kernel)
+      (vm/execute backend kernel)
       (loop for index from 1 below (length (kernel-references kernel))
             for source = (aref (kernel-references kernel) index) do
               (when (zerop (decf (refcount source)))
-                (vm/free-memory vm source)))))
+                (vm/free-memory backend source)))))
   immediate)

@@ -7,7 +7,7 @@
 ;;; Special Variables
 
 (defparameter *backend*
-  (make-instance 'common-lisp-backend)
+  (make-instance 'reference-backend)
   "The backend on which Petalisp programs are executed.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -106,21 +106,13 @@ values to the appropriate result type."
 ;;;
 ;;; Evaluation
 
-(defun compute (&rest objects)
+(defun compute (&rest data-structures)
   "Return the computed values of all OBJECTS."
-  (let* ((recipes (map 'vector #'shallow-copy objects))
-         (targets (map 'vector #'make-immediate! objects)))
-    (lparallel.promise:force (vm/schedule *backend* targets recipes))
-    (flet ((lispify (immediate)
-             (let ((array (storage immediate)))
-               (if (zerop (array-rank array))
-                   (aref array)
-                   array))))
-      (values-list (map 'list #'lispify targets)))))
+  (lparallel.promise:force
+   (apply #'schedule data-structures)))
 
-(defun schedule (&rest objects)
+(defun schedule (&rest data-structures)
   "Instruct Petalisp to compute all given OBJECTS asynchronously."
-  (let* ((recipes (map 'vector #'shallow-copy objects))
-         (targets (map 'vector #'make-immediate! objects)))
-    (vm/schedule *backend* targets recipes)
-    (values-list objects)))
+  (compute-synchronously
+   (mapcar #'canonicalize-data-structure data-structures)
+   *backend*))

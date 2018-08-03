@@ -10,6 +10,12 @@
 (defmethod make-load-form ((object strided-array-index-space) &optional environment)
   (make-load-form-saving-slots object :environment environment))
 
+(defmethod set-elements ((set strided-array-index-space))
+  (if (emptyp (ranges set))
+      ()
+      (apply #'map-product #'list
+             (map 'list #'set-elements (ranges set)))))
+
 (defmethod common-broadcast-space ((space strided-array-index-space) &rest more-spaces)
   (let* ((list-of-ranges
            (list* (ranges space)

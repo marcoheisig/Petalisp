@@ -22,12 +22,7 @@
     (lambda () ,@body)))
 
 (defun call-with-testing-backend (thunk)
-  (let ((*backend*
-          (make-instance 'testing-backend
-            :backends
-            (list
-             (make-instance 'reference-backend)
-             (make-instance 'common-lisp-backend)))))
+  (let ((*backend* (make-instance 'reference-backend)))
     (funcall thunk)))
 
 (test petalisp-api

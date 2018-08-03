@@ -1,136 +1,116 @@
 ;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
-(in-package :petalisp)
+(in-package :petalisp-reference-backend)
 
-;;; The purpose of the reference backend is to compute reference
-;;; solutions for automated testing. It is totally acceptable that this
+;;; The purpose of the reference backend is to compute reference solutions
+;;; for automated testing. It is totally acceptable that this
 ;;; implementation is slow or eagerly consing, as long as it is obviously
 ;;; correct.
 ;;;
 ;;; Internally, all evaluated arrays are represented as a list of conses of
 ;;; the form (indices . value), where indices is a list of integers.
 
+(defgeneric evaluate (data-structure backend))
+
 (defclass reference-backend (backend)
-  ((%evaluated-nodes :reader evaluated-nodes
-                     :initform (make-hash-table :test #'eq)
-                     :type hash-table)))
+  ((%memoization-table :reader memoization-table
+                       :initform (make-hash-table :test #'eq)
+                       :type hash-table)))
 
-(defgeneric vm/evaluate (backend data-structure)
-  (:documentation
-   "Instruct BACKEND to evaluate the given data structure. The
-exact semantics of this operation differ on each backend."))
+(defmethod compute-immediates :after
+    (data-structure (backend reference-backend))
+  (clrhash (memoization-table backend)))
 
-(defmethod vm/schedule ((vm reference-backend) targets recipes)
-  (loop for target across targets
-        for recipe across recipes do
-          (setf (storage target)
-                (make-array
-                 (map 'list #'set-size (ranges (index-space target)))
-                 :element-type (element-type target)))
-          (reference-vm/copy
-           (vm/evaluate vm recipe)
-           target))
-  (clrhash (evaluated-nodes vm))
-  (values))
 
-(defun reference-vm/normalize (result)
-  "Assert that RESULT satisfies the reference backend array
-   representation and ensure the canonical ordering of indices."
-  (let ((dimension (length (car (first result)))))
-    (loop for (indices . nil) in result do
-      (assert (= (length indices) dimension))))
-  (flet ((list-lessp (list-1 list-2)
-           (loop for element-1 in list-1
-                 for element-2 in list-2
-                 do (unless (= element-1 element-2)
-                      (return (< element-1 element-2))))))
-    (sort result #'list-lessp :key #'first)))
+(defmethod compute-immediates ((data-structures list) (backend reference-backend))
+  (mapcar (lambda (x)
+            (canonicalize-data-structure
+             (array-from-ir
+              (evaluate x backend))))
+          data-structures))
 
-(defgeneric reference-vm/represent (immediate)
-  (:method ((strided-array-index-space strided-array-index-space))
-    (if (= 0 (dimension strided-array-index-space))
-        (list ())
-        (apply #'map-product #'list
-               (map 'list #'reference-vm/represent
-                    (ranges strided-array-index-space)))))
-  (:method ((range range))
-    (loop for i
-          from (range-start range)
-            by (range-step range)
-            to (range-end range)
-          collect i)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Conversion between arrays and internal representation
 
-(defgeneric reference-vm/copy (from to)
-  (:method ((internal-representation list)
-            (strided-array-immediate strided-array-immediate))
-    (loop for (indices . value) in internal-representation do
-      (setf (apply #'aref (storage strided-array-immediate)
-                   (funcall (transformation strided-array-immediate) indices))
-            value))))
+(defun ir-from-array (array)
+  (if (null (array-dimensions array))
+      (list
+       (cons '() (aref array)))
+      (loop for indices in (apply #'map-product #'list
+                                  (mapcar #'iota (array-dimensions array)))
+            collect (cons indices (apply #'aref array indices)))))
 
-(defmethod vm/evaluate :around
-    ((vm reference-backend) (node data-structure))
-  (with-hash-table-memoization (node)
-      (evaluated-nodes vm)
-    (reference-vm/normalize
-     (call-next-method))))
+(defun array-from-ir (ir &key (element-type t))
+  (let* ((array-dimensions
+           (mapcar #'1+
+                   (if (null ir)
+                       ()
+                       (reduce (lambda (l1 l2) (mapcar #'max l1 l2)) ir
+                               :key #'first))))
+         (array
+           (make-array array-dimensions :element-type element-type)))
+    (loop for (indices . value) in ir do
+      (setf (apply #'aref array indices) value))
+    array))
 
-(defmethod vm/evaluate
-    ((vm reference-backend) (node immediate))
-  (let ((list-of-indices (reference-vm/represent (index-space node))))
-    (loop for indices in list-of-indices
-          collect
-          (cons
-           indices
-           (apply #'aref (storage node)
-                  (funcall (transformation node) indices))))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Evaluation
 
-(defmethod vm/evaluate
-    ((vm reference-backend) (node application))
-  (flet ((indices (input) (car input))
-         (value (input) (cdr input))
-         (evaluate (node)
-           (vm/evaluate vm node)))
-    (let ((operator (operator node)))
-      (apply #'mapcar
-             (lambda (&rest inputs)
-               (assert (identical inputs :test #'equal :key #'indices))
-               (cons
-                (indices (first inputs))
-                (apply operator (mapcar #'value inputs))))
-             (mapcar #'evaluate (inputs node))))))
+(defun normalize (representation)
+  (assert (petalisp::identical representation :key (compose #'length #'first)))
+  (sort (copy-list representation)
+        (lambda (l1 l2) (every #'<= l1 l2))
+        :key #'first))
 
-(defmethod vm/evaluate
-    ((vm reference-backend) (node reduction))
-  (let ((input (vm/evaluate vm (input node)))
-        (binary-operator (binary-operator node))
-        (unary-operator (unary-operator node))
-        result)
-    (loop for (indices . value) in input do
-      (let ((new-indices (butlast indices)))
-        (if-let ((found (assoc new-indices result :test #'equal)))
-          (setf (cdr found)
-                (funcall binary-operator (cdr found) value))
-          (push (cons new-indices (funcall unary-operator value)) result))))
-    result))
+(defmethod evaluate :around
+    ((data-structure data-structure)
+     (backend reference-backend))
+  (petalisp::with-hash-table-memoization (data-structure)
+      (memoization-table backend)
+    (normalize (call-next-method))))
 
-(defmethod vm/evaluate
-    ((vm reference-backend) (node fusion))
-  (flet ((evaluate (node)
-           (vm/evaluate vm node)))
-    (apply #'append (mapcar #'evaluate (inputs node)))))
+(defmethod evaluate ((immediate immediate) (backend reference-backend))
+  (ir-from-array (storage-array immediate)))
 
-(defmethod vm/evaluate
-    ((vm reference-backend) (node reference))
-  (let ((list-of-indices (reference-vm/represent (index-space node)))
-        (input (vm/evaluate vm (input node))))
-    (loop for indices in list-of-indices
-          collect
-          (flet ((indices (input) (car input))
-                 (value (input) (cdr input)))
-            (cons indices
-                  (value
-                   (find (funcall (transformation node) indices)
-                         input
-                         :test #'equal
-                         :key #'indices)))))))
+(defmethod evaluate ((application application) (backend reference-backend))
+  (let ((operator (application-operator application)))
+    (apply #'mapcar
+           (lambda (&rest inputs)
+             (assert (petalisp::identical inputs :test #'equal :key #'first))
+             (cons (first (first inputs))
+                   (apply operator (mapcar #'rest inputs))))
+           (mapcar (lambda (x) (evaluate x backend))
+                   (inputs application)))))
+
+(defmethod evaluate ((reduction reduction) (backend reference-backend))
+  (let ((binop (reduction-binary-operator reduction))
+        (unop (reduction-unary-operator reduction))
+        (table (make-hash-table :test #'equal)))
+    (loop for (indices . value) in (evaluate (input reduction) backend) do
+      (multiple-value-bind (accumulator present-p)
+          (gethash (rest indices) table)
+        (if (not present-p)
+            (setf (gethash (first indices) table)
+                  (funcall unop value))
+            (setf (gethash (first indices) table)
+                  (funcall binop accumulator value)))))
+    (maphash #'cons table)))
+
+(defmethod evaluate ((fusion fusion) (backend reference-backend))
+  (apply #'append (mapcar (lambda (x) (evaluate x backend))
+                          (inputs fusion))))
+
+(defmethod evaluate ((reference reference) (backend reference-backend))
+  (let ((table (make-hash-table :test #'equal))
+        (transformation (transformation reference)))
+    (loop for (indices . value) in (evaluate (input reference) backend) do
+      (setf (gethash indices table) value))
+    (loop for indices in (set-elements (shape reference))
+          for input-indices = (funcall transformation indices)
+          collect (cons indices
+                        (multiple-value-bind (value present-p)
+                            (gethash  input-indices table)
+                          (assert present-p)
+                          value)))))

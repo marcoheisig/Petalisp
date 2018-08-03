@@ -48,6 +48,10 @@
      :scaling (map 'vector #'range-step ranges)
      :translation (map 'vector #'range-start ranges))))
 
+(defun collapsing-transformation (index-space)
+  (invert-transformation
+   (from-storage-transformation index-space)))
+
 (defmethod make-immediate! ((strided-array strided-array))
   (change-class strided-array 'strided-array-immediate))
 
