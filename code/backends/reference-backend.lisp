@@ -102,7 +102,7 @@
     (maphash
      (lambda (indices value)
        (setf (gethash indices table)
-             (let ((alist (sort (gethash-or-die indices table) predicate :key #'car)))
+             (let ((alist (sort value predicate :key #'car)))
                (reduce binop (cdr alist)
                        :key #'cdr
                        :initial-value (funcall unop (cdar alist))))))

@@ -25,13 +25,13 @@
       :components
       ((:file "optimization")
        (:file "memoization")
-       (:file "function-lambda-lists")
        (:file "miscellaneous")
        (:file "ucons")))
 
      (:module "type-inference"
       :components
       ((:file "atomic-types")
+       (:file "function-lambda-lists")
        (:file "inference")
        (:file "numbers")
        (:file "data-and-control-flow")))
