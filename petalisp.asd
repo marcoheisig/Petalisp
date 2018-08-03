@@ -25,7 +25,6 @@
       :components
       ((:file "optimization")
        (:file "memoization")
-       (:file "atomic-types")
        (:file "extended-euclid")
        (:file "function-lambda-lists")
        (:file "miscellaneous")
@@ -33,7 +32,8 @@
 
      (:module "type-inference"
       :components
-      ((:file "inference")
+      ((:file "atomic-types")
+       (:file "inference")
        (:file "numbers")
        (:file "data-and-control-flow")))
 
@@ -74,10 +74,10 @@
       :components
       ((:file "backend")
        (:file "reference-backend")
-       (:file "testing-backend")
-
-       (:file "default-scheduler-mixin")
-       (:file "compile-cache-mixin")
-       (:file "common-lisp-backend")))
+       (:file "test-backend-mixin")
+       (:module "native-backend"
+        :components ((:file "scheduler")
+                     (:file "compile-cache-mixin")
+                     (:file "native-backend")))))
 
      (:file "api")))))
