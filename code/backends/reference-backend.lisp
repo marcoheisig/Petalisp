@@ -51,7 +51,7 @@
 (defmethod evaluate :around
     ((data-structure data-structure)
      (backend reference-backend))
-  (petalisp::with-hash-table-memoization (data-structure)
+  (petalisp-memoization:with-hash-table-memoization (data-structure)
       (memoization-table backend)
     (let ((table (call-next-method)))
       (assert (= (hash-table-count table)

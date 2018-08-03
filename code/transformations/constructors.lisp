@@ -7,7 +7,7 @@
 ;;; The Primary Transformation Constructors
 
 (defun make-identity-transformation (dimension)
-  (with-vector-memoization (dimension)
+  (petalisp-memoization:with-vector-memoization (dimension)
     (make-instance 'identity-transformation
       :dimension dimension)))
 

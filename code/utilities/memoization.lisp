@@ -1,6 +1,16 @@
 ;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
-(in-package :petalisp)
+(cl:defpackage :petalisp-memoization
+  (:use :cl :alexandria)
+  (:export
+   #:with-memoization
+   #:with-multiple-value-memoization
+   #:with-hash-table-memoization
+   #:with-multiple-value-hash-table-memoization
+   #:with-vector-memoization
+   #:with-multiple-value-vector-memoization))
+
+(in-package :petalisp-memoization)
 
 ;;; Marco Heisig's Memoization Macros
 ;;;
@@ -80,11 +90,11 @@ evaluation of BODY and its value is used instead of KEY for storing the
 results.  This way, KEY can be an object with dynamic extent (to avoid
 consing) and STORE-KEY can create a copy with indefinite extent when
 necessary."
-  (values-list
-   (with-hash-table-memoization
-       (,key ,@(when store-key-p `(:store-key ,store-key)))
-       ,hash-table
-       (multiple-value-list (progn ,@body)))))
+  `(values-list
+    (with-hash-table-memoization
+        (,key ,@(when store-key-p `(:store-key ,store-key)))
+        ,hash-table
+      (multiple-value-list (progn ,@body)))))
 
 (defmacro with-hash-table-memoization
     ((key &key (store-key nil store-key-p)) hash-table &body body)

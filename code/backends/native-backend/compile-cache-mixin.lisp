@@ -9,6 +9,6 @@
 
 (defmethod vm/compile :around
     ((backend compile-cache-mixin) blueprint)
-  (with-hash-table-memoization (blueprint)
+  (petalisp-memoization:with-hash-table-memoization (blueprint)
       (compile-cache backend)
     (call-next-method)))

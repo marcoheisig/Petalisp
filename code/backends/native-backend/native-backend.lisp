@@ -55,19 +55,19 @@
   (symbol-with-indices "BASE-INDEX" depth reference-id))
 
 (defun index-symbol (n)
-  (with-vector-memoization (n)
+  (petalisp-memoization:with-vector-memoization (n)
     (symbol-with-indices "INDEX" n)))
 
 (defun array-symbol (n)
-  (with-vector-memoization (n)
+  (petalisp-memoization:with-vector-memoization (n)
     (symbol-with-indices "ARRAY" n)))
 
 (defun bound-symbol (n)
-  (with-vector-memoization (n)
+  (petalisp-memoization:with-vector-memoization (n)
     (symbol-with-indices "BOUND" n)))
 
 (defun accumulator-symbol (n)
-  (with-vector-memoization (n)
+  (petalisp-memoization:with-vector-memoization (n)
     (symbol-with-indices "ACC" n)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
