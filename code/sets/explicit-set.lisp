@@ -18,6 +18,13 @@
 ;;;
 ;;; Methods on Explicit Sets
 
+(defmethod set-elements ((set explicit-set))
+  (loop for element being the hash-keys of (set-element-table set)
+        collect element))
+
+(defmethod set-size ((set explicit-set))
+  (hash-table-count (set-element-table set)))
+
 (defmethod set-contains ((set explicit-set) (object t))
   (values (gethash object (set-element-table set))))
 
@@ -26,10 +33,6 @@
     (loop for element being the hash-keys of (set-element-table set-2) do
       (remhash element table))
     (make-instance 'explicit-set :table table)))
-
-(defmethod set-elements ((set explicit-set))
-  (loop for element being the hash-keys of (set-element-table set)
-        collect element))
 
 (defmethod set-equal ((set-1 explicit-set) (set-2 explicit-set))
   (let ((table-1 (set-element-table set-1))
@@ -55,9 +58,6 @@
         (table-2 (set-element-table set-2)))
     (loop for element being the hash-keys of table-1
             thereis (gethash element table-2))))
-
-(defmethod set-size ((set explicit-set))
-  (hash-table-count (set-element-table set)))
 
 (defmethod set-union ((set-1 explicit-set) (set-2 explicit-set))
   (let ((table (copy-hash-table (set-element-table set-1))))

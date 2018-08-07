@@ -15,23 +15,27 @@
 ;;;
 ;;; Generic Functions
 
+(defgeneric set-elements (set))
+
+(defgeneric set-size (set))
+
+(defgeneric set-emptyp (set))
+
 (defgeneric set-contains (set object))
 
 (defgeneric set-difference (set-1 set-2))
 
-(defgeneric set-elements (set))
+(defgeneric set-equal (set-1 set-2)
+  (:generic-function-class symmetric-function))
 
-(defgeneric set-emptyp (set))
+(defgeneric set-intersection (set-1 set-2)
+  (:generic-function-class symmetric-function))
 
-(defgeneric set-equal (set-1 set-2))
+(defgeneric set-intersectionp (set-1 set-2)
+  (:generic-function-class symmetric-function))
 
-(defgeneric set-intersection (set-1 set-2))
-
-(defgeneric set-intersectionp (set-1 set-2))
-
-(defgeneric set-size (set))
-
-(defgeneric set-union (set-1 set-2))
+(defgeneric set-union (set-1 set-2)
+  (:generic-function-class symmetric-function))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -50,17 +54,15 @@
 ;;;
 ;;; Miscellaneous Other Methods
 
+(defmethod set-size ((set finite-set))
+  (length (set-elements set)))
+
 (defmethod set-emptyp ((set any-set))
-  nil)
-
-(defmethod set-equal ((set-1 finite-set) (set-2 infinite-set))
-  nil)
-
-(defmethod set-equal ((set-1 infinite-set) (set-2 finite-set))
   nil)
 
 (defmethod set-intersectionp ((set-1 any-set) (set-2 any-set))
   (and (set-intersection set-1 set-2) t))
 
-(defmethod set-size ((set finite-set))
-  (length (set-elements set)))
+(define-method-pair set-equal ((set-1 finite-set) (set-2 infinite-set))
+  (declare (ignore set-1 set-2))
+  nil)

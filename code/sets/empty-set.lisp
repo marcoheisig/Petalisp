@@ -13,38 +13,38 @@
 ;;;
 ;;; Methods on Empty Sets
 
-(defmethod set-contains ((set empty-set) (object t))
-  nil)
-
-(defmethod set-difference ((set-1 any-set) (set-2 empty-set))
-  set-1)
-
 (defmethod set-elements ((set empty-set))
   '())
-
-(defmethod set-emptyp ((set empty-set))
-  t)
-
-(defmethod set-equal ((set-1 empty-set) (set-2 empty-set))
-  t)
-
-(defmethod set-intersection ((set-1 any-set) (set-2 empty-set))
-  nil)
-
-(defmethod set-intersection ((set-1 empty-set) (set-2 any-set))
-  nil)
-
-(defmethod set-intersectionp ((set-1 empty-set) (set-2 any-set))
-  nil)
-
-(defmethod set-intersectionp ((set-1 any-set) (set-2 empty-set))
-  nil)
 
 (defmethod set-size ((set empty-set))
   0)
 
-(defmethod set-union ((set-1 any-set) (set-2 empty-set))
-  set-1)
+(defmethod set-emptyp ((set empty-set))
+  t)
 
-(defmethod set-union ((set-1 empty-set) (set-2 any-set))
-  set-2)
+(defmethod set-contains ((set empty-set) (object t))
+  nil)
+
+(defmethod set-difference ((any-set any-set) (empty-set empty-set))
+  (declare (ignore empty-set))
+  any-set)
+
+(defmethod set-equal ((set-1 empty-set) (set-2 empty-set))
+  (declare (ignore set-1 set-2))
+  t)
+
+(define-method-pair set-equal ((empty-set empty-set) (any-set any-set))
+  (declare (ignore empty-set any-set))
+  nil)
+
+(define-method-pair set-intersection ((empty-set empty-set) (any-set any-set))
+  (declare (ignore any-set))
+  empty-set)
+
+(define-method-pair set-intersectionp ((empty-set empty-set) (any-set any-set))
+  (declare (ignore any-set empty-set))
+  nil)
+
+(define-method-pair set-union ((empty-set empty-set) (any-set any-set))
+  (declare (ignore empty-set))
+  any-set)

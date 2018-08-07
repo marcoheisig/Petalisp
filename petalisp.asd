@@ -26,6 +26,7 @@
       ((:file "optimization")
        (:file "memoization")
        (:file "miscellaneous")
+       (:file "symmetric-function")
        (:file "ucons")))
 
      (:module "type-inference"
