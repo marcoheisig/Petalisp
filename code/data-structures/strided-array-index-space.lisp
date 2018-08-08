@@ -7,6 +7,9 @@
             :reader ranges
             :type vector)))
 
+(defmethod make-instance :after ((instance strided-array-index-space) &key &allow-other-keys)
+  (assert (notany #'set-emptyp (ranges instance))))
+
 (defmethod make-load-form ((object strided-array-index-space) &optional environment)
   (make-load-form-saving-slots object :environment environment))
 
@@ -56,19 +59,21 @@
 
 (defmethod index-space-difference ((space-1 strided-array-index-space)
                                    (space-2 strided-array-index-space))
-  (if-let ((intersection (index-space-intersection space-1 space-2)))
-    (let ((result '()))
-      (loop for r1 across (ranges space-1)
-            for r2 across (ranges space-2)
-            for i from 0 do
-              (loop for difference in (set-difference r1 r2) do
-                (let ((ranges (copy-array (ranges space-1))))
-                  (replace ranges (ranges intersection) :end1 i)
-                  (setf (aref ranges i) difference)
-                  (push (make-instance 'strided-array-index-space :ranges ranges)
-                        result)))
-            finally (return result)))
-    (list space-1)))
+  (let ((intersection (index-space-intersection space-1 space-2)))
+    (if (set-emptyp intersection)
+        (list space-1)
+        (let ((result '()))
+          (loop for r1 across (ranges space-1)
+                for r2 across (ranges space-2)
+                for i from 0 do
+                  (loop for difference in (range-difference-list r1 r2) do
+                    (let ((ranges (copy-array (ranges space-1))))
+                      (replace ranges (ranges intersection) :end1 i)
+                      (setf (aref ranges i) difference)
+                      (push (make-instance 'strided-array-index-space :ranges ranges)
+                            result)))
+                finally
+                   (return result))))))
 
 (defmethod dimension ((object strided-array-index-space))
   (length (ranges object)))
@@ -94,8 +99,10 @@
     :ranges
     (map 'vector
          (lambda (a b)
-           (or (set-intersection a b)
-               (return-from index-space-intersection nil)))
+           (let ((intersection (set-intersection a b)))
+             (if (set-emptyp intersection)
+                 (return-from index-space-intersection (empty-set))
+                 intersection)))
          (ranges space-1)
          (ranges space-2))))
 
@@ -209,3 +216,6 @@
 (defmethod transform ((data-structure data-structure)
                       (operator identity-transformation))
   data-structure)
+
+(defmethod set-emptyp ((index-space strided-array-index-space))
+  nil)

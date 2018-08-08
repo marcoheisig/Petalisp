@@ -14,6 +14,8 @@
 
 (defgeneric range-end (range))
 
+(defgeneric range-difference-list (range-1 range-2))
+
 (defgeneric make-range (start step end))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -23,13 +25,20 @@
 (defclass range (finite-set)
   ())
 
-(defclass contiguous-range (range)
-  ((%start :initarg :start :reader range-start)
-   (%end :initarg :end :reader range-end)))
-
-(defclass strided-range (range)
+(defclass non-contiguous-range (range)
   ((%start :initarg :start :reader range-start)
    (%step :initarg :step :reader range-step)
+   (%end :initarg :end :reader range-end)))
+
+(defclass contiguous-range (range)
+  ())
+
+(defclass unary-range (contiguous-range)
+  ((%element :initarg :start :reader range-start
+             :initarg :end :reader range-end)))
+
+(defclass non-unary-contiguous-range (contiguous-range)
+  ((%start :initarg :start :reader range-start)
    (%end :initarg :end :reader range-end)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -39,7 +48,7 @@
 (defmethod range-step ((range contiguous-range))
   1)
 
-(defmethod range-start-step-end ((range strided-range))
+(defmethod range-start-step-end ((range range))
   (values (range-start range)
           (range-step range)
           (range-end range)))
@@ -49,14 +58,36 @@
           1
           (range-end range)))
 
+(defmethod range-start-step-end ((range unary-range))
+  (let ((element (range-start range)))
+    (values element 1 element)))
+
 (defmethod set-elements ((range range))
-  (loop for x from (range-start range) by (range-step range) to (range-end range)
-        collect x))
+  (multiple-value-bind (start step end)
+      (range-start-step-end range)
+    (loop for integer from start by step to end
+          collect integer)))
 
 (defmethod set-size ((range range))
-  (1+ (/ (- (range-end range)
-            (range-start range))
+  (1+ (/ (- (range-end range) (range-start range))
          (range-step range))))
+
+(defmethod set-size ((range contiguous-range))
+  (1+ (- (range-end range) (range-start range))))
+
+(defmethod set-size ((range unary-range))
+  1)
+
+(defmethod set-contains ((range range) (integer integer))
+  (and (<= (range-start range) integer (range-end range))
+       (zerop (rem (- integer (range-start range))
+                   (range-step range)))))
+
+(defmethod set-contains ((range contiguous-range) (integer integer))
+  (<= (range-start range) integer (range-end range)))
+
+(defmethod set-contains ((range unary-range) (integer integer))
+  (= integer (range-start range)))
 
 (defmethod set-equal ((range-1 range) (range-2 range))
   (and (= (range-start range-1)
@@ -66,43 +97,75 @@
        (= (range-end range-1)
           (range-end range-2))))
 
+(defmethod set-equal ((range-1 unary-range) (range-2 unary-range))
+  (= (range-start range-1) (range-start range-2)))
+
+(define-method-pair set-equal ((range-1 unary-range) (range-2 range))
+  (declare (ignore range-1 range-2))
+  nil)
+
+(define-method-pair set-equal ((range range) (explicit-set explicit-set))
+  (let ((table (set-element-table explicit-set)))
+    (and (= (hash-table-count table) (set-size range))
+         (loop for integer from (range-start range) by (range-step range) to (range-end range)
+               always (gethash integer table)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Difference of Ranges
 
-(defmethod set-difference ((range-1 range) (range-2 range))
+(defmethod range-difference-list ((range-1 range) (range-2 range))
   ;; We only care about the part of range-2 that intersects with range-1.
   (let ((range-2 (set-intersection range-1 range-2)))
-    (multiple-value-bind (start-1 step-1 end-1) (range-start-step-end range-1)
-      (multiple-value-bind (start-2 step-2 end-2) (range-start-step-end range-2)
-        (declare (integer start-1 end-1 start-2 end-2)
-                 (positive-integer step-1 step-2))
-        ;; The new range-2 is now a proper sub-range of range-1, i.e. we
-        ;; have (<= start-1 start-2 end-2 end-1).  Furthermore, step-2 is
-        ;; now either a multiple of step-1, or one, if range-2 has only a
-        ;; single element.
-        (cond
-          (;; If range-2 does not intersect range-1, we are done.
-           (null range-2) (list range-1))
-          ;; Now we pick off the five special cases where range-2 has only
-          ;; a single element.
-          ((= start-2 end-2)
-           (range-difference-list--single start-1 step-1 end-1 start-2))
-          ;; At this point, we know that step-2 is a multiple of step-1.
-          ;; Using a coordinate transformation, we simplify this case such
-          ;; that range-1 is contiguous.
-          (t
-           (range-difference-list--contiguous
-            0
-            (/ (- end-1 start-1) step-1)
-            (/ (- start-2 start-1) step-1)
-            (/ step-2 step-1)
-            (/ (- end-2 start-1) step-1)
-            (lambda (start step end)
-              (make-range
-               (+ (* start step-1) start-1)
-               (* step step-1)
-               (+ (* end step-1) start-1))))))))))
+    (if (set-emptyp range-2)
+        (list range-1)
+        (multiple-value-bind (start-1 step-1 end-1) (range-start-step-end range-1)
+          (multiple-value-bind (start-2 step-2 end-2) (range-start-step-end range-2)
+            (declare (integer start-1 end-1 start-2 end-2)
+                     (positive-integer step-1 step-2))
+            ;; The new range-2 is now a proper sub-range of range-1, i.e. we
+            ;; have (<= start-1 start-2 end-2 end-1).  Furthermore, step-2 is
+            ;; now either a multiple of step-1, or one, if range-2 has only a
+            ;; single element.
+            (cond
+              (;; If range-2 does not intersect range-1, we are done.
+               (set-emptyp range-2) (list range-1))
+              ;; Now we pick off the five special cases where range-2 has only
+              ;; a single element.
+              ((= start-2 end-2)
+               (range-difference-list--single start-1 step-1 end-1 start-2))
+              ;; At this point, we know that step-2 is a multiple of step-1.
+              ;; Using a coordinate transformation, we simplify this case such
+              ;; that range-1 is contiguous.
+              (t
+               (range-difference-list--contiguous
+                0
+                (/ (- end-1 start-1) step-1)
+                (/ (- start-2 start-1) step-1)
+                (/ step-2 step-1)
+                (/ (- end-2 start-1) step-1)
+                (lambda (start step end)
+                  (make-range
+                   (+ (* start step-1) start-1)
+                   (* step step-1)
+                   (+ (* end step-1) start-1)))))))))))
+
+(defmethod range-difference-list ((range-1 unary-range) (range-2 unary-range))
+  (if (= (range-start range-1) (range-start range-2))
+      (list range-1)
+      '()))
+
+(defmethod range-difference-list ((range-1 range) (range-2 unary-range))
+  (multiple-value-call #'range-difference-list--single
+    (range-start-step-end range-1)
+    (range-start range-2)))
+
+(defmethod range-difference-list ((range-1 contiguous-range) (range-2 range))
+  (multiple-value-call #'range-difference-list--contiguous
+    (values (range-start range-1))
+    (values (range-end range-1))
+    (range-start-step-end range-2)
+    #'make-range))
 
 (defun range-difference-list--contiguous
     (start-1 end-1 start-2 step-2 end-2 make-range-fn)
@@ -180,6 +243,22 @@
 ;;;
 ;;; Intersection of Ranges
 
+(defmethod set-intersection ((range-1 range) (range-2 range))
+  (multiple-value-bind (start step end)
+      (range-intersection-start-step-end range-1 range-2)
+    (if (null start)
+        (empty-set)
+        (make-range start step end))))
+
+(defmethod set-intersection ((range-1 contiguous-range) (range-2 contiguous-range))
+  (let ((start (max (range-start range-1)
+                    (range-start range-2)))
+        (end (min (range-end range-1)
+                  (range-end range-2))))
+    (if (<= start end)
+        (make-range start 1 end)
+        (empty-set))))
+
 (defun range-intersection-start-step-end (range-1 range-2)
   (let ((lb (max (range-start range-1) (range-start range-2)))
         (ub (min (range-end   range-1) (range-end   range-2))))
@@ -196,37 +275,24 @@
               (when (<= lb start end ub)
                 (values start lcm end)))))))))
 
-(defmethod set-intersection ((range-1 range) (range-2 range))
-  (multiple-value-bind (start step end)
-      (range-intersection-start-step-end range-1 range-2)
-    (when start (make-range start step end))))
-
-(defmethod set-intersection ((range-1 contiguous-range) (range-2 contiguous-range))
-  (let ((start (max (range-start range-1)
-                    (range-start range-2)))
-        (end (min (range-end range-1)
-                  (range-end range-2))))
-    (when (<= start end)
-      (make-range start 1 end))))
-
-(defmethod range-intersectionp ((range-1 range) (range-2 range))
+(defmethod set-intersectionp ((range-1 range) (range-2 range))
   (and (range-intersection-start-step-end range-1 range-2) t))
 
 (defmethod make-range ((start integer) (step integer) (end integer))
   (if (zerop step)
       (if (= start end)
-          (make-instance 'contiguous-range :start start :end start)
+          (make-instance 'unary-range :start start)
           (error "Bad step size 0 for range with start ~d and end ~d" start end))
       (let ((steps (truncate (- end start) step)))
         (if (= steps 0)
-            (make-instance 'contiguous-range :start start :end start)
+            (make-instance 'unary-range :start start)
             (let ((congruent-end (+ start (* step steps))))
               (let ((step (abs step))
                     (start (min start congruent-end))
                     (end (max start congruent-end)))
                 (if (= 1 step)
-                    (make-instance 'contiguous-range :start start :end end)
-                    (make-instance 'strided-range :start start :step step :end end))))))))
+                    (make-instance 'non-unary-contiguous-range :start start :end end)
+                    (make-instance 'non-contiguous-range :start start :step step :end end))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

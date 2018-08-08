@@ -70,8 +70,10 @@
 
 (defgeneric subspace-p (space-1 space-2)
   (:method ((space-1 t) (space-2 t))
-    (if-let ((intersection (index-space-intersection space-1 space-2)))
-      (index-space-equality space-1 intersection))))
+    (let ((intersection (index-space-intersection space-1 space-2)))
+      (if (set-emptyp intersection)
+          nil
+          (index-space-equality space-1 intersection)))))
 
 ;;; Given an index space FROM of dimension N and an index space TO of
 ;;; dimension N+1, return an index space whose first dimensions are taken from
@@ -84,16 +86,20 @@
 ;;; subspace of one or more of the arguments and their fusion covers all
 ;;; arguments.
 (defun subdivision (index-spaces)
-  (flet ((shatter (dust object)   ; dust is a list of disjoint index-spaces
-           (let* ((object-w/o-dust (list object))
-                  (new-dust
-                    (loop for particle in dust do
-                      (setf object-w/o-dust
-                            (loop for x in object-w/o-dust
-                                  append (index-space-difference x particle)))
-                          append (index-space-difference particle object)
-                          when (index-space-intersection particle object) collect it)))
-             (append object-w/o-dust new-dust))))
-    (cond ((emptyp index-spaces) nil)
+  (labels ((subtract (spaces what)
+             (loop for space in spaces
+                   append (index-space-difference space what)))
+           (shatter (dust object) ; dust is a list of disjoint index-spaces
+             (let* ((object-w/o-dust (list object))
+                    (new-dust '()))
+               (loop for particle in dust do
+                 (setf object-w/o-dust (subtract object-w/o-dust particle))
+                 (loop for space in (index-space-difference particle object) do
+                   (push space new-dust))
+                 (let ((it (index-space-intersection particle object)))
+                   (unless (set-emptyp it)
+                     (push it new-dust))))
+               (append object-w/o-dust new-dust))))
+    (cond ((emptyp index-spaces) '())
           ((= 1 (length index-spaces)) (list (elt index-spaces 0)))
           (t (reduce #'shatter index-spaces :initial-value nil)))))

@@ -22,11 +22,9 @@
 
 (defmethod compute-applicable-methods-using-classes
     ((generic-function symmetric-function) classes)
-  (multiple-value-bind (methods ok) (call-next-method)
-    (when ok
-      (loop for method in methods do
-        (validate-symmetric-method method methods)))
-    (values methods ok)))
+  (let ((methods (generic-function-methods generic-function) do))
+    (loop for method in methods do (validate-symmetric-method method methods)))
+  (call-next-method))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
