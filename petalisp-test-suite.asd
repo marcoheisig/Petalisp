@@ -21,5 +21,4 @@
     :components
     ((:file "packages")
      (:file "code-statistics")
-     (:file "generators")
      (:file "test-suite")))))

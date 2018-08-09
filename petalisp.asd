@@ -29,6 +29,7 @@
        (:file "identical")
        (:file "miscellaneous")
        (:file "symmetric-function")
+       (:file "generators")
        (:file "ucons")))
 
      (:module "type-inference"
