@@ -54,14 +54,13 @@
        (:file "identity-transformation")
        (:file "invertible-transformation")
        (:file "hairy-transformation")
-       (:file "constructors")))
+       (:file "constructors")
+       (:file "shape-transformations")))
 
      (:module "data-structures"
       :components
-      ((:file "index-space")
-       (:file "data-structure-method-combination")
+      ((:file "data-structure-method-combination")
        (:file "data-structure")
-       (:file "strided-array-index-space")
        (:file "strided-array")
        (:file "strided-array-immediate")))
 

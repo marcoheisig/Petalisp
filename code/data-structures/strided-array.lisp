@@ -31,7 +31,7 @@
                    (upgraded-array-element-type
                     `(or ,@(mapcar #'element-type all-inputs))))
     :inputs all-inputs
-    :shape (apply #'shape-union (mapcar #'shape all-inputs))))
+    :shape (shape-union (mapcar #'shape all-inputs))))
 
 (defmethod make-reduction (binary-operator unary-operator
                            (strided-array strided-array)

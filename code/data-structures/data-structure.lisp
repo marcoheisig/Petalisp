@@ -253,7 +253,7 @@
   (let ((relevant-shape (transform shape transformation))
         (input-shape (shape data-structure)))
     (demand (and (= (dimension relevant-shape) (dimension input-shape))
-                 (subspace-p relevant-shape input-shape))
+                 (set-subsetp relevant-shape input-shape))
       "~@<The index shape referenced by the current reference is ~S, ~
           which is not a subshape of ~S, the index shape of the input of ~
           the current reference.~:@>"
@@ -291,3 +291,6 @@
 
 (defmethod shape ((array array))
   (make-shape (array-dimensions array)))
+
+(defmethod transform ((data-structure data-structure) (operator identity-transformation))
+  data-structure)

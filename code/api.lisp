@@ -71,7 +71,7 @@ overlap partially, the value of the rightmost object is used."
   (let ((objects (mapcar #'canonicalize-data-structure objects)))
     (flet ((reference-origin (piece)
              (make-reference
-              (find piece objects :from-end t :key #'shape :test #'subspace-p)
+              (find piece objects :from-end t :key #'shape :test #'set-subsetp)
               piece
               (make-identity-transformation (dimension piece)))))
       (let ((inputs

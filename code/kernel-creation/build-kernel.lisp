@@ -78,7 +78,7 @@ and RELEVANT-SPACE."
                   (let* ((input (find relevant-space (inputs node)
                                       :key #'shape
                                       :test #'set-intersectionp))
-                         (relevant-space (shape-intersection relevant-space (shape input))))
+                         (relevant-space (set-intersection relevant-space (shape input))))
                     (walk input relevant-space transformation)))
                  (reference ;; eliminate/lift references
                   (let ((relevant-space

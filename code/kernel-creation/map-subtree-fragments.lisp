@@ -31,7 +31,7 @@ fragment, FRAGMENT-FN receives the following arguments:
                   (let ((total-reductions 0))
                     (declare (non-negative-fixnum total-reductions))
                     (dolist (input (inputs node))
-                      (let ((subspace (shape-intersection shape (shape input))))
+                      (let ((subspace (set-intersection shape (shape input))))
                         (unless (set-emptyp subspace)
                           (multiple-value-bind (fusion-free? n-reductions)
                               (walk-potential-outer-node input subspace transformation)
@@ -41,7 +41,7 @@ fragment, FRAGMENT-FN receives the following arguments:
                  ;; Case 3: References
                  (reference
                   (let ((transformation (compose-transformations (transformation node) transformation))
-                        (subspace (shape-intersection shape (shape node))))
+                        (subspace (set-intersection shape (shape node))))
                     (multiple-value-bind (fusion-free? n-reductions)
                         (walk (input node) subspace transformation)
                       (values fusion-free? n-reductions))))
