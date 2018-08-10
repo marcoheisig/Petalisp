@@ -64,3 +64,15 @@
     (loop for element being the hash-keys of (set-element-table set-2) do
       (setf (gethash element table) t))
     (make-instance 'explicit-set :table table)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Methods Producing Explicit Sets
+
+(defmethod set-difference ((set-1 finite-set) (set-2 finite-set))
+  (set-from-sequence
+   (cl:set-difference (set-elements set-1) (set-elements set-2) :test #'equal)))
+
+(defmethod set-intersection ((set-1 finite-set) (set-2 finite-set))
+  (set-from-sequence
+   (intersection (set-elements set-1) (set-elements set-2) :test #'equal)))

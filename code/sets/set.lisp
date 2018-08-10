@@ -60,6 +60,9 @@
 (defmethod set-emptyp ((set any-set))
   nil)
 
+(defmethod set-contains ((set finite-set) (object t))
+  (and (member object (set-elements set) :test #'equal) t))
+
 (defmethod set-intersectionp ((set-1 any-set) (set-2 any-set))
   (and (set-intersection set-1 set-2) t))
 

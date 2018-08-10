@@ -5,8 +5,6 @@
 ;;; An index space of dimension D is a set of D-tuples i1,...,iD.
 (defclass index-space () ())
 
-(defgeneric dimension (object))
-
 ;;; Return a space such that all objects whose index space is SPACE or in
 ;;; MORE-SPACES can be broadcast to this space. Signal an error if there is no
 ;;; such space.

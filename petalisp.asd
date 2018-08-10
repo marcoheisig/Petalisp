@@ -45,7 +45,8 @@
       ((:file "set")
        (:file "empty-set")
        (:file "explicit-set")
-       (:file "range")))
+       (:file "range")
+       (:file "shape")))
 
      (:module "transformations"
       :components
