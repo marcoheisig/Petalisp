@@ -80,24 +80,21 @@
                    (return (empty-set))
                    a∩b))))
       (make-instance 'strided-array-index-space
-        :ranges (map 'list #'range-intersection
-                     (ranges shape-1)
-                     (ranges shape-2))))))
+        :ranges (mapcar #'range-intersection
+                        (ranges shape-1)
+                        (ranges shape-2))))))
 
 (defmethod set-intersectionp ((shape-1 shape) (shape-2 shape))
   (every #'set-intersectionp (ranges shape-1) (ranges shape-2)))
 
 (defmethod print-object ((shape shape) stream)
-  (flet ((range-list (range)
-           (trivia:match
-               (list (range-start range)
-                     (range-step range)
-                     (range-end range))
-             ((list 0 1 a) a)
+  (flet ((represent (range)
+           (trivia:match (multiple-value-list (range-start-step-end range))
+             ((list 0 1 a) (1+ a))
              ((list a 1 b) (list a b))
              ((list a b c) (list a b c)))))
     (print-unreadable-object (shape stream :type t)
-      (princ (map 'list #'range-list (ranges shape)) stream))))
+      (princ (mapcar #'represent (ranges shape)) stream))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

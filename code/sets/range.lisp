@@ -294,6 +294,13 @@
                     (make-instance 'non-unary-contiguous-range :start start :end end)
                     (make-instance 'non-contiguous-range :start start :step step :end end))))))))
 
+(defmethod print-object ((range range) stream)
+  (print-unreadable-object (range stream)
+    (format stream "RANGE ~D ~D ~D"
+            (range-start range)
+            (range-step range)
+            (range-end range))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Legacy Functions
