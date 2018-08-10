@@ -35,20 +35,20 @@
      (data-structure data-structure))
   `(:label ,(format nil "~A~%~A"
                     (class-name (class-of data-structure))
-                    (index-space data-structure))))
+                    (shape data-structure))))
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
      (node strided-array-immediate))
   `(:fillcolor
     "cadetblue1"
-    ,@(when-let ((storage (and (= 1 (size node))
+    ,@(when-let ((storage (and (= 1 (set-size (shape node)))
                                (storage node))))
         (let ((*print-right-margin* 60))
           `(:label
             ,(format nil "~A~%~A~%~A"
                      (class-name (class-of node))
-                     (index-space node)
+                     (shape node)
                      (let ((*print-length* 8))
                        (format nil "~A" (storage node)))))))))
 
@@ -58,7 +58,7 @@
   `(:label ,(format nil "~A~%~A~%~A"
                     (class-name (class-of node))
                     (operator node)
-                    (index-space node))
+                    (shape node))
     :fillcolor "burlywood1"))
 
 (defmethod graphviz-node-attributes
@@ -67,7 +67,7 @@
   `(:label ,(format nil "~A~%~A~%~A"
                     (class-name (class-of node))
                     (binary-operator node)
-                    (index-space node))
+                    (shape node))
     :fillcolor "beige"))
 
 (defmethod graphviz-node-attributes
@@ -81,5 +81,5 @@
   `(:label ,(format nil "~A~%~A~%~A"
                     (class-name (class-of node))
                     (transformation node)
-                    (index-space node))
+                    (shape node))
     :fillcolor "gray"))

@@ -24,12 +24,15 @@
    #:range-end
    #:make-range
 
+   ;; Shapes
+   #:make-shape
+   #:dimension
    #:ranges
-   #:canonicalize-index-space
+   #:shape-difference-list
 
    ;; Transformations
    #:canonicalize-transformation
-   #:with-index-space-accessors
+   #:with-shape-accessors
    #:make-transformation
    #:make-identity-transformation
    #:invert-transformation
@@ -42,6 +45,7 @@
    #:data-structure
    #:element-type
    #:shape
+   #:size
    #:input
    #:inputs
    #:transformation
@@ -69,8 +73,6 @@
    #:fuse*
    #:compute
    #:schedule
-   #:size
-   #:dimension
 
    ;; Backends
    #:backend

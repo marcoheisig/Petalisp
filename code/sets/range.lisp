@@ -18,6 +18,8 @@
 
 (defgeneric make-range (start step end))
 
+(defgeneric rangep (object))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes
@@ -44,6 +46,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Methods
+
+(defmethod rangep ((object t))
+  nil)
+
+(defmethod rangep ((range range))
+  t)
 
 (defmethod range-step ((range contiguous-range))
   1)

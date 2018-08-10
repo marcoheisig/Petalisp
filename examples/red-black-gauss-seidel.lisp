@@ -8,7 +8,7 @@
 (in-package :petalisp/examples/red-black-gauss-seidel)
 
 (defun red-black-coloring (index-space)
-  (with-index-space-accessors (rank start step-size end) index-space
+  (with-shape-accessors (rank start step-size end) index-space
     (labels ((prepend-1 (list)
                (cons 1 list))
              (prepend-2 (list)
@@ -23,7 +23,7 @@
                             (mapcar #'prepend-2 red))
                     (1+ depth))))
              (offset-space (offsets)
-               (canonicalize-index-space
+               (make-shape
                 (loop for offset in offsets
                       for i from 0
                       collect (let ((step (step-size i)))

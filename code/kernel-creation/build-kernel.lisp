@@ -2,8 +2,8 @@
 
 (in-package :petalisp)
 
-;;; In the next step, given a particular subtree, together with the index
-;;; space of a particular fragment of this subtree (i.e. one without fusion
+;;; In the next step, given a particular subtree, together with the shape
+;;; of a particular fragment of this subtree (i.e. one without fusion
 ;;; nodes) and the dimension, build a kernel. This step has several
 ;;; intricacies.
 ;;;
@@ -33,7 +33,7 @@
 and RELEVANT-SPACE."
   (let* ((references        (make-array 10 :fill-pointer 0 :adjustable t))
          (unknown-functions (make-array 10 :fill-pointer 0 :adjustable t))
-         (normalizing-transformation (index-space-normalization relevant-space))
+         (normalizing-transformation (shape-normalization relevant-space))
          (bounds (make-array dimension :element-type 'array-index))
          (bounds-index (dimension relevant-space)))
     ;; initialize the initial array bounds
@@ -48,7 +48,7 @@ and RELEVANT-SPACE."
             (id immediate references)
             (compose-transformations (transformation immediate) transformation)))
          (walk (node relevant-space transformation)
-           (when relevant-space
+           (unless (set-emptyp relevant-space)
              (if-let ((leaf (funcall leaf-function node)))
                (walk-reference leaf transformation)
                (etypecase node
@@ -62,13 +62,13 @@ and RELEVANT-SPACE."
                        (ucons:map-ulist #'walk-input (inputs node))))))
                  (reduction
                   (let* ((input (input node))
-                         (reduction-range (last-elt (ranges (index-space input))))
+                         (reduction-range (last-elt (ranges (shape input))))
                          (scale (range-step reduction-range))
                          (offset (range-start reduction-range)))
                     (setf (aref bounds bounds-index)
                           (set-size reduction-range))
                     (incf bounds-index)
-                    (let ((relevant-space (enlarge-index-space relevant-space (index-space input)))
+                    (let ((relevant-space (enlarge-shape relevant-space (shape input)))
                           (transformation (enlarge-transformation transformation scale offset)))
                       (blueprint/reduce
                        (binary-operator node)
@@ -76,14 +76,14 @@ and RELEVANT-SPACE."
                        (walk input relevant-space transformation)))))
                  (fusion ;; the relevant space is already chosen to eliminate fusions
                   (let* ((input (find relevant-space (inputs node)
-                                      :key #'index-space
-                                      :test #'index-space-intersection-p))
-                         (relevant-space (index-space-intersection relevant-space (index-space input))))
+                                      :key #'shape
+                                      :test #'set-intersectionp))
+                         (relevant-space (shape-intersection relevant-space (shape input))))
                     (walk input relevant-space transformation)))
                  (reference ;; eliminate/lift references
                   (let ((relevant-space
-                          (index-space-intersection
-                           (index-space (input node))
+                          (set-intersection
+                           (shape (input node))
                            (transform relevant-space (transformation node))))
                         (transformation
                           (compose-transformations (transformation node) transformation)))
@@ -100,8 +100,8 @@ and RELEVANT-SPACE."
          :blueprint
          (blueprint/with-metadata bounds references blueprint-body))))))
 
-(defun index-space-normalization (index-space)
-  (let ((ranges (ranges index-space)))
+(defun shape-normalization (shape)
+  (let ((ranges (ranges shape)))
     (make-transformation
      :translation (map 'vector #'range-start ranges)
      :scaling (map 'vector #'range-step ranges))))

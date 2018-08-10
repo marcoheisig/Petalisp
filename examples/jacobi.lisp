@@ -7,8 +7,8 @@
 
 (in-package :petalisp/examples/jacobi)
 
-(defun interior (index-space)
-  (with-index-space-accessors (rank start step-size end) index-space
+(defun interior (shape)
+  (with-shape-accessors (rank start step-size end) shape
     (loop for i below rank
           collect
           (let ((step (step-size i)))

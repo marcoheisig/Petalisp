@@ -23,7 +23,7 @@
       :operator function-designator
       :element-type element-type
       :inputs inputs
-      :index-space (index-space first-input))))
+      :shape (shape first-input))))
 
 (defmethod make-fusion ((first-input strided-array) all-inputs)
   (make-instance 'strided-array-fusion
@@ -31,7 +31,7 @@
                    (upgraded-array-element-type
                     `(or ,@(mapcar #'element-type all-inputs))))
     :inputs all-inputs
-    :index-space (apply #'index-space-union (mapcar #'index-space all-inputs))))
+    :shape (apply #'shape-union (mapcar #'shape all-inputs))))
 
 (defmethod make-reduction (binary-operator unary-operator
                            (strided-array strided-array)
@@ -48,26 +48,23 @@
         :order order
         :element-type element-type
         :inputs (list strided-array)
-        :index-space
-        (let ((ranges (ranges (index-space strided-array))))
-          (make-instance 'strided-array-index-space
-            :ranges (subseq ranges 1 (length ranges))))))))
+        :shape (shape-from-ranges (cdr (ranges (shape strided-array))))))))
 
 (defmethod make-reference ((object strided-array)
-                           (space strided-array-index-space)
+                           (shape shape)
                            (transformation transformation))
   (make-instance 'strided-array-reference
     :element-type (element-type object)
     :inputs (list object)
-    :index-space space
+    :shape shape
     :transformation transformation))
 
-(defmethod broadcast ((object strided-array) (space strided-array-index-space))
-  ;; The goal is to find a transformation that maps SPACE to the index
-  ;; space of OBJECT.
+(defmethod broadcast ((object strided-array) (shape shape))
+  ;; The goal is to find a transformation that maps SHAPE to the shape of
+  ;; OBJECT.
   (let ((transformation
-          (let* ((input-ranges (ranges space))
-                 (output-ranges (ranges (index-space object)))
+          (let* ((input-ranges (ranges shape))
+                 (output-ranges (ranges (shape object)))
                  (input-dimension (length input-ranges))
                  (output-dimension (length output-ranges))
                  (translation (make-array output-dimension :initial-element 0))
@@ -78,8 +75,8 @@
                                          input-ranges)))
             (loop for index below output-dimension
                   unless (>= index input-dimension) do
-                    (let* ((output-range (aref output-ranges index))
-                           (input-range (aref input-ranges index))
+                    (let* ((output-range (elt output-ranges index))
+                           (input-range (elt input-ranges index))
                            (output-size (set-size output-range))
                            (input-size (set-size input-range)))
                       (cond ( ;; Select
@@ -108,16 +105,15 @@
              :translation translation
              :scaling scaling
              :input-constraints input-constraints))))
-    (make-reference object space transformation)))
+    (make-reference object shape transformation)))
 
-(defmethod canonicalize-index-space ((array array))
+(defmethod canonicalize-shape ((array array))
   (let* ((rank (array-rank array))
          (ranges (make-array rank)))
     (loop for axis below rank do
       (setf (aref ranges axis)
             (make-range 0 1 (1- (array-dimension array axis)))))
-    (make-instance 'strided-array-index-space
-      :ranges ranges)))
+    (shape-from-ranges ranges)))
 
-(defmethod canonicalize-index-space ((strided-array strided-array))
-  (index-space strided-array))
+(defmethod canonicalize-shape ((strided-array strided-array))
+  (shape strided-array))

@@ -7,14 +7,14 @@
 (defmethod canonicalize-data-structure ((array array))
   (make-instance 'strided-array-immediate
     :element-type (atomic-type (array-element-type array))
-    :index-space (canonicalize-index-space array)
+    :shape (make-shape (array-dimensions array))
     :storage array
     :kernels nil))
 
 (defmethod canonicalize-data-structure ((object t))
   (make-instance 'strided-array-immediate
     :element-type (atomic-type (type-of object))
-    :index-space (canonicalize-index-space '())
+    :shape (make-shape '())
     :storage (make-array () :initial-element object :element-type (type-of object))
     :kernels nil))
 
@@ -22,25 +22,25 @@
 (defmethod corresponding-immediate ((strided-array strided-array))
   (make-instance 'strided-array-immediate
     :element-type (element-type strided-array)
-    :index-space (index-space strided-array)))
+    :shape (shape strided-array)))
 
 (defmethod data-structure-equality and ((a strided-array-immediate)
                                         (b strided-array-immediate))
   (equalp (storage a) (storage b)))
 
 ;;; Return a non-permuting, affine transformation from a zero based array
-;;; with step size one to the given INDEX-SPACE.
-(defun from-storage-transformation (index-space)
-  (let ((ranges (ranges index-space))
-        (dimension (dimension index-space)))
+;;; with step size one to the given SHAPE.
+(defun from-storage-transformation (shape)
+  (let ((ranges (ranges shape))
+        (dimension (dimension shape)))
     (make-transformation
      :input-dimension dimension
      :scaling (map 'vector #'range-step ranges)
      :translation (map 'vector #'range-start ranges))))
 
-(defun collapsing-transformation (index-space)
+(defun collapsing-transformation (shape)
   (invert-transformation
-   (from-storage-transformation index-space)))
+   (from-storage-transformation shape)))
 
 (defmethod make-immediate! ((strided-array strided-array))
   (change-class strided-array 'strided-array-immediate))
@@ -87,7 +87,7 @@
     (let ((arguments (mapcar #'value-or-fail all-inputs)))
       (broadcast
        (canonicalize-data-structure (apply function arguments))
-       (index-space first-input)))))
+       (shape first-input)))))
 
 (defmethod make-application :optimize
     ((function function)
@@ -109,5 +109,5 @@
                       (transformation transformation))
   (make-reference
    data-structure
-   (transform (index-space data-structure) transformation)
+   (transform (shape data-structure) transformation)
    (invert-transformation transformation)))

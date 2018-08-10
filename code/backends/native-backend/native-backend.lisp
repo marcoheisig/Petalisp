@@ -14,7 +14,7 @@
     ((backend common-lisp-backend)
      (immediate strided-array-immediate))
   (let ((array-dimensions
-          (map 'list #'set-size (ranges (index-space immediate))))
+          (map 'list #'set-size (ranges (shape immediate))))
         (element-type (element-type immediate)))
     (setf (storage immediate)
           (or
@@ -27,7 +27,7 @@
     ((backend common-lisp-backend)
      (immediate strided-array-immediate))
   (let ((array-dimensions
-          (map 'list #'set-size (ranges (index-space immediate))))
+          (map 'list #'set-size (ranges (shape immediate))))
         (element-type (element-type immediate)))
     (push (storage immediate)
           (gethash (cons element-type array-dimensions)

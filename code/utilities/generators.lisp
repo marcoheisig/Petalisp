@@ -106,22 +106,22 @@ intersect it (potentially violating MAX-EXTENT)."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Index Space Generators
+;;; Shape Generators
 
-(defmethod generator ((result-type (eql 'strided-array-index-space))
+(defmethod generator ((result-type (eql 'shape))
                       &key (dimension 3) (max-size 30) (max-extent 100) intersecting)
   (assert (or (not intersecting)
               (= dimension (dimension intersecting))))
   (let ((range-generators
           (if intersecting
-              (map 'list (lambda (range)
-                           (generator 'range :max-size max-size
-                                             :max-extent max-extent
-                                             :intersecting range))
-                   (ranges intersecting))
+              (mapcar (lambda (range)
+                        (generator 'range :max-size max-size
+                                          :max-extent max-extent
+                                          :intersecting range))
+                      (ranges intersecting))
               (make-list dimension :initial-element
                          (generator 'range :max-size max-size
                                            :max-extent max-extent)))))
     (lambda ()
-      (make-instance 'strided-array-index-space
-        :ranges (map 'vector #'funcall range-generators)))))
+      (shape-from-ranges
+       (mapcar #'funcall range-generators)))))

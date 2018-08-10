@@ -61,7 +61,7 @@ backend."))
 
 (defmethod compute-synchronously ((data-structures list) (backend backend))
   (let* ((collapsing-transformations
-           (mapcar (compose #'collapsing-transformation #'index-space)
+           (mapcar (compose #'collapsing-transformation #'shape)
                    data-structures))
          (immediates
            (compute-immediates
@@ -72,7 +72,7 @@ backend."))
                data-structure
                (make-reference
                 immediate
-                (index-space data-structure)
+                (shape data-structure)
                 collapsing-transformation)))
             data-structures collapsing-transformations immediates)
     immediates))

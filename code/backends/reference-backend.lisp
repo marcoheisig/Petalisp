@@ -57,7 +57,7 @@
       (assert (= (hash-table-count table)
                  (set-size (shape data-structure))))
       (make-instance 'simple-immediate
-        :index-space (shape data-structure)
+        :shape (shape data-structure)
         :element-type (element-type data-structure)
         :table table))))
 

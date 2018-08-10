@@ -8,7 +8,7 @@ graph of immediates and kernels. Return the roots of this new graph."
   (map-subtrees #'kernelize-subtree graph-roots))
 
 (defun kernelize-subtree (target root leaf-function)
-  (dx-flet ((kernelize-subtree-fragment (index-space dimension)
-              (build-kernel target root leaf-function index-space dimension)))
+  (dx-flet ((kernelize-subtree-fragment (shape dimension)
+              (build-kernel target root leaf-function shape dimension)))
     (setf (kernels target)
           (map-subtree-fragments #'kernelize-subtree-fragment root leaf-function))))

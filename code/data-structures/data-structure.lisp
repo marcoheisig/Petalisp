@@ -18,7 +18,7 @@
 (defgeneric make-fusion (first-input all-inputs)
   (:method-combination data-structure-constructor))
 
-(defgeneric make-reference (data-structure index-space transformation)
+(defgeneric make-reference (data-structure shape transformation)
   (:method-combination data-structure-constructor))
 
 (defgeneric corresponding-immediate (data-structure))
@@ -43,19 +43,27 @@
 
 (defgeneric unary-operator (data-structure))
 
-(defgeneric broadcast (data-structure index-space))
+(defgeneric broadcast (data-structure shape))
 
 (defgeneric shallow-copy (data-structure))
 
-(defgeneric data-structure-equality (data-structure-1 data-structure-2)
+(defgeneric data-structure-equality (a b)
   (:method-combination and))
+
+(defgeneric size (object)
+  (:method ((any-set any-set))
+    (set-size any-set))
+  (:method ((hash-table hash-table))
+    (hash-table-count hash-table))
+  (:method ((array array))
+    (array-total-size array)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; The Class DATA-STRUCTURE and its Direct Subclasses
 ;;;
 ;;; A data structure of dimension D is a mapping from elements of
-;;; INDEX-SPACE to values of type ELEMENT-TYPE.
+;;; SHAPE to values of type ELEMENT-TYPE.
 ;;;
 ;;; REFCOUNT is an implementation detail. For ordinary data structures it
 ;;; tracks how many times the data structure appears as an input of another
@@ -64,7 +72,7 @@
 
 (defclass data-structure ()
   ((%element-type :initarg :element-type :reader element-type)
-   (%index-space :initarg :index-space :reader index-space :reader shape)
+   (%shape :initarg :shape :reader shape :reader shape)
    (%refcount :initform 0 :accessor refcount)))
 
 ;;; An immediate is a data structure whose elements can be referenced in
@@ -82,7 +90,7 @@
   ((%inputs :initarg :inputs :reader inputs)))
 
 ;;; Let F be a referentially transparent Common Lisp function that accepts
-;;; n arguments, and let A1...AN be data structures with index space Ω. The
+;;; n arguments, and let A1...AN be data structures with index shape Ω. The
 ;;; the application of f to A1...AN is a data structure that maps each
 ;;; index k ∈ Ω to (F (A1 k) ... (AN k)).
 (defclass application (non-immediate)
@@ -98,15 +106,15 @@
    (%order :initarg :order :reader order :type (member :up :down :arbitrary) :reader reduction-order)))
 
 ;;; Let A1...AN be strided arrays with equal dimension, each mapping from
-;;; an index space Ωk to a set of values.  Furthermore, let the sets
+;;; an index shape Ωk to a set of values.  Furthermore, let the sets
 ;;; Ω1...ΩN be pairwise disjoint, and let Ωf = ∪ Ω1...Ωk be again a valid
-;;; index space. Then the fusion of A1...AN is a data structure that maps
+;;; index shape. Then the fusion of A1...AN is a data structure that maps
 ;;; each index i ∈ Ωf to the value of i of the unique strided array Ak
-;;; whose index space contains i.
+;;; whose index shape contains i.
 (defclass fusion (non-immediate) ())
 
 ;;; Let A be a strided array with domain ΩA, let ΩB be a strided array
-;;; index space and let T be a transformation from ΩB to ΩA. Then the
+;;; index shape and let T be a transformation from ΩB to ΩA. Then the
 ;;; reference of A by ΩB and T is a strided array that maps each index
 ;;; tuple k \in ΩB to A(T(k)).
 (defclass reference (non-immediate)
@@ -116,23 +124,26 @@
 ;;;
 ;;; Methods specialized on DATA-STRUCTUREs
 
+(defmethod size ((data-structure data-structure))
+  (set-size (shape data-structure)))
+
 ;;; Increase the REFCOUNT of each input of each data structure.
 (defmethod initialize-instance :after
     ((instance data-structure) &key &allow-other-keys)
   (mapc (lambda (input) (incf (refcount input))) (inputs instance)))
 
-;;; Return a broadcasting reference with the given INDEX-SPACE to the
+;;; Return a broadcasting reference with the given SHAPE to the
 ;;; elements of DATA-STRUCTURE.
-(defmethod broadcast :before ((data-structure data-structure) (index-space index-space))
-  (demand (<= (dimension data-structure) (dimension index-space))
-    "~@<Invalid broadcasting reference with space ~A to ~
-        a data structure with space ~A.~:@>"
-    index-space (index-space data-structure)))
+(defmethod broadcast :before ((data-structure data-structure) (shape shape))
+  (demand (<= (dimension data-structure) (dimension shape))
+    "~@<Invalid broadcasting reference with shape ~A to ~
+        a data structure with shape ~A.~:@>"
+    shape (shape data-structure)))
 
 (defmethod data-structure-equality and ((data-structure-1 data-structure)
                                         (data-structure-2 data-structure))
-  (index-space-equality (index-space data-structure-1)
-                        (index-space data-structure-2)))
+  (set-equal (shape data-structure-1)
+                (shape data-structure-2)))
 
 (defmethod canonicalize-data-structure ((data-structure data-structure))
   data-structure)
@@ -153,17 +164,14 @@
     input-dimension))
 
 (defmethod dimension ((data-structure data-structure))
-  (dimension (index-space data-structure)))
+  (dimension (shape data-structure)))
 
 (defun input (object)
   (destructuring-bind (input) (inputs object) input))
 
-(defmethod size ((data-structure data-structure))
-  (size (index-space data-structure)))
-
 (defmethod print-object ((object data-structure) stream)
   (print-unreadable-object (object stream :type t :identity t)
-    (format stream "~S ~S" (element-type object) (index-space object))))
+    (format stream "~S ~S" (element-type object) (shape object))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -188,8 +196,8 @@
     ((function function)
      (first-input data-structure)
      (all-inputs sequence))
-  (assert (identical all-inputs :test #'index-space-equality
-                                :key #'index-space)))
+  (assert (identical all-inputs :test #'set-equal
+                                :key #'shape)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -204,35 +212,35 @@
 ;;;
 ;;; Methods specialized on FUSIONs
 
-(defmethod make-fusion :check (first-index-space (index-spaces sequence))
-  (assert (eq first-index-space (elt index-spaces 0)))
-  (unless (= 1 (length index-spaces))
+(defmethod make-fusion :check (first-shape (shapes sequence))
+  (assert (eq first-shape (elt shapes 0)))
+  (unless (= 1 (length shapes))
     (map-combinations
      (trivia:lambda-match
        ((list a b)
         (demand (= (dimension a) (dimension b))
-          "~@<The index spaces of the arguments to a fusion operation ~
+          "~@<The index shapes of the arguments to a fusion operation ~
               must have the same dimension, but the supplied arguments are ~
               ~R- and ~R-dimensional data structures.~:@>"
           (dimension a)
           (dimension b))
-        (let ((space-1 (index-space a))
-              (space-2 (index-space b)))
-          (demand (not (index-space-intersection-p space-1 space-2))
-            "~@<The index spaces of the arguments to a fusion operation ~
-                must be disjoint, but space ~S and space ~S have the ~
-                common subspace ~S.~:@>"
-            space-1
-            space-2
-            (index-space-intersection space-1 space-2)))))
-     index-spaces
+        (let ((shape-1 (shape a))
+              (shape-2 (shape b)))
+          (demand (not (set-intersectionp shape-1 shape-2))
+            "~@<The index shapes of the arguments to a fusion operation ~
+                must be disjoint, but shape ~S and shape ~S have the ~
+                common subshape ~S.~:@>"
+            shape-1
+            shape-2
+            (set-intersection shape-1 shape-2)))))
+     shapes
      :length 2
      :copy nil)))
 
-;;; ignore one-index-space fusions
-(defmethod make-fusion :optimize (first-index-space (index-spaces sequence))
-  (when (= 1 (length index-spaces))
-    first-index-space))
+;;; ignore one-shape fusions
+(defmethod make-fusion :optimize (first-shape (shapes sequence))
+  (when (= 1 (length shapes))
+    first-shape))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -240,35 +248,35 @@
 
 (defmethod make-reference :check
     ((data-structure data-structure)
-     (index-space index-space)
+     (shape shape)
      (transformation transformation))
-  (let ((relevant-space (transform index-space transformation))
-        (input-space (index-space data-structure)))
-    (demand (and (= (dimension relevant-space) (dimension input-space))
-                 (subspace-p relevant-space input-space))
-      "~@<The index space referenced by the current reference is ~S, ~
-          which is not a subspace of ~S, the index space of the input of ~
+  (let ((relevant-shape (transform shape transformation))
+        (input-shape (shape data-structure)))
+    (demand (and (= (dimension relevant-shape) (dimension input-shape))
+                 (subspace-p relevant-shape input-shape))
+      "~@<The index shape referenced by the current reference is ~S, ~
+          which is not a subshape of ~S, the index shape of the input of ~
           the current reference.~:@>"
-      relevant-space
-      input-space))
-  (demand (= (dimension index-space) (input-dimension transformation))
-    "~@<The dimension of the index space of a reference operation must ~
+      relevant-shape
+      input-shape))
+  (demand (= (dimension shape) (input-dimension transformation))
+    "~@<The dimension of the index shape of a reference operation must ~
         be equal to the input dimension of its transformation. The ~
-        index space ~S has the dimension ~R, but the input dimension ~
+        index shape ~S has the dimension ~R, but the input dimension ~
         of the transformation ~S is ~R.~:@>"
-    index-space
-    (dimension index-space)
+    shape
+    (dimension shape)
     transformation
     (input-dimension transformation)))
 
 ;;; Combine consecutive references
 (defmethod make-reference :optimize
     ((reference reference)
-     (index-space index-space)
+     (shape shape)
      (transformation transformation))
   (make-reference
    (input reference)
-   index-space
+   shape
    (compose-transformations
     (transformation reference)
     transformation)))
@@ -276,7 +284,10 @@
 ;;; Drop references with no effect.
 (defmethod make-reference :optimize
     ((data-structure data-structure)
-     (index-space index-space)
+     (shape shape)
      (identity-transformation identity-transformation))
-  (when (index-space-equality (index-space data-structure) index-space)
+  (when (set-equal (shape data-structure) shape)
     data-structure))
+
+(defmethod shape ((array array))
+  (make-shape (array-dimensions array)))

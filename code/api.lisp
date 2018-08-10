@@ -13,21 +13,21 @@
 ;;;
 ;;; Data Combination and Reordering
 
-(defmacro with-index-space-accessors ((rank start step end) datum &body body)
-  "For an index space specified by DATUM, bind rank to the rank of the
-specified index space. Furthermore, bind start, step and end to functions
-that map indices in the range from zero below the rank to the respective
+(defmacro with-shape-accessors ((rank start step end) datum &body body)
+  "For a shape specified by DATUM, bind rank to the rank of the specified
+shape. Furthermore, bind start, step and end to functions that map
+indices in the range from zero below the rank to the respective
 quantities."
   (check-type rank symbol)
   (check-type start symbol)
   (check-type step symbol)
   (check-type end symbol)
   (with-gensyms (ranges)
-    `(let* ((,ranges (ranges (canonicalize-index-space ,datum)))
+    `(let* ((,ranges (ranges (shape ,datum)))
             (,rank (length ,ranges)))
-       (flet ((,start (index) (range-start (svref ,ranges index)))
-              (,step (index) (range-step (svref ,ranges index)))
-              (,end (index) (range-end (svref ,ranges index))))
+       (flet ((,start (index) (range-start (elt ,ranges index)))
+              (,step (index) (range-step (elt ,ranges index)))
+              (,end (index) (range-end (elt ,ranges index))))
          ,@body))))
 
 (defun reshape (data shape)
@@ -38,8 +38,8 @@ Examples:
  (reshape 0 '(10 10))          ; Create a 10x10 array of zeros
  (reshape #(1 2 3 4) '((1 2))) ; Select the two interior entries"
   (let* ((data (canonicalize-data-structure data))
-         (space (canonicalize-index-space shape)))
-    (broadcast data space)))
+         (shape (make-shape shape)))
+    (broadcast data shape)))
 
 #+nil
 (defun transform (data-structure transformation)
@@ -53,9 +53,9 @@ Examples:
  (transform A #'flip) ; Flip the sign of each index"
   (let* ((data-structure (canonicalize-data-structure data-structure))
          (transformation (canonicalize-transformation transformation))
-         (space (transform (index-space data-structure) transformation))
+         (shape (transform (shape data-structure) transformation))
          (transformation (invert-transformation transformation)))
-    (make-reference data-structure space transformation)))
+    (make-reference data-structure shape transformation)))
 
 (defun fuse (&rest objects)
   "Combine OBJECTS into a single petalisp data structure. It is an error if
@@ -71,12 +71,12 @@ overlap partially, the value of the rightmost object is used."
   (let ((objects (mapcar #'canonicalize-data-structure objects)))
     (flet ((reference-origin (piece)
              (make-reference
-              (find piece objects :from-end t :key #'index-space :test #'subspace-p)
+              (find piece objects :from-end t :key #'shape :test #'subspace-p)
               piece
               (make-identity-transformation (dimension piece)))))
       (let ((inputs
               (mapcar #'reference-origin
-                      (subdivision (mapcar #'index-space objects)))))
+                      (subdivision (mapcar #'shape objects)))))
         (make-fusion (first inputs) inputs)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -89,8 +89,8 @@ for Petalisp data structures. When the dimensions of some of the inputs
 mismatch, the smaller objects are broadcast."
   (let* ((objects (cons (canonicalize-data-structure object)
                         (mapcar #'canonicalize-data-structure more-objects)))
-         (space (apply #'common-broadcast-space (mapcar #'index-space objects)))
-         (inputs (mapcar (lambda (object) (broadcast object space)) objects)))
+         (shape (broadcast-shapes (mapcar #'shape objects)))
+         (inputs (mapcar (lambda (object) (broadcast object shape)) objects)))
     (make-application function (first inputs) inputs)))
 
 (defun β (f &rest args)

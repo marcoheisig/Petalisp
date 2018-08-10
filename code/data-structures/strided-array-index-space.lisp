@@ -2,152 +2,40 @@
 
 (in-package :petalisp)
 
-(defclass strided-array-index-space (index-space)
-  ((%ranges :initarg :ranges
-            :reader ranges
-            :type vector)))
-
-(defmethod make-instance :after ((instance strided-array-index-space) &key &allow-other-keys)
-  (assert (notany #'set-emptyp (ranges instance))))
-
-(defmethod make-load-form ((object strided-array-index-space) &optional environment)
-  (make-load-form-saving-slots object :environment environment))
-
-(defmethod set-elements ((set strided-array-index-space))
-  (if (emptyp (ranges set))
-      (list '())
-      (apply #'map-product #'list
-             (map 'list #'set-elements (ranges set)))))
-
-(defmethod set-size ((object strided-array-index-space))
-  (size object))
-
-(defmethod common-broadcast-space ((space strided-array-index-space) &rest more-spaces)
-  (let* ((list-of-ranges
-           (list* (ranges space)
-                  (mapcar #'ranges more-spaces)))
-         (longest-ranges
-           (loop for longest = (first list-of-ranges) then longest
-                 for maxlen = (length longest) then maxlen
-                 for current in (rest list-of-ranges)
-                 for length = (length current)
-                 when (> length maxlen) do
-                   (setf longest current)
-                   (setf maxlen length)
-                 finally (return longest)))
-         (result-ranges
-           (copy-array longest-ranges)))
-    (loop for ranges in list-of-ranges
-          for argument from 0 do
-            (loop for range across ranges
-                  for broadcast-range across result-ranges
-                  for dimension from 0 do
-                    (cond
-                      ((set-equal range broadcast-range)
-                       (values))
-                      ((size-one-range-p range)
-                       (values))
-                      ((size-one-range-p broadcast-range)
-                       (setf (aref result-ranges dimension) range))
-                      (t
-                       (demand nil
-                         "~@<There is no common broadcast space for the spaces ~
-                                 ~{~#[~;and ~S~;~S ~:;~S, ~]~}.~:@>"
-                         (cons space more-spaces))))))
-    (make-instance 'strided-array-index-space
-      :ranges result-ranges)))
-
-(defmethod index-space-difference ((space-1 strided-array-index-space)
-                                   (space-2 strided-array-index-space))
-  (let ((intersection (index-space-intersection space-1 space-2)))
-    (if (set-emptyp intersection)
-        (list space-1)
-        (let ((result '()))
-          (loop for r1 across (ranges space-1)
-                for r2 across (ranges space-2)
-                for i from 0 do
-                  (loop for difference in (range-difference-list r1 r2) do
-                    (let ((ranges (copy-array (ranges space-1))))
-                      (replace ranges (ranges intersection) :end1 i)
-                      (setf (aref ranges i) difference)
-                      (push (make-instance 'strided-array-index-space :ranges ranges)
-                            result)))
-                finally
-                   (return result))))))
-
-(defmethod dimension ((object strided-array-index-space))
-  (length (ranges object)))
-
-(defmethod enlarge-index-space
-    ((from strided-array-index-space)
-     (to strided-array-index-space))
-  (let ((new-ranges (copy-array (ranges to))))
+(defmethod enlarge-shape ((from shape) (to shape))
+  (let ((new-ranges (copy-list (ranges to))))
     (replace new-ranges (ranges from))
-    (make-instance 'strided-array-index-space
-      :ranges new-ranges)))
+    (shape-from-ranges new-ranges)))
 
-(defmethod index-space-equality ((object-1 strided-array-index-space)
-                                 (object-2 strided-array-index-space))
-  (and (= (dimension object-1) (dimension object-2))
-       (every #'set-equal
-              (ranges object-1)
-              (ranges object-2))))
-
-(defmethod index-space-intersection ((space-1 strided-array-index-space)
-                                     (space-2 strided-array-index-space))
-  (make-instance 'strided-array-index-space
-    :ranges
-    (map 'vector
-         (lambda (a b)
-           (let ((intersection (set-intersection a b)))
-             (if (set-emptyp intersection)
-                 (return-from index-space-intersection (empty-set))
-                 intersection)))
-         (ranges space-1)
-         (ranges space-2))))
-
-(defmethod index-space-intersection-p
-    ((space-1 strided-array-index-space)
-     (space-2 strided-array-index-space))
-  (loop for range-1 across (ranges space-1)
-        for range-2 across (ranges space-2)
-        always (set-intersectionp range-1 range-2)))
-
-(defmethod transform :before
-    ((index-space strided-array-index-space)
-     (transformation transformation))
+(defmethod transform :before ((shape shape) (transformation transformation))
   (when-let ((input-constraints (input-constraints transformation)))
-    (loop for range across (ranges index-space)
+    (loop for range in (ranges shape)
           for constraint across input-constraints
           for index from 0 do
             (unless (not constraint)
               (demand (and (= constraint (range-start range))
                            (= constraint (range-end range)))
-                "~@<The ~:R dimension of the space ~W violates ~
+                "~@<The ~:R dimension of the shape ~W violates ~
                     the input constraint ~W of the transformation ~W.~:@>"
-                index index-space constraint transformation)))))
+                index shape constraint transformation)))))
 
-(defmethod transform ((index-space strided-array-index-space)
+(defmethod transform ((shape shape)
                       (transformation hairy-transformation))
-  (let ((output-ranges (make-array (output-dimension transformation)))
-        (input-ranges (ranges index-space)))
+  (let ((output-ranges (make-list (output-dimension transformation)))
+        (input-ranges (ranges shape)))
     (flet ((store-output-range (output-index input-index scaling offset)
-             (setf (svref output-ranges output-index)
+             (setf (elt output-ranges output-index)
                    (if (not input-index)
                        (make-range offset 1 offset)
-                       (let ((input-range (svref input-ranges input-index)))
+                       (let ((input-range (elt input-ranges input-index)))
                          (make-range
                           (+ offset (* scaling (range-start input-range)))
                           (* scaling (range-step input-range))
                           (+ offset (* scaling (range-end input-range)))))))))
       (map-transformation-outputs transformation #'store-output-range))
-    (make-instance 'strided-array-index-space
-      :ranges output-ranges)))
+    (shape-from-ranges output-ranges)))
 
-(defmethod size ((object strided-array-index-space))
-  (reduce #'* (ranges object) :key #'set-size))
-
-(defun index-space-union-range-oracle (&rest ranges)
+(defun shape-union-range-oracle (&rest ranges)
   (declare (dynamic-extent ranges))
   ;; determine the bounding box
   (loop for range in ranges
@@ -171,51 +59,22 @@
                                        (range-step range)))))))
                    (make-range global-start step-size global-end))))))
 
-(defmethod index-space-union
-    ((space-1 strided-array-index-space) &rest more-spaces)
-  (make-instance 'strided-array-index-space
-    :ranges (apply #'map 'vector
-                   #'index-space-union-range-oracle
-                   (ranges space-1) (mapcar #'ranges more-spaces))))
+(defmethod shape-union ((shape-1 shape) &rest more-shapes)
+  (shape-from-ranges
+   (apply #'mapcar
+          #'shape-union-range-oracle
+          (ranges shape-1) (mapcar #'ranges more-shapes))))
 
-(defmethod index-space-union :around
-    ((space-1 strided-array-index-space) &rest more-spaces)
+(defmethod shape-union :around ((shape-1 shape) &rest more-shapes)
   (let ((union (call-next-method)))
-    (flet ((proper-subspace-p (space)
-             (subspace-p space union)))
-      (assert (proper-subspace-p space-1))
-      (assert (every #'proper-subspace-p more-spaces))
+    (flet ((proper-subspace-p (shape)
+             (subspace-p shape union)))
+      (assert (proper-subspace-p shape-1))
+      (assert (every #'proper-subspace-p more-shapes))
       union)))
 
-(defmethod print-object ((object strided-array-index-space) stream)
-  (flet ((range-list (range)
-           (list (range-start range)
-                 (range-step range)
-                 (range-end range))))
-    (print-unreadable-object (object stream :type t)
-      (princ (map 'list #'range-list (ranges object)) stream))))
+(defmethod transform ((shape shape) (operator identity-transformation))
+  shape)
 
-(defmethod canonicalize-index-space ((list list))
-  (flet ((canonicalize-range-specifier (range-specifier)
-           (trivia:match range-specifier
-             ((list start step end)
-              (make-range start step end))
-             ((list start end)
-              (make-range start 1 end))
-             ((list start)
-              (make-range start 1 start))
-             (length
-              (make-range 0 1 (1- length))))))
-    (make-instance 'strided-array-index-space
-      :ranges (map 'vector #'canonicalize-range-specifier list))))
-
-(defmethod transform ((index-space index-space)
-                      (operator identity-transformation))
-  index-space)
-
-(defmethod transform ((data-structure data-structure)
-                      (operator identity-transformation))
+(defmethod transform ((data-structure data-structure) (operator identity-transformation))
   data-structure)
-
-(defmethod set-emptyp ((index-space strided-array-index-space))
-  nil)

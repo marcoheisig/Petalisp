@@ -5,7 +5,7 @@
 (defclass explicit-set (finite-set)
   ((%table :initarg :table :reader set-element-table)))
 
-(defun set-from-sequence (sequence)
+(defmethod set-from-sequence ((sequence sequence))
   (if (emptyp sequence)
       (empty-set)
       (let ((table (make-hash-table :test #'equal)))
