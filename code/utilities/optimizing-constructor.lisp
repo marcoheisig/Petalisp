@@ -4,10 +4,10 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Data Structure Construction Method Combination
+;;; Optimizing Constructor Method Combination
 ;;;
-;;; The construction of data structures in Petalisp happens according to
-;;; the following protocol:
+;;; A method combination for creating an object from a set of arguments,
+;;; according to the following protocol:
 ;;;
 ;;; 1. Rigorous argument checks are performed (least specific first)
 ;;;
@@ -15,19 +15,15 @@
 ;;;    first). The value of the first non-NIL optimization is returned.
 ;;;
 ;;; 3. If and only if no optimization succeeds, the primary method is
-;;;    executed to produce a suitable data structure.
-;;;
-;;; Finally, the variables *CHECK* and *OPTIMIZE* can be used to
-;;; dynamically disable these stages if performance demands it.
+;;;    executed to produce a suitable instance.
 
-(define-method-combination data-structure-constructor ()
+(define-method-combination optimizing-constructor ()
   ((check (:check))
    (optimize (:optimize))
    (primary () :required t))
-  (flet ((call-methods (methods)
-           (loop for method in methods
-                 collect `(call-method ,method))))
+  (flet ((call (method)
+           `(call-method ,method)))
     `(progn
-       ,@(call-methods (reverse check))
-       (or ,@(call-methods optimize)
+       ,@(mapcar #'call (reverse check))
+       (or ,@(mapcar #'call optimize)
            (call-method ,(first primary) ,(rest primary))))))

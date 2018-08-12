@@ -5,24 +5,28 @@
   (:shadow cl:set-difference alexandria:set-equal)
   (:export
    ;; Generators
-   #:generator
+   #:make-generator
    #:generate-instance
 
    ;; Sets
    #:set-difference
    #:set-elements
    #:set-emptyp
+   #:set-contains
    #:set-intersection
    #:set-intersectionp
    #:set-size
    #:set-union
 
    ;; Ranges
+   #:range
+   #:rangep
+   #:unary-range-p
+   #:make-range
    #:range-start-step-end
    #:range-start
    #:range-step
    #:range-end
-   #:make-range
 
    ;; Shapes
    #:make-shape
@@ -31,6 +35,7 @@
    #:shape-difference-list
 
    ;; Transformations
+   #:transformation
    #:canonicalize-transformation
    #:with-shape-accessors
    #:make-transformation
@@ -40,27 +45,29 @@
    #:compose-transformations
    #:collapsing-transformation
 
-   ;; Data Structures
-   #:canonicalize-data-structure
-   #:data-structure
+   ;; Strided Arrays
+   #:strided-array
+   #:make-strided-array
    #:element-type
    #:shape
    #:size
    #:input
    #:inputs
-   #:transformation
-   #:storage-array
+   #:storage
+   #:operator
+   #:initialization
    #:application
-   #:application-operator
    #:reduction
-   #:reduction-binary-operator
-   #:reduction-unary-operator
-   #:reduction-order
+   #:tree-fold
+   #:directed-fold
+   #:left-fold
+   #:right-fold
    #:fusion
    #:reference
    #:immediate
+   #:scalar-immediate
    #:array-immediate
-   #:strided-array-immediate
+   #:range-immediate
 
    ;; High-level API
    #:*backend*

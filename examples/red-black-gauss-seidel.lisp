@@ -37,7 +37,7 @@
          (mapcar #'offset-space black-offsets))))))
 
 (defun red-black-gauss-seidel (u &key (iterations 1)
-                                   (h (/ (1- (expt (size u) (/ (dimension u))))))
+                                   (h 1.0)
                                    (f 0))
   "Iteratively solve the Poisson equation -Δu = f for a given uniform grid
   with spacing h, using the Red-Black Gauss-Seidel scheme."

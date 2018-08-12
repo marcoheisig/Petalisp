@@ -23,7 +23,7 @@ quantities."
   (check-type step symbol)
   (check-type end symbol)
   (with-gensyms (ranges)
-    `(let* ((,ranges (ranges (shape ,datum)))
+    `(let* ((,ranges (ranges (shape (make-strided-array ,datum))))
             (,rank (length ,ranges)))
        (flet ((,start (index) (range-start (elt ,ranges index)))
               (,step (index) (range-step (elt ,ranges index)))
@@ -37,9 +37,12 @@ the elements of DATA, or by broadcasting them.
 Examples:
  (reshape 0 '(10 10))          ; Create a 10x10 array of zeros
  (reshape #(1 2 3 4) '((1 2))) ; Select the two interior entries"
-  (let* ((data (canonicalize-data-structure data))
+  (let* ((data (make-strided-array data))
          (shape (make-shape shape)))
-    (broadcast data shape)))
+    (make-reference
+     data
+     shape
+     (broadcasting-transformation shape (shape data)))))
 
 #+nil
 (defun transform (data-structure transformation)
@@ -61,23 +64,19 @@ Examples:
   "Combine OBJECTS into a single petalisp data structure. It is an error if
 some of the inputs overlap, or if there exists no suitable data structure
 to represent the fusion."
-  (let ((immediates (mapcar #'canonicalize-data-structure objects)))
-    (make-fusion (first immediates) immediates)))
+  (make-fusion (mapcar #'make-strided-array objects)))
 
 (defun fuse* (&rest objects)
   "Combine OBJECTS into a single petalisp data structure. When some OBJECTS
 overlap partially, the value of the rightmost object is used."
   (declare (optimize (debug 3)))
-  (let ((objects (mapcar #'canonicalize-data-structure objects)))
+  (let ((objects (mapcar #'make-strided-array objects)))
     (flet ((reference-origin (piece)
              (make-reference
               (find piece objects :from-end t :key #'shape :test #'set-subsetp)
               piece
               (make-identity-transformation (dimension piece)))))
-      (let ((inputs
-              (mapcar #'reference-origin
-                      (subdivision (mapcar #'shape objects)))))
-        (make-fusion (first inputs) inputs)))))
+      (make-fusion (mapcar #'reference-origin (subdivision (mapcar #'shape objects)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -87,20 +86,20 @@ overlap partially, the value of the rightmost object is used."
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
 for Petalisp data structures. When the dimensions of some of the inputs
 mismatch, the smaller objects are broadcast."
-  (let* ((objects (cons (canonicalize-data-structure object)
-                        (mapcar #'canonicalize-data-structure more-objects)))
+  (let* ((objects (cons (make-strided-array object)
+                        (mapcar #'make-strided-array more-objects)))
          (shape (broadcast-shapes (mapcar #'shape objects)))
-         (inputs (mapcar (lambda (object) (broadcast object shape)) objects)))
-    (make-application function (first inputs) inputs)))
+         (inputs (mapcar (lambda (object) (reshape object shape)) objects)))
+    (make-application function inputs)))
 
 (defun β (f &rest args)
   "Reduce the last dimension of OBJECT with F, using G to convert single
 values to the appropriate result type."
   (trivia:ematch args
     ((list g object)
-     (make-reduction f g (canonicalize-data-structure object) :up))
+     (make-reduction f g (make-strided-array object) :up))
     ((list object)
-     (make-reduction f #'identity (canonicalize-data-structure object) :up))))
+     (make-reduction f #'identity (make-strided-array object) :up))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -109,12 +108,12 @@ values to the appropriate result type."
 (defun compute (&rest data-structures)
   "Return the computed values of all OBJECTS."
   (values-list
-   (mapcar #'storage-array
+   (mapcar #'storage
            (lparallel.promise:force
             (apply #'schedule data-structures)))))
 
 (defun schedule (&rest data-structures)
   "Instruct Petalisp to compute all given OBJECTS asynchronously."
   (compute-synchronously
-   (mapcar #'canonicalize-data-structure data-structures)
+   (mapcar #'make-strided-array data-structures)
    *backend*))

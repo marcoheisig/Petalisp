@@ -29,6 +29,7 @@
        (:file "identical")
        (:file "miscellaneous")
        (:file "symmetric-function")
+       (:file "optimizing-constructor")
        (:file "generators")
        (:file "ucons")))
 
@@ -57,12 +58,14 @@
        (:file "constructors")
        (:file "shape-transformations")))
 
-     (:module "data-structures"
+     (:module "strided-arrays"
       :components
-      ((:file "data-structure-method-combination")
-       (:file "data-structure")
-       (:file "strided-array")
-       (:file "strided-array-immediate")))
+      ((:file "strided-array")
+       (:file "immediate")
+       (:file "application")
+       (:file "reduction")
+       (:file "fusion")
+       (:file "reference")))
 
      (:module "kernel-creation"
       :components
@@ -76,7 +79,9 @@
      (:module "backends"
       :components
       ((:file "backend")
-       (:file "reference-backend")
+       (:module "reference-backend"
+        :components ((:file "simple-immediate")
+                     (:file "reference-backend")))
        (:file "test-backend-mixin")
        (:module "native-backend"
         :components ((:file "scheduler")

@@ -6,7 +6,7 @@
 ;;;
 ;;; Generic Functions
 
-(defgeneric generator (result-type &rest kwargs &key &allow-other-keys)
+(defgeneric make-generator (result-type &rest kwargs &key &allow-other-keys)
   (:documentation
    "Return a function that returns on each invocation a new, random object
 of type RESULT-TYPE, with properties according to the supplied keyword
@@ -17,22 +17,22 @@ arguments."))
    "Return a single, random object of type RESULT-TYPE, with properties
 according to the supplied keyword arguments.")
   (:method ((result-type symbol) &rest arguments)
-    (funcall (apply #'generator result-type arguments))))
+    (funcall (apply #'make-generator result-type arguments))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Random Number Generators
 
-(defmethod generator ((result-type (eql 'integer))
-                      &key (minimum -1000) (maximum 1000))
+(defmethod make-generator ((result-type (eql 'integer))
+                           &key (minimum -1000) (maximum 1000))
   (lambda ()
     (+ minimum (random (1+ (- maximum minimum))))))
 
-(defmethod generator ((result-type (eql 'array))
-                      &key
-                        (element-type 'single-float)
-                        (dimensions (loop repeat (random 4) collect (random 8)))
-                        (element-generator (generator element-type)))
+(defmethod make-generator ((result-type (eql 'array))
+                           &key
+                             (element-type 'single-float)
+                             (dimensions (loop repeat (random 4) collect (random 8)))
+                             (element-generator (make-generator element-type)))
   (lambda ()
     (let ((result (make-array dimensions :element-type element-type)))
       (loop for index below (array-total-size result) do
@@ -46,10 +46,10 @@ according to the supplied keyword arguments.")
              (two  (coerce 2 type)))
          ;; These generators use Marsaglia's polar method to convert the
          ;; uniform random numbers from RANDOM to a normal distribution.
-         `(defmethod generator ((result-type (eql ',type))
-                                &key
-                                  (mean ,zero)
-                                  (standard-deviation ,one))
+         `(defmethod make-generator ((result-type (eql ',type))
+                                     &key
+                                       (mean ,zero)
+                                       (standard-deviation ,one))
             (let (cache)
               (lambda ()
                 (or (shiftf cache nil)
@@ -71,11 +71,11 @@ according to the supplied keyword arguments.")
 ;;;
 ;;; The Range Generator
 
-(defmethod generator ((result-type (eql 'range))
-                      &key
-                        (max-extent (floor most-positive-fixnum 4/5))
-                        (max-size (floor (sqrt max-extent)))
-                        intersecting)
+(defmethod make-generator ((result-type (eql 'range))
+                           &key
+                             (max-extent (floor most-positive-fixnum 4/5))
+                             (max-size (floor (sqrt max-extent)))
+                             intersecting)
   "Return a random range with at most MAX-SIZE elements, bounded by
 MAX-EXTENT. If another range INTERSECTING is given, the result will
 intersect it (potentially violating MAX-EXTENT)."
@@ -108,20 +108,20 @@ intersect it (potentially violating MAX-EXTENT)."
 ;;;
 ;;; Shape Generators
 
-(defmethod generator ((result-type (eql 'shape))
-                      &key (dimension 3) (max-size 30) (max-extent 100) intersecting)
+(defmethod make-generator ((result-type (eql 'shape))
+                           &key (dimension 3) (max-size 30) (max-extent 100) intersecting)
   (assert (or (not intersecting)
               (= dimension (dimension intersecting))))
   (let ((range-generators
           (if intersecting
               (mapcar (lambda (range)
-                        (generator 'range :max-size max-size
-                                          :max-extent max-extent
-                                          :intersecting range))
+                        (make-generator 'range :max-size max-size
+                                               :max-extent max-extent
+                                               :intersecting range))
                       (ranges intersecting))
               (make-list dimension :initial-element
-                         (generator 'range :max-size max-size
-                                           :max-extent max-extent)))))
+                         (make-generator 'range :max-size max-size
+                                                :max-extent max-extent)))))
     (lambda ()
       (shape-from-ranges
        (mapcar #'funcall range-generators)))))

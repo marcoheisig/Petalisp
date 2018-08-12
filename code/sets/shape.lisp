@@ -63,7 +63,7 @@
 (defmethod shapep ((object t))
   nil)
 
-(defmethod shapep ((range range))
+(defmethod shapep ((shape shape))
   t)
 
 (defmethod dimension ((shape shape))

@@ -77,6 +77,10 @@ backend."))
             data-structures collapsing-transformations immediates)
     immediates))
 
+(defmethod overwrite-instance ((instance immediate) (substitute immediate))
+  (change-class instance (class-of substitute)
+    :storage (storage substitute)))
+
 (defmethod overwrite-instance ((instance reference) (substitute reference))
   (reinitialize-instance instance
     :transformation (transformation substitute)

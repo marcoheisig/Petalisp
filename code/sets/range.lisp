@@ -20,6 +20,8 @@
 
 (defgeneric rangep (object))
 
+(defgeneric unary-range-p (object))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes
@@ -51,6 +53,13 @@
   nil)
 
 (defmethod rangep ((range range))
+  t)
+
+
+(defmethod unary-range-p ((object t))
+  nil)
+
+(defmethod unary-range-p ((unary-range unary-range))
   t)
 
 (defmethod range-step ((range contiguous-range))

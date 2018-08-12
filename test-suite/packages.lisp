@@ -9,8 +9,5 @@
    :petalisp
    :petalisp/examples/jacobi
    :petalisp/examples/red-black-gauss-seidel
-   :petalisp/examples/linear-algebra)
-  (:export
-   #:generate-instance
-   #:generator))
+   :petalisp/examples/linear-algebra))
 

@@ -12,7 +12,7 @@
 
 (defmethod vm/bind-memory
     ((backend common-lisp-backend)
-     (immediate strided-array-immediate))
+     (immediate immediate))
   (let ((array-dimensions
           (map 'list #'set-size (ranges (shape immediate))))
         (element-type (element-type immediate)))
@@ -25,7 +25,7 @@
 
 (defmethod vm/free-memory
     ((backend common-lisp-backend)
-     (immediate strided-array-immediate))
+     (immediate immediate))
   (let ((array-dimensions
           (map 'list #'set-size (ranges (shape immediate))))
         (element-type (element-type immediate)))
