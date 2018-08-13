@@ -44,22 +44,6 @@ Examples:
      shape
      (broadcasting-transformation shape (shape data)))))
 
-#+nil
-(defun transform (data-structure transformation)
-  "Reorder the index-value entries of DATA-STRUCTURE by applying
-TRANSFORMATION to each index.
-
-Examples:
- (transform A (τ (i j) (j i))) ; Transpose a matrix
-
- (defun flip (&rest indices) (mapcar #'- indices))
- (transform A #'flip) ; Flip the sign of each index"
-  (let* ((data-structure (canonicalize-data-structure data-structure))
-         (transformation (canonicalize-transformation transformation))
-         (shape (transform (shape data-structure) transformation))
-         (transformation (invert-transformation transformation)))
-    (make-reference data-structure shape transformation)))
-
 (defun fuse (&rest objects)
   "Combine OBJECTS into a single petalisp data structure. It is an error if
 some of the inputs overlap, or if there exists no suitable data structure
