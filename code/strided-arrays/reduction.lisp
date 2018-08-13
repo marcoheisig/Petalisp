@@ -40,19 +40,22 @@
   (let ((input-types (mapcar #'element-type inputs)))
     (multiple-value-bind (result-types more-p conditions operator-name)
         (infer-type operator (append input-types input-types))
-      (declare (ignore more-p))
-      (unless (= (length result-types) (length input-types))
-        (error "~@<The function ~S returns ~S argument~:P, but is expected ~
+      (let ((element-types (if (and more-p (null result-types))
+                               '(t)
+                               result-types)))
+        (unless (= (length element-types) (length input-types))
+          (error "~@<The function ~S returns ~S argument~:P, but is expected ~
                      to return ~S arguments.~:@>"
-               operator (length result-types) (length input-types)))
-      (values-list
-       (loop for result-type in result-types
-             for value-n from 0
-             collect
-             (make-instance 'reduction
-               :operator (or operator-name operator)
-               :value-n value-n
-               :conditions conditions
-               :element-type result-type
-               :inputs inputs
-               :shape (shape-from-ranges (cdr (ranges (shape (first inputs)))))))))))
+                 operator (length element-types) (length input-types)))
+        (values-list
+         (loop for element-type in element-types
+               for value-n from 0
+               collect
+               (make-instance 'reduction
+                 :operator (or operator-name operator)
+                 :value-n value-n
+                 :conditions conditions
+                 :element-type element-type
+                 :inputs inputs
+                 :shape (shape-from-ranges
+                         (cdr (ranges (shape (first inputs))))))))))))

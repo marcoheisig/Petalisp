@@ -28,18 +28,20 @@
 (defmethod make-application ((function function) inputs)
   (multiple-value-bind (result-types more-p conditions function-name)
       (infer-type function (mapcar #'element-type inputs))
-    (declare (ignore more-p))
-    (values-list
-     (loop for result-type in result-types
-           for value-n from 0
-           collect
-           (make-instance 'application
-             :operator (or function-name function)
-             :value-n value-n
-             :conditions conditions
-             :element-type result-type
-             :inputs inputs
-             :shape (shape (first inputs)))))))
+    (let ((element-types (if (and more-p (null result-types))
+                             '(t)
+                             result-types)))
+      (values-list
+       (loop for element-type in element-types
+             for value-n from 0
+             collect
+             (make-instance 'application
+               :operator (or function-name function)
+               :value-n value-n
+               :conditions conditions
+               :element-type element-type
+               :inputs inputs
+               :shape (shape (first inputs))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

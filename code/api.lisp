@@ -53,7 +53,6 @@ to represent the fusion."
 (defun fuse* (&rest objects)
   "Combine OBJECTS into a single petalisp data structure. When some OBJECTS
 overlap partially, the value of the rightmost object is used."
-  (declare (optimize (debug 3)))
   (let ((objects (mapcar #'make-strided-array objects)))
     (flet ((reference-origin (piece)
              (make-reference
