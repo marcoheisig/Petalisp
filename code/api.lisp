@@ -95,16 +95,8 @@ mismatch, the smaller objects are broadcast."
   (make-application function (broadcast-arguments (list* array more-arrays))))
 
 (defun β (function array &rest more-arrays)
-  (make-reduction 'tree-fold function nil
-                  (broadcast-arguments (list* array more-arrays))))
+  (make-reduction function (broadcast-arguments (list* array more-arrays))))
 
-(defun β+ (operator initializer array &rest more-arrays)
-  (make-reduction 'left-fold operator initializer
-                  (broadcast-arguments (list* array more-arrays))))
-
-(defun β- (operator initializer array &rest more-arrays)
-  (make-reduction 'right-fold operator initializer
-                  (broadcast-arguments (list* array more-arrays))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Evaluation

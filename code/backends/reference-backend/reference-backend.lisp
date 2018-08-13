@@ -66,13 +66,6 @@
        (apply (operator application)
               (mapcar (lambda (input) (iref input index)) inputs))))))
 
-(defmethod evaluate ((directed-fold directed-fold))
-  (let ((inputs (mapcar #'evaluate (inputs directed-fold))))
-    (make-simple-immediate
-     (shape directed-fold)
-     (lambda (index)
-       ))))
-
 (defun split-range (range)
   (multiple-value-bind (start step end)
       (range-start-step-end range)
@@ -80,10 +73,10 @@
       (values (make-range start step middle)
               (make-range end step (+ middle step))))))
 
-(defmethod evaluate ((tree-fold tree-fold))
-  (let ((inputs (mapcar #'evaluate (inputs tree-fold))))
+(defmethod evaluate ((reduction reduction))
+  (let ((inputs (mapcar #'evaluate (inputs reduction))))
     (make-simple-immediate
-     (shape tree-fold)
+     (shape reduction)
      (lambda (index)
        (labels ((divide-and-conquer (range)
                   (if (unary-range-p range)
@@ -93,7 +86,7 @@
                                inputs))
                       (multiple-value-bind (left right)
                           (split-range range)
-                        (multiple-value-call (operator tree-fold)
+                        (multiple-value-call (operator reduction)
                           (divide-and-conquer left)
                           (divide-and-conquer right))))))
          (divide-and-conquer (first (ranges (shape (first inputs))))))))))

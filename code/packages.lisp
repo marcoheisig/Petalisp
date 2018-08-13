@@ -58,10 +58,6 @@
    #:initialization
    #:application
    #:reduction
-   #:tree-fold
-   #:directed-fold
-   #:left-fold
-   #:right-fold
    #:fusion
    #:reference
    #:immediate
