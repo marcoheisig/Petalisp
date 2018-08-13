@@ -82,25 +82,29 @@ overlap partially, the value of the rightmost object is used."
 ;;;
 ;;; Parallel MAP and REDUCE
 
-(defun α (function object &rest more-objects)
+(defun broadcast-arguments (arguments)
+  (let* ((strided-arrays (mapcar #'make-strided-array arguments))
+         (shape (broadcast-shapes (mapcar #'shape strided-arrays))))
+    (mapcar (lambda (strided-array) (reshape strided-array shape))
+            strided-arrays)))
+
+(defun α (function array &rest more-arrays)
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
 for Petalisp data structures. When the dimensions of some of the inputs
 mismatch, the smaller objects are broadcast."
-  (let* ((objects (cons (make-strided-array object)
-                        (mapcar #'make-strided-array more-objects)))
-         (shape (broadcast-shapes (mapcar #'shape objects)))
-         (inputs (mapcar (lambda (object) (reshape object shape)) objects)))
-    (make-application function inputs)))
+  (make-application function (broadcast-arguments (list* array more-arrays))))
 
-(defun β (f &rest args)
-  "Reduce the last dimension of OBJECT with F, using G to convert single
-values to the appropriate result type."
-  (trivia:ematch args
-    ((list g object)
-     (make-reduction f g (make-strided-array object) :up))
-    ((list object)
-     (make-reduction f #'identity (make-strided-array object) :up))))
+(defun β (function array &rest more-arrays)
+  (make-reduction 'tree-fold function nil
+                  (broadcast-arguments (list* array more-arrays))))
 
+(defun β+ (operator initializer array &rest more-arrays)
+  (make-reduction 'left-fold operator initializer
+                  (broadcast-arguments (list* array more-arrays))))
+
+(defun β- (operator initializer array &rest more-arrays)
+  (make-reduction 'right-fold operator initializer
+                  (broadcast-arguments (list* array more-arrays))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Evaluation

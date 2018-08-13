@@ -30,7 +30,7 @@
    (τ (0 0) ())))
 
 (defun matmul (a b)
-  (β #'+ #'identity
+  (β #'+
      (α #'*
         (transform (to-matrix a) (τ (m n) (n m 0)))
         (transform (to-matrix b) (τ (n k) (n 0 k))))))

@@ -2,4 +2,5 @@
 
 (in-package :petalisp)
 
-(register-type-inferrer 'identity #'identity)
+(define-type-inferrer identity (type)
+  (values (list type) nil '() 'identity))

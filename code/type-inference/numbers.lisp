@@ -7,72 +7,60 @@
 ;;; complex floating point numbers. Rational numbers are slow anyways and
 ;;; fast integer operations would require proper bounds tracking, which is
 ;;; currently not a priority.
-(defun standard-numeric-type-inferrer (argument-types)
-  (let ((complex nil)
-        (float nil)
-        (double-precision nil))
-    (declare (type (member t nil)))
+(defun numeric-supertype (argument-types)
+  (let ((complex-p nil)
+        (float-p nil)
+        (precision 0))
     (loop for argument-type in argument-types do
       (let ((type (atomic-type argument-type)))
-        (case type
-          (single-float
-           (setf float t))
-          (double-float
-           (setf float t)
-           (setf double-precision t))
-          (complex-single-float
-           (setf float t)
-           (setf complex t))
-          (complex-double-float
-           (setf float t)
-           (setf complex t)
-           (setf double-precision t)))))
-    (if (not float)
-        't
-        (if complex
-            (if double-precision
-                'complex-double-float
-                'complex-single-float)
-            (if double-precision
-                'double-float
-                'single-float)))))
+        (macrolet ((merge-attributes (complex-p float-p precision)
+                     `(progn ,(when complex-p `(setf complex-p t))
+                             ,(when float-p `(setf float-p t))
+                             (setf precision (max precision ,precision)))))
+          (case type
+            (short-float  (merge-attributes nil t 0))
+            (single-float (merge-attributes nil t 1))
+            (double-float (merge-attributes nil t 2))
+            (long-float   (merge-attributes nil t 3))
+            (complex-short-float  (merge-attributes t t 0))
+            (complex-single-float (merge-attributes t t 1))
+            (complex-double-float (merge-attributes t t 2))
+            (complex-long-float   (merge-attributes t t 3))))))
+    (if (not float-p)
+        'number
+        (aref
+         (if complex-p
+             #(complex-short-float complex-single-float complex-double-float complex-long-float)
+             #(short-float single-float double-float long-float))
+         precision))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Arithmetic Functions - CLHS Figure 12-1
 
-(register-type-inferrer '+ #'standard-numeric-type-inferrer)
-(register-type-inferrer '- #'standard-numeric-type-inferrer)
-(register-type-inferrer '* #'standard-numeric-type-inferrer)
-(register-type-inferrer '/ #'standard-numeric-type-inferrer)
-(register-type-inferrer '1+ #'standard-numeric-type-inferrer)
-(register-type-inferrer '1- #'standard-numeric-type-inferrer)
-(register-type-inferrer 'conjugate #'standard-numeric-type-inferrer)
-(register-type-inferrer 'gcd (constantly 'integer))
-(register-type-inferrer 'lcm (constantly 'integer))
+(define-type-inferrer + (&rest types)
+  (values (list (numeric-supertype types)) nil '() '+))
+
+(define-type-inferrer - (&rest types)
+  (values (list (numeric-supertype types) nil '() '-)))
+
+(define-type-inferrer * (&rest types)
+  (values (list (numeric-supertype types) nil '() '*)))
+
+(define-type-inferrer / (&rest types)
+  (values (list (numeric-supertype types) nil '(division-by-zero) '/)))
+
+(define-type-inferrer 1+ (type)
+  (values (list type) nil '() '1+))
+
+(define-type-inferrer 1- (type)
+  (values (list type) nil '() '1-))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Exponentials, Logarithms and Trigonometry  - CLHS Figure 12-2
 
-(register-type-inferrer 'abs #'standard-numeric-type-inferrer)
-;;; TODO
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Numeric Comparison and Predication - CLHS Figure 12-3
-
-(register-type-inferrer '< (constantly 'boolean))
-(register-type-inferrer '> (constantly 'boolean))
-(register-type-inferrer '<= (constantly 'boolean))
-(register-type-inferrer '>= (constantly 'boolean))
-(register-type-inferrer '/= (constantly 'boolean))
-(register-type-inferrer '= (constantly 'boolean))
-(register-type-inferrer 'evenp (constantly 'boolean))
-(register-type-inferrer 'max (constantly 'boolean))
-(register-type-inferrer 'min (constantly 'boolean))
-(register-type-inferrer 'minusp (constantly 'boolean))
-(register-type-inferrer 'plusp (constantly 'boolean))
-(register-type-inferrer 'zerop (constantly 'boolean))
-(register-type-inferrer 'oddp (constantly 'boolean))
-(register-type-inferrer 'evenp (constantly 'boolean))

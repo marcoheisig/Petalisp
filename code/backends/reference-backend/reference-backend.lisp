@@ -67,9 +67,11 @@
               (mapcar (lambda (input) (iref input index)) inputs))))))
 
 (defmethod evaluate ((directed-fold directed-fold))
-  (let ((inputs (mapcar #'evaluate (inputs right-fold))))
-    ;; TODO
-    ))
+  (let ((inputs (mapcar #'evaluate (inputs directed-fold))))
+    (make-simple-immediate
+     (shape directed-fold)
+     (lambda (index)
+       ))))
 
 (defun split-range (range)
   (multiple-value-bind (start step end)

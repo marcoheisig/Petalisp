@@ -14,7 +14,9 @@
 ;;; Classes
 
 (defclass application (non-immediate)
-  ((%operator :initarg :operator :reader operator)))
+  ((%operator :initarg :operator :reader operator :type (or symbol function))
+   (%value-n :initarg :value-n :reader value-n :type (integer 0 #.multiple-values-limit))
+   (%conditions :initarg :conditions :reader conditions)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -23,14 +25,21 @@
 (defmethod make-application :check ((function function) (inputs list))
   (assert (identical inputs :test #'set-equal :key #'shape)))
 
-(defmethod make-application ((operator function) inputs)
-  (multiple-value-bind (element-type function-designator)
-    (infer-type operator (mapcar #'element-type inputs))
-    (make-instance 'application
-      :operator function-designator
-      :element-type element-type
-      :inputs inputs
-      :shape (shape (first inputs)))))
+(defmethod make-application ((function function) inputs)
+  (multiple-value-bind (result-types more-p conditions function-name)
+      (infer-type function (mapcar #'element-type inputs))
+    (declare (ignore more-p))
+    (values-list
+     (loop for result-type in result-types
+           for value-n from 0
+           collect
+           (make-instance 'application
+             :operator (or function-name function)
+             :value-n value-n
+             :conditions conditions
+             :element-type result-type
+             :inputs inputs
+             :shape (shape (first inputs)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
