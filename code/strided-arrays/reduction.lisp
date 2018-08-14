@@ -37,16 +37,16 @@
     (error "~@<Can only reduce data structures with dimension greater than zero.~:@>")))
 
 (defmethod make-reduction ((operator function) (inputs list))
-  (let ((input-types (mapcar #'element-type inputs)))
+  (let* ((input-types (mapcar #'element-type inputs))
+         (width (length input-types)))
     (multiple-value-bind (result-types more-p conditions operator-name)
         (infer-type operator (append input-types input-types))
-      (let ((element-types (if (and more-p (null result-types))
-                               '(t)
-                               result-types)))
-        (unless (= (length element-types) (length input-types))
-          (error "~@<The function ~S returns ~S argument~:P, but is expected ~
-                     to return ~S arguments.~:@>"
-                 operator (length element-types) (length input-types)))
+      (when (and (not more-p) (< (length result-types) width))
+        (error "~@<The function ~S returns ~S argument~:P, but is expected ~
+                   to return ~S arguments.~:@>"
+               operator (length result-types) width))
+      (let ((element-types (replace (make-list width :initial-element 't)
+                                    result-types)))
         (values-list
          (loop for element-type in element-types
                for value-n from 0

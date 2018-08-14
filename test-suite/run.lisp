@@ -23,10 +23,13 @@
                                (storage native-backend-result))))
     native-backend-results))
 
-(defmacro check (a b)
-  `(fiveam:is
-    (equalp (compute ,a)
-            (compute ,b))))
+(defmacro check (expr &rest results)
+  `(progn
+     ,@(loop for result in results
+             for n from 0
+             collect
+             `(fiveam:is
+               (equalp ,result (compute (nth-value ,n ,expr)))))))
 
 (defun ndarray (n &optional (length 10))
   "Create a LENGTH^N array of double floats."
