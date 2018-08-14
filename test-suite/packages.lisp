@@ -9,5 +9,7 @@
    :petalisp
    :petalisp/examples/jacobi
    :petalisp/examples/red-black-gauss-seidel
-   :petalisp/examples/linear-algebra))
+   :petalisp/examples/linear-algebra)
+  (:export
+   #:run-test-suite))
 

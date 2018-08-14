@@ -21,5 +21,7 @@
     :components
     ((:file "packages")
      (:file "code-statistics")
-     (:file "test-backend")
-     (:file "test-suite")))))
+     (:file "run")
+     (:file "test-api")
+     (:file "test-examples")
+     (:file "test-sets")))))

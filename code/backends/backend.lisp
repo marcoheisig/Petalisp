@@ -20,7 +20,7 @@ values or non-permuting references to immediate values."))
 
 (defgeneric compute-immediates (data-structures backend))
 
-(defgeneric overwrite-instance (instance substitute))
+(defgeneric overwrite-instance (instance replacement))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -77,20 +77,20 @@ backend."))
             data-structures collapsing-transformations immediates)
     immediates))
 
-(defmethod overwrite-instance ((instance immediate) (substitute immediate))
-  (change-class instance (class-of substitute)
-    :storage (storage substitute)))
+(defmethod overwrite-instance ((instance immediate) (replacement immediate))
+  (change-class instance (class-of replacement)
+    :storage (storage replacement)))
 
-(defmethod overwrite-instance ((instance reference) (substitute reference))
+(defmethod overwrite-instance ((instance reference) (replacement reference))
   (reinitialize-instance instance
-    :transformation (transformation substitute)
-    :inputs (inputs substitute)))
+    :transformation (transformation replacement)
+    :inputs (inputs replacement)))
 
-(defmethod overwrite-instance (instance (substitute reference))
-  (change-class instance (class-of substitute)
-    :transformation (transformation substitute)
-    :inputs (inputs substitute)))
+(defmethod overwrite-instance (instance (replacement reference))
+  (change-class instance (class-of replacement)
+    :transformation (transformation replacement)
+    :inputs (inputs replacement)))
 
-(defmethod overwrite-instance (instance (substitute immediate))
-  (change-class instance (class-of substitute)
-    :storage (storage substitute)))
+(defmethod overwrite-instance (instance (replacement immediate))
+  (change-class instance (class-of replacement)
+    :storage (storage replacement)))
