@@ -9,8 +9,7 @@
    "bordeaux-threads"
    "lparallel"
    "trivia"
-   "trivial-arguments"
-   "uiop")
+   "trivial-arguments")
 
   :in-order-to ((test-op (test-op :petalisp-test-suite)))
 
@@ -82,7 +81,6 @@
        (:module "reference-backend"
         :components ((:file "simple-immediate")
                      (:file "reference-backend")))
-       (:file "test-backend-mixin")
        (:module "native-backend"
         :components ((:file "scheduler")
                      (:file "compile-cache-mixin")

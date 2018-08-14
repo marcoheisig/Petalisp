@@ -21,4 +21,5 @@
     :components
     ((:file "packages")
      (:file "code-statistics")
+     (:file "test-backend")
      (:file "test-suite")))))

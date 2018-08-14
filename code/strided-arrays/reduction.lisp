@@ -29,7 +29,7 @@
 ;;;
 ;;; Methods
 
-(defmethod make-reduction :check (operator inputs)
+(defmethod make-reduction :check ((operator function) (inputs list))
   (declare (ignore operator))
   (unless (identical inputs :test #'set-equal :key #'shape)
     (error "~@<Can only reduce data structures of equal shape.~:@>"))
