@@ -56,6 +56,18 @@
 (define-type-inferrer 1- (type)
   (values (list type) nil '() '1-))
 
+(define-type-inferrer floor (number &optional (divisor 'integer))
+  (values (list 'integer (numeric-supertype (list number divisor))) nil '() 'floor))
+
+(define-type-inferrer ceiling (number &optional (divisor 'integer))
+  (values (list 'integer (numeric-supertype (list number divisor))) nil '() 'ceiling))
+
+(define-type-inferrer truncate (number &optional (divisor 'integer))
+  (values (list 'integer (numeric-supertype (list number divisor))) nil '() 'truncate))
+
+(define-type-inferrer round (number &optional (divisor 'integer))
+  (values (list 'integer (numeric-supertype (list number divisor))) nil '() 'round))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Exponentials, Logarithms and Trigonometry  - CLHS Figure 12-2

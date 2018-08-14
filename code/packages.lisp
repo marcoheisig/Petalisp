@@ -55,7 +55,7 @@
    #:inputs
    #:storage
    #:operator
-   #:initialization
+   #:value-n
    #:application
    #:reduction
    #:fusion

@@ -63,8 +63,10 @@
     (make-simple-immediate
      (shape application)
      (lambda (index)
-       (apply (operator application)
-              (mapcar (lambda (input) (iref input index)) inputs))))))
+       (nth-value
+        (value-n application)
+        (apply (operator application)
+               (mapcar (lambda (input) (iref input index)) inputs)))))))
 
 (defun split-range (range)
   (multiple-value-bind (start step end)
@@ -89,7 +91,9 @@
                         (multiple-value-call (operator reduction)
                           (divide-and-conquer left)
                           (divide-and-conquer right))))))
-         (divide-and-conquer (first (ranges (shape (first inputs))))))))))
+         (nth-value
+          (value-n reduction)
+          (divide-and-conquer (first (ranges (shape (first inputs)))))))))))
 
 (defmethod evaluate ((fusion fusion))
   (let ((inputs (mapcar #'evaluate (inputs fusion))))
