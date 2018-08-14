@@ -33,9 +33,9 @@ that u*u1 + v*u2 = u3 = gcd(u,v)."
     ;; The absolute values of all coefficients in this algorithm are
     ;; bounded by the least common multiple of U and V.  Computing the
     ;; least common multiple is quite expensive, so instead we use the
-    ;; product of U and V as a conservative estimate. To see why (* u v) is
-    ;; unconditionally greater than (lcm u v), consider the prime factors
-    ;; of both numbers.
+    ;; product of U and V as a conservative estimate.  To see why (* u v)
+    ;; is unconditionally greater than (lcm u v), consider the prime
+    ;; factors of both numbers.
     (if (typep (* u v) 'non-negative-fixnum)
         (fixnum-euclid 1 u 0 v)
         (bignum-euclid 1 u 0 v))))

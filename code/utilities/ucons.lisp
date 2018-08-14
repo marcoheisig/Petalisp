@@ -19,17 +19,17 @@
 ;;; ucons - unique conses
 ;;;
 ;;; Some applications benefit a lot by reusing existing cons cells instead
-;;; of actual consing. Usually this technique is called hash consing.
+;;; of actual consing.  Usually this technique is called hash consing.
 ;;; Users of this technique are e.g. the optimizer of the computer algebra
 ;;; system Maxima and the theorem prover ACL2.
 ;;;
 ;;; This particular implementation is intended for use cases where
 ;;; performance is so critical, that even a single hash table access per
-;;; cons is too expensive. To achieve such near-optimal speed, this library
-;;; does not actually provide conses, but uconses. A ucons has not only a
-;;; car and a cdr, but also a table of past users. Furthermore, the cdr of
-;;; each ucons is restricted to other uconses or NIL. This setup has
-;;; several advantages:
+;;; cons is too expensive.  To achieve such near-optimal speed, this
+;;; library does not actually provide conses, but uconses.  A ucons has not
+;;; only a car and a cdr, but also a table of past users.  Furthermore, the
+;;; cdr of each ucons is restricted to other uconses or NIL.  This setup
+;;; has several advantages:
 ;;;
 ;;; - Checking whether a certain ucons already exists is a single lookup of
 ;;;   its car in the table of its cdr.
@@ -40,9 +40,9 @@
 ;;;
 ;;; - Lists of uconses are neither circular, nor improper.
 ;;;
-;;; Unfortunately there is also a painful downside of this
-;;; approach. Traditional cons cells are a fundamental Lisp data type and
-;;; well supported throughout the standard library. Uconses lack this
+;;; Unfortunately there is also a painful downside of this approach.
+;;; Traditional cons cells are a fundamental Lisp data type and well
+;;; supported throughout the standard library.  Uconses lack this
 ;;; integration and require a completely new set of library functions.
 ;;; Furthermore it must be noted that uconses are --- except if one
 ;;; explicitly clears the *UCONS-LEAF-TABLE* --- a permanent memory leak.
@@ -56,7 +56,7 @@
 ;;; - given enough potential for structural sharing, uconses can decrease
 ;;;   the memory consumption of an application by orders of magnitude.
 ;;;
-;;; - checks for structural similarity can be done in constant time. Two
+;;; - checks for structural similarity can be done in constant time.  Two
 ;;;   ucons trees are equal if and only if their roots are EQ.
 ;;;
 ;;; Benchmarks:
@@ -69,10 +69,7 @@
 (defvar *ucons-leaf-table* (make-hash-table :test #'eq)
   "The table of all uconses whose cdr is NIL.")
 
-(deftype ucar ()
-  "The type of all elements that may appear as the UCAR of a UCONS."
-  ;; AKA the type of things you can reasonably compare with EQ
-  '(or fixnum symbol function character structure-object))
+(deftype ucar () 't)
 
 (defstruct (ucons
             (:constructor make-fresh-ucons (car cdr))
@@ -128,9 +125,9 @@ and past invocation of this function with the same arguments."
   (declare (ucar car) (ucons cdr))
   (let ((ucons (make-fresh-ucons car cdr)))
     (prog1 ucons
-      (if (< (length (utable cdr)) 8)
+      (if (< (length (utable cdr)) 16)
           (push (cons car ucons) (utable cdr))
-          (let ((hash-table (alist-hash-table (utable cdr) :test #'eq :size 16)))
+          (let ((hash-table (alist-hash-table (utable cdr) :size 32)))
             (setf (gethash car hash-table) ucons)
             (setf (utable cdr) hash-table))))))
 
@@ -143,12 +140,10 @@ and past invocation of this function with the same arguments."
   (declare (dynamic-extent args))
   (reduce #'ucons args :from-end t :initial-value nil))
 
-(define-compiler-macro ulist (&whole whole &rest args)
-  (if (> (length args) 9)
-      whole
-      (flet ((symbolic-ucons (car cdr)
-               `(ucons ,car ,cdr)))
-        (reduce #'symbolic-ucons args :from-end t :initial-value nil))))
+(define-compiler-macro ulist (&rest args)
+  (flet ((symbolic-ucons (car cdr)
+           `(ucons ,car ,cdr)))
+    (reduce #'symbolic-ucons args :from-end t :initial-value nil)))
 
 (defun ulist* (&rest args)
   "Return the ulist associated with the supplied arguments, but using the
@@ -161,20 +156,18 @@ and past invocation of this function with the same arguments."
                  (ucons first (%hlist* (car rest) (cdr rest))))))
     (%hlist* (first args) (rest args))))
 
-(define-compiler-macro ulist* (&whole whole &rest arg-forms)
-  (let ((n (length arg-forms)))
-    (if (> n 9)
-        whole
-        (let ((gensyms (loop repeat n collect (gensym "ARG"))))
-          `(let* ,(mapcar #'list gensyms arg-forms)
-             ,(let* ((rgensyms (reverse gensyms))
-                     (result-form
-                       `(prog1 ,(car rgensyms)
-                          (check-type ,(car rgensyms)
-                                      (or ucons null)))))
-                (loop for gensym in (cdr rgensyms)
-                      do (setf result-form `(ucons ,gensym ,result-form)))
-                result-form))))))
+(define-compiler-macro ulist* (&rest arg-forms)
+  (let* ((n (length arg-forms))
+         (gensyms (loop repeat n collect (gensym "ARG"))))
+    `(let* ,(mapcar #'list gensyms arg-forms)
+       ,(let* ((rgensyms (reverse gensyms))
+               (result-form
+                 `(prog1 ,(car rgensyms)
+                    (check-type ,(car rgensyms)
+                                (or ucons null)))))
+          (loop for gensym in (cdr rgensyms)
+                do (setf result-form `(ucons ,gensym ,result-form)))
+          result-form))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
