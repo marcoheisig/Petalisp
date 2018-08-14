@@ -6,7 +6,7 @@
 ;;;
 ;;; Special Variables
 
-(defparameter *backend* (make-instance 'reference-backend)
+(defvar *backend* (make-instance 'reference-backend)
   "The backend on which Petalisp programs are executed.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -86,13 +86,12 @@ mismatch, the smaller objects are broadcast."
 
 (defun compute (&rest data-structures)
   "Return the computed values of all OBJECTS."
-  (values-list
-   (mapcar #'storage
-           (lparallel.promise:force
-            (apply #'schedule data-structures)))))
+  (compute-on-backend
+   (mapcar #'make-strided-array data-structures)
+   *backend*))
 
 (defun schedule (&rest data-structures)
   "Instruct Petalisp to compute all given OBJECTS asynchronously."
-  (compute-synchronously
+  (schedule-on-backend
    (mapcar #'make-strided-array data-structures)
    *backend*))

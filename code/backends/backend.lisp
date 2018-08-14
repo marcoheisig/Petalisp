@@ -6,17 +6,9 @@
 ;;;
 ;;; Generic Functions
 
-(defgeneric compute-asynchronously (data-structures backend)
-  (:documentation
-   "Instruct BACKEND to compute all given data structures asynchronously, i.e.,
-to convert each object to an immediate value or a non-permuting reference
-to an immediate value.  Return an object that can be passed to
-LPARALLEL.PROMISE:FORCE to block until the task is complete."))
+(defgeneric compute-on-backend (data-structures backend))
 
-(defgeneric compute-synchronously (data-structures backend)
-  (:documentation
-   "Instruct backend to replace all given data structures with immediate
-values or non-permuting references to immediate values."))
+(defgeneric schedule-on-backend (data-structures backend))
 
 (defgeneric compute-immediates (data-structures backend))
 
@@ -27,14 +19,8 @@ values or non-permuting references to immediate values."))
 ;;; Classes
 
 (defclass backend ()
-  ((%scheduler-queue :reader scheduler-queue
-                     :initform (lparallel.queue:make-queue))
-   (%scheduler-thread :accessor scheduler-thread))
-  (:documentation
-   "A backend is an abstraction over a set of hardware
-resources. All handling of kernels --- such as performance analysis,
-compilation and execution --- is done in the context of a particular
-backend."))
+  ((%scheduler-queue :initform (lparallel.queue:make-queue) :reader scheduler-queue)
+   (%scheduler-thread :accessor scheduler-thread)))
 
 (defmethod initialize-instance :after ((backend backend) &key &allow-other-keys)
   (setf (scheduler-thread backend)
@@ -43,23 +29,13 @@ backend."))
            (loop
              (funcall
               (lparallel.queue:pop-queue (scheduler-queue backend)))))
-         :name (format nil "~A scheduler thread"
-                       (class-name (class-of backend))))))
+         :name (format nil "~A scheduler thread" (class-name (class-of backend))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Methods
 
-(defmethod compute-asynchronously ((data-structures list) (backend backend))
-  (let ((promise (lparallel.promise:promise)))
-    (lparallel.queue:push-queue
-     (lambda ()
-       (lparallel.promise:fulfill promise
-         (compute-synchronously data-structures backend)))
-     (scheduler-queue backend))
-    promise))
-
-(defmethod compute-synchronously ((data-structures list) (backend backend))
+(defmethod compute-on-backend ((data-structures list) (backend backend))
   (let* ((collapsing-transformations
            (mapcar (compose #'collapsing-transformation #'shape)
                    data-structures))
@@ -75,7 +51,16 @@ backend."))
                 (shape data-structure)
                 collapsing-transformation)))
             data-structures collapsing-transformations immediates)
-    immediates))
+    (values-list (mapcar #'storage immediates))))
+
+(defmethod schedule-on-backend ((data-structures list) (backend backend))
+  (let ((promise (lparallel.promise:promise)))
+    (lparallel.queue:push-queue
+     (lambda ()
+       (lparallel.promise:fulfill promise
+         (compute-on-backend data-structures backend)))
+     (scheduler-queue backend))
+    promise))
 
 (defmethod overwrite-instance ((instance immediate) (replacement immediate))
   (change-class instance (class-of replacement)

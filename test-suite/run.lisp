@@ -51,6 +51,8 @@
   (format t "~&Git revision: ~a" (system-git-revision :petalisp))
   (let ((fiveam:*on-error*   (if debug :debug *on-error*))
         (fiveam:*on-failure* (if debug :debug *on-failure*))
-        (petalisp:*backend* (make-instance 'testing-backend)))
+        (petalisp:*backend*
+          (load-time-value
+           (make-instance 'testing-backend))))
     (fiveam:run! 'petalisp)))
 
