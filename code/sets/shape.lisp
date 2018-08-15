@@ -101,8 +101,8 @@
          (stack-depths (mapcar #'length stacks))
          (maxdim (apply #'max stack-depths)))
     (flet ((broadcast-ranges (ranges)
-             (let ((result (first ranges)))
-               (loop for range in (rest ranges) do
+             (let ((result (load-time-value (make-range 0 1 0))))
+               (loop for range in ranges do
                  (cond
                    ((set-equal range result)
                     (values))

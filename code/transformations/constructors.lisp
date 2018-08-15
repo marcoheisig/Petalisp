@@ -75,21 +75,9 @@
              ;; check. If an output does not reference any input, the
              ;; corresponding entry in the permutation must be nil NIL. No
              ;; index must appear more than once.
-             (demand (and (every (lambda (p)
-                                   (or (not p)
-                                       (< -1 p input-dimension)))
-                                 permutation)
-                          (if (not input-constraints)
-                              (loop for input-index below input-dimension
-                                    always (> 2 (count input-index permutation)))
-                              (loop for input-index below input-dimension
-                                    for input-constraint across input-constraints
-                                    always
-                                    (if (not input-constraint)
-                                        (> 2 (count input-index permutation))
-                                        (= 0 (count input-index permutation))))))
-               "~@<Invalid transformation permutation: ~W~:@>"
-               permutation)
+
+             ;; TODO check permutations...
+
              ;; A permutation is boring if it maps each index to itself.
              (if (and (every (let ((i -1))
                                (lambda (p)
