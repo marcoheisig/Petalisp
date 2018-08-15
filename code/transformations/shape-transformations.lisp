@@ -34,8 +34,7 @@
                     the input constraint ~W of the transformation ~W.~:@>"
                 index shape constraint transformation)))))
 
-(defmethod transform ((shape shape)
-                      (transformation hairy-transformation))
+(defmethod transform ((shape shape) (transformation hairy-transformation))
   (let ((output-ranges (make-list (output-dimension transformation)))
         (input-ranges (ranges shape)))
     (flet ((store-output-range (output-index input-index scaling offset)

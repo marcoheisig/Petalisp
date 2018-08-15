@@ -221,22 +221,18 @@
        :scaling scaling
        :translation translation))))
 
-(defmethod transform :before
-    ((list list)
-     (transformation hairy-transformation))
+(defmethod transform :before ((sequence sequence) (transformation hairy-transformation))
   (when-let ((input-constraints (input-constraints transformation)))
-    (loop for item in list
-          for constraint across input-constraints
-          for index from 0
-          when (and constraint (numberp item)) do
-            (demand (= item constraint)
-              "~@<The number ~W violates the ~:R input constraint ~
-                      of the transformation ~W.~:@>"
-              item index transformation))))
+    (map nil (lambda (constraint element)
+               (when (and (numberp constraint)
+                          (numberp element)
+                          (/= constraint element))
+                 (error "~@<The number ~S violates the input constraint ~S ~
+                            of the transformation ~S.~:@>"
+                        element constraint transformation)))
+         input-constraints sequence)))
 
-(defmethod transform
-    ((list list)
-     (transformation hairy-transformation))
+(defmethod transform ((list list) (transformation hairy-transformation))
   (let ((result '()))
     (flet ((push-output-expression (output-index input-index a b)
              (declare (ignore output-index))

@@ -61,9 +61,6 @@
   (print-unreadable-object (immediate stream :type t :identity t)
     (princ (storage immediate) stream)))
 
-(defmethod transform ((array array) (transformation transformation))
-  (transform (make-strided-array array) transformation))
-
 (defmethod transform ((strided-array strided-array) (transformation transformation))
   (make-reference
    strided-array

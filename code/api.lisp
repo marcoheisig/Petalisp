@@ -30,19 +30,33 @@ quantities."
               (,end (index) (range-end (elt ,ranges index))))
          ,@body))))
 
-(defun reshape (data shape)
+(defun reshape (array &rest shapes-and-transformations)
   "Return a data structure of given SHAPE, either by selecting a subset of
 the elements of DATA, or by broadcasting them.
 
 Examples:
  (reshape 0 '(10 10))          ; Create a 10x10 array of zeros
  (reshape #(1 2 3 4) '((1 2))) ; Select the two interior entries"
-  (let* ((data (make-strided-array data))
-         (shape (make-shape shape)))
-    (make-reference
-     data
-     shape
-     (broadcasting-transformation shape (shape data)))))
+  (labels ((reshape-with-shape (strided-array shape)
+             (make-reference
+              strided-array
+              shape
+              (broadcasting-transformation shape (shape strided-array))))
+           (reshape-with-transformation (strided-array transformation)
+             (make-reference
+              strided-array
+              (transform (shape strided-array) transformation)
+              (invert-transformation transformation)))
+           (reshape1 (strided-array modifier)
+             (cond ((listp modifier)
+                    (reshape-with-shape strided-array (make-shape modifier)))
+                   ((functionp modifier)
+                    (reshape-with-transformation strided-array (make-transformation-from-function modifier)))
+                   ((shapep modifier)
+                    (reshape-with-shape strided-array modifier))
+                   ((transformationp modifier)
+                    (reshape-with-transformation strided-array modifier)))))
+    (reduce #'reshape1 shapes-and-transformations :initial-value (make-strided-array array))))
 
 (defun fuse (&rest objects)
   "Combine OBJECTS into a single petalisp data structure. It is an error if

@@ -27,29 +27,29 @@
        (loop repeat iterations do
          (setf u (fuse* u (α #'* (float 1/2)
                              (α #'+
-                                (reshape (transform u (τ (i) ((1+ i)))) interior)
-                                (reshape (transform u (τ (i) ((1- i)))) interior)
+                                (reshape (reshape u (τ (i) ((1+ i)))) interior)
+                                (reshape (reshape u (τ (i) ((1- i)))) interior)
                                 (reshape (α #'* (* h h) f) interior))))))
        u)
       (2
        (loop repeat iterations do
          (setf u (fuse* u (α #'* (float 1/4)
                              (α #'+
-                                (reshape (transform u (τ (i j) ((1+ i) j))) interior)
-                                (reshape (transform u (τ (i j) ((1- i) j))) interior)
-                                (reshape (transform u (τ (i j) (i (1+ j)))) interior)
-                                (reshape (transform u (τ (i j) (i (1- j)))) interior)
+                                (reshape (reshape u (τ (i j) ((1+ i) j))) interior)
+                                (reshape (reshape u (τ (i j) ((1- i) j))) interior)
+                                (reshape (reshape u (τ (i j) (i (1+ j)))) interior)
+                                (reshape (reshape u (τ (i j) (i (1- j)))) interior)
                                 (reshape (α #'* (* h h) f) interior))))))
        u)
       (3
        (loop repeat iterations do
          (setf u (fuse* u (α #'* (float 1/6)
                              (α #'+
-                                (reshape (transform u (τ (i j k) ((1+ i) j k))) interior)
-                                (reshape (transform u (τ (i j k) ((1- i) j k))) interior)
-                                (reshape (transform u (τ (i j k) (i (1+ j) k))) interior)
-                                (reshape (transform u (τ (i j k) (i (1- j) k))) interior)
-                                (reshape (transform u (τ (i j k) (i j (1+ k)))) interior)
-                                (reshape (transform u (τ (i j k) (i j (1- k)))) interior)
+                                (reshape (reshape u (τ (i j k) ((1+ i) j k))) interior)
+                                (reshape (reshape u (τ (i j k) ((1- i) j k))) interior)
+                                (reshape (reshape u (τ (i j k) (i (1+ j) k))) interior)
+                                (reshape (reshape u (τ (i j k) (i (1- j) k))) interior)
+                                (reshape (reshape u (τ (i j k) (i j (1+ k)))) interior)
+                                (reshape (reshape u (τ (i j k) (i j (1- k)))) interior)
                                 (reshape (α #'* (* h h) f) interior))))))
        u))))

@@ -8,9 +8,8 @@
                :reader output-dimension
                :type (integer 0 *))))
 
-(defmethod transform ((list list)
-                      (operator identity-transformation))
-  list)
+(defmethod transform ((sequence sequence) (operator identity-transformation))
+  sequence)
 
 (defmethod transformation-equal
     ((transformation-1 identity-transformation)

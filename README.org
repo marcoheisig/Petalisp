@@ -48,7 +48,7 @@ with Petalisp will be like.
 Example 1: transposing a matrix
 #+BEGIN_SRC lisp
 (defun transpose (A)
-  (-> A (τ (m n) (n m))))
+  (transform A (τ (m n) (n m))))
 #+END_SRC
 
 Example 2: matrix-matrix multiplication
@@ -56,8 +56,8 @@ Example 2: matrix-matrix multiplication
 (defun matrix-multiplication (A B)
   (β #'+
      (α #'*
-        (-> A (τ (m n) (m 1 n)))
-        (-> B (τ (n k) (1 k n))))))
+        (transform A (τ (m n) (m 1 n)))
+        (transform B (τ (n k) (1 k n))))))
 #+END_SRC
 
 Example 3: the numerical Jacobi scheme in two dimensions
@@ -69,10 +69,10 @@ Example 3: the numerical Jacobi scheme in two dimensions
          (fuse x
                (α #'* 0.25
                   (α #'+
-                     (-> x (τ (i0 i1) ((+ i0 1) i1)) interior)
-                     (-> x (τ (i0 i1) ((- i0 1) i1)) interior)
-                     (-> x (τ (i0 i1) (i0 (+ i1 1))) interior)
-                     (-> x (τ (i0 i1) (i0 (- i1 1))) interior))))
+                     (transform x (τ (i0 i1) ((+ i0 1) i1)) interior)
+                     (transform x (τ (i0 i1) ((- i0 1) i1)) interior)
+                     (transform x (τ (i0 i1) (i0 (+ i1 1))) interior)
+                     (transform x (τ (i0 i1) (i0 (- i1 1))) interior))))
          (- iterations 1)))))
 #+END_SRC
 

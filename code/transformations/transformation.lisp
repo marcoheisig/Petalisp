@@ -56,7 +56,8 @@
 ;;; (j1 ... jM iN+1).
 (defgeneric enlarge-transformation (transformation scale offset))
 
-(defgeneric transform (object transformation))
+(defgeneric transform (object transformation)
+  (:argument-precedence-order transformation object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

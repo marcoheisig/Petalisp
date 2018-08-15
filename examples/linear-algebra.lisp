@@ -13,17 +13,17 @@
 
 (defun to-matrix (x)
   (ecase (dimension x)
-    (0 (transform x (τ () (0 0))))
-    (1 (transform x (τ (i) (i 0))))
+    (0 (reshape x (τ () (0 0))))
+    (1 (reshape x (τ (i) (i 0))))
     (2 x)))
 
 (defun transpose (x)
-  (transform
+  (reshape
    (to-matrix x)
    (τ (m n) (n m))))
 
 (defun dot (x y)
-  (transform
+  (reshape
    (matmul
     (transpose x)
     (to-matrix y))
@@ -32,8 +32,8 @@
 (defun matmul (a b)
   (β #'+
      (α #'*
-        (transform (to-matrix a) (τ (m n) (n m 0)))
-        (transform (to-matrix b) (τ (n k) (n 0 k))))))
+        (reshape (to-matrix a) (τ (m n) (n m 0)))
+        (reshape (to-matrix b) (τ (n k) (n 0 k))))))
 
 (defun norm (x)
   (α #'sqrt (dot x x)))

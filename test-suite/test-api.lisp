@@ -27,4 +27,4 @@
              (0.0 0.0 0.0))))
 
 (test reference
-  (check (transform #(1 2 3) (τ (i) ((- i)))) #(3 2 1)))
+  (check (reshape #(1 2 3) (τ (i) ((- i)))) #(3 2 1)))
