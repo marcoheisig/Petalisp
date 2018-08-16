@@ -17,7 +17,7 @@
 ;;;
 ;;; Classes
 
-(defclass reference-backend (backend)
+(defclass petalisp:reference-backend (backend)
   ())
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

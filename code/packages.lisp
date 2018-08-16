@@ -78,21 +78,26 @@
    #:schedule
 
    ;; Backends
-   #:backend
+   #:compute-on-backend
+   #:schedule-on-backend
    #:compute-immediates
-   #:compute-asynchronously
-   #:compute-synchronously
+   #:backend
+
    #:reference-backend
-   #:common-lisp-backend
-   #:testing-backend))
+   #:native-backend
+   ))
 
 (cl:defpackage :petalisp-reference-backend
   (:shadowing-import-from :petalisp :set-difference)
-  (:use :closer-common-lisp :alexandria :petalisp))
+  (:use :closer-common-lisp :alexandria :petalisp)
+  (:export
+   #:reference-backend))
 
 (cl:defpackage :petalisp-native-backend
   (:shadowing-import-from :petalisp :set-difference)
-  (:use :closer-common-lisp :alexandria :petalisp))
+  (:use :closer-common-lisp :alexandria :petalisp)
+  (:export
+   #:native-backend))
 
 (cl:defpackage :petalisp-user
   (:shadowing-import-from :petalisp :set-difference)

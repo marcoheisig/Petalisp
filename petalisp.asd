@@ -66,7 +66,7 @@
        (:file "fusion")
        (:file "reference")))
 
-     (:module "kernel-creation"
+     (:module "ir"
       :components
       ((:file "blueprint")
        (:file "kernel")

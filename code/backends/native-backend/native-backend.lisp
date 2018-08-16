@@ -2,7 +2,7 @@
 
 (in-package :petalisp)
 
-(defclass common-lisp-backend
+(defclass petalisp:native-backend
     (backend default-scheduler-mixin compile-cache-mixin)
   ((%memory-pool :reader memory-pool
                  :initform (make-hash-table :test #'equalp)
@@ -11,7 +11,7 @@
                  :initform (lparallel:make-kernel 4))))
 
 (defmethod vm/bind-memory
-    ((backend common-lisp-backend)
+    ((backend native-backend)
      (immediate immediate))
   (let ((array-dimensions
           (map 'list #'set-size (ranges (shape immediate))))
@@ -24,7 +24,7 @@
     (values)))
 
 (defmethod vm/free-memory
-    ((backend common-lisp-backend)
+    ((backend native-backend)
      (immediate immediate))
   (let ((array-dimensions
           (map 'list #'set-size (ranges (shape immediate))))
@@ -35,12 +35,12 @@
     (values)))
 
 (defmethod vm/compile
-  ((backend common-lisp-backend)
+  ((backend native-backend)
    (blueprint ucons:ucons))
   (let ((code (translate-blueprint blueprint)))
     (compile nil code)))
 
-(defmethod vm/execute ((backend common-lisp-backend) (kernel kernel))
+(defmethod vm/execute ((backend native-backend) (kernel kernel))
   (let ((lparallel:*kernel* (worker-pool backend)))
     (funcall (vm/compile backend (kernel-blueprint kernel)) kernel)))
 
