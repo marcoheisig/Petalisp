@@ -69,11 +69,9 @@
      (:module "backends"
       :components
       ((:module "generic"
-        :components ((:file "blueprint")
-                     (:file "buffer")
-                     (:file "array-buffer")
-                     (:file "kernel")
-                     (:file "backend")
+        :components ((:file "backend")
+                     (:file "blueprint")
+                     (:file "ir")
                      (:file "buffer-table")
                      (:file "ir-conversion")
                      (:file "scheduler-queue-mixin")))
