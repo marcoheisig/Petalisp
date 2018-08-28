@@ -112,10 +112,10 @@
 ;;;
 ;;; Classes
 
-(defclass graph ()
+(defclass any-graph ()
   ())
 
-(defclass edge ()
+(defclass any-edge ()
   ())
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -123,41 +123,41 @@
 ;;; Default Methods
 
 (defmethod graphviz-graph-attributes
-    ((graph graph))
+    ((graph any-graph))
   '())
 
 (defmethod graphviz-node-attributes
-    ((graph graph) node)
+    ((graph any-graph) node)
   '())
 
 (defmethod graphviz-edge-attributes
-    ((graph graph) edge from to edge-number)
+    ((graph any-graph) (edge any-edge) from to edge-number)
   '())
 
 (defmethod graphviz-node-caption
-    ((graph graph) node)
+    ((graph any-graph) node)
   (string-downcase
    (class-name
     (class-of node))))
 
 (defmethod graphviz-node-properties append
-    ((graph graph) node)
+    ((graph any-graph) node)
   '())
 
 (defmethod graphviz-potential-edges append
-    ((graph graph) node)
+    ((graph any-graph) node)
   '())
 
 (defmethod graphviz-outgoing-edge-targets
-    ((graph graph) (edge edge) node)
+    ((graph any-graph) (edge any-edge) node)
   '())
 
 (defmethod graphviz-incoming-edge-origins
-    ((graph graph) (edge edge) node)
+    ((graph any-graph) (edge any-edge) node)
   '())
 
 (defmethod graphviz-known-nodes append
-    ((graph graph) node)
+    ((graph any-graph) node)
   '())
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -165,12 +165,12 @@
 ;;; CL-DOT Integration
 
 (defmethod cl-dot:generate-graph-from-roots :around
-    ((graph graph) objects &optional attributes)
+    ((graph any-graph) objects &optional attributes)
   (let ((attributes (plist-union attributes (graphviz-graph-attributes graph))))
     (call-next-method graph objects attributes)))
 
 (defmethod cl-dot:graph-object-node
-    ((graph graph) node)
+    ((graph any-graph) node)
   (make-instance 'cl-dot:node
     :attributes
     `(:label
@@ -180,7 +180,7 @@
       ,@(graphviz-node-attributes graph node))))
 
 (defmethod cl-dot:graph-object-points-to
-    ((graph graph) node)
+    ((graph any-graph) node)
   (loop for edge in (graphviz-potential-edges graph node)
         append
         ;; There must be a more graceful way to loop over sequences...
@@ -192,7 +192,7 @@
                 :object target))))
 
 (defmethod cl-dot:graph-object-pointed-to-by
-    ((graph graph) node)
+    ((graph any-graph) node)
   (loop for edge in (graphviz-potential-edges graph node)
         append
         (loop for origin in (coerce (graphviz-incoming-edge-origins graph edge node) 'list)
@@ -203,5 +203,5 @@
                 :object origin))))
 
 (defmethod cl-dot:graph-object-knows-of
-    ((graph graph) object)
+    ((graph any-graph) object)
   (graphviz-known-nodes graph object))

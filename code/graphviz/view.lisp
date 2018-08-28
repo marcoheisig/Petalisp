@@ -2,11 +2,7 @@
 
 (in-package :petalisp)
 
-(defclass arbitrary-petalisp-graph
-    (data-flow-graph task-graph)
-  ())
-
-(defvar *graphviz-default-graph* (make-instance 'arbitrary-petalisp-graph))
+(defvar *graphviz-default-graph* (make-instance 'data-flow-graph))
 
 (defvar *graphviz-default-viewer*
   (flet ((program-in-path-p (program)
@@ -32,4 +28,5 @@
      image-file
      :format format)
     (uiop:run-program
-     (list viewer (uiop:native-namestring image-file)))))
+     (list viewer (uiop:native-namestring image-file))))
+  graph-root)

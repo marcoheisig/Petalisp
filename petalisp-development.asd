@@ -16,6 +16,6 @@
       :components
       ((:file "utilities")
        (:file "protocol")
-       (:file "data-flow-graph")
-       (:file "task-graph")
+       (:file "strided-arrays")
+       (:file "ir")
        (:file "view")))))))
