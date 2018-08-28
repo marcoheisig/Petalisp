@@ -2,6 +2,64 @@
 
 (in-package :petalisp)
 
+;;; The purpose of IR conversion is to turn a data flow graph, whose nodes
+;;; are strided arrays, into an analogous graph, whose nodes are buffers
+;;; and kernels.  Each buffer is read from --- or written to --- by one or
+;;; more kernels.  Each kernel has zero or more input buffers and one or
+;;; more output buffer.
+;;;
+;;; The default IR conversion algorithm proceeds in the following steps:
+;;;
+;;; 1. A hash table is created that maps certain strided arrays to buffers
+;;;    of the same size and element type.  This table is constructed such
+;;;    that any subgraph without these nodes is a tree and contains no
+;;;    reduction nodes.
+;;;
+;;; 2. The root of each resulting tree from step 1 is split such that the
+;;;    resulting trees are free of fusion nodes.
+;;;
+;;; 3. Each fusion-free tree from step 2 is turned into a kernel.
+;;;
+;;; 4. All buffers are updated to contain a list of kernels that read to
+;;;    them or write from them.
+
+
+(defun ir-from-strided-arrays (strided-arrays backend)
+  (let ((buffer-table (make-buffer-table strided-arrays backend)))
+    (loop for root being each hash-key of buffer-table
+            using (hash-value buffer) do
+              (values) ;; TODO
+          )))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Conversion of Subtree Fragments to Kernels
+;;;
+;;; Given a particular subtree, together with the shape of a particular
+;;; fragment of this subtree (i.e. one without fusion nodes) and the
+;;; dimension, build a kernel.  This step has several intricacies.
+;;;
+;;; Most importantly, all information must be split into what is necessary
+;;; to generate fast code and what is not.  The former part is combined
+;;; into an S-expression built of unique conses, called the blueprint, the
+;;; latter ends up as slot values of the kernel.  In the current state,
+;;; information is treated as follows:
+;;;
+;;; - The iteration space is not stored in the blueprint.  The number of
+;;;   elements of the iteration space is stored in the vector DIMENSIONS.
+;;;   Start and step size are normalized to zero and one, respectively,
+;;;   which implicitly causes all step sizes to be stored in the blueprint.
+;;;   An approximation of the size of the iteration space, given by a
+;;;   minimal and a maximal size in each dimension is also stored in the
+;;;   blueprint.
+;;;
+;;; - Called functions are stored in the blueprint, but only if they are
+;;;   known to the type inference engine.  Unknown functions end up as
+;;;   dynamic properties of the kernel.
+;;;
+;;; - The element type of each referenced immediate is converted to an
+;;;   atomic type and stored in the blueprint.
+
 (defun map-subtree-fragments (fragment-fn root leaf-function)
   "Invoke FRAGMENT-FN on each fusion-free subtree fragment of the tree
 starting from ROOT with leafs denoted by LEAF-FUNCTION. For each subtree

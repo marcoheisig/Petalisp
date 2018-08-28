@@ -66,18 +66,17 @@
        (:file "fusion")
        (:file "reference")))
 
-     (:module "ir"
-      :components
-      ((:file "blueprint")
-       (:file "kernel")
-       (:file "map-subtrees")
-       (:file "map-subtree-fragments")
-       (:file "build-kernel")
-       (:file "kernelize")))
-
      (:module "backends"
       :components
-      ((:file "backend")
+      ((:module "generic"
+        :components ((:file "blueprint")
+                     (:file "buffer")
+                     (:file "array-buffer")
+                     (:file "kernel")
+                     (:file "backend")
+                     (:file "buffer-table")
+                     (:file "ir-conversion")
+                     (:file "scheduler-queue-mixin")))
        (:module "reference-backend"
         :components ((:file "simple-immediate")
                      (:file "reference-backend")))

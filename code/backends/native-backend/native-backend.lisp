@@ -3,7 +3,10 @@
 (in-package :petalisp)
 
 (defclass petalisp:native-backend
-    (backend default-scheduler-mixin compile-cache-mixin)
+    (backend
+     scheduler-queue-mixin
+     default-scheduler-mixin
+     compile-cache-mixin)
   ((%memory-pool :reader memory-pool
                  :initform (make-hash-table :test #'equalp)
                  :type hash-table)

@@ -101,9 +101,7 @@
 ;;; Return a non-permuting, affine transformation from a zero based array
 ;;; with step size one to the given SHAPE.
 (defun from-storage-transformation (shape)
-  (let ((ranges (ranges shape))
-        (dimension (dimension shape)))
+  (let ((ranges (ranges shape)))
     (make-transformation
-     :input-dimension dimension
      :scaling (map 'vector #'range-step ranges)
      :translation (map 'vector #'range-start ranges))))

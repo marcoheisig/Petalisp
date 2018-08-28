@@ -48,5 +48,3 @@
                  (ucons:map-ulist #'dimension-metadata dimensions)
                  (ucons:map-ulist #'reference-metadata references)
                  body)))
-
-
