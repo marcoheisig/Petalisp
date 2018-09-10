@@ -30,18 +30,14 @@ quantities."
               (,end (index) (range-end (elt ,ranges index))))
          ,@body))))
 
-(defun indices (array &optional (axis nil axisp))
+(defun indices (array axis)
   "Return a list, containing one array of integers for each dimension of
 ARRAY.  Each returned array contains the index values varying along the
 corresponding axis.
 
 If the optional argument AXIS is given, return only the one index array
 corresponding to that axis."
-  (let ((strided-array (strided-array array)))
-    (if axisp
-        (make-range-immediate (shape strided-array) axis)
-        (loop for axis below (dimension strided-array)
-              collect (make-range-immediate (shape strided-array) axis)))))
+  (make-range-immediate (shape (strided-array array)) axis))
 
 (defun reshape (array &rest shapes-and-transformations)
   "Return a data structure of given SHAPE, either by selecting a subset of
