@@ -74,5 +74,5 @@
                (t (return nil)))))
       (let ((arguments (mapcar #'value-or-fail inputs)))
         (reshape
-         (make-strided-array (apply function arguments))
+         (make-scalar-immediate (apply function arguments))
          (shape (first inputs)))))))

@@ -25,7 +25,31 @@
   ((%storage :initarg :storage :reader storage)))
 
 (defclass range-immediate (immediate)
-  ((%range :initarg range :reader range)))
+  ((%axis :initarg :axis :reader axis)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Constructors
+
+(defun make-scalar-immediate (scalar)
+  (make-instance 'scalar-immediate
+    :element-type (type-of scalar)
+    :shape (load-time-value (make-shape '()))
+    :storage scalar))
+
+(defun make-array-immediate (array)
+  (if (zerop (array-rank array))
+      (make-scalar-immediate (aref array))
+      (make-instance 'array-immediate
+        :element-type (array-element-type array)
+        :shape (make-shape (array-dimensions array))
+        :storage array)))
+
+(defun make-range-immediate (shape axis)
+  (make-instance 'range-immediate
+    :element-type 'integer
+    :shape shape
+    :axis axis))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -40,26 +64,19 @@
 (defmethod inputs ((immediate immediate))
   '())
 
-(defmethod make-strided-array ((array array))
-  (if (zerop (array-rank array))
-      (make-instance 'scalar-immediate
-        :element-type (atomic-type (array-element-type array))
-        :shape (load-time-value (make-shape '()))
-        :storage (aref array))
-      (make-instance 'array-immediate
-        :element-type (atomic-type (array-element-type array))
-        :shape (make-shape (array-dimensions array))
-        :storage array)))
+(defmethod strided-array ((array array))
+  (make-array-immediate array))
 
-(defmethod make-strided-array ((object t))
-  (make-instance 'scalar-immediate
-    :element-type (atomic-type (type-of object))
-    :shape (load-time-value (make-shape '()))
-    :storage object))
+(defmethod strided-array ((object t))
+  (make-scalar-immediate object))
 
 (defmethod print-object ((immediate immediate) stream)
   (print-unreadable-object (immediate stream :type t :identity t)
     (princ (storage immediate) stream)))
+
+(defmethod print-object ((range-immediate range-immediate) stream)
+  (print-unreadable-object (range-immediate stream :type t :identity t)
+    (format stream ":AXIS ~D" (axis range-immediate))))
 
 (defmethod transform ((strided-array strided-array) (transformation transformation))
   (make-reference

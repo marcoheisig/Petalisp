@@ -39,10 +39,10 @@
              index simple-immediate))
     value))
 
-(defmethod make-strided-array ((simple-immediate simple-immediate))
+(defun finalize-simple-immediate (simple-immediate)
   (let ((shape (shape simple-immediate))
         (table (table simple-immediate)))
-    (if (null (ranges shape))
+    (if (zerop (dimension shape))
         (make-instance 'scalar-immediate
           :shape shape
           :storage (gethash '() table))

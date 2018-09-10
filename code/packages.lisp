@@ -47,13 +47,14 @@
 
    ;; Strided Arrays
    #:strided-array
-   #:make-strided-array
+   #:strided-array
    #:element-type
    #:shape
    #:size
    #:input
    #:inputs
    #:storage
+   #:axis
    #:operator
    #:value-n
    #:application

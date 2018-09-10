@@ -25,7 +25,8 @@
 ;;; Methods
 
 (defmethod compute-immediates ((strided-arrays list) (backend reference-backend))
-  (mapcar (compose #'make-strided-array #'evaluate) strided-arrays))
+  (mapcar (compose #'finalize-simple-immediate #'evaluate)
+          strided-arrays))
 
 ;;; Memoization
 
@@ -57,6 +58,12 @@
    (shape array-immediate)
    (lambda (index)
      (apply #'aref (storage array-immediate) index))))
+
+(defmethod evaluate ((range-immediate range-immediate))
+  (make-simple-immediate
+   (shape range-immediate)
+   (lambda (index)
+     (nth (axis range-immediate) index))))
 
 (defmethod evaluate ((application application))
   (let ((inputs (mapcar #'evaluate (inputs application))))
