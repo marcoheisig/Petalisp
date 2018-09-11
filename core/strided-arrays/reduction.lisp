@@ -8,6 +8,20 @@
 ;;; accumulations in arbitrary order, accumulations with an initial value,
 ;;; simultaneous accumulation of several quantities and, finally,
 ;;; reductions of several sequences at once.
+;;;
+;;; After careful consideration, we decided to support exactly one type of
+;;; reduction - tree reduction with a binary function.  Except, we
+;;; generalize the concept to a multiple value tree reduction of K arrays
+;;; with a function of 2K arguments and K results.  This type of reduction
+;;; has several advantages:
+;;;
+;;; 1. It introduces divide-and-conquer parallelism.
+;;;
+;;; 2. The execution is nevertheless fully deterministic.
+;;;
+;;; 3. The multiple value approach gives the necessary flexibility for more
+;;;    complicated reductions, e.g., to find both the maximum of a vector
+;;;    and the corresponding index of the maximum.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
