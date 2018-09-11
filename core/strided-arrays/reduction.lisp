@@ -10,7 +10,7 @@
 ;;; reductions of several sequences at once.
 ;;;
 ;;; After careful consideration, we decided to support exactly one type of
-;;; reduction - tree reduction with a binary function.  Except, we
+;;; reduction - tree reduction with a binary function.  Except that we
 ;;; generalize the concept to a multiple value tree reduction of K arrays
 ;;; with a function of 2K arguments and K results.  This type of reduction
 ;;; has several advantages:
