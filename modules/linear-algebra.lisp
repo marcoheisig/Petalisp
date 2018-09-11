@@ -5,9 +5,10 @@
   (:use :cl :petalisp)
   (:export
    #:transpose
-   #:rnm2
+   #:norm
    #:dot
    #:asum
+   #:amax
    #:matmul))
 
 (in-package :petalisp-linear-algebra)
@@ -43,7 +44,7 @@
     (as-matrix y))
    (τ (0 0) ())))
 
-(defun nrm2 (x)
+(defun norm (x)
   (α #'sqrt (dot (transpose x) x)))
 
 (defun asum (x)

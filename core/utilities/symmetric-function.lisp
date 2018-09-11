@@ -37,12 +37,6 @@
                  (parse (cons (car rest) qualifiers) (cdr rest)))))
     (parse '() args)))
 
-(defun intern-specializer (specializer)
-  (trivia:ematch specializer
-    ((type symbol) (find-class specializer))
-    ((list 'eql object) (intern-eql-specializer object))
-    ((type class) specializer)))
-
 (defmacro define-method-pair (name &rest args)
   (multiple-value-bind (qualifiers lambda-list body)
       (parse-defmethod args)
