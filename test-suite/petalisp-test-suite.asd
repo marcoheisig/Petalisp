@@ -4,6 +4,8 @@
   :license "AGPLv3"
   :depends-on ("asdf"
                "petalisp"
+               "petalisp-linear-algebra"
+               "petalisp-iterative-methods"
                "fiveam")
 
   :perform
@@ -11,17 +13,10 @@
 
   :serial t
   :components
-  ((:module "examples"
-    :components
-    ((:file "jacobi")
-     (:file "red-black-gauss-seidel")
-     (:file "linear-algebra")))
-
-   (:module "test-suite"
-    :components
-    ((:file "packages")
-     (:file "code-statistics")
-     (:file "run")
-     (:file "test-api")
-     (:file "test-examples")
-     (:file "test-sets")))))
+  ((:file "packages")
+   (:file "code-statistics")
+   (:file "run")
+   (:file "test-api")
+   (:file "test-sets")
+   (:file "test-iterative-methods")
+   (:file "test-linear-algebra")))

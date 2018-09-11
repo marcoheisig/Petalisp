@@ -7,9 +7,8 @@
    :alexandria
    :fiveam
    :petalisp
-   :petalisp/examples/jacobi
-   :petalisp/examples/red-black-gauss-seidel
-   :petalisp/examples/linear-algebra)
+   :petalisp-iterative-methods
+   :petalisp-linear-algebra)
   (:export
    #:run-test-suite))
 

@@ -10,7 +10,7 @@
 
   :serial t
   :components
-  ((:module "code"
+  ((:module "core"
     :components
     ((:module "graphviz"
       :components

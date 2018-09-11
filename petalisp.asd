@@ -15,7 +15,7 @@
 
   :serial t
   :components
-  ((:module "code"
+  ((:module "core"
     :components
     ((:file "packages")
      (:file "error-handling")

@@ -1,6 +1,6 @@
 (in-package :common-lisp-user)
 
-(defpackage :petalisp/examples/linear-algebra
+(defpackage :petalisp-linear-algebra
   (:shadowing-import-from :petalisp :set-difference)
   (:use :cl :petalisp)
   (:export
@@ -9,7 +9,7 @@
    #:dot
    #:matmul))
 
-(in-package :petalisp/examples/linear-algebra)
+(in-package :petalisp-linear-algebra)
 
 (defun to-matrix (x)
   (ecase (dimension x)
