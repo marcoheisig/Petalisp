@@ -76,7 +76,7 @@
                      (:file "ir-conversion")
                      (:file "scheduler-queue-mixin")))
        (:module "reference-backend"
-        :components ((:file "simple-immediate")
+        :components ((:file "intermediate-result")
                      (:file "reference-backend")))
        (:module "native-backend"
         :components ((:file "scheduler")
