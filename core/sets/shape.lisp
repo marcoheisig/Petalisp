@@ -66,6 +66,12 @@
 (defmethod shapep ((shape shape))
   t)
 
+(defmethod dimension ((object t))
+  0)
+
+(defmethod dimension ((array array))
+  (array-rank array))
+
 (defmethod dimension ((shape shape))
   (length (ranges shape)))
 

@@ -77,6 +77,7 @@
    #:fuse*
    #:compute
    #:schedule
+   #:indices
 
    ;; Backends
    #:compute-on-backend

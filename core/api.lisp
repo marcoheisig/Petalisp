@@ -30,7 +30,7 @@ quantities."
               (,end (index) (range-end (elt ,ranges index))))
          ,@body))))
 
-(defun indices (array axis)
+(defun indices (array &optional (axis 0))
   "Return a list, containing one array of integers for each dimension of
 ARRAY.  Each returned array contains the index values varying along the
 corresponding axis.
