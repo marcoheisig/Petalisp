@@ -30,6 +30,8 @@
 (defgeneric make-reduction (operator inputs)
   (:method-combination optimizing-constructor))
 
+(defgeneric reduction-range (reduction))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes
@@ -73,3 +75,10 @@
                  :inputs inputs
                  :shape (shape-from-ranges
                          (cdr (ranges (shape (first inputs))))))))))))
+
+(defmethod reduction-range ((reduction reduction))
+  (first
+   (ranges
+    (shape
+     (first
+      (inputs reduction))))))

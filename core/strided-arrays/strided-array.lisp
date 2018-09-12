@@ -51,9 +51,6 @@
 (defmethod dimension ((strided-array strided-array))
   (dimension (shape strided-array)))
 
-(defmethod dimension ((array array))
-  (array-rank array))
-
 (defun input (object)
   (destructuring-bind (input) (inputs object) input))
 

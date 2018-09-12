@@ -30,7 +30,7 @@
 
 (defgeneric shape-union (shapes))
 
-(defgeneric enlarge-shape (from to))
+(defgeneric enlarge-shape (shape range))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -227,13 +227,8 @@
                                        (range-step range)))))))
                    (make-range global-start step-size global-end))))))
 
-(defmethod enlarge-shape :before ((from shape) (to shape))
-  (assert (< (dimension from) (dimension to))))
-
-(defmethod enlarge-shape ((from shape) (to shape))
-  (let ((new-ranges (copy-list (ranges to))))
-    (replace new-ranges (ranges from))
-    (shape-from-ranges new-ranges)))
+(defmethod enlarge-shape ((shape shape) (range range))
+  (shape-from-ranges (cons range (ranges shape))))
 
 ;;; Return a list of disjoint shapes. Each resulting object is a proper
 ;;; subspace of one or more of the arguments and their fusion covers all

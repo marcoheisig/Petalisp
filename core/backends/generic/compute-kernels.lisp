@@ -24,8 +24,12 @@
 (defmethod compute-kernels ((root strided-array) (backend backend))
   (loop for iteration-space in (compute-iteration-spaces root)
         collect
-        (let ((body (compute-kernel-body root iteration-space)))
-          (make-kernel iteration-space body backend))))
+        (let* ((body (compute-kernel-body root iteration-space))
+               (kernel (make-kernel iteration-space body backend)))
+          (loop for input in (inputs kernel) do
+            (push kernel (outputs input)))
+          (loop for output in (outputs kernel) do
+            (push kernel (inputs output))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -35,7 +39,7 @@
 
 (defun compute-iteration-spaces (root)
   (let ((*kernel-iteration-spaces* '()))
-    (compute-subtree-iteration-spaces
+    (compute-iteration-spaces-aux
      root
      (shape root)
      (make-identity-transformation (dimension root)))
@@ -85,7 +89,7 @@
     ((reduction reduction)
      (iteration-space shape)
      (transformation transformation))
-  (let ((iteration-space (enlarge-shape iteration-space (shape input)))
+  (let ((iteration-space (enlarge-shape iteration-space (reduction-range reduction)))
         (transformation (enlarge-transformation transformation 1 0)))
     (loop for input in (inputs reduction)
             thereis
@@ -152,7 +156,7 @@
      (transformation transformation))
   `(preduce
     ,(operator reduction)
-    ,.(let ((iteration-space (enlarge-shape shape (shape reduction)))
+    ,.(let ((iteration-space (enlarge-shape iteration-space (reduction-range reduction)))
             (transformation (enlarge-transformation transformation 1 0)))
         (loop for input in (inputs reduction)
               collect (compute-kernel-body-aux
@@ -169,7 +173,7 @@
   (compute-kernel-body-aux
    root
    (input reference)
-   (set-intersection shape (shape reference))
+   (set-intersection iteration-space (shape reference))
    (compose-transformations (transformation reference) transformation)))
 
 (defmethod compute-kernel-body-aux
