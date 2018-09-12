@@ -73,7 +73,7 @@
                      (:file "blueprint")
                      (:file "ir")
                      (:file "buffer-table")
-                     (:file "ir-conversion")
+                     (:file "kernel-creation")
                      (:file "scheduler-queue-mixin")))
        (:module "reference-backend"
         :components ((:file "intermediate-result")

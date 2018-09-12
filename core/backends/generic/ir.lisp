@@ -2,13 +2,37 @@
 
 (in-package :petalisp)
 
+;;; The purpose of IR conversion is to turn a data flow graph, whose nodes
+;;; are strided arrays, into an analogous graph, whose nodes are buffers
+;;; and kernels.  Kernels and buffers alternate, such that the inputs and
+;;; outputs of a kernel are always buffers, and such that the inputs and
+;;; outputs of a buffer are always kernels.
+;;;
+;;; The IR conversion algorithm proceeds along the following steps:
+;;;
+;;; 1. A hash table is created that maps certain strided arrays to buffers
+;;;    of the same size and element type.  This table is constructed such
+;;;    that any subgraph without these nodes is a tree and contains no
+;;;    reduction nodes.
+;;;
+;;; 2. Each root of a subtree from step 1 is turned into one or more
+;;;    kernels.  All fusion nodes in the tree are eliminated by choosing
+;;;    the iteration space of the kernels appropriately.
+;;;
+;;; 3. All buffers are updated to contain a list of kernels that read to
+;;;    them or write from them.
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Generic Functions
 
 (defgeneric make-buffer (strided-array backend))
 
-(defgeneric make-kernel (root iteration-space leaf-test backend))
+(defgeneric make-kernel (iteration-space blueprint backend))
+
+(defgeneric make-buffer-table (strided-arrays backend))
+
+(defgeneric compute-kernels (root backend))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -31,8 +55,7 @@
    (%storage :initarg :storage :initform nil :accessor storage)))
 
 (defclass kernel (ir-node)
-  ((%functions :initarg :functions :reader functions)
-   (%blueprint :initarg :blueprint :reader blueprint)))
+  ((%body :initarg :body :reader body)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -47,63 +70,43 @@
     (setf (transformation array-buffer)
           (collapsing-transformation (shape array-buffer)))))
 
-(defmethod make-kernel ((root strided-array)
-                        (leaf-function function)
-                        (iteration-space shape)
+(defmethod make-kernel ((iteration-space shape)
+                        (body list)
                         (backend backend))
-  (let ((input-buffers '())
-        (functions '()))
-    (labels ((walk-reference (immediate transformation)
-               (blueprint/reference
-                (id immediate input-buffers)
-                (compose-transformations (transformation immediate) transformation)))
-             (walk (node relevant-space transformation)
-               (unless (set-emptyp relevant-space)
-                 (if-let ((leaf (funcall leaf-function node)))
-                   (walk-reference leaf transformation)
-                   (etypecase node
-                     (application
-                      (dx-flet ((walk-input (input) (walk input relevant-space transformation)))
-                        (let ((operator (operator node)))
-                          (blueprint/call
-                           (if (symbolp operator)
-                               operator
-                               (id operator functions))
-                           (ucons:map-ulist #'walk-input (inputs node))))))
-                     (reduction
-                      (let* ((input (input node))
-                             (reduction-range (last-elt (ranges (shape input))))
-                             (scale (range-step reduction-range))
-                             (offset (range-start reduction-range)))
-                        (setf (aref bounds bounds-index)
-                              (set-size reduction-range))
-                        (incf bounds-index)
-                        (let ((relevant-space (enlarge-shape relevant-space (shape input)))
-                              (transformation (enlarge-transformation transformation scale offset)))
-                          (blueprint/reduce
-                           (operator node)
-                           (walk input relevant-space transformation)))))
-                     (fusion ;; the relevant space is already chosen to eliminate fusions
-                      (let* ((input (find relevant-space (inputs node)
-                                          :key #'shape
-                                          :test #'set-intersectionp))
-                             (relevant-space (set-intersection relevant-space (shape input))))
-                        (walk input relevant-space transformation)))
-                     (reference ;; eliminate/lift input-buffers
-                      (let ((relevant-space
-                              (set-intersection
-                               (shape (input node))
-                               (transform relevant-space (transformation node))))
-                            (transformation
-                              (compose-transformations (transformation node) transformation)))
-                        (walk (input node) relevant-space transformation))))))))
-      (let ((blueprint-body
-              (blueprint/store
-               (walk-reference target normalizing-transformation)
-               (walk root relevant-space normalizing-transformation))))
-        (make-instance 'kernel
-          :bounds bounds
-          :input-buffers (subseq references 0 nil)
-          :unknown-functions (subseq unknown-functions 0 nil)
-          :blueprint
-          (blueprint/with-metadata bounds input-buffers blueprint-body))))))
+  (multiple-value-bind (inputs outputs)
+      (kernel-body-inputs-and-outputs body)
+    (make-instance 'kernel
+      :shape iteration-space
+      :inputs inputs
+      :outputs outputs
+      :body body)))
+
+(defun kernel-body-inputs-and-outputs (body)
+  (let ((inputs '())
+        (outputs '()))
+    (labels ((scan (form)
+               (trivia:ematch form
+                 ((list 'pset output form)
+                  (push output outputs)
+                  (scan form))
+                 ((list 'pref input _)
+                  (push input inputs))
+                 ((or (list* 'preduce _ forms)
+                      (list* 'papply _ forms))
+                  (mapc #'scan forms)))
+               (values)))
+      (scan body))
+    (values inputs outputs)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; The IR conversion entry point
+
+(defvar *buffer-table*)
+
+(defun ir-from-strided-arrays (strided-arrays backend)
+  (let ((*buffer-table* (make-buffer-table strided-arrays backend)))
+    (loop for root being each hash-key of *buffer-table*
+            using (hash-value buffer) do
+              (let ((kernels (compute-kernels root backend)))
+                ))))
