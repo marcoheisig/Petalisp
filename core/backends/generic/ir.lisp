@@ -89,10 +89,10 @@
     (labels ((scan (form)
                (trivia:ematch form
                  ((list 'pset output form)
-                  (push output outputs)
+                  (pushnew output outputs)
                   (scan form))
                  ((list 'pref input _)
-                  (push input inputs))
+                  (pushnew input inputs))
                  ((or (list* 'preduce _ forms)
                       (list* 'papply _ forms))
                   (mapc #'scan forms)))
@@ -116,9 +116,9 @@
                 ;; the inputs and outputs of the corresponding kernels.
                 (loop for kernel in kernels do
                   (loop for input in (inputs kernel) do
-                    (push kernel (outputs input)))
+                    (pushnew kernel (outputs input)))
                   (loop for output in (outputs kernel) do
-                    (push kernel (inputs output))))))
+                    (pushnew kernel (inputs output))))))
     ;; Finally, return the buffers corresponding to the root nodes.
     (loop for strided-array in strided-arrays
           collect (gethash strided-array *buffer-table*))))
