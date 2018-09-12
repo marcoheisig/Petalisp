@@ -45,7 +45,7 @@
    (τ (0 0) ())))
 
 (defun norm (x)
-  (α #'sqrt (dot (transpose x) x)))
+  (α #'sqrt (dot x x)))
 
 (defun asum (x)
   (β #'+ (α #'abs (as-vector x))))
