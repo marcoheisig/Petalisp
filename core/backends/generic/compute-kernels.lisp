@@ -24,12 +24,8 @@
 (defmethod compute-kernels ((root strided-array) (backend backend))
   (loop for iteration-space in (compute-iteration-spaces root)
         collect
-        (let* ((body (compute-kernel-body root iteration-space))
-               (kernel (make-kernel iteration-space body backend)))
-          (loop for input in (inputs kernel) do
-            (push kernel (outputs input)))
-          (loop for output in (outputs kernel) do
-            (push kernel (inputs output))))))
+        (let ((body (compute-kernel-body root iteration-space)))
+          (make-kernel iteration-space body backend))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -41,6 +37,7 @@
   (let ((*kernel-iteration-spaces* '()))
     (compute-iteration-spaces-aux
      root
+     root
      (shape root)
      (make-identity-transformation (dimension root)))
     *kernel-iteration-spaces*))
@@ -50,18 +47,22 @@
 ;;; a fusion node, push a new iteration space for each input that contains
 ;;; no further fusion nodes.
 (defgeneric compute-iteration-spaces-aux
-    (node iteration-space transformation))
+    (root node iteration-space transformation))
 
 (defmethod compute-iteration-spaces-aux :around
-    ((strided-array strided-array)
+    ((root strided-array)
+     (node strided-array)
      (iteration-space shape)
      (transformation transformation))
-  (if (nth-value (gethash strided-array *buffer-table*) 1)
-      nil
-      (call-next-method)))
+  (if (eq root node)
+      (call-next-method)
+      (if (nth-value 1 (gethash node *buffer-table*))
+          nil
+          (call-next-method))))
 
 (defmethod compute-iteration-spaces-aux
-    ((fusion fusion)
+    ((root strided-array)
+     (fusion fusion)
      (iteration-space shape)
      (transformation transformation))
   (loop for input in (inputs fusion) do
@@ -69,39 +70,50 @@
       ;; If the input is unreachable, we do nothing.
       (unless (set-emptyp subspace)
         ;; If the input contains fusion nodes, we also do nothing.
-        (unless (compute-iteration-spaces-aux input subspace transformation)
+        (unless (compute-iteration-spaces-aux root input subspace transformation)
           ;; We have an outer fusion.  This means we have to add a new
           ;; iteration space, which we obtain by projecting the current
           ;; iteration space to the coordinate system of the root.
-          (push (transform iteration-space (invert-transformation transformation))
+          (push (transform (shape input) (invert-transformation transformation))
                 *kernel-iteration-spaces*))))))
 
 (defmethod compute-iteration-spaces-aux
-    ((reference reference)
+    ((root strided-array)
+     (reference reference)
      (iteration-space shape)
      (transformation transformation))
   (compute-iteration-spaces-aux
+   root
    (input reference)
    (set-intersection iteration-space (shape reference))
    (compose-transformations (transformation reference) transformation)))
 
 (defmethod compute-iteration-spaces-aux
-    ((reduction reduction)
+    ((root strided-array)
+     (reduction reduction)
      (iteration-space shape)
      (transformation transformation))
   (let ((iteration-space (enlarge-shape iteration-space (reduction-range reduction)))
         (transformation (enlarge-transformation transformation 1 0)))
     (loop for input in (inputs reduction)
             thereis
-            (compute-iteration-spaces-aux input iteration-space transformation))))
+            (compute-iteration-spaces-aux root input iteration-space transformation))))
 
 (defmethod compute-iteration-spaces-aux
-    ((application application)
+    ((root strided-array)
+     (application application)
      (iteration-space shape)
      (transformation transformation))
   (loop for input in (inputs application)
           thereis
-          (compute-iteration-spaces-aux input iteration-space transformation)))
+          (compute-iteration-spaces-aux root input iteration-space transformation)))
+
+(defmethod compute-iteration-spaces-aux
+    ((root strided-array)
+     (immediate immediate)
+     (iteration-space shape)
+     (transformation transformation))
+  (values))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -189,3 +201,10 @@
      input
      (set-intersection iteration-space (shape input))
      transformation)))
+
+(defmethod compute-kernel-body-aux
+    ((root strided-array)
+     (immediate immediate)
+     (iteration-space shape)
+     (transformation transformation))
+  (error "Something is wrong with the buffer table."))

@@ -11,6 +11,7 @@
 ;;; 2. The node is referenced by multiple other nodes.
 ;;; 3. The node is the target of a broadcasting reference.
 ;;; 4. The node is a reduction node.
+;;; 5. The node is an immediate node.
 ;;;
 ;;; These rules 1-3 ensure that values that are used more than once reside
 ;;; in main memory.  Rule 4 is not chosen in addition, because it greatly
@@ -54,12 +55,16 @@
     ;; Rule 4
     ((typep node 'reduction)
      (traverse-special-node node hash-table))
-    ((>= 1 (refcount node))
-     (traverse-node-inputs node hash-table))
-    (t
-     ;; Rule 2
+    ;; Rule 5
+    ((null (inputs node)) ; i.e., we have an immediate
+     (traverse-special-node node hash-table))
+    ;; Rule 2
+    ((> (refcount node) 1)
+     ;; Traverse inputs only on the first visit.
      (when (= 1 (incf (gethash node hash-table 0)))
-       (traverse-node-inputs node hash-table)))))
+       (traverse-node-inputs node hash-table)))
+    (t
+     (traverse-node-inputs node hash-table))))
 
 (defun traverse-node-inputs (node hash-table)
   (if (and (typep node 'reference)

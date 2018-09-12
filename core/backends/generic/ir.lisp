@@ -41,7 +41,8 @@
 (defclass ir-node ()
   ((%shape :initarg :shape :reader shape)
    (%inputs :initarg :inputs :accessor inputs)
-   (%outputs :initarg :outputs :accessor outputs)))
+   (%outputs :initarg :outputs :accessor outputs))
+  (:default-initargs :inputs '() :outputs '()))
 
 (defclass buffer (ir-node)
   ((%element-type :initarg :element-type :reader element-type)))
@@ -63,7 +64,8 @@
 
 (defmethod make-buffer ((strided-array strided-array) (backend backend))
   (make-instance 'buffer
-    :shape (shape strided-array)))
+    :shape (shape strided-array)
+    :element-type (element-type strided-array)))
 
 (defmethod initialize-instance ((array-buffer array-buffer) &key &allow-other-keys)
   (prog1 (call-next-method)
@@ -106,7 +108,17 @@
 
 (defun ir-from-strided-arrays (strided-arrays backend)
   (let ((*buffer-table* (make-buffer-table strided-arrays backend)))
+    ;; Now create a list of kernels for each entry in the buffer table.
     (loop for root being each hash-key of *buffer-table*
             using (hash-value buffer) do
               (let ((kernels (compute-kernels root backend)))
-                ))))
+                ;; Update the inputs and outputs of all buffers to match
+                ;; the inputs and outputs of the corresponding kernels.
+                (loop for kernel in kernels do
+                  (loop for input in (inputs kernel) do
+                    (push kernel (outputs input)))
+                  (loop for output in (outputs kernel) do
+                    (push kernel (inputs output))))))
+    ;; Finally, return the buffers corresponding to the root nodes.
+    (loop for strided-array in strided-arrays
+          collect (gethash strided-array *buffer-table*))))
