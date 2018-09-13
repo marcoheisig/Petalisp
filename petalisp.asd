@@ -72,7 +72,7 @@
         :components ((:file "backend")
                      (:file "blueprint")
                      (:file "ir")
-                     (:file "make-buffer-table")
+                     (:file "compute-buffer-table")
                      (:file "compute-kernels")
                      (:file "scheduler-queue-mixin")))
        (:module "reference-backend"

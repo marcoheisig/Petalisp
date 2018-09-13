@@ -25,7 +25,7 @@
 ;;; values bigger than one by buffers and discarding all other hash table
 ;;; entries.
 
-(defmethod make-buffer-table ((graph-roots list) (backend backend))
+(defmethod compute-buffer-table ((graph-roots list) (backend backend))
   (let ((refcount-table (make-hash-table :test #'eq)))
     (loop for graph-root in graph-roots do
       ;; Rule 1
