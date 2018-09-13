@@ -11,7 +11,7 @@
    "trivia"
    "trivial-arguments")
 
-  :in-order-to ((test-op (test-op :petalisp-test-suite)))
+  :in-order-to ((test-op (test-op :petalisp-development)))
 
   :serial t
   :components

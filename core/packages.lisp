@@ -19,8 +19,7 @@
    #:set-union
 
    ;; Ranges
-   #:range
-   #:rangep
+   #:range #:rangep
    #:unary-range-p
    #:make-range
    #:range-start-step-end
@@ -35,7 +34,8 @@
    #:shape-difference-list
 
    ;; Transformations
-   #:transformation
+   #:transformation #:transformationp
+   #:invertible-transformation-p
    #:canonicalize-transformation
    #:with-shape-accessors
    #:make-transformation
@@ -49,7 +49,7 @@
    #:strided-array
    #:strided-array
    #:element-type
-   #:shape
+   #:shape #:shapep
    #:size
    #:input
    #:inputs
@@ -61,7 +61,7 @@
    #:reduction
    #:fusion
    #:reference
-   #:immediate
+   #:immediate #:immediatep
    #:scalar-immediate
    #:array-immediate
    #:range-immediate
@@ -78,6 +78,12 @@
    #:compute
    #:schedule
    #:indices
+
+   ;; Intermediate Representation
+   #:ir-node
+   #:kernel #:kernelp
+   #:body
+   #:buffer #:bufferp
 
    ;; Backends
    #:compute-on-backend
