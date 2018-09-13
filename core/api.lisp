@@ -103,6 +103,10 @@ mismatch, the smaller objects are broadcast."
 (defun β (function array &rest more-arrays)
   (make-reduction function (broadcast-arguments (list* array more-arrays))))
 
+(defalias alpha α)
+
+(defalias beta β)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Evaluation

@@ -68,8 +68,8 @@
 
    ;; High-level API
    #:*backend*
-   #:α
-   #:β
+   #:α #:alpha
+   #:β #:beta
    #:reshape
    #:transform
    #:τ
