@@ -4,14 +4,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Generic Functions
-
-(defgeneric make-intermediate-result (shape value-fn))
-
-(defgeneric iref (immediate index))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
 ;;; Classes
 
 (defclass intermediate-result ()
@@ -20,9 +12,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Methods
+;;; Functions
 
-(defmethod make-intermediate-result ((shape shape) (value-fn function))
+(defun make-intermediate-result (shape value-fn)
   (let ((table (make-hash-table :test #'equal)))
     (loop for index in (set-elements shape) do
       (setf (gethash index table)
@@ -31,7 +23,7 @@
       :shape shape
       :table table)))
 
-(defmethod iref ((intermediate-result intermediate-result) (index list))
+(defun iref (intermediate-result index)
   (multiple-value-bind (value present-p)
       (gethash index (table intermediate-result))
     (unless present-p
