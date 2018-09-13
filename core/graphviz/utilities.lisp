@@ -8,7 +8,12 @@
 
 (defun stringify (x)
   (with-standard-io-syntax
-    (princ-to-string x)))
+    (let ((*print-length* 8)
+          (*print-right-margin* 60)
+          (*print-pretty* t)
+          (*print-escape* nil)
+          (*print-readably* nil))
+      (write-to-string x))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

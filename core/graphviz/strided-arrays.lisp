@@ -77,9 +77,7 @@
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
      (array-immediate array-immediate))
-  `(("storage" . ,(let ((*print-length* 8)
-                        (*print-right-margin* 60))
-                    (format nil "~A" (storage array-immediate))))))
+  `(("storage" . ,(stringify (storage array-immediate)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
