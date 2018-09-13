@@ -17,12 +17,7 @@
     "~@<Cannot apply the transformation ~A with input dimension ~R ~
         to the index shape ~A with dimension ~R.~:@>"
     transformation (input-dimension transformation)
-    shape (dimension shape)))
-
-(defmethod transform ((shape shape) (operator identity-transformation))
-  shape)
-
-(defmethod transform :before ((shape shape) (transformation transformation))
+    shape (dimension shape))
   (when-let ((input-constraints (input-constraints transformation)))
     (loop for range in (ranges shape)
           for constraint across input-constraints
@@ -33,6 +28,9 @@
                 "~@<The ~:R dimension of the shape ~W violates ~
                     the input constraint ~W of the transformation ~W.~:@>"
                 index shape constraint transformation)))))
+
+(defmethod transform ((shape shape) (operator identity-transformation))
+  shape)
 
 (defmethod transform ((shape shape) (transformation hairy-transformation))
   (let ((output-ranges (make-list (output-dimension transformation)))

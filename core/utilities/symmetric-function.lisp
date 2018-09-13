@@ -22,8 +22,10 @@
 
 (defmethod compute-applicable-methods-using-classes
     ((generic-function symmetric-function) classes)
-  (let ((methods (generic-function-methods generic-function) do))
-    (loop for method in methods do (validate-symmetric-method method methods)))
+  (declare (ignore classes))
+  (let ((methods (generic-function-methods generic-function)))
+    (loop for method in methods do
+      (validate-symmetric-method method methods)))
   (call-next-method))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

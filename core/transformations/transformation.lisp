@@ -85,7 +85,7 @@
 
 (defmethod canonicalize-transformation ((object t))
   (error 'petalisp-user-error
-         "~@<~A is not a valid transformation.~:@>"))
+         "~@<~A is not a valid transformation.~:@>" object))
 
 (defmethod compose-transformations :before
     ((transformation-1 transformation) (transformation-2 transformation))

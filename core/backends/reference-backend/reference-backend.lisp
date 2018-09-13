@@ -32,7 +32,8 @@
 
 (defvar *memoization-table*)
 
-(defmethod compute-immediates :around (strided-arrays (backend reference-backend))
+(defmethod compute-immediates :around
+    ((strided-arrays list) (backend reference-backend))
   (let ((*memoization-table* (make-hash-table :test #'eq)))
     (call-next-method)))
 

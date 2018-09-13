@@ -113,16 +113,15 @@
 (defun ir-from-strided-arrays (strided-arrays backend)
   (let ((*buffer-table* (make-buffer-table strided-arrays backend)))
     ;; Now create a list of kernels for each entry in the buffer table.
-    (loop for root being each hash-key of *buffer-table*
-            using (hash-value buffer) do
-              (let ((kernels (compute-kernels root backend)))
-                ;; Update the inputs and outputs of all buffers to match
-                ;; the inputs and outputs of the corresponding kernels.
-                (loop for kernel in kernels do
-                  (loop for input in (inputs kernel) do
-                    (pushnew kernel (outputs input)))
-                  (loop for output in (outputs kernel) do
-                    (pushnew kernel (inputs output))))))
+    (loop for root being each hash-key of *buffer-table* do
+      (let ((kernels (compute-kernels root backend)))
+        ;; Update the inputs and outputs of all buffers to match
+        ;; the inputs and outputs of the corresponding kernels.
+        (loop for kernel in kernels do
+          (loop for input in (inputs kernel) do
+            (pushnew kernel (outputs input)))
+          (loop for output in (outputs kernel) do
+            (pushnew kernel (inputs output))))))
     ;; Finally, return the buffers corresponding to the root nodes.
     (loop for strided-array in strided-arrays
           collect (gethash strided-array *buffer-table*))))
