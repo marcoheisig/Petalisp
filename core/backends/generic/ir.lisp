@@ -62,6 +62,10 @@
 ;;;
 ;;; Methods
 
+(define-class-predicate kernel)
+
+(define-class-predicate buffer)
+
 (defmethod make-buffer ((strided-array strided-array) (backend backend))
   (make-instance 'buffer
     :shape (shape strided-array)

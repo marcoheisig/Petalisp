@@ -4,12 +4,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Generic Functions
-
-(defgeneric immediatep (object))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
 ;;; Classes
 
 (defclass immediate (strided-array)
@@ -55,11 +49,7 @@
 ;;;
 ;;; Methods
 
-(defmethod immediatep ((object non-immediate))
-  nil)
-
-(defmethod immediatep ((immediate immediate))
-  t)
+(define-class-predicate immediate)
 
 (defmethod inputs ((immediate immediate))
   '())

@@ -18,8 +18,6 @@
 
 (defgeneric make-range (start step end))
 
-(defgeneric rangep (object))
-
 (defgeneric unary-range-p (object))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -49,12 +47,7 @@
 ;;;
 ;;; Methods
 
-(defmethod rangep ((object t))
-  nil)
-
-(defmethod rangep ((range range))
-  t)
-
+(define-class-predicate range)
 
 (defmethod unary-range-p ((object t))
   nil)

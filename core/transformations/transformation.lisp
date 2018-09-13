@@ -29,10 +29,6 @@
 
 (defgeneric canonicalize-transformation (object))
 
-(defgeneric transformationp (object))
-
-(defgeneric invertible-transformation-p (object))
-
 (defgeneric transformation-equal (transformation-1 transformation-2))
 
 (defgeneric compose-transformations (transformation-1 transformation-2))
@@ -82,24 +78,14 @@
 ;;;
 ;;; Methods
 
+(define-class-predicate transformation)
+
 (defmethod canonicalize-transformation ((transformation transformation))
   transformation)
 
 (defmethod canonicalize-transformation ((object t))
   (error 'petalisp-user-error
          "~@<~A is not a valid transformation.~:@>"))
-
-(defmethod transformationp (object)
-  (declare (ignore object))
-  nil)
-
-(defmethod transformationp ((transformation transformation))
-  (declare (ignore transformation))
-  t)
-
-(defmethod invertible-transformation-p (object)
-  (declare (ignore object))
-  nil)
 
 (defmethod compose-transformations :before
     ((transformation-1 transformation) (transformation-2 transformation))

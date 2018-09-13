@@ -13,9 +13,12 @@
   ((%cached-inverse :accessor cached-inverse
                     :initform nil)))
 
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Methods
+
+(define-class-predicate invertible-transformation :hyphenate t)
 
 (defmethod invertible-transformation-p
     ((transformation invertible-transformation))
