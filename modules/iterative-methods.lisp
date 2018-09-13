@@ -1,6 +1,7 @@
 (in-package :common-lisp-user)
 
 (defpackage :petalisp-iterative-methods
+  (:nicknames :petalisp-iter)
   (:shadowing-import-from :petalisp :set-difference)
   (:use :cl :petalisp)
   (:export #:jacobi #:rbgs))
