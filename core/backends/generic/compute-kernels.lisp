@@ -73,6 +73,8 @@
      (fusion fusion)
      (iteration-space shape)
      (transformation transformation))
+  ;; Check whether any inputs are free of fusion nodes.  If so, push an
+  ;; iteration space.
   (loop for input in (inputs fusion) do
     (let ((subspace (set-intersection iteration-space (shape input))))
       ;; If the input is unreachable, we do nothing.
@@ -82,8 +84,9 @@
           ;; We have an outer fusion.  This means we have to add a new
           ;; iteration space, which we obtain by projecting the current
           ;; iteration space to the coordinate system of the root.
-          (push (transform (shape input) (invert-transformation transformation))
-                *kernel-iteration-spaces*))))))
+          (push (transform subspace (invert-transformation transformation))
+                *kernel-iteration-spaces*)))))
+  t)
 
 (defmethod compute-iteration-spaces-aux
     ((root strided-array)
@@ -93,7 +96,9 @@
   (compute-iteration-spaces-aux
    root
    (input reference)
-   (set-intersection iteration-space (shape reference))
+   (transform
+    (set-intersection iteration-space (shape reference))
+    (transformation reference))
    (compose-transformations (transformation reference) transformation)))
 
 (defmethod compute-iteration-spaces-aux
@@ -121,7 +126,7 @@
      (immediate immediate)
      (iteration-space shape)
      (transformation transformation))
-  (values))
+  nil)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -198,7 +203,9 @@
   (compute-kernel-body-aux
    root
    (input reference)
-   (set-intersection iteration-space (shape reference))
+   (transform
+    (set-intersection iteration-space (shape reference))
+    (transformation reference))
    (compose-transformations (transformation reference) transformation)))
 
 (defmethod compute-kernel-body-aux

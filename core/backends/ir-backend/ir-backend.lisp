@@ -31,8 +31,9 @@
 ;;; Methods
 
 (defmethod compute-immediates ((strided-arrays list) (ir-backend ir-backend))
-  (mapcar (compose #'immediate-from-buffer #'evaluate)
-          (ir-from-strided-arrays strided-arrays ir-backend)))
+  (let ((root-buffers (ir-from-strided-arrays strided-arrays ir-backend)))
+    (mapc #'execute root-buffers)
+    (mapcar #'immediate-from-buffer root-buffers)))
 
 (defmethod immediate-from-buffer ((ir-backend-buffer ir-backend-buffer))
   (make-array-immediate (storage ir-backend-buffer)))
@@ -81,7 +82,8 @@
 
 (defmethod execute :around ((ir-backend-buffer ir-backend-buffer))
   (unless (executedp ir-backend-buffer)
-    (call-next-method)))
+    (call-next-method)
+    (setf (executedp ir-backend-buffer) t)))
 
 (defmethod execute ((ir-backend-buffer ir-backend-buffer))
   (mapc #'execute (inputs ir-backend-buffer)))

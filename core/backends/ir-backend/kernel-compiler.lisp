@@ -11,7 +11,7 @@
 
 (defun compile-kernel (kernel)
   (let ((body-fn (compile-outer-loops
-                  (ranges (shape kernel))
+                  (reverse (ranges (shape kernel)))
                   (compile-kernel-body
                    (body kernel)))))
     (lambda ()
@@ -56,16 +56,16 @@
          (lambda (index)
            (labels ((divide-and-conquer (imin imax)
                       (if (= imin imax)
-                          (let* ((new-index (cons (+ start (* imin step)) index))
-                                 (args (loop for arg-fn in arg-fns
-                                             collect
-                                             (funcall arg-fn new-index))))
-                            (apply #'operator args))
+                          (let* ((new-index (cons (+ start (* imin step)) index)))
+                            (values-list
+                             (loop for arg-fn in arg-fns
+                                   collect
+                                   (funcall arg-fn new-index))))
                           (let ((middle (floor (+ imin imax) 2)))
                             (multiple-value-call operator
                               (divide-and-conquer imin middle)
                               (divide-and-conquer (1+ middle) imax))))))
-             (nth-value value-n (divide-and-conquer 0 size)))))))
+             (nth-value value-n (divide-and-conquer 0 (1- size))))))))
     ;; Call
     ((list* 'pcall value-n operator arguments)
      (let ((arg-fns (mapcar #'compile-kernel-body arguments)))
@@ -73,4 +73,5 @@
          (let ((args (loop for arg-fn in arg-fns
                            collect
                            (funcall arg-fn index))))
-           (nth-value value-n (apply operator args))))))))
+           (nth-value value-n (apply operator args))))))
+    (_ (error "W00t?"))))

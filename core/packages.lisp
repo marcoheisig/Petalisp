@@ -92,6 +92,10 @@
    #:kernel #:kernelp
    #:body
    #:buffer #:bufferp
+   #:pstore
+   #:pref
+   #:preduce
+   #:pcall
 
    ;; Backends
    #:compute-on-backend
