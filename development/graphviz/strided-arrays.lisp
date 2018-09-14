@@ -81,6 +81,11 @@
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
+     (range-immediate range-immediate))
+  `(("axis" . ,(stringify (axis array-immediate)))))
+
+(defmethod graphviz-node-properties append
+    ((graph data-flow-graph)
      (node application))
   `(("operator" . ,(stringify (operator node)))))
 

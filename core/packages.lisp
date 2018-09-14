@@ -65,6 +65,9 @@
    #:scalar-immediate
    #:array-immediate
    #:range-immediate
+   #:make-scalar-immediate
+   #:make-array-immediate
+   #:make-range-immediate
 
    ;; High-level API
    #:*backend*
@@ -80,6 +83,11 @@
    #:indices
 
    ;; Intermediate Representation
+   #:ir-from-strided-arrays
+   #:make-buffer
+   #:make-kernel
+   #:compute-buffer-table
+   #:compute-kernels
    #:ir-node
    #:kernel #:kernelp
    #:body
@@ -92,6 +100,7 @@
    #:backend
 
    #:reference-backend
+   #:ir-backend
    #:native-backend
    ))
 
@@ -101,12 +110,14 @@
   (:export
    #:reference-backend))
 
+(cl:defpackage :petalisp-ir-backend
+  (:shadowing-import-from :petalisp :set-difference)
+  (:use :closer-common-lisp :alexandria :petalisp)
+  (:export
+   #:ir-backend))
+
 (cl:defpackage :petalisp-native-backend
   (:shadowing-import-from :petalisp :set-difference)
   (:use :closer-common-lisp :alexandria :petalisp)
   (:export
    #:native-backend))
-
-(cl:defpackage :petalisp-user
-  (:shadowing-import-from :petalisp :set-difference)
-  (:use :common-lisp :petalisp))

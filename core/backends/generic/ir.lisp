@@ -30,7 +30,7 @@
 
 (defgeneric make-kernel (iteration-space blueprint backend))
 
-(defgeneric make-buffer-table (strided-arrays backend))
+(defgeneric compute-buffer-table (strided-arrays backend))
 
 (defgeneric compute-kernels (root backend))
 
@@ -46,14 +46,6 @@
 
 (defclass buffer (ir-node)
   ((%element-type :initarg :element-type :reader element-type)))
-
-(defclass array-buffer (buffer)
-  (;; A mapping from indices of the array's shape to storage indices.
-   (%transformation :initarg :transformation :accessor transformation)
-   ;; The storage of the buffer.  Initially, the storage of a buffer is
-   ;; NIL.  Before kernels can write to this buffer, its storage slot must
-   ;; be set to an array of the appropriate size.
-   (%storage :initarg :storage :initform nil :accessor storage)))
 
 (defclass kernel (ir-node)
   ((%body :initarg :body :reader body)))
@@ -71,11 +63,6 @@
     :shape (shape strided-array)
     :element-type (element-type strided-array)))
 
-(defmethod initialize-instance ((array-buffer array-buffer) &key &allow-other-keys)
-  (prog1 (call-next-method)
-    (setf (transformation array-buffer)
-          (collapsing-transformation (shape array-buffer)))))
-
 (defmethod make-kernel ((iteration-space shape)
                         (body list)
                         (backend backend))
@@ -92,13 +79,13 @@
         (outputs '()))
     (labels ((scan (form)
                (trivia:ematch form
-                 ((list 'pset output form)
+                 ((list 'pstore output form)
                   (pushnew output outputs)
                   (scan form))
                  ((list 'pref input _)
                   (pushnew input inputs))
-                 ((or (list* 'preduce _ forms)
-                      (list* 'papply _ forms))
+                 ((or (list* 'preduce _ _ _ forms)
+                      (list* 'pcall _ _ forms))
                   (mapc #'scan forms)))
                (values)))
       (scan body))
@@ -111,7 +98,7 @@
 (defvar *buffer-table*)
 
 (defun ir-from-strided-arrays (strided-arrays backend)
-  (let ((*buffer-table* (make-buffer-table strided-arrays backend)))
+  (let ((*buffer-table* (compute-buffer-table strided-arrays backend)))
     ;; Now create a list of kernels for each entry in the buffer table.
     (loop for root being each hash-key of *buffer-table* do
       (let ((kernels (compute-kernels root backend)))

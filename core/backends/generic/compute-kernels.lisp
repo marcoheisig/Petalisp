@@ -128,12 +128,13 @@
 ;;; Computing the Kernel Body
 
 (defun compute-kernel-body (root iteration-space)
-  `(pset ,(gethash root *buffer-table*)
-         ,(compute-kernel-body-aux
-           root
-           root
-           iteration-space
-           (make-identity-transformation (dimension root)))))
+  `(pstore
+    ,(gethash root *buffer-table*)
+    ,(compute-kernel-body-aux
+      root
+      root
+      iteration-space
+      (make-identity-transformation (dimension root)))))
 
 (defgeneric compute-kernel-body-aux
     (root node iteration-space transformation))
@@ -160,7 +161,8 @@
      (application application)
      (iteration-space shape)
      (transformation transformation))
-  `(papply
+  `(pcall
+    ,(value-n application)
     ,(operator application)
     ,.(loop for input in (inputs application)
             collect (compute-kernel-body-aux
@@ -174,16 +176,19 @@
      (reduction reduction)
      (iteration-space shape)
      (transformation transformation))
-  `(preduce
-    ,(operator reduction)
-    ,.(let ((iteration-space (enlarge-shape iteration-space (reduction-range reduction)))
-            (transformation (enlarge-transformation transformation 1 0)))
-        (loop for input in (inputs reduction)
-              collect (compute-kernel-body-aux
-                       root
-                       input
-                       iteration-space
-                       transformation)))))
+  (let ((reduction-range (reduction-range reduction)))
+    `(preduce
+      ,reduction-range
+      ,(value-n reduction)
+      ,(operator reduction)
+      ,.(let ((iteration-space (enlarge-shape iteration-space reduction-range))
+              (transformation (enlarge-transformation transformation 1 0)))
+          (loop for input in (inputs reduction)
+                collect (compute-kernel-body-aux
+                         root
+                         input
+                         iteration-space
+                         transformation))))))
 
 (defmethod compute-kernel-body-aux
     ((root strided-array)

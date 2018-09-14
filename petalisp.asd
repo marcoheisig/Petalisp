@@ -78,6 +78,9 @@
        (:module "reference-backend"
         :components ((:file "intermediate-result")
                      (:file "reference-backend")))
+       (:module "ir-backend"
+        :components ((:file "kernel-compiler")
+                     (:file "ir-backend")))
        (:module "native-backend"
         :components ((:file "scheduler")
                      (:file "compile-cache-mixin")
