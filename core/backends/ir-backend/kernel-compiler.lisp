@@ -73,5 +73,4 @@
          (let ((args (loop for arg-fn in arg-fns
                            collect
                            (funcall arg-fn index))))
-           (nth-value value-n (apply operator args))))))
-    (_ (error "W00t?"))))
+           (nth-value value-n (apply operator args))))))))
