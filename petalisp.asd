@@ -70,7 +70,6 @@
       :components
       ((:module "generic"
         :components ((:file "backend")
-                     (:file "blueprint")
                      (:file "ir")
                      (:file "compute-buffer-table")
                      (:file "compute-kernels")
