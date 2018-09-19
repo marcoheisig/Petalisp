@@ -81,8 +81,10 @@
         :components ((:file "kernel-compiler")
                      (:file "ir-backend")))
        (:module "native-backend"
-        :components ((:file "scheduler")
-                     (:file "compile-cache-mixin")
-                     (:file "native-backend")))))
+        :components ((:file "memory-pool")
+                     (:file "native-backend")
+                     (:file "native-backend-ir")
+                     (:file "kernel-compiler")
+                     ))))
 
      (:file "api")))))
