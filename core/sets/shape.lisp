@@ -43,6 +43,8 @@
 ;;;
 ;;; Methods
 
+(define-class-predicate shape)
+
 (defmethod make-shape ((shape shape))
   shape)
 
@@ -59,12 +61,6 @@
 (defmethod shape-from-ranges ((ranges list))
   (assert (every #'rangep ranges))
   (make-instance 'shape :ranges ranges))
-
-(defmethod shapep ((object t))
-  nil)
-
-(defmethod shapep ((shape shape))
-  t)
 
 (defmethod dimension ((object t))
   0)
