@@ -25,12 +25,12 @@
   ((%axis :initarg :axis :reader axis)))
 
 (defclass native-backend-buffer (buffer)
-  ((%transformation :initarg :transformation :reader transformation)
-   (%storage :initarg :storage :accessor storage :initform nil)
-   (%executedp :initarg :executedp :accessor executedp :initform nil)))
+  ((%transformation :initarg :transformation :accessor transformation)
+   (%storage :initarg :storage :accessor storage)))
 
 (defclass native-backend-kernel (kernel)
-  ())
+  ((%executedp :initarg :executedp :accessor executedp
+               :initform nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -64,5 +64,20 @@
                         (native-backend native-backend))
   (make-instance 'native-backend-buffer
     :shape (shape strided-array)
-    :element-type (element-type strided-array)
-    :transformation (collapsing-transformation (shape strided-array))))
+    :element-type (element-type strided-array)))
+
+(defmethod make-kernel ((iteration-space shape)
+                        (body list)
+                        (backend native-backend))
+  (multiple-value-bind (inputs outputs)
+      (kernel-body-inputs-and-outputs body)
+    (make-instance 'native-backend-kernel
+      :shape iteration-space
+      :inputs inputs
+      :outputs outputs
+      :body body)))
+
+(defmethod transformation :before ((native-backend-buffer native-backend-buffer))
+  (unless (slot-boundp native-backend-buffer '%transformation)
+    (setf (slot-value native-backend-buffer '%transformation)
+          (collapsing-transformation (shape native-backend-buffer)))))

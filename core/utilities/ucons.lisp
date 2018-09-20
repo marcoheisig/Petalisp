@@ -194,14 +194,16 @@ and past invocation of this function with the same arguments."
 
 (declaim (inline map-ulist))
 (defun map-ulist (function &rest sequences)
-  (declare (function function))
+  (declare (dynamic-extent sequences)
+           (function function))
   (let ((length (reduce #'min sequences :key #'length))
         (stack-allocation-threshold 30))
-    (flet ((map-ulist-with-buffer (buffer &aux result)
+    (flet ((map-ulist-with-buffer (buffer)
              (apply #'map-into buffer function sequences)
-             (loop for index from (1- length) downto 0 do
-               (setf result (ucons (aref buffer index) result)))
-             result))
+             (let ((result '()))
+               (loop for index from (1- length) downto 0 do
+                 (setf result (ucons (aref buffer index) result)))
+               result)))
       (if (<= length stack-allocation-threshold)
           (let ((buffer (make-array stack-allocation-threshold)))
             (declare (dynamic-extent buffer))

@@ -10,8 +10,9 @@
   ((%compile-cache :reader compile-cache
                    :initform (make-hash-table :test #'eq))))
 
+#+nil
 (defmethod compile-kernel :around
-    (blueprint (backend compile-cache-mixin))
+    ((kernel kernel) (backend compile-cache-mixin))
   (petalisp-memoization:with-hash-table-memoization (blueprint)
       (compile-cache backend)
     (call-next-method)))
@@ -332,3 +333,7 @@
           downto (1+ axis) do
             (setf stride (* (array-dimension array index) stride)))
     stride))
+
+(defmethod compile-kernel ((kernel native-backend-kernel)
+                           (native-backend native-backend))
+  (print (compute-blueprint kernel)))

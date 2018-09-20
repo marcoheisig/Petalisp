@@ -1,4 +1,4 @@
-;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
+;G;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
 (cl:defpackage :petalisp
   (:use :closer-common-lisp :alexandria)
@@ -44,6 +44,7 @@
    #:transformation-equal
    #:compose-transformations
    #:collapsing-transformation
+   #:map-transformation-outputs
 
    ;; Strided Arrays
    #:strided-array
@@ -88,9 +89,12 @@
    #:make-kernel
    #:compute-buffer-table
    #:compute-kernels
+   #:kernel-body-inputs-and-outputs
+   #:scheduler-queue-mixin
    #:ir-node
    #:kernel #:kernelp
    #:body
+   #:outputs
    #:buffer #:bufferp
    #:pstore
    #:pref
@@ -124,4 +128,5 @@
   (:shadowing-import-from :petalisp :set-difference)
   (:use :closer-common-lisp :alexandria :petalisp)
   (:export
-   #:native-backend))
+   #:native-backend
+   #:make-native-backend))

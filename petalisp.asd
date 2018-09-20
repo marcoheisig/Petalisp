@@ -84,7 +84,8 @@
         :components ((:file "memory-pool")
                      (:file "native-backend")
                      (:file "native-backend-ir")
+                     (:file "blueprint")
                      (:file "kernel-compiler")
-                     ))))
+                     (:file "scheduler")))))
 
      (:file "api")))))

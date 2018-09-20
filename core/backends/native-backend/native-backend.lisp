@@ -5,6 +5,10 @@
 ;;; This is the default Petalisp backend.  It generates portable, highly
 ;;; optimized Lisp code and compiles it using CL:COMPILE.
 
+(defgeneric compute-buffer (buffer backend))
+
+(defgeneric execute-kernel (kernel backend))
+
 (defclass petalisp:native-backend
     (backend
      scheduler-queue-mixin)
@@ -17,11 +21,13 @@
     :memory-pool (make-memory-pool)
     :worker-pool (lparallel:make-kernel threads)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Methods
-
-(defmethod compute-immediates ((strided-arrays list) (native-backend native-backend))
+(defmethod compute-immediates ((strided-arrays list)
+                               (native-backend native-backend))
   (let ((root-buffers (ir-from-strided-arrays strided-arrays native-backend)))
-    ;; TODO
-    ))
+    (loop for root-buffer in root-buffers
+          for strided-array in strided-arrays
+          collect
+          (if (immediatep strided-array)
+              strided-array
+              (immediate-from-buffer
+               (compute-buffer root-buffer native-backend))))))

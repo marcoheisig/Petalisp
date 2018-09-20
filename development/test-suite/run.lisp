@@ -7,10 +7,18 @@
 ;;; Test Machinery
 
 (defclass testing-backend (backend)
-  ((%reference-backend :initform (make-instance 'reference-backend) :reader reference-backend)
-   (%ir-backend :initform (make-instance 'ir-backend) :reader ir-backend)
-   ;; TODO actually use the native backend here.
-   (%native-backend :initform (make-instance 'reference-backend) :reader native-backend)))
+  ((%reference-backend
+    :reader reference-backend
+    :initform (make-instance 'reference-backend))
+   (%ir-backend
+    :reader ir-backend
+    :initform (make-instance 'ir-backend) )
+   (%native-backend
+    :reader native-backend
+    :initform
+    ;; TODO
+    #+nil(petalisp-native-backend:make-native-backend :threads 2)
+    (make-instance 'reference-backend))))
 
 (defun immediate-equalp (immediate-1 immediate-2)
   (equalp (storage immediate-1)
