@@ -11,13 +11,24 @@
 
 (defvar *normalization*)
 
-
 (defun compute-blueprint (kernel)
   (let ((*kernel* kernel)
         (*normalization*
           (invert-transformation
            (transformation (first (outputs kernel))))))
-    (blueprint-from-kernel-body (body kernel))))
+    (flet ((approximate-size (range)
+             ;; Return an ulist, consisting of an inclusive lower bound on
+             ;; the size of the range and an exclusive upper bound.
+             (let ((size (set-size range)))
+               (if (< size 9)
+                   (ucons:ulist size (1+ size))
+                   (let ((floor (floor (log (set-size range) 2))))
+                     (ucons:ulist
+                      (expt 2 floor)
+                      (expt 2 (1+ floor))))))))
+      (ucons:ulist
+       (ucons:map-ulist #'approximate-size (ranges (shape kernel)))
+       (blueprint-from-kernel-body (body kernel))))))
 
 (defgeneric blueprint-from-reference (buffer transformation))
 
@@ -60,24 +71,24 @@
 (defmethod blueprint-from-reference
     ((native-backend-array-immediate native-backend-array-immediate)
      (transformation transformation))
-  (ucons:ulist :ref (position native-backend-array-immediate (inputs *kernel*))
+  (ucons:ulist 'pref (position native-backend-array-immediate (inputs *kernel*))
                (blueprint-from-transformation
                 (compose-transformations transformation *normalization*))))
 
 (defmethod blueprint-from-reference
     ((native-backend-scalar-immediate native-backend-scalar-immediate)
      (transformation transformation))
-  (ucons:ulist :scalar (position native-backend-scalar-immediate (inputs *kernel*))))
+  (ucons:ulist 'scalar-ref (position native-backend-scalar-immediate (inputs *kernel*))))
 
 (defmethod blueprint-from-reference
     ((native-backend-range-immediate native-backend-range-immediate)
      (transformation transformation))
-  (ucons:ulist :range '?))
+  (ucons:ulist 'range-ref (axis native-backend-range-immediate)))
 
 (defmethod blueprint-from-reference
     ((native-backend-buffer native-backend-buffer)
      (transformation transformation))
-  (ucons:ulist :ref (position native-backend-buffer (inputs *kernel*))
+  (ucons:ulist 'pref (position native-backend-buffer (inputs *kernel*))
                (blueprint-from-transformation
                 (compose-transformations
                  (compose-transformations

@@ -31,7 +31,7 @@
     ((kernel native-backend-kernel) (native-backend native-backend))
   (unless (executedp kernel)
     ;; Run the kernel.
-    (funcall (compile-kernel kernel native-backend) kernel)
+    (funcall (compile-blueprint (compute-blueprint kernel) native-backend) kernel)
     (setf (executedp kernel) t)
     ;; Free the memory of buffers that are no longer in use.
     (loop for buffer in (inputs kernel) do
