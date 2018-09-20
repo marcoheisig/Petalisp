@@ -47,25 +47,21 @@
        (lambda (index)
          (apply #'aref storage (transform index transformation)))))
     ;; Reduce
-    ((list* 'preduce range value-n operator arguments)
-     (let ((arg-fns (mapcar #'compile-kernel-body arguments))
-           (size (set-size range)))
-       (multiple-value-bind (start step end)
-           (range-start-step-end range)
-         (declare (ignore end))
-         (lambda (index)
-           (labels ((divide-and-conquer (imin imax)
-                      (if (= imin imax)
-                          (let* ((new-index (cons (+ start (* imin step)) index)))
-                            (values-list
-                             (loop for arg-fn in arg-fns
-                                   collect
-                                   (funcall arg-fn new-index))))
-                          (let ((middle (floor (+ imin imax) 2)))
-                            (multiple-value-call operator
-                              (divide-and-conquer imin middle)
-                              (divide-and-conquer (1+ middle) imax))))))
-             (nth-value value-n (divide-and-conquer 0 (1- size))))))))
+    ((list* 'preduce size value-n operator arguments)
+     (let ((arg-fns (mapcar #'compile-kernel-body arguments)))
+       (lambda (index)
+         (labels ((divide-and-conquer (imin imax)
+                    (if (= imin imax)
+                        (let* ((new-index (cons imin index)))
+                          (values-list
+                           (loop for arg-fn in arg-fns
+                                 collect
+                                 (funcall arg-fn new-index))))
+                        (let ((middle (floor (+ imin imax) 2)))
+                          (multiple-value-call operator
+                            (divide-and-conquer imin middle)
+                            (divide-and-conquer (1+ middle) imax))))))
+           (nth-value value-n (divide-and-conquer 0 (1- size)))))))
     ;; Call
     ((list* 'pcall value-n operator arguments)
      (let ((arg-fns (mapcar #'compile-kernel-body arguments)))

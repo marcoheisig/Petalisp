@@ -106,8 +106,17 @@
      (reduction reduction)
      (iteration-space shape)
      (transformation transformation))
-  (let ((iteration-space (enlarge-shape iteration-space (reduction-range reduction)))
-        (transformation (enlarge-transformation transformation 1 0)))
+  (let* ((range (reduction-range reduction))
+         (size (set-size range))
+         (iteration-space
+           (enlarge-shape
+            iteration-space
+            (make-range 0 1 (1- size))))
+         (transformation
+           (enlarge-transformation
+            transformation
+            (range-step range)
+            (range-start range))))
     (loop for input in (inputs reduction)
             thereis
             (compute-iteration-spaces-aux root input iteration-space transformation))))
@@ -181,13 +190,17 @@
      (reduction reduction)
      (iteration-space shape)
      (transformation transformation))
-  (let ((reduction-range (reduction-range reduction)))
+  (let* ((range (reduction-range reduction))
+         (size (set-size range))
+         (scale (range-step range))
+         (offset (range-start range))
+         (new-range (make-range 0 1 (1- size))))
     `(preduce
-      ,reduction-range
+      ,size
       ,(value-n reduction)
       ,(operator reduction)
-      ,.(let ((iteration-space (enlarge-shape iteration-space reduction-range))
-              (transformation (enlarge-transformation transformation 1 0)))
+      ,.(let ((iteration-space (enlarge-shape iteration-space new-range))
+              (transformation (enlarge-transformation transformation scale offset)))
           (loop for input in (inputs reduction)
                 collect (compute-kernel-body-aux
                          root
