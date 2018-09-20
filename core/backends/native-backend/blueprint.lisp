@@ -59,7 +59,8 @@
       size
       value-n
       operator
-      (ucons:map-ulist #'blueprint-from-kernel-body forms)))
+      (let ((*normalization* (enlarge-transformation *normalization* 1 0)))
+        (ucons:map-ulist #'blueprint-from-kernel-body forms))))
     ;; Translate function calls.
     ((list* 'pcall value-n operator forms)
      (ucons:ulist*

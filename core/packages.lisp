@@ -44,6 +44,7 @@
    #:transformation-equal
    #:compose-transformations
    #:collapsing-transformation
+   #:enlarge-transformation
    #:map-transformation-outputs
 
    ;; Strided Arrays
