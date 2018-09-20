@@ -254,7 +254,8 @@
 
 (defmethod map-transformation-outputs
     ((transformation hairy-transformation)
-     (function function))
+     (function function)
+     &key from-end)
   (let ((output-dimension (output-dimension transformation)))
     (with-hairy-transformation-refs
         (:input-constraints cref
@@ -262,8 +263,14 @@
          :permutation pref
          :translation tref)
         transformation
-      (loop for output-index below output-dimension
-            for input-index = (pref output-index)
-            for scaling = (sref output-index)
-            for offset = (tref output-index) do
-              (funcall function output-index input-index scaling offset)))))
+      (if (not from-end)
+          (loop for output-index below output-dimension
+                for input-index = (pref output-index)
+                for scaling = (sref output-index)
+                for offset = (tref output-index) do
+                  (funcall function output-index input-index scaling offset))
+          (loop for output-index downfrom (1- output-dimension) to 0
+                for input-index = (pref output-index)
+                for scaling = (sref output-index)
+                for offset = (tref output-index) do
+                  (funcall function output-index input-index scaling offset))))))

@@ -45,7 +45,7 @@
 ;;; index, input index and the scaling and offset necessary to project an
 ;;; input value at that input index to an output value at that output
 ;;; index.
-(defgeneric map-transformation-outputs (transformation function))
+(defgeneric map-transformation-outputs (transformation function &key from-end))
 
 ;;; Given a transformation mapping from (i1 ... iN) to (j1 ... jM),
 ;;; return a transformation mapping from (i1 ... iN iN+1) to

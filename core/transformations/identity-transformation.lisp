@@ -36,6 +36,9 @@
   (make-identity-transformation (1+ (input-dimension transformation))))
 
 (defmethod map-transformation-outputs
-    ((transformation identity-transformation) (function function))
-  (loop for index below (input-dimension transformation) do
-    (funcall function index index 1 0)))
+    ((transformation identity-transformation) (function function) &key from-end)
+  (if (not from-end)
+      (loop for index below (input-dimension transformation) do
+        (funcall function index index 1 0))
+      (loop for index downfrom (1- (input-dimension transformation)) to 0 do
+        (funcall function index index 1 0))))
