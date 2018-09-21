@@ -7,6 +7,7 @@
                "petalisp"
                "petalisp-linear-algebra"
                "petalisp-iterative-methods"
+               "the-cost-of-nothing"
                "cl-dot"
                "fiveam")
 
