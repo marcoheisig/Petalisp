@@ -81,11 +81,12 @@
         :components ((:file "kernel-compiler")
                      (:file "ir-backend")))
        (:module "native-backend"
-        :components ((:file "memory-pool")
+        :components ((:file "utilities")
+                     (:file "memory-pool")
                      (:file "native-backend")
                      (:file "native-backend-ir")
                      (:file "blueprint")
-                     (:file "kernel-compiler")
+                     (:file "blueprint-compiler")
                      (:file "scheduler")))))
 
      (:file "api")))))
