@@ -4,146 +4,18 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Caching of Compiled Blueprints
-
-(defclass compile-cache-mixin ()
-  ((%compile-cache :reader compile-cache
-                   :initform (make-hash-table :test #'eq))))
-
-(defmethod compile-blueprint :around
-    (blueprint (backend compile-cache-mixin))
-  (petalisp-memoization:with-hash-table-memoization (blueprint)
-      (compile-cache backend)
-    (call-next-method)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Compiler "Gensyms"
-
-(defun symbol-with-indices (name &rest indices)
-  (format-symbol *package* "~A~{-~D~}" name indices))
-
-(defun base-index-symbol (depth reference-id)
-  (symbol-with-indices "BASE-INDEX" depth reference-id))
-
-(defun index-symbol (n)
-  (petalisp-memoization:with-vector-memoization (n)
-    (symbol-with-indices "INDEX" n)))
-
-(defun array-symbol (n)
-  (petalisp-memoization:with-vector-memoization (n)
-    (symbol-with-indices "ARRAY" n)))
-
-(defun bound-symbol (n)
-  (petalisp-memoization:with-vector-memoization (n)
-    (symbol-with-indices "BOUND" n)))
-
-(defun accumulator-symbol (n)
-  (petalisp-memoization:with-vector-memoization (n)
-    (symbol-with-indices "ACC" n)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Working with addresses and loops
-
-(defun index-+ (&rest forms)
-  (apply #'+ forms))
-
-(defun index-* (&rest forms)
-  (apply #'* forms))
-
-(define-compiler-macro index-+ (&rest forms)
-  `(the fixnum
-        (+ ,@(loop for form in forms collect
-                   `(the fixnum ,form)))))
-
-(define-compiler-macro index-* (&rest forms)
-  `(the fixnum
-        (* ,@(loop for form in forms collect
-                   `(the fixnum ,form)))))
-
-(defun emit-index-+ (&rest forms)
-  (trivia:match (remove 0 forms)
-    ((list) 0)
-    ((list form) form)
-    ( list `(index-+ ,@list))))
-
-(defun emit-index-* (&rest forms)
-  (or (find 0 forms)
-      (trivia:match (remove 1 forms)
-        ((list) 1)
-        ((list form) form)
-        ( list `(index-* ,@list)))))
-
-(defmacro for ((index start step end) &body body)
-  (check-type index symbol)
-  `(loop for ,index of-type fixnum
-         from ,start by ,step below ,end
-         do ,@body))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
 ;;; The kernel compiler
 
-(defgeneric translate (statement))
+(defmethod compile-blueprint
+    ((blueprint ucons:ucons) (native-backend native-backend))
+  (let ((code (translate-blueprint blueprint)))
+    (compile nil code)))
 
-(defstruct loop-statement
-  (index nil)
-  (start nil)
-  (step nil)
-  (end nil)
-  (bindings nil)
-  (body))
+(defun translate-blueprint (blueprint)
+  ;; TODO
+  (print blueprint))
 
-(defmethod translate ((loop loop-statement))
-  `(let* ,(loop-statement-bindings loop)
-     (for (,(loop-statement-index loop)
-           ,(loop-statement-start loop)
-           ,(loop-statement-step loop)
-           ,(loop-statement-end loop))
-       ,(translate (loop-statement-body loop)))))
-
-(defstruct (parallel-loop-statement
-            (:include loop-statement)))
-
-(defmethod translate ((loop parallel-loop-statement))
-  `(let* ,(loop-statement-bindings loop)
-     (lparallel:pdotimes
-         (,(loop-statement-index loop)
-          ,(loop-statement-end loop))
-       ,(translate (loop-statement-body loop)))))
-
-(defstruct (reduction-statement
-            (:include loop-statement))
-  (binary-operator nil)
-  (unary-operator nil))
-
-(defmethod translate ((loop reduction-statement))
-  (with-gensyms (eval-body acc)
-    `(let* ,(loop-statement-bindings loop)
-       (flet ((,eval-body (,(loop-statement-index loop))
-                ,(translate (loop-statement-body loop))))
-         (let ((,acc ,(translate-function-call
-                       (reduction-statement-unary-operator loop)
-                       `(,eval-body ,(loop-statement-start loop)))))
-           (for (,(loop-statement-index loop)
-                 (1+ ,(loop-statement-start loop))
-                 ,(loop-statement-step loop)
-                 ,(loop-statement-end loop))
-                 (setf ,acc ,(translate-function-call
-                              (reduction-statement-binary-operator loop)
-                              acc
-                              `(,eval-body ,(loop-statement-index loop)))))
-           ,acc)))))
-
-(defmethod translate ((s-expression list))
-  (list* (first s-expression)
-         (mapcar #'translate (rest s-expression))))
-
-(defmethod translate ((symbol symbol)) symbol)
-
-(defmethod translate ((integer integer)) integer)
-
+#+nil
 (defun translate-blueprint (blueprint)
   (trivia:ematch (ucons:copy-utree blueprint)
     ((list :blueprint bounds-metadata element-types body)
@@ -222,6 +94,65 @@
                                      bounds-info
                                      `(the array-index (aref bounds ,id))))))
                   ,(translate body))))))))))
+
+(defgeneric translate (statement))
+
+(defstruct loop-statement
+  (index nil)
+  (start nil)
+  (step nil)
+  (end nil)
+  (bindings nil)
+  (body))
+
+(defmethod translate ((loop loop-statement))
+  `(let* ,(loop-statement-bindings loop)
+     (for (,(loop-statement-index loop)
+           ,(loop-statement-start loop)
+           ,(loop-statement-step loop)
+           ,(loop-statement-end loop))
+       ,(translate (loop-statement-body loop)))))
+
+(defstruct (parallel-loop-statement
+            (:include loop-statement)))
+
+(defmethod translate ((loop parallel-loop-statement))
+  `(let* ,(loop-statement-bindings loop)
+     (lparallel:pdotimes
+         (,(loop-statement-index loop)
+          ,(loop-statement-end loop))
+       ,(translate (loop-statement-body loop)))))
+
+(defstruct (reduction-statement
+            (:include loop-statement))
+  (binary-operator nil)
+  (unary-operator nil))
+
+(defmethod translate ((loop reduction-statement))
+  (with-gensyms (eval-body acc)
+    `(let* ,(loop-statement-bindings loop)
+       (flet ((,eval-body (,(loop-statement-index loop))
+                ,(translate (loop-statement-body loop))))
+         (let ((,acc ,(translate-function-call
+                       (reduction-statement-unary-operator loop)
+                       `(,eval-body ,(loop-statement-start loop)))))
+           (for (,(loop-statement-index loop)
+                 (1+ ,(loop-statement-start loop))
+                 ,(loop-statement-step loop)
+                 ,(loop-statement-end loop))
+                 (setf ,acc ,(translate-function-call
+                              (reduction-statement-binary-operator loop)
+                              acc
+                              `(,eval-body ,(loop-statement-index loop)))))
+           ,acc)))))
+
+(defmethod translate ((s-expression list))
+  (list* (first s-expression)
+         (mapcar #'translate (rest s-expression))))
+
+(defmethod translate ((symbol symbol)) symbol)
+
+(defmethod translate ((integer integer)) integer)
 
 (defun optimize-loops (loops)
   (loop
@@ -333,6 +264,3 @@
             (setf stride (* (array-dimension array index) stride)))
     stride))
 
-(defmethod compile-blueprint
-    ((blueprint ucons:ucons) (native-backend native-backend))
-  (print blueprint))

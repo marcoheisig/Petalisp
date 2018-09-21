@@ -43,12 +43,6 @@
 
 (defun blueprint-from-kernel-body (body)
   (trivia:ematch body
-    ;; Translate memory stores.
-    ((list 'pstore output form)
-     (ucons:ulist
-      'pstore
-      (position output (outputs *kernel*))
-      (blueprint-from-kernel-body form)))
     ;; Translate memory loads.
     ((list 'pref input transformation)
      (blueprint-from-reference input transformation))

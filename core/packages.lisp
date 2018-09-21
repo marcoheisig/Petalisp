@@ -97,7 +97,6 @@
    #:body
    #:outputs
    #:buffer #:bufferp
-   #:pstore
    #:pref
    #:preduce
    #:pcall

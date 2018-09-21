@@ -68,14 +68,14 @@
 
 (defmethod make-kernel ((iteration-space shape)
                         (body list)
+                        (outputs list)
+                        (inputs list)
                         (backend native-backend))
-  (multiple-value-bind (inputs outputs)
-      (kernel-body-inputs-and-outputs body)
-    (make-instance 'native-backend-kernel
-      :shape iteration-space
-      :inputs inputs
-      :outputs outputs
-      :body body)))
+  (make-instance 'native-backend-kernel
+    :shape iteration-space
+    :inputs inputs
+    :outputs outputs
+    :body body))
 
 (defmethod transformation :before ((native-backend-buffer native-backend-buffer))
   (unless (slot-boundp native-backend-buffer '%transformation)

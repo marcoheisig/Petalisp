@@ -10,10 +10,19 @@
 ;;; surrounding loop, into a function of the surrounding index.
 
 (defun compile-kernel (kernel)
-  (let ((body-fn (compile-outer-loops
-                  (reverse (ranges (shape kernel)))
-                  (compile-kernel-body
-                   (body kernel)))))
+  (let* ((storages (mapcar #'storage (outputs kernel)))
+         ;; 1. Compile the body.
+         (body-fn (compile-kernel-body (body kernel)))
+         ;; 2. Wrap it, such that the results are written to the outputs.
+         (body-fn (lambda (index)
+                    (loop for storage in storages
+                          for value in (multiple-value-list
+                                        (funcall body-fn index))
+                          do (setf (apply #'aref storage index) value))))
+         ;; 3. Wrap this expression in a series of loops.
+         (body-fn (compile-outer-loops
+                   (reverse (ranges (shape kernel)))
+                   body-fn)))
     (lambda ()
       (funcall body-fn '()))))
 

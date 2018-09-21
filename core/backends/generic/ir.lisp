@@ -28,7 +28,7 @@
 
 (defgeneric make-buffer (strided-array backend))
 
-(defgeneric make-kernel (iteration-space blueprint backend))
+(defgeneric make-kernel (iteration-space body outputs inputs backend))
 
 (defgeneric compute-buffer-table (strided-arrays backend))
 
@@ -65,31 +65,14 @@
 
 (defmethod make-kernel ((iteration-space shape)
                         (body list)
+                        (outputs list)
+                        (inputs list)
                         (backend backend))
-  (multiple-value-bind (inputs outputs)
-      (kernel-body-inputs-and-outputs body)
-    (make-instance 'kernel
-      :shape iteration-space
-      :inputs inputs
-      :outputs outputs
-      :body body)))
-
-(defun kernel-body-inputs-and-outputs (body)
-  (let ((inputs '())
-        (outputs '()))
-    (labels ((scan (form)
-               (trivia:ematch form
-                 ((list 'pstore output form)
-                  (pushnew output outputs)
-                  (scan form))
-                 ((list 'pref input _)
-                  (pushnew input inputs))
-                 ((or (list* 'preduce _ _ _ forms)
-                      (list* 'pcall _ _ forms))
-                  (mapc #'scan forms)))
-               (values)))
-      (scan body))
-    (values inputs outputs)))
+  (make-instance 'kernel
+    :shape iteration-space
+    :inputs inputs
+    :outputs outputs
+    :body body))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

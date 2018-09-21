@@ -21,15 +21,32 @@
 ;;; s-expression describing the interplay of applications, reductions and
 ;;; references.
 
-(defmethod compute-kernels ((root strided-array) (backend backend))
-  (loop for iteration-space in (compute-iteration-spaces root)
-        collect
-        (let ((body (compute-kernel-body root iteration-space)))
-          (make-kernel iteration-space body backend))))
-
 ;;; An immediate node has no kernels
 (defmethod compute-kernels ((root immediate) (backend backend))
   '())
+
+(defmethod compute-kernels ((root strided-array) (backend backend))
+  (loop for iteration-space in (compute-iteration-spaces root)
+        collect
+        (let* ((outputs (list (gethash root *buffer-table*)))
+               (body (compute-kernel-body root iteration-space))
+               (inputs (kernel-body-inputs body)))
+          (make-kernel iteration-space body outputs inputs backend))))
+
+(defun kernel-body-inputs (body)
+  (let ((inputs '()))
+    (labels ((scan (form)
+               (trivia:ematch form
+                 ((list 'reduction-kernel form)
+                  (scan form))
+                 ((or (list* 'preduce _ _ _ forms)
+                      (list* 'pcall _ _ forms))
+                  (mapc #'scan forms))
+                 ((list 'pref input _)
+                  (pushnew input inputs)))
+               (values)))
+      (scan body))
+    inputs))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -142,13 +159,11 @@
 ;;; Computing the Kernel Body
 
 (defun compute-kernel-body (root iteration-space)
-  `(pstore
-    ,(gethash root *buffer-table*)
-    ,(compute-kernel-body-aux
-      root
-      root
-      iteration-space
-      (make-identity-transformation (dimension root)))))
+  (compute-kernel-body-aux
+   root
+   root
+   iteration-space
+   (make-identity-transformation (dimension root))))
 
 (defgeneric compute-kernel-body-aux
     (root node iteration-space transformation))
