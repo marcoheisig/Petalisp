@@ -45,7 +45,7 @@
 ;;; supported throughout the standard library.  Uconses lack this
 ;;; integration and require a completely new set of library functions.
 ;;; Furthermore it must be noted that uconses are --- except if one
-;;; explicitly clears the *UCONS-LEAF-TABLE* --- a permanent memory leak.
+;;; explicitly clears the *ROOT-TABLE* --- a permanent memory leak.
 ;;;
 ;;; Yet if you are willing to accept these trade-offs, uconses offer some
 ;;; unique benefits:
@@ -57,7 +57,7 @@
 ;;;   the memory consumption of an application by orders of magnitude.
 ;;;
 ;;; - checks for structural similarity can be done in constant time.  Two
-;;;   ucons trees are equal if and only if their roots are EQ.
+;;;   ucons trees are equal if and only if their roots are EQL.
 ;;;
 ;;; Benchmarks:
 ;;; (SBCL 1.3.20, X86-64 Intel i7-5500U CPU @ 2.40GHz)
@@ -65,20 +65,18 @@
 ;;; (bench  (list 1 2 3 4 5 6 7 8)) -> 25.77 nanoseconds
 ;;; (bench (ulist 1 2 3 4 5 6 7 8)) -> 38.18 nanoseconds
 
-(declaim (hash-table *ucons-leaf-table*))
-(defvar *ucons-leaf-table* (make-hash-table :test #'eq)
+(declaim (hash-table *root-table*))
+(defvar *root-table* (make-hash-table)
   "The table of all uconses whose cdr is NIL.")
-
-(deftype ucar () 't)
 
 (defstruct (ucons
             (:constructor make-fresh-ucons (car cdr))
-            (:copier nil) ; this is the whole point, isn't it?
+            (:copier nil) ; This is the whole point, isn't it?
             (:predicate uconsp)
             (:conc-name u))
-  (cdr   nil :type (or structure-object null) :read-only t)
-  (car   nil :type ucar  :read-only t)
-  (table nil :type (or list hash-table) :read-only nil))
+  (cdr   nil :read-only t   :type (or structure-object null))
+  (car   nil :read-only t   :type t )
+  (table nil :read-only nil :type (or list hash-table)))
 
 (deftype ulist ()
   "A list made of UCONSes, or NIL."
@@ -86,43 +84,41 @@
 
 (declaim (inline ucons)
          (notinline ucons-leaf ucons-hash ucons-list)
-         (ftype (function (ucons) ucar) ucar)
-         (ftype (function (ucons) ulist) ucdr)
-         (ftype (function (ucar ulist) ucons) ucons)
-         (ftype (function (ucar) ucons) ucons-leaf)
-         (ftype (function (ucar ucons) ucons) ucons-hash ucons-list))
+         (ftype (function (ucons)   t)     ucar)
+         (ftype (function (ucons)   ulist) ucdr)
+         (ftype (function (t ulist) ucons) ucons)
+         (ftype (function (t)       ucons) ucons-leaf)
+         (ftype (function (t ucons) ucons) ucons-hash ucons-list))
 
 (defun ucons (car cdr)
-  "Given a suitable CAR and CDR, return a UCONS that is EQ to all future
+  "Given a suitable CAR and CDR, return a UCONS that is EQL to all future
 and past invocation of this function with the same arguments."
   (declare (type ulist cdr)
-           (type ucar car)
-           (optimize (speed 3) (safety 0) (debug 0)))
+           (optimize (safety 0) (debug 0)))
   (if (null cdr)
       (ucons-leaf car)
       (let ((table (utable cdr)))
         (if (listp table)
-            (loop for (ucar . ucdr) #-ccl of-type #-ccl (ucar . ucons) in table
-                  when (eq ucar car)
-                    do (return ucdr)
+            (loop for entry of-type cons in table do
+              (when (eql (car entry) car)
+                (return (cdr entry)))
                   finally (return (ucons-list car cdr)))
             (ucons-hash car cdr)))))
 
 ;;; Called for UCONSES with a CDR of NIL
 (defun ucons-leaf (car)
-  (declare (ucar car))
   (values
-   (ensure-gethash car *ucons-leaf-table* (make-fresh-ucons car nil))))
+   (ensure-gethash car *root-table* (make-fresh-ucons car nil))))
 
 ;;; Called if the UTABLE of CDR is a hash table
 (defun ucons-hash (car cdr)
-  (declare (ucar car) (ucons cdr))
+  (declare (ucons cdr))
   (values
    (ensure-gethash car (utable cdr) (make-fresh-ucons car cdr))))
 
 ;;; Called if the UTABLE of CDR is an alist that does not contain CAR.
 (defun ucons-list (car cdr)
-  (declare (ucar car) (ucons cdr))
+  (declare (ucons cdr))
   (let ((ucons (make-fresh-ucons car cdr)))
     (prog1 ucons
       (if (< (length (utable cdr)) 16)
@@ -149,12 +145,12 @@ and past invocation of this function with the same arguments."
   "Return the ulist associated with the supplied arguments, but using the
    last argument as the tail of the constructed ulist."
   (declare (dynamic-extent args))
-  (labels ((%hlist* (first rest)
+  (labels ((aux (first rest)
              (if (null rest)
                  (prog1 (the ulist first)
                    (check-type first (or ucons null)))
-                 (ucons first (%hlist* (car rest) (cdr rest))))))
-    (%hlist* (first args) (rest args))))
+                 (ucons first (aux (car rest) (cdr rest))))))
+    (aux (first args) (rest args))))
 
 (define-compiler-macro ulist* (&rest arg-forms)
   (let* ((n (length arg-forms))
@@ -194,6 +190,9 @@ and past invocation of this function with the same arguments."
 
 (declaim (inline umapcar))
 (defun umapcar (function &rest sequences)
+  "Return an ulist containing the results of applying FUNCTION to
+successive elements of the supplied sequences.  The resulting ulist is as
+long as the shortest supplied sequence."
   (declare (dynamic-extent sequences)
            (function function))
   (let ((length (reduce #'min sequences :key #'length))
@@ -228,11 +227,11 @@ and past invocation of this function with the same arguments."
   (loop for elt = ulist then (ucdr elt)
         while elt collect (ucar elt)))
 
-(defun copy-utree (ulist)
-  "Return a tree of the same shape as ULIST, but where all occuring ulists
-   have been converted to lists."
-  (declare (ulist ulist))
-  (loop for elt = ulist then (ucdr elt)
+(defun copy-utree (utree)
+  "Return a tree of the same shape as UTREE, but where all occuring ulists
+have been converted to lists."
+  (declare (ulist utree))
+  (loop for elt = utree then (ucdr elt)
         while elt
         for car = (ucar elt)
         collect (if (uconsp car)
