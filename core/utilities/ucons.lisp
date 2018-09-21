@@ -9,7 +9,7 @@
    #:ulist
    #:ulist*
    #:do-ulist
-   #:map-ulist
+   #:umapcar
    #:ulength
    #:copy-ulist
    #:copy-utree))
@@ -192,24 +192,25 @@ and past invocation of this function with the same arguments."
              (declare (ignorable ,var))
              ,result))))))
 
-(declaim (inline map-ulist))
-(defun map-ulist (function &rest sequences)
+(declaim (inline umapcar))
+(defun umapcar (function &rest sequences)
   (declare (dynamic-extent sequences)
            (function function))
   (let ((length (reduce #'min sequences :key #'length))
-        (stack-allocation-threshold 30))
-    (flet ((map-ulist-with-buffer (buffer)
-             (apply #'map-into buffer function sequences)
-             (let ((result '()))
+        (stack-allocation-threshold 11))
+    (flet ((ulist-from-buffer (buffer)
+             (let ((ulist '()))
                (loop for index from (1- length) downto 0 do
-                 (setf result (ucons (aref buffer index) result)))
-               result)))
+                 (setf ulist (ucons (aref buffer index) ulist)))
+               ulist)))
       (if (<= length stack-allocation-threshold)
           (let ((buffer (make-array stack-allocation-threshold)))
             (declare (dynamic-extent buffer))
-            (map-ulist-with-buffer buffer))
+            (apply #'map-into buffer function sequences)
+            (ulist-from-buffer buffer))
           (let ((buffer (make-array length)))
-            (map-ulist-with-buffer buffer))))))
+            (apply #'map-into buffer function sequences)
+            (ulist-from-buffer buffer))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

@@ -27,7 +27,7 @@
                       (expt 2 floor)
                       (expt 2 (1+ floor))))))))
       (ucons:ulist
-       (ucons:map-ulist #'approximate-size (ranges (shape kernel)))
+       (ucons:umapcar #'approximate-size (ranges (shape kernel)))
        (blueprint-from-kernel-body (body kernel))))))
 
 (defgeneric blueprint-from-reference (buffer transformation))
@@ -60,14 +60,14 @@
       value-n
       operator
       (let ((*normalization* (enlarge-transformation *normalization* 1 0)))
-        (ucons:map-ulist #'blueprint-from-kernel-body forms))))
+        (ucons:umapcar #'blueprint-from-kernel-body forms))))
     ;; Translate function calls.
     ((list* 'pcall value-n operator forms)
      (ucons:ulist*
       'pcall
       value-n
       operator
-      (ucons:map-ulist #'blueprint-from-kernel-body forms)))))
+      (ucons:umapcar #'blueprint-from-kernel-body forms)))))
 
 (defmethod blueprint-from-reference
     ((native-backend-array-immediate native-backend-array-immediate)
