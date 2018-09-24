@@ -18,4 +18,12 @@
    #:outputs
    #:pref
    #:preduce
-   #:pcall))
+   #:pcall
+
+   ;; The Kernel Language
+   #:left-reduction-input
+   #:right-reduction-input
+   #:reduction-output
+   #:standard-kernel
+   #:reduction-kernel
+   #:verify-kernel-language))

@@ -17,6 +17,7 @@
    #:set-contains
    #:set-intersection
    #:set-intersectionp
+   #:set-subsetp
    #:set-size
    #:set-union
 
@@ -40,6 +41,8 @@
    ;; Transformations
    #:transformation
    #:transformationp
+   #:input-dimension
+   #:output-dimension
    #:invertible-transformation-p
    #:canonicalize-transformation
    #:with-shape-accessors

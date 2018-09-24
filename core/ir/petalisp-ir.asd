@@ -8,6 +8,7 @@
   :serial t
   :components
   ((:file "packages")
+   (:file "kernel-language")
    (:file "ir")
    (:file "compute-buffer-table")
    (:file "compute-kernels")))
