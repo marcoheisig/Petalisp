@@ -12,7 +12,7 @@
    (:file "utilities")
    (:file "memory-pool")
    (:file "native-backend")
-   (:file "native-backend-ir")
+   (:file "ir-conversion")
    (:file "blueprint")
    (:file "blueprint-compiler")
    (:file "scheduler")))

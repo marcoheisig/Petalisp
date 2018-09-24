@@ -4,15 +4,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Generic Functions
-
-(defgeneric immediate-from-buffer (buffer))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
 ;;; Classes
 
-(defclass native-backend-immediate (buffer)
+(defclass native-backend-immediate (petalisp-ir:buffer)
   ())
 
 (defclass native-backend-array-immediate (native-backend-immediate)
@@ -37,40 +31,48 @@
 ;;; Methods
 
 (defmethod immediate-from-buffer
-    ((native-backend-buffer native-backend-buffer))
-  (make-array-immediate (storage native-backend-buffer)))
+    ((native-backend-buffer native-backend-buffer)
+     (native-backend native-backend))
+  (make-array-immediate
+   (storage native-backend-buffer)))
 
-(defmethod make-buffer ((array-immediate array-immediate)
-                        (native-backend native-backend))
+(defmethod petalisp-ir:make-buffer
+    ((array-immediate array-immediate)
+     (native-backend native-backend))
   (make-instance 'native-backend-array-immediate
     :shape (shape array-immediate)
     :element-type (element-type array-immediate)
     :storage (storage array-immediate)))
 
-(defmethod make-buffer ((scalar-immediate scalar-immediate) (native-backend native-backend))
+(defmethod petalisp-ir:make-buffer
+    ((scalar-immediate scalar-immediate)
+     (native-backend native-backend))
   (make-instance 'native-backend-scalar-immediate
     :shape (shape scalar-immediate)
     :element-type (element-type scalar-immediate)
     :storage (storage scalar-immediate)))
 
-(defmethod make-buffer ((range-immediate range-immediate)
-                        (native-backend native-backend))
+(defmethod petalisp-ir:make-buffer
+    ((range-immediate range-immediate)
+     (native-backend native-backend))
   (make-instance 'native-backend-range-immediate
     :shape (shape range-immediate)
     :element-type (element-type range-immediate)
     :axis (axis range-immediate)))
 
-(defmethod make-buffer ((strided-array strided-array)
-                        (native-backend native-backend))
+(defmethod petalisp-ir:make-buffer
+    ((strided-array strided-array)
+     (native-backend native-backend))
   (make-instance 'native-backend-buffer
     :shape (shape strided-array)
     :element-type (element-type strided-array)))
 
-(defmethod make-kernel ((iteration-space shape)
-                        (body list)
-                        (outputs list)
-                        (inputs list)
-                        (backend native-backend))
+(defmethod petalisp-ir:make-kernel
+    ((iteration-space shape)
+     (body list)
+     (outputs list)
+     (inputs list)
+     (backend native-backend))
   (make-instance 'native-backend-kernel
     :shape iteration-space
     :inputs inputs

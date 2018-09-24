@@ -9,6 +9,8 @@
 
 (defgeneric execute-kernel (kernel backend))
 
+(defgeneric immediate-from-buffer (buffer backend))
+
 (defclass native-backend
     (asynchronous-backend)
   ((%memory-pool :initarg :memory-pool :reader memory-pool)
@@ -29,4 +31,5 @@
           (if (immediatep strided-array)
               strided-array
               (immediate-from-buffer
-               (compute-buffer root-buffer native-backend))))))
+               (compute-buffer root-buffer native-backend)
+               native-backend)))))
