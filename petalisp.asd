@@ -4,12 +4,10 @@
   :license "AGPLv3"
 
   :depends-on
-  ("agnostic-lizard"
-   "alexandria"
-   "bordeaux-threads"
-   "lparallel"
-   "trivia"
-   "trivial-arguments")
+  ("petalisp-core"
+   "petalisp-reference-backend"
+   "petalisp-ir-backend"
+   "petalisp-native-backend")
 
   :in-order-to ((test-op (test-op :petalisp-development)))
 
@@ -17,76 +15,4 @@
   :components
   ((:module "core"
     :components
-    ((:file "packages")
-     (:file "error-handling")
-
-     (:module "utilities"
-      :components
-      ((:file "optimization")
-       (:file "memoization")
-       (:file "extended-euclid")
-       (:file "identical")
-       (:file "miscellaneous")
-       (:file "symmetric-function")
-       (:file "optimizing-constructor")
-       (:file "generators")
-       (:file "ucons")))
-
-     (:module "type-inference"
-      :components
-      ((:file "atomic-types")
-       (:file "function-lambda-lists")
-       (:file "inference")
-       (:file "numbers")
-       (:file "data-and-control-flow")))
-
-     (:module "sets"
-      :components
-      ((:file "set")
-       (:file "empty-set")
-       (:file "explicit-set")
-       (:file "range")
-       (:file "shape")))
-
-     (:module "transformations"
-      :components
-      ((:file "transformation")
-       (:file "identity-transformation")
-       (:file "invertible-transformation")
-       (:file "hairy-transformation")
-       (:file "constructors")
-       (:file "shape-transformations")))
-
-     (:module "strided-arrays"
-      :components
-      ((:file "strided-array")
-       (:file "immediate")
-       (:file "application")
-       (:file "reduction")
-       (:file "fusion")
-       (:file "reference")))
-
-     (:module "backends"
-      :components
-      ((:module "generic"
-        :components ((:file "backend")
-                     (:file "ir")
-                     (:file "compute-buffer-table")
-                     (:file "compute-kernels")
-                     (:file "scheduler-queue-mixin")))
-       (:module "reference-backend"
-        :components ((:file "intermediate-result")
-                     (:file "reference-backend")))
-       (:module "ir-backend"
-        :components ((:file "kernel-compiler")
-                     (:file "ir-backend")))
-       (:module "native-backend"
-        :components ((:file "utilities")
-                     (:file "memory-pool")
-                     (:file "native-backend")
-                     (:file "native-backend-ir")
-                     (:file "blueprint")
-                     (:file "blueprint-compiler")
-                     (:file "scheduler")))))
-
-     (:file "api")))))
+    ((:file "api")))))

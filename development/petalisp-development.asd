@@ -2,14 +2,20 @@
   :description "Developer utilities for Petalisp."
   :author "Marco Heisig <marco.heisig@fau.de>"
   :license "AGPLv3"
-  :depends-on ("asdf"
-               "uiop"
-               "petalisp"
-               "petalisp-linear-algebra"
-               "petalisp-iterative-methods"
-               "the-cost-of-nothing"
-               "cl-dot"
-               "fiveam")
+
+  :depends-on
+  ("asdf"
+   "uiop"
+   "petalisp"
+   "petalisp-ir"
+   "petalisp-reference-backend"
+   "petalisp-ir-backend"
+   "petalisp-native-backend"
+   "petalisp-linear-algebra"
+   "petalisp-iterative-methods"
+   "the-cost-of-nothing"
+   "cl-dot"
+   "fiveam")
 
   :perform
   (test-op (o c) (symbol-call "PETALISP-DEVELOPMENT" "RUN-TEST-SUITE"))

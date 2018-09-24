@@ -21,9 +21,24 @@
 (defclass backend ()
   ())
 
+(defclass asynchronous-backend (backend)
+  ((%scheduler-queue :initform (lparallel.queue:make-queue) :reader scheduler-queue)
+   (%scheduler-thread :accessor scheduler-thread)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Methods
+
+(defmethod initialize-instance :after
+    ((asynchronous-backend asynchronous-backend) &key &allow-other-keys)
+  (setf (scheduler-thread asynchronous-backend)
+        (bt:make-thread
+         (lambda ()
+           (loop
+             (funcall
+              (lparallel.queue:pop-queue (scheduler-queue asynchronous-backend)))))
+         :name (format nil "~A scheduler thread" (class-name (class-of asynchronous-backend))))))
+
 
 (defmethod compute-on-backend ((strided-arrays list) (backend backend))
   (let* ((collapsing-transformations
@@ -42,10 +57,19 @@
     (values-list
      (mapcar #'storage immediates))))
 
-;;; This default method is, of course, not asynchronous.  High-quality
-;;; backends are expected to provide a more appropriate specialization.
 (defmethod schedule-on-backend ((strided-arrays list) (backend backend))
   (compute-on-backend strided-arrays backend))
+
+(defmethod schedule-on-backend
+    ((data-structures list)
+     (asynchronous-backend asynchronous-backend))
+  (let ((promise (lparallel.promise:promise)))
+    (lparallel.queue:push-queue
+     (lambda ()
+       (lparallel.promise:fulfill promise
+         (compute-on-backend data-structures asynchronous-backend)))
+     (scheduler-queue asynchronous-backend))
+    promise))
 
 (defmethod overwrite-instance ((instance immediate) (replacement immediate))
   (change-class instance (class-of replacement)

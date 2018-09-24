@@ -1,4 +1,6 @@
-;G;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
+;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
+
+(cl:in-package #:common-lisp-user)
 
 (cl:defpackage :petalisp
   (:use :closer-common-lisp :alexandria)
@@ -19,7 +21,8 @@
    #:set-union
 
    ;; Ranges
-   #:range #:rangep
+   #:range
+   #:rangep
    #:unary-range-p
    #:make-range
    #:range-start-step-end
@@ -32,9 +35,11 @@
    #:dimension
    #:ranges
    #:shape-difference-list
+   #:enlarge-shape
 
    ;; Transformations
-   #:transformation #:transformationp
+   #:transformation
+   #:transformationp
    #:invertible-transformation-p
    #:canonicalize-transformation
    #:with-shape-accessors
@@ -49,9 +54,9 @@
 
    ;; Strided Arrays
    #:strided-array
-   #:strided-array
    #:element-type
-   #:shape #:shapep
+   #:shape
+   #:shapep
    #:size
    #:input
    #:inputs
@@ -59,11 +64,14 @@
    #:axis
    #:operator
    #:value-n
+   #:refcount
+   #:reduction-range
    #:application
    #:reduction
    #:fusion
    #:reference
-   #:immediate #:immediatep
+   #:immediate
+   #:immediatep
    #:scalar-immediate
    #:array-immediate
    #:range-immediate
@@ -73,8 +81,10 @@
 
    ;; High-level API
    #:*backend*
-   #:α #:alpha
-   #:β #:beta
+   #:α
+   #:alpha
+   #:β
+   #:beta
    #:reshape
    #:transform
    #:τ
@@ -84,49 +94,9 @@
    #:schedule
    #:indices
 
-   ;; Intermediate Representation
-   #:ir-from-strided-arrays
-   #:make-buffer
-   #:make-kernel
-   #:compute-buffer-table
-   #:compute-kernels
-   #:kernel-body-inputs-and-outputs
-   #:scheduler-queue-mixin
-   #:ir-node
-   #:kernel #:kernelp
-   #:body
-   #:outputs
-   #:buffer #:bufferp
-   #:pref
-   #:preduce
-   #:pcall
-
    ;; Backends
    #:compute-on-backend
    #:schedule-on-backend
    #:compute-immediates
    #:backend
-
-   #:reference-backend
-   #:ir-backend
-   #:native-backend
-   ))
-
-(cl:defpackage :petalisp-reference-backend
-  (:shadowing-import-from :petalisp :set-difference)
-  (:use :closer-common-lisp :alexandria :petalisp)
-  (:export
-   #:reference-backend))
-
-(cl:defpackage :petalisp-ir-backend
-  (:shadowing-import-from :petalisp :set-difference)
-  (:use :closer-common-lisp :alexandria :petalisp)
-  (:export
-   #:ir-backend))
-
-(cl:defpackage :petalisp-native-backend
-  (:shadowing-import-from :petalisp :set-difference)
-  (:use :closer-common-lisp :alexandria :petalisp)
-  (:export
-   #:native-backend
-   #:make-native-backend))
+   #:asynchronous-backend))

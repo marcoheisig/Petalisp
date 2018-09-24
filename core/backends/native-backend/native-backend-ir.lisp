@@ -24,11 +24,11 @@
 (defclass native-backend-range-immediate (native-backend-immediate)
   ((%axis :initarg :axis :reader axis)))
 
-(defclass native-backend-buffer (buffer)
+(defclass native-backend-buffer (petalisp-ir:buffer)
   ((%transformation :initarg :transformation :accessor transformation)
    (%storage :initarg :storage :accessor storage)))
 
-(defclass native-backend-kernel (kernel)
+(defclass native-backend-kernel (petalisp-ir:kernel)
   ((%executedp :initarg :executedp :accessor executedp
                :initform nil)))
 

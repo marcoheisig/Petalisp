@@ -1,6 +1,6 @@
 ;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
-(in-package :petalisp)
+(in-package :petalisp-ir)
 
 ;;; The purpose of IR conversion is to turn a data flow graph, whose nodes
 ;;; are strided arrays, into an analogous graph, whose nodes are buffers
@@ -53,10 +53,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Methods
-
-(define-class-predicate kernel)
-
-(define-class-predicate buffer)
 
 (defmethod make-buffer ((strided-array strided-array) (backend backend))
   (make-instance 'buffer

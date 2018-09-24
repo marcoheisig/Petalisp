@@ -9,9 +9,8 @@
 
 (defgeneric execute-kernel (kernel backend))
 
-(defclass petalisp:native-backend
-    (backend
-     scheduler-queue-mixin)
+(defclass native-backend
+    (asynchronous-backend)
   ((%memory-pool :initarg :memory-pool :reader memory-pool)
    (%worker-pool :initarg :worker-pool :reader worker-pool)))
 
@@ -23,7 +22,7 @@
 
 (defmethod compute-immediates ((strided-arrays list)
                                (native-backend native-backend))
-  (let ((root-buffers (ir-from-strided-arrays strided-arrays native-backend)))
+  (let ((root-buffers (petalisp-ir:ir-from-strided-arrays strided-arrays native-backend)))
     (loop for root-buffer in root-buffers
           for strided-array in strided-arrays
           collect

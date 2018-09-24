@@ -5,8 +5,8 @@
 (defmethod graphviz-incoming-edge-origins
     ((graph data-flow-graph)
      (edge data-flow-edge)
-     (ir-node ir-node))
-  (inputs ir-node))
+     (ir-node petalisp-ir:ir-node))
+  (petalisp-ir:inputs ir-node))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -14,12 +14,12 @@
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (node kernel))
+     (node petalisp-ir:kernel))
   `(:fillcolor "gray"))
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (node buffer))
+     (node petalisp-ir:buffer))
   `(:fillcolor "indianred1"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -28,10 +28,14 @@
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (ir-node ir-node))
-  `(("shape" . ,(stringify (shape ir-node)))))
+     (ir-node petalisp-ir:ir-node))
+  `(("shape" . ,(stringify (petalisp-ir:shape ir-node)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (ir-node kernel))
-  `(("body" . ,(stringify (subst-if '* #'bufferp (body ir-node))))))
+     (ir-node petalisp-ir:kernel))
+  `(("body" . ,(stringify (subst-if
+                           '*
+                           (lambda (x)
+                             (typep x 'petalisp-ir:buffer))
+                           (petalisp-ir:body ir-node))))))

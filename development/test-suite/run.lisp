@@ -9,16 +9,17 @@
 (defclass testing-backend (backend)
   ((%reference-backend
     :reader reference-backend
-    :initform (make-instance 'reference-backend))
+    :initform (petalisp-reference-backend:make-reference-backend))
    (%ir-backend
     :reader ir-backend
-    :initform (make-instance 'ir-backend) )
+    :initform (petalisp-ir-backend:make-ir-backend))
    (%native-backend
     :reader native-backend
     :initform
     ;; TODO
-    #+nil(petalisp-native-backend:make-native-backend :threads 2)
-    (make-instance 'reference-backend))))
+    #+nil
+    (petalisp-native-backend:make-native-backend :threads 2)
+    (petalisp-reference-backend:make-reference-backend))))
 
 (defun immediate-equalp (immediate-1 immediate-2)
   (equalp (storage immediate-1)

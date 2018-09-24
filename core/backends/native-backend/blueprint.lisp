@@ -15,7 +15,7 @@
   (let ((*kernel* kernel)
         (*normalization*
           (invert-transformation
-           (transformation (first (outputs kernel))))))
+           (transformation (first (petalisp-ir:outputs kernel))))))
     (flet ((approximate-size (range)
              ;; Return an ulist, consisting of an inclusive lower bound on
              ;; the size of the range and an exclusive upper bound.
@@ -28,7 +28,7 @@
                       (expt 2 (1+ floor))))))))
       (ucons:ulist
        (ucons:umapcar #'approximate-size (ranges (shape kernel)))
-       (blueprint-from-kernel-body (body kernel))))))
+       (blueprint-from-kernel-body (petalisp-ir:body kernel))))))
 
 (defgeneric blueprint-from-reference (buffer transformation))
 

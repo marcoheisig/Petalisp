@@ -3,11 +3,11 @@
 (in-package :petalisp-native-backend)
 
 (defmethod compute-buffer
-    ((buffer buffer) (native-backend native-backend))
+    ((buffer petalisp-ir:buffer) (native-backend native-backend))
   (values))
 
 (defmethod compute-buffer :around
-    ((buffer buffer) (backend backend))
+    ((buffer petalisp-ir:buffer) (backend backend))
   (call-next-method)
   buffer)
 
@@ -35,7 +35,7 @@
     (setf (executedp kernel) t)
     ;; Free the memory of buffers that are no longer in use.
     (loop for buffer in (inputs kernel) do
-      (when (every #'executedp (outputs buffer))
+      (when (every #'executedp (petalisp-ir:outputs buffer))
         (free-storage buffer native-backend)))))
 
 (defun free-storage (buffer backend)

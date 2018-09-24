@@ -1,6 +1,6 @@
 ;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
-(in-package :petalisp)
+(in-package :petalisp-ir)
 
 ;;; The buffer table is a hash table that maps certain strided arrays of a
 ;;; data flow graph to their corresponding buffers.  The following criteria

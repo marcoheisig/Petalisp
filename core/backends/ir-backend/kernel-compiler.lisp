@@ -10,9 +10,9 @@
 ;;; surrounding loop, into a function of the surrounding index.
 
 (defun compile-kernel (kernel)
-  (let* ((storages (mapcar #'storage (outputs kernel)))
+  (let* ((storages (mapcar #'storage (petalisp-ir:outputs kernel)))
          ;; 1. Compile the body.
-         (body-fn (compile-kernel-body (body kernel)))
+         (body-fn (compile-kernel-body (petalisp-ir:body kernel)))
          ;; 2. Wrap it, such that the results are written to the outputs.
          (body-fn (lambda (index)
                     (loop for storage in storages
@@ -38,16 +38,8 @@
 
 (defun compile-kernel-body (body)
   (trivia:ematch body
-    ;; Write
-    ((list 'pstore buffer form)
-     (let ((storage (storage buffer))
-           (transformation (transformation buffer))
-           (body-fn (compile-kernel-body form)))
-       (lambda (index)
-         (setf (apply #'aref storage (transform index transformation))
-               (funcall body-fn index)))))
     ;; Read
-    ((list 'pref buffer transformation)
+    ((list 'petalisp-ir:pref buffer transformation)
      (let ((storage (storage buffer))
            (transformation
              (compose-transformations
@@ -56,7 +48,7 @@
        (lambda (index)
          (apply #'aref storage (transform index transformation)))))
     ;; Reduce
-    ((list* 'preduce size value-n operator arguments)
+    ((list* 'petalisp-ir:preduce size value-n operator arguments)
      (let ((arg-fns (mapcar #'compile-kernel-body arguments)))
        (lambda (index)
          (labels ((divide-and-conquer (imin imax)
@@ -72,7 +64,7 @@
                             (divide-and-conquer (1+ middle) imax))))))
            (nth-value value-n (divide-and-conquer 0 (1- size)))))))
     ;; Call
-    ((list* 'pcall value-n operator arguments)
+    ((list* 'petalisp-ir:pcall value-n operator arguments)
      (let ((arg-fns (mapcar #'compile-kernel-body arguments)))
        (lambda (index)
          (let ((args (loop for arg-fn in arg-fns

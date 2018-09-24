@@ -17,8 +17,11 @@
 ;;;
 ;;; Classes
 
-(defclass petalisp:reference-backend (backend)
+(defclass reference-backend (backend)
   ())
+
+(defun make-reference-backend ()
+  (make-instance 'reference-backend))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
