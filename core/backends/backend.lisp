@@ -12,6 +12,8 @@
 
 (defgeneric compute-immediates (strided-arrays backend))
 
+(defgeneric delete-backend (backend))
+
 (defgeneric overwrite-instance (instance replacement))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -31,13 +33,15 @@
 
 (defmethod initialize-instance :after
     ((asynchronous-backend asynchronous-backend) &key &allow-other-keys)
-  (setf (scheduler-thread asynchronous-backend)
-        (bt:make-thread
-         (lambda ()
-           (loop
-             (funcall
-              (lparallel.queue:pop-queue (scheduler-queue asynchronous-backend)))))
-         :name (format nil "~A scheduler thread" (class-name (class-of asynchronous-backend))))))
+  (let ((queue (scheduler-queue asynchronous-backend)))
+    (setf (scheduler-thread asynchronous-backend)
+          (bt:make-thread
+           (lambda ()
+             (loop for item = (lparallel.queue:pop-queue queue) do
+               (if (functionp item)
+                   (funcall item)
+                   (loop-finish))))
+           :name (format nil "~A scheduler thread" (class-name (class-of asynchronous-backend)))))))
 
 
 (defmethod compute-on-backend ((strided-arrays list) (backend backend))
@@ -70,6 +74,16 @@
          (compute-on-backend data-structures asynchronous-backend)))
      (scheduler-queue asynchronous-backend))
     promise))
+
+(defmethod delete-backend ((backend backend))
+  (values))
+
+(defmethod delete-backend ((asynchronous-backend asynchronous-backend))
+  (with-accessors ((queue scheduler-queue)
+                   (thread scheduler-thread)) asynchronous-backend
+    (lparallel.queue:push-queue :quit queue)
+    (bt:join-thread thread))
+  (call-next-method))
 
 (defmethod overwrite-instance ((instance immediate) (replacement immediate))
   (change-class instance (class-of replacement)

@@ -83,7 +83,6 @@
    #:make-range-immediate
 
    ;; High-level API
-   #:*backend*
    #:α
    #:alpha
    #:β
@@ -98,8 +97,10 @@
    #:indices
 
    ;; Backends
+   #:*backend*
    #:compute-on-backend
    #:schedule-on-backend
    #:compute-immediates
    #:backend
-   #:asynchronous-backend))
+   #:asynchronous-backend
+   #:delete-backend))
