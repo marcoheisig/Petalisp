@@ -10,7 +10,7 @@
 ;;;
 ;;; REDUCTION-KERNEL := (reduction-kernel OPERATOR K ITERATION-SPACE STATEMENT*)
 ;;;
-;;;        STATEMENT := (OPERATOR (INPUT*) (OUTPUT*))
+;;;        STATEMENT := (OPERATOR (INPUT*) (OUTPUT*) (TYPE*))
 ;;;
 ;;;           OUTPUT := (BUFFER TRANSFORMATION) || SYMBOL
 ;;;
@@ -21,6 +21,8 @@
 ;;;         OPERATOR := A function, or a symbol naming a bound function.
 ;;;
 ;;;                K := The number of output values of the reduction's operator.
+;;;
+;;;             TYPE := A type specifier.
 ;;;
 ;;;           BUFFER := An object of type PETALISP-IR:BUFFER.
 ;;;
@@ -45,8 +47,13 @@
 ;;;    with integers less than K, must appear as an OUTPUT of a statement,
 ;;;    and never as an input.
 ;;;
-;;; Furthermore, the transformation of an input or output must be a mapping
-;;; from the iteration space of the kernel to the shape of the buffer.
+;;; Furthermore, the following constraints apply:
+;;;
+;;; - Any transformation of an input or output must be a mapping from the
+;;;   iteration space of the kernel to the shape of the buffer.
+;;;
+;;; - The list of types in a statement must have the same length as the
+;;;   list of outputs.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -108,8 +115,14 @@
       ;; Now process the statements.
       (loop for statement in statements do
         (trivia:match statement
-          ((list operator inputs outputs)
+          ((list operator inputs outputs types)
            (verify-operator operator)
+           (unless (and (listp inputs)
+                        (listp outputs)
+                        (listp types)
+                        (= (length outputs)
+                           (length types)))
+             (trivia.fail:fail))
            (loop for input in inputs do
              (if (symbolp input)
                  (process-input-symbol input)
@@ -117,7 +130,8 @@
            (loop for output in outputs do
              (if (symbolp output)
                  (process-output-symbol output)
-                 (verify-reference output iteration-space))))
+                 (verify-reference output iteration-space)))
+           )
           (t
            (error "~S is not a valid kernel language statement."
                   statement))))
