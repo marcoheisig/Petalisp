@@ -2,9 +2,7 @@
 
 (in-package :petalisp-development)
 
-(in-suite petalisp)
-
-(test linear-algebra
+(test linear-algebra-test
   (loop for dimension upto 2 do
     (compute
      (transpose (ndarray dimension))))

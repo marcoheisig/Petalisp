@@ -21,6 +21,9 @@
     (petalisp-native-backend:make-native-backend :threads 2)
     (petalisp-reference-backend:make-reference-backend))))
 
+(defun make-testing-backend ()
+  (make-instance 'testing-backend))
+
 (defun immediate-equalp (immediate-1 immediate-2)
   (equalp (storage immediate-1)
           (storage immediate-2)))
@@ -29,24 +32,21 @@
   (with-accessors ((reference-backend reference-backend)
                    (ir-backend ir-backend)
                    (native-backend native-backend)) testing-backend
-      (let ((reference-backend-results
-              (compute-immediates data-structures reference-backend))
-            (ir-backend-results
-              (compute-immediates data-structures ir-backend))
-            (native-backend-results
-              (compute-immediates data-structures native-backend)))
-        (unless (every #'immediate-equalp reference-backend-results ir-backend-results)
-          (error "The IR backend computes wrong results"))
-        (unless (every #'immediate-equalp reference-backend-results native-backend-results)
-          (error "The native backend computes wrong results"))
-        native-backend-results)))
+    (let ((reference-solutions
+            (compute-immediates data-structures reference-backend)))
+      (loop for backend in (list ir-backend native-backend) do
+        (loop for immediate in (compute-immediates data-structures backend)
+              for expected-immediate in reference-solutions
+              for index from 0 do
+                (1am:is (immediate-equalp immediate expected-immediate))))
+      reference-solutions)))
 
 (defmacro check (expr &rest results)
   `(progn
      ,@(loop for result in results
              for n from 0
              collect
-             `(fiveam:is
+             `(1am:is
                (equalp ,result (compute (nth-value ,n ,expr)))))))
 
 (defun ndarray (n &optional (length 10))
@@ -59,18 +59,17 @@
 ;;;
 ;;; Entry Point
 
-(fiveam:def-suite petalisp)
-
-(defun run-test-suite (&optional debug)
+(defun run-test-suite ()
   (format t "~&== Testing Petalisp ==~%")
   (print-platform-information)
   (print-system-statistics :petalisp)
+  (print-system-statistics :petalisp-core)
+  (print-system-statistics :petalisp-reference-backend)
+  (print-system-statistics :petalisp-ir-backend)
+  (print-system-statistics :petalisp-native-backend)
   (print-package-statistics :petalisp)
   (format t "~&Git revision: ~a" (system-git-revision :petalisp))
-  (let ((fiveam:*on-error*   (if debug :debug *on-error*))
-        (fiveam:*on-failure* (if debug :debug *on-failure*))
-        (petalisp:*backend*
-          (load-time-value
-           (make-instance 'testing-backend))))
-    (fiveam:run! 'petalisp)))
+  (let ((*backend* (make-testing-backend)))
+    (unwind-protect (1am:run)
+      (delete-backend *backend*))))
 

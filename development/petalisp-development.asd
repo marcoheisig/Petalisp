@@ -15,7 +15,7 @@
    "petalisp-iterative-methods"
    "the-cost-of-nothing"
    "cl-dot"
-   "fiveam")
+   "1am")
 
   :perform
   (test-op (o c) (symbol-call "PETALISP-DEVELOPMENT" "RUN-TEST-SUITE"))
