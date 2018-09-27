@@ -68,15 +68,8 @@
     :element-type (element-type strided-array)))
 
 (defmethod petalisp-ir:make-kernel
-    ((iteration-space shape)
-     (body list)
-     (outputs list)
-     (inputs list)
-     (backend native-backend))
+    (body (backend native-backend))
   (make-instance 'native-backend-kernel
-    :shape iteration-space
-    :inputs inputs
-    :outputs outputs
     :body body))
 
 (defmethod transformation :before ((native-backend-buffer native-backend-buffer))

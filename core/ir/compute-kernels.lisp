@@ -21,32 +21,16 @@
 ;;; s-expression describing the interplay of applications, reductions and
 ;;; references.
 
-;;; An immediate node has no kernels
+;;; An immediate node has no kernels.
 (defmethod compute-kernels ((root immediate) (backend backend))
   '())
 
+;;; For all non-immediate strided arrays, we create one kernel per
+;;; fusion-free iteration space.
 (defmethod compute-kernels ((root strided-array) (backend backend))
   (loop for iteration-space in (compute-iteration-spaces root)
         collect
-        (let* ((outputs (list (gethash root *buffer-table*)))
-               (body (compute-kernel-body root iteration-space))
-               (inputs (kernel-body-inputs body)))
-          (make-kernel iteration-space body outputs inputs backend))))
-
-(defun kernel-body-inputs (body)
-  (let ((inputs '()))
-    (labels ((scan (form)
-               (trivia:ematch form
-                 ((list 'reduction-kernel form)
-                  (scan form))
-                 ((or (list* 'preduce _ _ _ forms)
-                      (list* 'pcall _ _ forms))
-                  (mapc #'scan forms))
-                 ((list 'pref input _)
-                  (pushnew input inputs)))
-               (values)))
-      (scan body))
-    inputs))
+        (make-kernel (compute-kernel-body root iteration-space) backend)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -158,101 +142,114 @@
 ;;;
 ;;; Computing the Kernel Body
 
-(defun compute-kernel-body (root iteration-space)
-  (compute-kernel-body-aux
-   root
-   root
-   iteration-space
-   (make-identity-transformation (dimension root))))
+(defvar *kernel-root*)
 
-(defgeneric compute-kernel-body-aux
-    (root node iteration-space transformation))
+(defvar *kernel-body-statements*)
+
+(defun emit-statement (operator inputs output-type-pairs)
+  (push (list* operator inputs output-type-pairs)
+        *kernel-body-statements*))
+
+;;; Emit a statement that writes the value of NODE to some location and
+;;; return that location.
+(defgeneric assign (node iteration-space transformation))
+
+(defun compute-kernel-body (root iteration-space)
+  (let ((*kernel-root* root)
+        (*kernel-body-statements* '()))
+    (if (typep root 'reduction)
+        (compute-reduction-kernel-body root iteration-space)
+        (compute-standard-kernel-body root iteration-space))))
+
+(defun compute-reduction-kernel-body (root iteration-space)
+  (let* ((iteration-space
+           (enlarge-shape iteration-space (reduction-range root)))
+         (root-transformation
+           (make-identity-transformation (dimension root)))
+         (body-transformation
+           (make-identity-transformation (dimension iteration-space))))
+    (loop for input in (inputs root)
+          for index from 0 do
+            (emit-statement
+             'identity
+             (list
+              (assign input iteration-space body-transformation))
+             (list
+              (list (reduction-output index) (element-type input)))))
+    (list* 'reduction-kernel
+           (operator root)
+           (nreverse
+            (cons (list (gethash root *buffer-table*) root-transformation)
+                  (make-list (value-n root) :initial-element nil)))
+           iteration-space
+           (nreverse *kernel-body-statements*))))
+
+(defun compute-standard-kernel-body (root iteration-space)
+  (let* ((transformation
+           (make-identity-transformation (dimension iteration-space))))
+    (emit-statement
+     'identity
+     (list
+      (assign root iteration-space transformation))
+     (list
+      (list (list (gethash root *buffer-table*) transformation))))
+    (list* 'standard-kernel
+           iteration-space
+           (nreverse *kernel-body-statements*))))
 
 ;; Check whether we are dealing with a leaf, i.e., a node that has a
 ;; corresponding entry in the buffer table and is not the root node.  If
 ;; so, return a reference to that buffer.
-(defmethod compute-kernel-body-aux :around
-    ((root strided-array)
-     (node strided-array)
-     (iteration-space shape)
-     (transformation transformation))
-  (unless (set-emptyp iteration-space)
-    (if (eq root node)
-        (call-next-method)
-        (multiple-value-bind (buffer buffer-p)
-            (gethash node *buffer-table*)
-          (if (not buffer-p)
-              (call-next-method)
-              `(pref ,buffer ,transformation))))))
+(defmethod assign :around ((node strided-array)
+                           (iteration-space shape)
+                           (transformation transformation))
+  ;; The root node has an entry in the buffer table, but we do not want to
+  ;; process it regardless.
+  (if (eq node *kernel-root*)
+      (call-next-method)
+      (multiple-value-bind (buffer buffer-p)
+          (gethash node *buffer-table*)
+        (if buffer-p
+            (list buffer transformation)
+            (call-next-method)))))
 
-(defmethod compute-kernel-body-aux
-    ((root strided-array)
-     (application application)
-     (iteration-space shape)
-     (transformation transformation))
-  `(pcall
-    ,(value-n application)
-    ,(operator application)
-    ,.(loop for input in (inputs application)
-            collect (compute-kernel-body-aux
-                     root
-                     input
-                     iteration-space
-                     transformation))))
+(defmethod assign ((application application)
+                   (iteration-space shape)
+                   (transformation transformation))
+  (let ((value-n (value-n application))
+        (result (gensym)))
+    (emit-statement
+     (operator application)
+     (loop for input in (inputs application)
+           collect
+           (assign input iteration-space transformation))
+     (nreverse
+      (cons (list result (element-type application))
+            (make-list value-n :initial-element '(nil t)))))
+    result))
 
-(defmethod compute-kernel-body-aux
-    ((root strided-array)
-     (reduction reduction)
-     (iteration-space shape)
-     (transformation transformation))
-  (let* ((range (reduction-range reduction))
-         (size (set-size range))
-         (scale (range-step range))
-         (offset (range-start range))
-         (new-range (make-range 0 1 (1- size))))
-    `(preduce
-      ,size
-      ,(value-n reduction)
-      ,(operator reduction)
-      ,.(let ((iteration-space (enlarge-shape iteration-space new-range))
-              (transformation (enlarge-transformation transformation scale offset)))
-          (loop for input in (inputs reduction)
-                collect (compute-kernel-body-aux
-                         root
-                         input
-                         iteration-space
-                         transformation))))))
-
-(defmethod compute-kernel-body-aux
-    ((root strided-array)
-     (reference reference)
-     (iteration-space shape)
-     (transformation transformation))
-  (compute-kernel-body-aux
-   root
+(defmethod assign ((reference reference)
+                   (iteration-space shape)
+                   (transformation transformation))
+  (assign
    (input reference)
    (transform
     (set-intersection iteration-space (shape reference))
     (transformation reference))
    (compose-transformations (transformation reference) transformation)))
 
-(defmethod compute-kernel-body-aux
-    ((root strided-array)
-     (fusion fusion)
-     (iteration-space shape)
-     (transformation transformation))
+(defmethod assign ((fusion fusion)
+                   (iteration-space shape)
+                   (transformation transformation))
   (let ((input (find iteration-space (inputs fusion)
                      :key #'shape
                      :test #'set-intersectionp)))
-    (compute-kernel-body-aux
-     root
+    (assign
      input
      (set-intersection iteration-space (shape input))
      transformation)))
 
-(defmethod compute-kernel-body-aux
-    ((root strided-array)
-     (immediate immediate)
-     (iteration-space shape)
-     (transformation transformation))
-  (error "Something is wrong with the buffer table."))
+(defmethod assign ((immediate immediate)
+                   (iteration-space shape)
+                   (transformation transformation))
+  (error "This immediate should have an entry in the buffer table."))

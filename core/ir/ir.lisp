@@ -28,7 +28,7 @@
 
 (defgeneric make-buffer (strided-array backend))
 
-(defgeneric make-kernel (iteration-space body outputs inputs backend))
+(defgeneric make-kernel (body backend))
 
 (defgeneric compute-buffer-table (strided-arrays backend))
 
@@ -39,13 +39,13 @@
 ;;; Classes
 
 (defclass ir-node ()
-  ((%shape :initarg :shape :reader shape)
-   (%inputs :initarg :inputs :accessor inputs)
+  ((%inputs :initarg :inputs :accessor inputs)
    (%outputs :initarg :outputs :accessor outputs))
   (:default-initargs :inputs '() :outputs '()))
 
 (defclass buffer (ir-node)
-  ((%element-type :initarg :element-type :reader element-type)))
+  ((%shape :initarg :shape :reader shape)
+   (%element-type :initarg :element-type :reader element-type)))
 
 (defclass kernel (ir-node)
   ((%body :initarg :body :reader body)))
@@ -59,16 +59,19 @@
     :shape (shape strided-array)
     :element-type (element-type strided-array)))
 
-(defmethod make-kernel ((iteration-space shape)
-                        (body list)
-                        (outputs list)
-                        (inputs list)
-                        (backend backend))
+(defmethod make-kernel (body (backend backend))
   (make-instance 'kernel
-    :shape iteration-space
-    :inputs inputs
-    :outputs outputs
     :body body))
+
+;;; We compute the inputs and outputs of a kernel during SHARED-INITIALIZE,
+;;; such that one can use REINITIALIZE-INSTANCE to recompute them after the
+;;; kernel body has changed.
+(defmethod shared-initialize :after ((kernel kernel) slots &rest initargs)
+  (declare (ignore slots initargs))
+  (with-accessors ((inputs inputs)
+                   (outputs outputs)) kernel
+    (multiple-value-setq (inputs outputs)
+      (compute-kernel-inputs-and-outputs (body kernel)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

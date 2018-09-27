@@ -4,72 +4,62 @@
 
 ;;; The kernel language.  It's grammar is:
 ;;;
-;;;           KERNEL := STANDARD-KERNEL || REDUCTION-KERNEL
+;;;            KERNEL := STANDARD-KERNEL || REDUCTION-KERNEL
 ;;;
-;;;  STANDARD-KERNEL := (standard-kernel ITERATION-SPACE STATEMENT*)
+;;;   STANDARD-KERNEL := (standard-kernel ITERATION-SPACE STATEMENT*)
 ;;;
-;;; REDUCTION-KERNEL := (reduction-kernel OPERATOR K ITERATION-SPACE STATEMENT*)
+;;;  REDUCTION-KERNEL := (reduction-kernel ITERATION-SPACE OPERATOR (OUTPUT*) STATEMENT*)
 ;;;
-;;;        STATEMENT := (OPERATOR (INPUT*) (OUTPUT*) (TYPE*))
+;;;         STATEMENT := (OPERATOR (INPUT*) (OUTPUT TYPE)*)
 ;;;
-;;;           OUTPUT := (BUFFER TRANSFORMATION) || SYMBOL
+;;;            OUTPUT := BUFFER-REFERENCE || SYMBOL
 ;;;
-;;;            INPUT := (BUFFER TRANSFORMATION) || SYMBOL
+;;;             INPUT := BUFFER-REFERENCE || SYMBOL
 ;;;
-;;;  ITERATION-SPACE := An object of type PETALISP:SHAPE
+;;;  BUFFER-REFERENCE := (BUFFER TRANSFORMATION)
 ;;;
-;;;         OPERATOR := A function, or a symbol naming a bound function.
+;;;   ITERATION-SPACE := An object of type PETALISP:SHAPE
 ;;;
-;;;                K := The number of output values of the reduction's operator.
+;;;          OPERATOR := A function, or a symbol naming a function.
 ;;;
-;;;             TYPE := A type specifier.
+;;;              TYPE := A type specifier.
 ;;;
-;;;           BUFFER := An object of type PETALISP-IR:BUFFER.
+;;;            BUFFER := An object of type PETALISP-IR:BUFFER.
 ;;;
-;;;   TRANSFORMATION := An object of type PETALISP:TRANSFORMATION.
+;;;    TRANSFORMATION := An object of type PETALISP:TRANSFORMATION.
 ;;;
-;;;           SYMBOL := A symbol.
+;;;            SYMBOL := A symbol.
 ;;;
-;;; The following constraints apply to symbols that appear as inputs or
-;;; outputs of statements:
+;;; The following constraints apply to expressions of the kernel language:
 ;;;
-;;; 1. Each symbol may only appear once as the output of a statement.
+;;; 1.1 Any transformation of a buffer reference must be a mapping from the
+;;;     iteration space of the kernel to the shape of the buffer.
 ;;;
-;;; 2. Each symbol may only appear as the input of a statement after it has
-;;;    appeared as the output of a previous statement.
+;;; Then the following constraints apply to symbols that appear as inputs
+;;; or outputs of statements:
 ;;;
-;;; 3. The symbols returned by the functions LEFT-REDUCTION-INPUT or
-;;;    RIGHT-REDUCTION-INPUT, when called with an integer less than K, are
-;;;    an exception to rules 1 and 2.  They are treated as if they had
-;;;    already appeared as an output of a statement.
+;;; 2.1 Each symbol may only appear once as the output of a statement.
 ;;;
-;;; 4. All symbols returned by the functions REDUCTION-OUTPUT, when called
-;;;    with integers less than K, must appear as an OUTPUT of a statement,
-;;;    and never as an input.
+;;; 2.2 Each symbol may only appear as the input of a statement after it
+;;;     has appeared as the output of a previous statement.
 ;;;
-;;; Furthermore, the following constraints apply:
+;;; 2.3 In a reduction kernel, all symbols returned by the function
+;;;     REDUCTION-OUTPUT, when called with integers less than the number of
+;;;     outputs of that kernel, must appear as an OUTPUT of a statement.
+;;;     They must never be used as an input.
 ;;;
-;;; - Any transformation of an input or output must be a mapping from the
-;;;   iteration space of the kernel to the shape of the buffer.
-;;;
-;;; - The list of types in a statement must have the same length as the
-;;;   list of outputs.
+;;; 2.4 The symbol NIL is an exception to rules 2.1 and 2.2.  It may be
+;;;     used as an output multiple times, but never as an input.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Kernel Language Creation
 
-(defun left-reduction-input (n)
-  (petalisp-memoization:with-vector-memoization (n)
-    (symbolicate "LEFT-REDUCTION-INPUT-" n)))
-
-(defun right-reduction-input (n)
-  (petalisp-memoization:with-vector-memoization (n)
-    (symbolicate "RIGHT-REDUCTION-INPUT-" n)))
-
 (defun reduction-output (n)
   (petalisp-memoization:with-vector-memoization (n)
-    (symbolicate "REDUCTION-OUTPUT-" n)))
+    (intern
+     (format nil "REDUCTION-OUTPUT-~D" n)
+     :petalisp-ir)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -80,12 +70,11 @@
     ((list* 'standard-kernel iteration-space statements)
      (verify-iteration-space iteration-space :reduction nil)
      (verify-statements statements iteration-space 0))
-    ((list* 'reduction-kernel operator k iteration-space statements)
-     (verify-operator operator)
-     (unless (typep k '(integer 1 #.multiple-values-limit))
-       (error "~S is not a valid reduction arity specifier." k))
-     (verify-iteration-space iteration-space :reduction t)
-     (verify-statements statements iteration-space k))
+    ((list* 'reduction-kernel operator outputs iteration-space statements)
+     (let ((k (length outputs)))
+       (verify-operator operator)
+       (verify-iteration-space iteration-space :reduction t)
+       (verify-statements statements iteration-space k)))
     (t
      (error "~S is not a valid kernel language expression."
             kernel-language))))
@@ -105,38 +94,29 @@
                         symbol)))
              (process-output-symbol (symbol)
                (when (gethash symbol environment)
-                 (error "Multiple assignments to the symbol ~S."
+                 (error "Multiple definitions of the symbol ~S."
                         symbol))
+               (when (member symbol desired-reduction-outputs)
+                 (push symbol bound-reduction-outputs))
                (setf (gethash symbol environment) t)))
-      ;; Add all reduction input symbols to the environment.
-      (loop for i below k do
-        (process-output-symbol (left-reduction-input i))
-        (process-output-symbol (right-reduction-input i)))
       ;; Now process the statements.
       (loop for statement in statements do
         (trivia:match statement
-          ((list operator inputs outputs types)
+          ((list* operator inputs output-type-pairs)
            (verify-operator operator)
-           (unless (and (listp inputs)
-                        (listp outputs)
-                        (listp types)
-                        (= (length outputs)
-                           (length types)))
-             (trivia.fail:fail))
            (loop for input in inputs do
              (if (symbolp input)
                  (process-input-symbol input)
                  (verify-reference input iteration-space)))
-           (loop for output in outputs do
+           (loop for (output type) in output-type-pairs do
              (if (symbolp output)
                  (process-output-symbol output)
-                 (verify-reference output iteration-space)))
-           )
+                 (verify-reference output iteration-space))))
           (t
            (error "~S is not a valid kernel language statement."
                   statement))))
       ;; Check that all reduction outputs have been assigned.
-      (unless (null (set-difference
+      (unless (null (cl:set-difference
                      desired-reduction-outputs
                      bound-reduction-outputs))
         (error "Not all reduction outputs have been assigned.")))))
@@ -154,9 +134,9 @@
                   (set-subsetp
                    (transform iteration-space transformation)
                    (shape buffer)))
-       (error "The transformation ~S does not map from the iteration space~
+       (error "The transformation ~S does not map from the iteration space ~
                ~S to the shape of the buffer ~S."
-              iteration-space iteration-space buffer)))
+              transformation iteration-space buffer)))
     (t
      (error "~S is not a valid kernel language reference."
             reference))))
@@ -176,3 +156,28 @@
              (not (plusp (petalisp:dimension iteration-space))))
     (error "A reduction iteration space must at least have dimension one, found ~S."
            iteration-space)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Miscellaneous Utilities
+
+(defun compute-kernel-inputs-and-outputs (kernel-language)
+  (let ((all-inputs '())
+        (all-outputs '()))
+    (verify-kernel-language kernel-language)
+    (flet ((scan-statements (statements)
+             (loop for (nil inputs . output-type-pairs) in statements do
+               (loop for input in inputs
+                     when (consp input)
+                       do (pushnew (car input) all-inputs))
+               (loop for (output nil) in output-type-pairs
+                     when (consp output)
+                       do (pushnew (car output) all-outputs)))))
+      (trivia:ematch kernel-language
+        ((list* 'standard-kernel _ statements)
+         (scan-statements statements))
+        ((list* 'reduction-kernel _ outputs statements)
+         (loop for output in outputs
+               do (pushnew output all-outputs))
+         (scan-statements statements))))
+    (values all-inputs all-outputs)))
