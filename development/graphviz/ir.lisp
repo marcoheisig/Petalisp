@@ -5,8 +5,14 @@
 (defmethod graphviz-incoming-edge-origins
     ((graph data-flow-graph)
      (edge data-flow-edge)
-     (ir-node petalisp-ir:ir-node))
-  (petalisp-ir:inputs ir-node))
+     (buffer petalisp-ir:buffer))
+  (petalisp-ir:inputs buffer))
+
+(defmethod graphviz-incoming-edge-origins
+    ((graph data-flow-graph)
+     (edge data-flow-edge)
+     (kernel petalisp-ir:kernel))
+  (mapcar #'car (petalisp-ir:loads buffer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -28,14 +34,10 @@
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (ir-node petalisp-ir:ir-node))
+     (buffer petalisp-ir:buffer))
   `(("shape" . ,(stringify (petalisp-ir:shape ir-node)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (ir-node petalisp-ir:kernel))
-  `(("body" . ,(stringify (subst-if
-                           '*
-                           (lambda (x)
-                             (typep x 'petalisp-ir:buffer))
-                           (petalisp-ir:body ir-node))))))
+     (kernel petalisp-ir:kernel))
+  `(("body" . "TODO")))

@@ -6,7 +6,7 @@
 ;;;
 ;;; Special Variables
 
-(defvar *backend* (petalisp-ir-backend:make-ir-backend)
+(defvar *backend* (petalisp-reference-backend:make-reference-backend)
   "The backend on which Petalisp programs are executed.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

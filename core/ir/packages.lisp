@@ -6,7 +6,11 @@
   (:export
    #:ir-node
    #:kernel
+   #:simple-kernel
+   #:reduction-kernel
    #:make-kernel
+   #:make-simple-kernel
+   #:make-reduction-kernel
    #:buffer
    #:make-buffer
    #:ir-from-strided-arrays
@@ -16,14 +20,6 @@
    #:body
    #:inputs
    #:outputs
-   #:pref
-   #:preduce
-   #:pcall
-
-   ;; The Kernel Language
-   #:left-reduction-input
-   #:right-reduction-input
-   #:reduction-output
-   #:standard-kernel
-   #:reduction-kernel
-   #:verify-kernel-language))
+   #:loads
+   #:stores
+   #:reduction-stores))

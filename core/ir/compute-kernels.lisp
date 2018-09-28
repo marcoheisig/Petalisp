@@ -30,14 +30,29 @@
 (defmethod compute-kernels ((root strided-array) (backend backend))
   (loop for iteration-space in (compute-iteration-spaces root)
         collect
-        (make-kernel (compute-kernel-body root iteration-space) backend)))
+        (make-simple-kernel
+         iteration-space
+         (compute-simple-kernel-body root iteration-space)
+         backend)))
+
+(defmethod compute-kernels ((root reduction) (backend backend))
+  (let ((target (cons (gethash root *buffer-table*)
+                      (make-identity-transformation (dimension root)))))
+    (loop for iteration-space in (compute-iteration-spaces root)
+          collect
+          (make-reduction-kernel
+           iteration-space
+           (operator root)
+           (nreverse
+            (cons target (make-list (value-n root))))
+           (compute-reduction-kernel-body root iteration-space)
+           backend))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Kernel Iteration Spaces
 
 (defvar *kernel-iteration-spaces*)
-
 (defun compute-iteration-spaces (root)
   (let ((*kernel-iteration-spaces* '()))
     (compute-iteration-spaces-aux
@@ -142,60 +157,46 @@
 ;;;
 ;;; Computing the Kernel Body
 
-(defvar *kernel-root*)
-
 (defvar *kernel-body-statements*)
 
-(defun emit-statement (operator inputs output-type-pairs)
-  (push (list* operator inputs output-type-pairs)
+(defvar *kernel-root*)
+
+(defun emit-statement (operator loads stores)
+  (push (make-statement operator loads stores *backend*)
         *kernel-body-statements*))
 
 ;;; Emit a statement that writes the value of NODE to some location and
 ;;; return that location.
 (defgeneric assign (node iteration-space transformation))
 
-(defun compute-kernel-body (root iteration-space)
+(defun compute-simple-kernel-body (root iteration-space)
   (let ((*kernel-root* root)
-        (*kernel-body-statements* '()))
-    (if (typep root 'reduction)
-        (compute-reduction-kernel-body root iteration-space)
-        (compute-standard-kernel-body root iteration-space))))
-
-(defun compute-reduction-kernel-body (root iteration-space)
-  (let* ((iteration-space
-           (enlarge-shape iteration-space (reduction-range root)))
-         (root-transformation
-           (make-identity-transformation (dimension root)))
-         (body-transformation
-           (make-identity-transformation (dimension iteration-space))))
-    (loop for input in (inputs root)
-          for index from 0 do
-            (emit-statement
-             'identity
-             (list
-              (assign input iteration-space body-transformation))
-             (list
-              (list (reduction-output index) (element-type input)))))
-    (list* 'reduction-kernel
-           (operator root)
-           (nreverse
-            (cons (list (gethash root *buffer-table*) root-transformation)
-                  (make-list (value-n root) :initial-element nil)))
-           iteration-space
-           (nreverse *kernel-body-statements*))))
-
-(defun compute-standard-kernel-body (root iteration-space)
-  (let* ((transformation
-           (make-identity-transformation (dimension iteration-space))))
+        (*kernel-body-statements* '())
+        (transformation
+          (make-identity-transformation (dimension iteration-space))))
     (emit-statement
-     'identity
+     'values
      (list
       (assign root iteration-space transformation))
      (list
-      (list (list (gethash root *buffer-table*) transformation))))
-    (list* 'standard-kernel
-           iteration-space
-           (nreverse *kernel-body-statements*))))
+      (cons (gethash root *buffer-table*) transformation)))
+    (nreverse *kernel-body-statements*)))
+
+(defun compute-reduction-kernel-body (root iteration-space)
+  (let ((*backend* *backend*)
+        (*kernel-root* root)
+        (*kernel-body-statements* '()))
+    (let ((transformation
+            (make-identity-transformation (dimension iteration-space))))
+      (loop for input in (inputs root)
+            for index from 0 do
+              (emit-statement
+               'values
+               (list
+                (assign input iteration-space transformation))
+               (list
+                (reduction-output index)))))
+    (nreverse *kernel-body-statements*)))
 
 ;; Check whether we are dealing with a leaf, i.e., a node that has a
 ;; corresponding entry in the buffer table and is not the root node.  If
@@ -210,7 +211,7 @@
       (multiple-value-bind (buffer buffer-p)
           (gethash node *buffer-table*)
         (if buffer-p
-            (list buffer transformation)
+            (cons buffer transformation)
             (call-next-method)))))
 
 (defmethod assign ((application application)
@@ -224,8 +225,7 @@
            collect
            (assign input iteration-space transformation))
      (nreverse
-      (cons (list result (element-type application))
-            (make-list value-n :initial-element '(nil t)))))
+      (cons result (make-list value-n))))
     result))
 
 (defmethod assign ((reference reference)

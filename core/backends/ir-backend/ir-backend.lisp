@@ -41,8 +41,12 @@
 (defmethod immediate-from-buffer ((ir-backend-buffer ir-backend-buffer))
   (make-array-immediate (storage ir-backend-buffer)))
 
-(defmethod execute :before ((ir-node petalisp-ir:ir-node))
-  (mapc #'execute (inputs ir-node)))
+(defmethod execute :before ((buffer petalisp-ir:buffer))
+  (mapc #'execute (inputs buffer)))
+
+(defmethod execute :before ((kernel petalisp-ir:kernel))
+  (mapc (compose #'execute #'car)
+        (petalisp-ir:loads kernel)))
 
 (defmethod execute :around ((ir-backend-buffer ir-backend-buffer))
   (unless (executedp ir-backend-buffer)
