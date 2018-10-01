@@ -36,17 +36,24 @@
          backend)))
 
 (defmethod compute-kernels ((root reduction) (backend backend))
-  (let ((target (cons (gethash root *buffer-table*)
-                      (make-identity-transformation (dimension root)))))
+  (let* ((target (cons (gethash root *buffer-table*)
+                       (make-identity-transformation (dimension root))))
+         (reduction-stores
+           (loop for n below (length (inputs root))
+                 collect
+                 (if (= n (value-n root))
+                     target
+                     nil))))
     (loop for iteration-space in (compute-iteration-spaces root)
           collect
-          (make-reduction-kernel
-           iteration-space
-           (operator root)
-           (nreverse
-            (cons target (make-list (value-n root))))
-           (compute-reduction-kernel-body root iteration-space)
-           backend))))
+          (let ((iteration-space
+                  (enlarge-shape iteration-space (reduction-range root))))
+            (make-reduction-kernel
+             iteration-space
+             (operator root)
+             reduction-stores
+             (compute-reduction-kernel-body root iteration-space)
+             backend)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -195,7 +202,7 @@
                (list
                 (assign input iteration-space transformation))
                (list
-                (reduction-output index)))))
+                (reduction-value index)))))
     (nreverse *kernel-body-statements*)))
 
 ;; Check whether we are dealing with a leaf, i.e., a node that has a
@@ -204,8 +211,8 @@
 (defmethod assign :around ((node strided-array)
                            (iteration-space shape)
                            (transformation transformation))
-  ;; The root node has an entry in the buffer table, but we do not want to
-  ;; process it regardless.
+  ;; The root node has an entry in the buffer table, yet we do not want to
+  ;; treat it as a leaf node.
   (if (eq node *kernel-root*)
       (call-next-method)
       (multiple-value-bind (buffer buffer-p)
@@ -249,7 +256,7 @@
      (set-intersection iteration-space (shape input))
      transformation)))
 
-(defmethod assign ((immediate immediate)
+(defmethod assign ((strided-array strided-array)
                    (iteration-space shape)
                    (transformation transformation))
-  (error "This immediate should have an entry in the buffer table."))
+  (error "No way to process ~S" strided-array))

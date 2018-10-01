@@ -12,7 +12,7 @@
     ((graph data-flow-graph)
      (edge data-flow-edge)
      (kernel petalisp-ir:kernel))
-  (mapcar #'car (petalisp-ir:loads buffer)))
+  (mapcar #'car (petalisp-ir:loads kernel)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -35,7 +35,7 @@
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
      (buffer petalisp-ir:buffer))
-  `(("shape" . ,(stringify (petalisp-ir:shape ir-node)))))
+  `(("shape" . ,(stringify (petalisp-ir:shape buffer)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)

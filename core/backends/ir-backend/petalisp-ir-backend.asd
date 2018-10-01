@@ -9,6 +9,7 @@
   :serial t
   :components
   ((:file "packages")
+   (:file "memory-management")
    (:file "kernel-compiler")
    (:file "ir-backend")
    (:file "ir-conversion")))

@@ -113,7 +113,7 @@
     ((reduction-kernel reduction-kernel) slots &rest initargs)
   (declare (ignore slots initargs))
   (appendf (stores reduction-kernel)
-           (reduction-stores reduction-kernel)))
+           (remove-if #'null (reduction-stores reduction-kernel))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -151,10 +151,10 @@
 ;;;
 ;;; Miscellaneous Utilities
 
-(defun reduction-output (n)
+(defun reduction-value (n)
   (petalisp-memoization:with-vector-memoization (n)
     (intern
-     (format nil "REDUCTION-OUTPUT-~D" n)
+     (format nil "REDUCTION-VALUE-~D" n)
      :petalisp-ir)))
 
 (defun ref= (a b)

@@ -79,13 +79,6 @@
         (apply (operator application)
                (mapcar (lambda (input) (iref input index)) inputs)))))))
 
-(defun split-range (range)
-  (multiple-value-bind (start step end)
-      (range-start-step-end range)
-    (let ((middle (floor (+ start end) 2)))
-      (values (make-range start step middle)
-              (make-range end step (+ middle step))))))
-
 (defmethod evaluate ((reduction reduction))
   (let ((inputs (mapcar #'evaluate (inputs reduction))))
     (make-intermediate-result

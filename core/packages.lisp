@@ -25,6 +25,7 @@
    #:range
    #:rangep
    #:unary-range-p
+   #:split-range
    #:make-range
    #:range-start-step-end
    #:range-start
@@ -36,6 +37,7 @@
    #:dimension
    #:ranges
    #:shape-difference-list
+   #:shape-from-ranges
    #:enlarge-shape
 
    ;; Transformations

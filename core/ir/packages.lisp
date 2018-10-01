@@ -4,7 +4,7 @@
   (:shadowing-import-from :petalisp #:set-difference)
   (:use :closer-common-lisp :alexandria :petalisp)
   (:export
-   #:ir-node
+   #:statement
    #:kernel
    #:simple-kernel
    #:reduction-kernel
@@ -17,9 +17,11 @@
    #:compute-buffer-table
    #:compute-kernels
    #:shape
+   #:iteration-space
    #:body
    #:inputs
    #:outputs
    #:loads
    #:stores
-   #:reduction-stores))
+   #:reduction-stores
+   #:reduction-value))

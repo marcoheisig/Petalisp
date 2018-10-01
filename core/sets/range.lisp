@@ -20,6 +20,8 @@
 
 (defgeneric unary-range-p (object))
 
+(defgeneric split-range (range))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes
@@ -119,6 +121,13 @@
     (and (= (hash-table-count table) (set-size range))
          (loop for integer from (range-start range) by (range-step range) to (range-end range)
                always (gethash integer table)))))
+
+(defmethod split-range ((range range))
+  (multiple-value-bind (start step end)
+      (range-start-step-end range)
+    (let ((middle (floor (+ start end) 2)))
+      (values (make-range start step middle)
+              (make-range end step (+ middle step))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
