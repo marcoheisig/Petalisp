@@ -31,29 +31,36 @@
   (loop for iteration-space in (compute-iteration-spaces root)
         collect
         (make-simple-kernel
-         iteration-space
-         (compute-simple-kernel-body root iteration-space)
-         backend)))
+         backend
+                            :iteration-space iteration-space
+                            :body (compute-simple-kernel-body root iteration-space))))
 
 (defmethod compute-kernels ((root reduction) (backend backend))
-  (let* ((target (cons (gethash root *buffer-table*)
-                       (make-identity-transformation (dimension root))))
-         (reduction-stores
-           (loop for n below (length (inputs root))
-                 collect
-                 (if (= n (value-n root))
-                     target
-                     nil))))
+  (let ((reduction-stores
+          (loop for n below (length (inputs root))
+                collect
+                (if (= n (value-n root))
+                    (cons (gethash root *buffer-table*)
+                          (make-identity-transformation (dimension root)))
+                    nil)))
+        ;; Surprise!  The reduction range of a reduction kernel is not the
+        ;; reduction range of the corresponding reduction node.  Instead,
+        ;; it is a reduction of the same size, but starting from zero and
+        ;; with a step size of one.
+        (reduction-range
+          (make-range 0 1 (1- (set-size (reduction-range root))))))
     (loop for iteration-space in (compute-iteration-spaces root)
           collect
-          (let ((iteration-space
-                  (enlarge-shape iteration-space (reduction-range root))))
-            (make-reduction-kernel
-             iteration-space
-             (operator root)
-             reduction-stores
-             (compute-reduction-kernel-body root iteration-space)
-             backend)))))
+          (make-reduction-kernel
+           backend
+           :reduction-range reduction-range
+           :iteration-space iteration-space
+           :reduction-stores reduction-stores
+           :operator (operator root)
+           :body
+           (compute-reduction-kernel-body
+            root
+            (enlarge-shape iteration-space reduction-range))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -169,7 +176,7 @@
 (defvar *kernel-root*)
 
 (defun emit-statement (operator loads stores)
-  (push (make-statement operator loads stores *backend*)
+  (push (make-statement *backend* :operator operator :loads loads :stores stores)
         *kernel-body-statements*))
 
 ;;; Emit a statement that writes the value of NODE to some location and
@@ -202,7 +209,7 @@
                (list
                 (assign input iteration-space transformation))
                (list
-                (reduction-value index)))))
+                (reduction-value-symbol index)))))
     (nreverse *kernel-body-statements*)))
 
 ;; Check whether we are dealing with a leaf, i.e., a node that has a

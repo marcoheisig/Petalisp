@@ -31,21 +31,16 @@
   (let* ((k (length
              (petalisp-ir:reduction-stores reduction-kernel)))
          (reduction-range
-           (first
-            (ranges
-             (petalisp-ir:iteration-space reduction-kernel))))
+           (petalisp-ir:reduction-range reduction-kernel))
          (inner-indices
            (set-elements
-            (shape-from-ranges
-             (rest
-              (ranges
-               (petalisp-ir:iteration-space reduction-kernel))))))
+            (petalisp-ir:iteration-space reduction-kernel)))
          (body-thunks
            (mapcar #'compile-statement (petalisp-ir:body reduction-kernel)))
          (load-thunks
            (loop for i below k
                  collect
-                 (make-load-thunk (petalisp-ir:reduction-value i))))
+                 (make-load-thunk (petalisp-ir:reduction-value-symbol i))))
          (store-thunks
            (mapcar #'make-store-thunk (petalisp-ir:reduction-stores reduction-kernel))))
     (lambda ()

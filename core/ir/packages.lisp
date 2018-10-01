@@ -4,24 +4,36 @@
   (:shadowing-import-from :petalisp #:set-difference)
   (:use :closer-common-lisp :alexandria :petalisp)
   (:export
+
+   ;; Classes
    #:statement
+   #:buffer
    #:kernel
    #:simple-kernel
    #:reduction-kernel
+
+   ;; Generic Constructors
+   #:make-statement
    #:make-kernel
    #:make-simple-kernel
    #:make-reduction-kernel
-   #:buffer
    #:make-buffer
+
+   ;; Accessors
+   #:operator
+   #:loads
+   #:stores
+   #:shape
+   #:element-type
+   #:inputs
+   #:outputs
+   #:iteration-space
+   #:body
+   #:reduction-range
+   #:reduction-stores
+
+   ;; IR Conversion
    #:ir-from-strided-arrays
    #:compute-buffer-table
    #:compute-kernels
-   #:shape
-   #:iteration-space
-   #:body
-   #:inputs
-   #:outputs
-   #:loads
-   #:stores
-   #:reduction-stores
-   #:reduction-value))
+   #:reduction-value-symbol))

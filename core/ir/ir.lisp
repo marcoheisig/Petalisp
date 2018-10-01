@@ -26,25 +26,24 @@
 ;;;
 ;;; Generic Functions
 
-(defgeneric make-buffer (strided-array backend))
-
-(defgeneric make-kernel (body backend))
-
 (defgeneric compute-buffer-table (strided-arrays backend))
 
 (defgeneric compute-kernels (root backend))
 
+(defgeneric make-buffer (strided-array backend))
+
+(defgeneric make-statement
+    (backend &key operator loads stores))
+
+(defgeneric make-simple-kernel
+    (backend &key iteration-space body))
+
+(defgeneric make-reduction-kernel
+    (backend &key reduction-range iteration-space operator reduction-stores body))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes
-
-(defclass statement ()
-  ((%operator :initarg :operator :reader operator)
-   ;; The slots LOADS and STORES both contain a list, where each element is
-   ;; either a symbol, or a cons cell whose car is a buffer and whose cdr
-   ;; is a transformation.
-   (%loads :initarg :loads :reader loads)
-   (%stores :initarg :stores :reader stores)))
 
 (defclass buffer ()
   ((%shape :initarg :shape :reader shape)
@@ -53,6 +52,14 @@
    (%inputs :initarg :inputs :accessor inputs :initform nil)
    ;; The list of kernels that load from this buffer.
    (%outputs :initarg :outputs :accessor outputs :initform nil)))
+
+(defclass statement ()
+  ((%operator :initarg :operator :reader operator)
+   ;; The slots LOADS and STORES both contain a list, where each element is
+   ;; either a symbol, or a cons cell whose car is a buffer and whose cdr
+   ;; is a transformation.
+   (%loads :initarg :loads :reader loads)
+   (%stores :initarg :stores :reader stores)))
 
 (defclass kernel ()
   ((%iteration-space :initarg :iteration-space :reader iteration-space)
@@ -67,34 +74,26 @@
 
 (defclass reduction-kernel (kernel)
   ((%operator :initarg :operator :reader operator)
+   (%reduction-range :initarg :reduction-range :reader reduction-range)
    (%reduction-stores :initarg :reduction-stores :reader reduction-stores)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Methods
 
-(defmethod make-statement (operator (loads list) (stores list) (backend backend))
-  (make-instance 'statement
-    :operator operator
-    :loads loads
-    :stores stores))
-
 (defmethod make-buffer ((strided-array strided-array) (backend backend))
   (make-instance 'buffer
     :shape (shape strided-array)
     :element-type (element-type strided-array)))
 
-(defmethod make-simple-kernel (iteration-space body (backend backend))
-  (make-instance 'simple-kernel
-    :iteration-space iteration-space
-    :body body))
+(defmethod make-statement ((backend backend) &rest args)
+  (apply #'make-instance 'statement args))
 
-(defmethod make-reduction-kernel (iteration-space operator reduction-stores body (backend backend))
-  (make-instance 'reduction-kernel
-    :iteration-space iteration-space
-    :operator operator
-    :reduction-stores reduction-stores
-    :body body))
+(defmethod make-simple-kernel ((backend backend) &rest args)
+  (apply #'make-instance 'simple-kernel args))
+
+(defmethod make-reduction-kernel ((backend backend) &rest args)
+  (apply #'make-instance 'reduction-kernel args))
 
 ;;; We compute the loads and stores of a kernel during SHARED-INITIALIZE,
 ;;; such that one can use REINITIALIZE-INSTANCE to recompute them after the
@@ -151,7 +150,7 @@
 ;;;
 ;;; Miscellaneous Utilities
 
-(defun reduction-value (n)
+(defun reduction-value-symbol (n)
   (petalisp-memoization:with-vector-memoization (n)
     (intern
      (format nil "REDUCTION-VALUE-~D" n)
