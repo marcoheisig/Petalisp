@@ -33,6 +33,14 @@
      (:file "ir")
      (:file "view")))
 
+   (:module "generators"
+    :components
+    ((:file "defgenerator")
+     (:file "number-generators")
+     (:file "array-generators")
+     (:file "range-generators")
+     (:file "shape-generators")))
+
    (:module "test-suite"
     :components
     ((:file "run")

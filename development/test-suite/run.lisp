@@ -51,9 +51,10 @@
 
 (defun ndarray (n &optional (length 10))
   "Create a LENGTH^N array of double floats."
-  (generate-instance 'array
-                     :element-type 'double-float
-                     :dimensions (make-list n :initial-element length)))
+  (generate-array
+   :element-type 'double-float
+   :dimensions (make-list n :initial-element length)
+   :element-generator (make-double-float-generator)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

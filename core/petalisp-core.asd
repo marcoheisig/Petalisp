@@ -24,7 +24,6 @@
      (:file "miscellaneous")
      (:file "symmetric-function")
      (:file "optimizing-constructor")
-     (:file "generators")
      (:file "ucons")))
 
    (:module "type-inference"

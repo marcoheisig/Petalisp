@@ -16,5 +16,6 @@
    :petalisp-iterative-methods
    :petalisp-linear-algebra)
   (:export
-   #:run-test-suite))
+   #:run-test-suite
+   #:view))
 

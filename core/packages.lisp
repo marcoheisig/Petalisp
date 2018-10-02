@@ -6,9 +6,6 @@
   (:use :closer-common-lisp :alexandria)
   (:shadow cl:set-difference alexandria:set-equal)
   (:export
-   ;; Generators
-   #:make-generator
-   #:generate-instance
 
    ;; Sets
    #:set-difference
