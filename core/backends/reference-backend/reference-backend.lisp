@@ -80,7 +80,8 @@
                (mapcar (lambda (input) (iref input index)) inputs)))))))
 
 (defmethod evaluate ((reduction reduction))
-  (let ((inputs (mapcar #'evaluate (inputs reduction))))
+  (let* ((inputs (mapcar #'evaluate (inputs reduction)))
+         (k (length inputs)))
     (make-intermediate-result
      (shape reduction)
      (lambda (index)
@@ -92,9 +93,13 @@
                                inputs))
                       (multiple-value-bind (left right)
                           (split-range range)
-                        (multiple-value-call (operator reduction)
-                          (divide-and-conquer left)
-                          (divide-and-conquer right))))))
+                        (values-list
+                         (subseq
+                          (multiple-value-list
+                           (multiple-value-call (operator reduction)
+                             (divide-and-conquer left)
+                             (divide-and-conquer right)))
+                          0 k))))))
          (nth-value
           (value-n reduction)
           (divide-and-conquer (first (ranges (shape (first inputs)))))))))))

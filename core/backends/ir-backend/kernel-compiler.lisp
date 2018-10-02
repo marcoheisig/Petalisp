@@ -55,9 +55,13 @@
                                 collect (funcall load-thunk index))))
                        (multiple-value-bind (left right)
                            (split-range range)
-                         (multiple-value-call (operator reduction-kernel)
-                           (divide-and-conquer left)
-                           (divide-and-conquer right))))))
+                         (values-list
+                          (subseq
+                           (multiple-value-list
+                            (multiple-value-call (operator reduction-kernel)
+                              (divide-and-conquer left)
+                              (divide-and-conquer right)))
+                           0 k))))))
           (loop for value in (multiple-value-list (divide-and-conquer reduction-range))
                 for store-thunk in store-thunks do
                   (funcall store-thunk inner-index value)))))))
@@ -67,7 +71,7 @@
           (mapcar #'make-load-thunk (petalisp-ir:loads statement)))
         (store-thunks
           (mapcar #'make-store-thunk (petalisp-ir:stores statement)))
-        (op (operator statement)))
+        (op (petalisp-ir:operator statement)))
     (lambda (index)
       (let ((args (loop for load-thunk in load-thunks
                         collect (funcall load-thunk index))))
