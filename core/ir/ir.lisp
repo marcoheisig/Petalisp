@@ -75,6 +75,8 @@
 (defclass reduction-kernel (kernel)
   ((%operator :initarg :operator :reader operator)
    (%reduction-range :initarg :reduction-range :reader reduction-range)
+   ;; A list, where each element is either NIL, or a cons cell whose car is
+   ;; a buffer and whose cdr is a transformation.
    (%reduction-stores :initarg :reduction-stores :reader reduction-stores)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -159,10 +161,6 @@
 (defun ref= (a b)
   (and (eq (car a) (car b))
        (transformation-equal (cdr a) (cdr b))))
-
-(defun make-padded-list (length &key padding tail)
-  (nreverse
-   (cons tail (make-list length :initial-element padding))))
 
 (defun compute-kernel-loads-and-stores (kernel)
   (let ((all-loads '())
