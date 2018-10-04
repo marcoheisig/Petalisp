@@ -43,7 +43,8 @@
 
    (:module "test-suite"
     :components
-    ((:file "run")
+    ((:file "utilities")
+     (:file "run")
      (:file "test-api")
      (:file "test-sets")
      (:file "test-iterative-methods")
