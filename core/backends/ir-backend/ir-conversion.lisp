@@ -7,7 +7,6 @@
   (make-instance 'ir-backend-buffer
     :shape (shape strided-array)
     :element-type (element-type strided-array)
-    :transformation (collapsing-transformation (shape strided-array))
     :storage (make-array (mapcar #'set-size (ranges (shape strided-array))))
     :executedp nil))
 
@@ -16,7 +15,6 @@
   (make-instance 'ir-backend-buffer
     :shape (shape array-immediate)
     :element-type (element-type array-immediate)
-    :transformation (make-identity-transformation (dimension array-immediate))
     :storage (storage array-immediate)
     :executedp t))
 
@@ -25,7 +23,6 @@
   (make-instance 'ir-backend-buffer
     :shape (shape scalar-immediate)
     :element-type (element-type scalar-immediate)
-    :transformation (make-identity-transformation 0)
     :storage (make-array '() :initial-element (storage scalar-immediate))
     :executedp t))
 
@@ -36,7 +33,6 @@
     (make-instance 'ir-backend-buffer
       :shape (shape range-immediate)
       :element-type (element-type range-immediate)
-      :transformation transformation
       :storage
       (let ((storage (make-array (mapcar #'set-size (ranges (shape range-immediate))))))
         (loop for index in (set-elements (shape range-immediate)) do

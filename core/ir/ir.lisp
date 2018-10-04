@@ -174,3 +174,17 @@
                        do (pushnew store all-stores :test #'ref=))))
       (mapc #'scan-statement (body kernel)))
     (values all-loads all-stores)))
+
+(defun map-buffers (function root-buffers)
+  (let ((table (make-hash-table :test #'eq)))
+    (labels ((process-buffer (buffer)
+               (multiple-value-bind (value already-visited)
+                   (gethash buffer table)
+                 (declare (ignore value))
+                 (unless already-visited
+                   (setf (gethash buffer table)
+                         (funcall function buffer))
+                   (loop for kernel in (inputs buffer) do
+                     (loop for (input-buffer . nil) in (loads kernel) do
+                       (process-buffer input-buffer)))))))
+      (mapc #'process-buffer root-buffers))))

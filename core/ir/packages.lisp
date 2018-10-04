@@ -36,4 +36,5 @@
    #:ir-from-strided-arrays
    #:compute-buffer-table
    #:compute-kernels
-   #:reduction-value-symbol))
+   #:reduction-value-symbol
+   #:normalize-ir))

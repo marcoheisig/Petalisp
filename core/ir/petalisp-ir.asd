@@ -10,4 +10,5 @@
   ((:file "packages")
    (:file "ir")
    (:file "compute-buffer-table")
-   (:file "compute-kernels")))
+   (:file "compute-kernels")
+   (:file "normalize-ir")))

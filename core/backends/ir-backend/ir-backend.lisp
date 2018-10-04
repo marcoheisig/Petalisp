@@ -22,8 +22,7 @@
   ())
 
 (defclass ir-backend-buffer (petalisp-ir:buffer)
-  ((%transformation :initarg :transformation :reader transformation)
-   (%storage :initarg :storage :reader storage)
+  ((%storage :initarg :storage :reader storage)
    (%executedp :initarg :executedp :accessor executedp)))
 
 (defun make-ir-backend ()
@@ -35,6 +34,7 @@
 
 (defmethod compute-immediates ((strided-arrays list) (ir-backend ir-backend))
   (let ((root-buffers (petalisp-ir:ir-from-strided-arrays strided-arrays ir-backend)))
+    (petalisp-ir:normalize-ir root-buffers)
     (mapc #'execute root-buffers)
     (mapcar #'immediate-from-buffer root-buffers)))
 
