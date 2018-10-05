@@ -6,40 +6,48 @@
 ;;;
 ;;; Classes
 
-(defclass native-backend-immediate (petalisp-ir:buffer)
+(defclass buffer (petalisp-ir:buffer)
   ())
 
-(defclass native-backend-array-immediate (native-backend-immediate)
+(defclass non-immediate-buffer (buffer)
+  ((%storage :initarg :storage :accessor storage)))
+
+(defclass immediate-buffer (buffer)
+  ())
+
+(defclass array-buffer (immediate-buffer)
   ((%storage :initarg :storage :reader storage)))
 
-(defclass native-backend-scalar-immediate (native-backend-immediate)
+(defclass scalar-buffer (immediate-buffer)
   ((%storage :initarg :storage :reader storage)))
 
-(defclass native-backend-range-immediate (native-backend-immediate)
+(defclass range-buffer (immediate-buffer)
   ((%axis :initarg :axis :reader axis)))
 
-(defclass native-backend-buffer (petalisp-ir:buffer)
-  ((%transformation :initarg :transformation :accessor transformation)
-   (%storage :initarg :storage :accessor storage)))
-
-(defclass native-backend-kernel (petalisp-ir:kernel)
+(defclass kernel (petalisp-ir:kernel)
   ((%executedp :initarg :executedp :accessor executedp
                :initform nil)))
+
+(defclass simple-kernel (petalisp-ir:simple-kernel kernel)
+  ())
+
+(defclass reduction-kernel (petalisp-ir:reduction-kernel kernel)
+  ())
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Methods
 
 (defmethod immediate-from-buffer
-    ((native-backend-buffer native-backend-buffer)
+    ((buffer buffer)
      (native-backend native-backend))
   (make-array-immediate
-   (storage native-backend-buffer)))
+   (storage buffer)))
 
 (defmethod petalisp-ir:make-buffer
     ((array-immediate array-immediate)
      (native-backend native-backend))
-  (make-instance 'native-backend-array-immediate
+  (make-instance 'array-buffer
     :shape (shape array-immediate)
     :element-type (element-type array-immediate)
     :storage (storage array-immediate)))
@@ -47,7 +55,7 @@
 (defmethod petalisp-ir:make-buffer
     ((scalar-immediate scalar-immediate)
      (native-backend native-backend))
-  (make-instance 'native-backend-scalar-immediate
+  (make-instance 'scalar-buffer
     :shape (shape scalar-immediate)
     :element-type (element-type scalar-immediate)
     :storage (storage scalar-immediate)))
@@ -55,7 +63,7 @@
 (defmethod petalisp-ir:make-buffer
     ((range-immediate range-immediate)
      (native-backend native-backend))
-  (make-instance 'native-backend-range-immediate
+  (make-instance 'range-buffer
     :shape (shape range-immediate)
     :element-type (element-type range-immediate)
     :axis (axis range-immediate)))
@@ -63,16 +71,14 @@
 (defmethod petalisp-ir:make-buffer
     ((strided-array strided-array)
      (native-backend native-backend))
-  (make-instance 'native-backend-buffer
+  (make-instance 'non-immediate-buffer
     :shape (shape strided-array)
     :element-type (element-type strided-array)))
 
-(defmethod petalisp-ir:make-kernel
-    (body (backend native-backend))
-  (make-instance 'native-backend-kernel
-    :body body))
+(defmethod petalisp-ir:make-simple-kernel
+    ((backend native-backend) &rest args)
+  (apply #'make-instance 'simple-kernel args))
 
-(defmethod transformation :before ((native-backend-buffer native-backend-buffer))
-  (unless (slot-boundp native-backend-buffer '%transformation)
-    (setf (slot-value native-backend-buffer '%transformation)
-          (collapsing-transformation (shape native-backend-buffer)))))
+(defmethod petalisp-ir:make-reduction-kernel
+    ((backend native-backend) &rest args)
+  (apply #'make-instance 'reduction-kernel args))

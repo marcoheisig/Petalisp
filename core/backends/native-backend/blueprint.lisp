@@ -9,28 +9,51 @@
 
 (defvar *kernel*)
 
-(defvar *normalization*)
+(defmethod blueprint :around ((kernel kernel))
+  (let ((*kernel* kernel))
+    (call-next-method)))
 
-(defun compute-blueprint (kernel)
-  (let ((*kernel* kernel)
-        (*normalization*
-          (invert-transformation
-           (transformation (first (petalisp-ir:outputs kernel))))))
-    (flet ((approximate-size (range)
-             ;; Return an ulist, consisting of an inclusive lower bound on
-             ;; the size of the range and an exclusive upper bound.
-             (let ((size (set-size range)))
-               (if (< size 9)
-                   (ucons:ulist size (1+ size))
-                   (let ((floor (floor (log (set-size range) 2))))
-                     (ucons:ulist
-                      (expt 2 floor)
-                      (expt 2 (1+ floor))))))))
-      (ucons:ulist
-       (ucons:umapcar #'approximate-size (ranges (shape kernel)))
-       (blueprint-from-kernel-body (petalisp-ir:body kernel))))))
+(defmethod blueprint ((kernel simple-kernel))
+  (ucons:ulist
+   'simple-kernel
+   (ucons:umapcar #'blueprint-from-range (ranges (petalisp-ir:iteration-space kernel)))
+   (ucons:umapcar #'blueprint-from-reference (petalisp-ir:stores kernel))
+   (ucons:umapcar #'blueprint-from-reference (petalisp-ir:loads kernel))
+   (ucons:umapcar #'blueprint-from-statement (petalisp-ir:body kernel))))
 
-(defgeneric blueprint-from-reference (buffer transformation))
+(defmethod blueprint ((kernel reduction-kernel))
+  (ucons:ulist
+   'reduction-kernel
+   (blueprint-from-range (petalisp-ir:reduction-range kernel))
+   (ucons:umapcar #'blueprint-from-store (petalisp-ir:reduction-stores kernel))
+   (petalisp-ir:operator kernel)
+   (ucons:umapcar #'blueprint-from-range (ranges (petalisp-ir:iteration-space kernel)))
+   (ucons:umapcar #'blueprint-from-reference (petalisp-ir:stores kernel))
+   (ucons:umapcar #'blueprint-from-reference (petalisp-ir:loads kernel))
+   (ucons:umapcar #'blueprint-from-statement (petalisp-ir:body kernel))))
+
+;;; Return an ulist with three elements:
+;;;
+;;; 1. A boolean, indicating whether all indices in this range are fixnums.
+;;;
+;;; 2. An inclusive lower bound on the size of the range.
+;;;
+;;; 3. An exclusive upper bound on the size of the range.
+(defun blueprint-from-range (range)
+  (let ((bits (integer-length (size range)))
+        (start (range-start range))
+        (end (range-end range)))
+    (list
+     (and (typep start 'fixnum)
+          (typep end 'fixnum))
+     (ash 1 (1- bits))
+     (ash 1 bits))))
+
+(defun blueprint-from-statement (statement)
+  (ucons:ulist
+   (ucons:umapcar #'blueprint-from-store (petalisp-ir:stores statement))
+   (petalisp-ir:operator statement)
+   (ucons:umapcar #'blueprint-from-load (petalisp-ir:loads statement))))
 
 (defun blueprint-from-transformation (transformation)
   (let ((result '()))
@@ -41,52 +64,43 @@
        (setf result (ucons:ucons (ucons:ulist input-index scaling offset) result)))
      :from-end t)))
 
-(defun blueprint-from-kernel-body (body)
-  (trivia:ematch body
-    ;; Translate memory loads.
-    ((list 'pref input transformation)
-     (blueprint-from-reference input transformation))
-    ;; Translate reductions.
-    ((list* 'preduce size value-n operator forms)
-     (ucons:ulist*
-      'preduce
-      size
-      value-n
-      operator
-      (let ((*normalization* (enlarge-transformation *normalization* 1 0)))
-        (ucons:umapcar #'blueprint-from-kernel-body forms))))
-    ;; Translate function calls.
-    ((list* 'pcall value-n operator forms)
-     (ucons:ulist*
-      'pcall
-      value-n
-      operator
-      (ucons:umapcar #'blueprint-from-kernel-body forms)))))
+(defun blueprint-from-store (store)
+  (if (symbolp store)
+      store
+      (position store (petalisp-ir:stores *kernel*))))
 
-(defmethod blueprint-from-reference
-    ((native-backend-array-immediate native-backend-array-immediate)
-     (transformation transformation))
-  (ucons:ulist 'pref (position native-backend-array-immediate (inputs *kernel*))
-               (blueprint-from-transformation
-                (compose-transformations transformation *normalization*))))
+(defun blueprint-from-load (load)
+  (if (symbolp load)
+      load
+      (position load (petalisp-ir:loads *kernel*))))
 
-(defmethod blueprint-from-reference
-    ((native-backend-scalar-immediate native-backend-scalar-immediate)
-     (transformation transformation))
-  (ucons:ulist 'scalar-ref (position native-backend-scalar-immediate (inputs *kernel*))))
+(defun blueprint-from-reference (reference)
+  (blueprint-from-destructured-reference
+   (car reference)
+   (cdr reference)))
 
-(defmethod blueprint-from-reference
-    ((native-backend-range-immediate native-backend-range-immediate)
-     (transformation transformation))
-  (ucons:ulist 'range-ref (axis native-backend-range-immediate)))
+(defgeneric blueprint-from-destructured-reference (buffer transformation))
 
-(defmethod blueprint-from-reference
-    ((native-backend-buffer native-backend-buffer)
+(defmethod blueprint-from-destructured-reference
+    ((scalar-immediate scalar-immediate)
      (transformation transformation))
-  (ucons:ulist 'pref (position native-backend-buffer (inputs *kernel*))
-               (blueprint-from-transformation
-                (compose-transformations
-                 (compose-transformations
-                  (transformation native-backend-buffer)
-                  transformation)
-                 *normalization*))))
+  'scalar)
+
+(defmethod blueprint-from-destructured-reference
+    ((buffer buffer) ; Works for array immediates or non-immediate buffers.
+     (transformation transformation))
+  (ucons:ulist*
+   'storage-ref
+   (blueprint-from-transformation transformation)))
+
+(defmethod blueprint-from-destructured-reference
+    ((range-immediate range-immediate)
+     (transformation transformation))
+  (let ((axis (axis range-immediate)))
+    (block nil
+      (map-transformation-outputs
+       transformation
+       (lambda (output-index input-index scaling offset)
+         (when (= output-index axis)
+           (return
+             (ucons:ulist 'range input-index scaling offset))))))))

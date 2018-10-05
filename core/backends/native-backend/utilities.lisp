@@ -30,7 +30,7 @@
   (petalisp-memoization:with-vector-memoization (n)
     (symbol-with-indices "INDEX" n)))
 
-(defun array-symbol (n)
+(defun storage-symbol (n)
   (petalisp-memoization:with-vector-memoization (n)
     (symbol-with-indices "ARRAY" n)))
 
