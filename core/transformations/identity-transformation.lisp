@@ -8,6 +8,8 @@
                :reader output-dimension
                :type (integer 0 *))))
 
+(define-class-predicate identity-transformation :hyphenate t)
+
 (defmethod transform ((sequence sequence) (operator identity-transformation))
   sequence)
 

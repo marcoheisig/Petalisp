@@ -23,16 +23,17 @@
   (map-buffers
    (lambda (buffer)
      (let ((transformation (collapsing-transformation (shape buffer))))
-       ;; Update all kernels that store into this buffer.
-       (loop for kernel in (inputs buffer) do
-         (loop for store in (stores kernel) do
-           (when (eq (car store) buffer)
-             (setf (cdr store)
-                   (compose-transformations transformation (cdr store))))))
-       ;; Update all kernels that load from this buffer.
-       (loop for kernel in (outputs buffer) do
-         (loop for load in (loads kernel) do
-           (when (eq (car load) buffer)
-             (setf (cdr load)
-                   (compose-transformations transformation (cdr load))))))))
+       (unless (identity-transformation-p transformation)
+         ;; Update all kernels that store into this buffer.
+         (loop for kernel in (inputs buffer) do
+           (loop for store in (stores kernel) do
+             (when (eq (car store) buffer)
+               (setf (cdr store)
+                     (compose-transformations transformation (cdr store))))))
+         ;; Update all kernels that load from this buffer.
+         (loop for kernel in (outputs buffer) do
+           (loop for load in (loads kernel) do
+             (when (eq (car load) buffer)
+               (setf (cdr load)
+                     (compose-transformations transformation (cdr load)))))))))
    roots))

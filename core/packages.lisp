@@ -40,6 +40,7 @@
    ;; Transformations
    #:transformation
    #:transformationp
+   #:identity-transformation-p
    #:input-dimension
    #:output-dimension
    #:invertible-transformation-p
