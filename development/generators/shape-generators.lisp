@@ -8,13 +8,15 @@
   (let ((range-generators
           (if intersecting
               (mapcar (lambda (range)
-                        (make-generator 'range :max-size max-size
-                                               :max-extent max-extent
-                                               :intersecting range))
+                        (make-range-generator
+                         :max-size max-size
+                         :max-extent max-extent
+                         :intersecting range))
                       (ranges intersecting))
               (make-list dimension :initial-element
-                         (make-generator 'range :max-size max-size
-                                                :max-extent max-extent)))))
+                         (make-range-generator
+                          :max-size max-size
+                          :max-extent max-extent)))))
     (lambda ()
       (shape-from-ranges
        (mapcar #'funcall range-generators)))))
