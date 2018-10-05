@@ -7,6 +7,8 @@
 ;;; for this kernel.  The idea is that blueprints can be used to cache
 ;;; compiled evaluation functions.
 
+(defgeneric blueprint (kernel))
+
 (defvar *kernel*)
 
 (defmethod blueprint :around ((kernel kernel))
