@@ -2,10 +2,6 @@
 
 (in-package :petalisp)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Special Variables
-
 (defvar *backend* (petalisp-ir-backend:make-ir-backend)
   "The backend on which Petalisp programs are executed.")
 

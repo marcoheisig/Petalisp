@@ -2,6 +2,10 @@
 
 (in-package :petalisp)
 
+;;; This special variable will be bound later, once at least one backend
+;;; has been loaded.
+(defvar *backend*)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Generic Functions
