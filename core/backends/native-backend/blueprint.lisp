@@ -15,24 +15,37 @@
   (let ((*kernel* kernel))
     (call-next-method)))
 
-(defmethod blueprint ((kernel simple-kernel))
+(defmethod blueprint ((kernel kernel))
   (ucons:ulist
-   'simple-kernel
-   (ucons:umapcar #'blueprint-from-range (ranges (petalisp-ir:iteration-space kernel)))
+   (ucons:umapcar #'blueprint-from-buffer (petalisp-ir:buffers kernel))
    (ucons:umapcar #'blueprint-from-reference (petalisp-ir:stores kernel))
    (ucons:umapcar #'blueprint-from-reference (petalisp-ir:loads kernel))
    (ucons:umapcar #'blueprint-from-statement (petalisp-ir:body kernel))))
 
+(defmethod blueprint ((kernel simple-kernel))
+  (ucons:ulist*
+   (ucons:umapcar #'blueprint-from-loop-range (ranges (petalisp-ir:iteration-space kernel)))
+   (call-next-method)))
+
 (defmethod blueprint ((kernel reduction-kernel))
-  (ucons:ulist
-   'reduction-kernel
-   (blueprint-from-range (petalisp-ir:reduction-range kernel))
-   (ucons:umapcar #'blueprint-from-store (petalisp-ir:reduction-stores kernel))
-   (petalisp-ir:operator kernel)
-   (ucons:umapcar #'blueprint-from-range (ranges (petalisp-ir:iteration-space kernel)))
-   (ucons:umapcar #'blueprint-from-reference (petalisp-ir:stores kernel))
-   (ucons:umapcar #'blueprint-from-reference (petalisp-ir:loads kernel))
-   (ucons:umapcar #'blueprint-from-statement (petalisp-ir:body kernel))))
+  (ucons:ulist*
+   (ucons:ucons
+    (ucons:ulist*
+     :reduction
+     (ucons:umapcar #'blueprint-from-store (petalisp-ir:reduction-stores kernel))
+     (petalisp-ir:operator kernel)
+     (blueprint-from-range (petalisp-ir:reduction-range kernel)))
+    (ucons:umapcar #'blueprint-from-loop-range (ranges (petalisp-ir:iteration-space kernel))))
+   (call-next-method)))
+
+(defgeneric blueprint-from-buffer (buffer)
+  (:method ((buffer buffer))
+    (ucons:ulist 'simple-array (element-type buffer)))
+  (:method ((scalar-buffer scalar-buffer))
+    (element-type scalar-buffer)))
+
+(defun blueprint-from-loop-range (range)
+  (ucons:ulist* :loop (blueprint-from-range range)))
 
 ;;; Return an ulist with three elements:
 ;;;
@@ -45,7 +58,7 @@
   (let ((bits (integer-length (size range)))
         (start (range-start range))
         (end (range-end range)))
-    (list
+    (ucons:ulist
      (and (typep start 'fixnum)
           (typep end 'fixnum))
      (ash 1 (1- bits))
@@ -93,6 +106,7 @@
      (transformation transformation))
   (ucons:ulist*
    'storage-ref
+   (position buffer (petalisp-ir:buffers *kernel*))
    (blueprint-from-transformation transformation)))
 
 (defmethod blueprint-from-destructured-reference

@@ -4,43 +4,21 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Caching of Compiled Blueprints
-
-(defclass compile-cache-mixin ()
-  ((%compile-cache :reader compile-cache
-                   :initform (make-hash-table :test #'eq))))
-
-(defmethod compile-blueprint :around
-    (blueprint (backend compile-cache-mixin))
-  (petalisp-memoization:with-hash-table-memoization (blueprint)
-      (compile-cache backend)
-    (call-next-method)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
 ;;; Compiler "Gensyms"
 
-(defun symbol-with-indices (name &rest indices)
-  (format-symbol *package* "~A~{-~D~}" name indices))
+(defmacro define-compiler-gensym (name)
+  (let* ((prefix '#:-variable)
+         (function-name (symbolicate name prefix)))
+    `(defun ,function-name (n)
+       (petalisp-memoization:with-vector-memoization (n)
+         (format-symbol *package* "~A-~D" ',prefix n)))))
 
-(defun base-index-symbol (depth reference-id)
-  (symbol-with-indices "BASE-INDEX" depth reference-id))
-
-(defun index-symbol (n)
-  (petalisp-memoization:with-vector-memoization (n)
-    (symbol-with-indices "INDEX" n)))
-
-(defun storage-symbol (n)
-  (petalisp-memoization:with-vector-memoization (n)
-    (symbol-with-indices "ARRAY" n)))
-
-(defun bound-symbol (n)
-  (petalisp-memoization:with-vector-memoization (n)
-    (symbol-with-indices "BOUND" n)))
-
-(defun accumulator-symbol (n)
-  (petalisp-memoization:with-vector-memoization (n)
-    (symbol-with-indices "ACC" n)))
+(define-compiler-gensym start)
+(define-compiler-gensym step)
+(define-compiler-gensym end)
+(define-compiler-gensym index)
+(define-compiler-gensym storage)
+(define-compiler-gensym range)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
