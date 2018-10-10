@@ -17,7 +17,7 @@
 
 (defmethod blueprint ((kernel kernel))
   (ucons:ulist
-   (ucons:umapcar #'blueprint-from-buffer (petalisp-ir:buffers kernel))
+   (ucons:umapcar #'blueprint-from-buffer (buffers kernel))
    (ucons:umapcar #'blueprint-from-reference (petalisp-ir:stores kernel))
    (ucons:umapcar #'blueprint-from-reference (petalisp-ir:loads kernel))
    (ucons:umapcar #'blueprint-from-statement (petalisp-ir:body kernel))))
@@ -106,7 +106,7 @@
      (transformation transformation))
   (ucons:ulist*
    'storage-ref
-   (position buffer (petalisp-ir:buffers *kernel*))
+   (position buffer (buffers *kernel*))
    (blueprint-from-transformation transformation)))
 
 (defmethod blueprint-from-destructured-reference

@@ -62,8 +62,8 @@
               (setf (aref range-arguments (+ offset 1)) step)
               (setf (aref range-arguments (+ offset 2)) end)))
     ;; Initialize the storage arguments.
-    (adjust-array storage-arguments (length (petalisp-ir:buffers kernel)))
-    (loop for buffer in (petalisp-ir:buffers kernel)
+    (adjust-array storage-arguments (length (buffers kernel)))
+    (loop for buffer in (buffers kernel)
           for index from 0 do
             (setf (aref storage-arguments index)
                   (storage buffer)))

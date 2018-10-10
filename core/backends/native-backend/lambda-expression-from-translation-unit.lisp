@@ -10,8 +10,11 @@
   `(lambda (ranges storages)
      (declare (simple-vector ranges storages))
      ;; Generate range bindings.
-     (let ,(loop for index below (1- (length basic-blocks))
-                 for offset = (* 3 index)
+     (let ,(loop for basic-block = (initial-basic-block translation-unit)
+                   then (successor basic-block)
+                 until (not basic-block)
+                 for index from 0 by 1
+                 for offset from 0 by 3
                  collect `(,(start-variable index) (aref ranges ,(+ offset 0)))
                  collect `(,(step-variable index) (aref ranges ,(+ offset 1)))
                  collect `(,(end-variable index) (aref ranges ,(+ offset 2))))

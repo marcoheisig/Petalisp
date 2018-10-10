@@ -64,8 +64,6 @@
 (defclass kernel ()
   ((%iteration-space :initarg :iteration-space :reader iteration-space)
    (%body :initarg :body :reader body)
-   ;; A list of all buffers referenced by the kernel.
-   (%buffers :initarg :buffers :accessor buffers)
    ;; The slots LOADS and STORES both contain a list, where each element is
    ;; a cons cell whose car is a buffer and whose cdr is a transformation.
    (%loads :initarg :loads :accessor loads)
@@ -105,19 +103,10 @@
 (defmethod shared-initialize :after
     ((kernel kernel) slots &rest initargs)
   (declare (ignore slots initargs))
-  (with-accessors ((kernel-loads loads)
-                   (kernel-stores stores)
-                   (kernel-buffers buffers)) kernel
-    (multiple-value-bind (loads stores)
-        (compute-kernel-loads-and-stores kernel)
-      (setf kernel-loads loads)
-      (setf kernel-stores stores)
-      (let ((buffers '()))
-        (loop for (buffer . nil) in loads do
-          (pushnew buffer buffers))
-        (loop for (buffer . nil) in stores do
-          (pushnew buffer buffers))
-        (setf kernel-buffers buffers)))))
+  (with-accessors ((loads loads) (stores stores)) kernel
+    ;; Determine the loads and stores.
+    (multiple-value-setq (loads stores)
+      (compute-kernel-loads-and-stores kernel))))
 
 ;;; In reduction kernels, not only the body can store values, but also the
 ;;; kernel itself.  Luckily, :after methods are run in least-specific-first

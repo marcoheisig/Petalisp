@@ -23,7 +23,6 @@
    #:operator
    #:loads
    #:stores
-   #:buffers
    #:shape
    #:element-type
    #:inputs
