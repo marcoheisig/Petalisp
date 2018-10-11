@@ -53,7 +53,7 @@ Examples:
               (transform (shape strided-array) transformation)
               (invert-transformation transformation)))
            (reshape1 (strided-array modifier)
-             (cond ((listp modifier)
+             (cond ((or (listp modifier) (integerp modifier))
                     (reshape-with-shape strided-array (make-shape modifier)))
                    ((functionp modifier)
                     (reshape-with-transformation strided-array (make-transformation-from-function modifier)))

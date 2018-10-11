@@ -58,6 +58,12 @@
     (shape-from-ranges
      (mapcar #'parse-range shape-designator))))
 
+(defmethod make-shape ((integer integer))
+  (assert (plusp integer))
+  (shape-from-ranges
+   (list
+    (make-range 0 1 (1- integer)))))
+
 (defmethod shape-from-ranges ((ranges list))
   (assert (every #'rangep ranges))
   (make-instance 'shape :ranges ranges))
