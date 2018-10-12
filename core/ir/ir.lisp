@@ -32,7 +32,7 @@
 
 (defgeneric make-buffer (strided-array backend))
 
-(defgeneric make-statement
+(defgeneric make-instruction
     (backend &key operator loads stores))
 
 (defgeneric make-simple-kernel
@@ -53,7 +53,7 @@
    ;; The list of kernels that load from this buffer.
    (%outputs :initarg :outputs :accessor outputs :initform nil)))
 
-(defclass statement ()
+(defclass instruction ()
   ((%operator :initarg :operator :reader operator)
    ;; The slots LOADS and STORES both contain a list, where each element is
    ;; either a symbol, or a cons cell whose car is a buffer and whose cdr
@@ -88,8 +88,8 @@
     :shape (shape strided-array)
     :element-type (element-type strided-array)))
 
-(defmethod make-statement ((backend backend) &rest args)
-  (apply #'make-instance 'statement args))
+(defmethod make-instruction ((backend backend) &rest args)
+  (apply #'make-instance 'instruction args))
 
 (defmethod make-simple-kernel ((backend backend) &rest args)
   (apply #'make-instance 'simple-kernel args))
@@ -121,11 +121,11 @@
 ;;;
 ;;; Pretty Printing
 
-(defmethod print-object ((statement statement) stream)
+(defmethod print-object ((instruction instruction) stream)
   (format stream "{~{~S~^ ~} <- ~S ~{~S~^ ~}}"
-          (stores statement)
-          (operator statement)
-          (loads statement)))
+          (stores instruction)
+          (operator instruction)
+          (loads instruction)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -166,14 +166,14 @@
 (defun compute-kernel-loads-and-stores (kernel)
   (let ((all-loads '())
         (all-stores '()))
-    (labels ((scan-statement (statement)
-               (loop for load in (loads statement)
+    (labels ((scan-instruction (instruction)
+               (loop for load in (loads instruction)
                      when (consp load)
                        do (pushnew load all-loads :test #'ref=))
-               (loop for store in (stores statement)
+               (loop for store in (stores instruction)
                      when (consp store)
                        do (pushnew store all-stores :test #'ref=))))
-      (mapc #'scan-statement (body kernel)))
+      (mapc #'scan-instruction (body kernel)))
     (values all-loads all-stores)))
 
 (defun map-buffers (function root-buffers)

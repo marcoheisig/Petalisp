@@ -6,8 +6,8 @@
 (defgeneric compile-kernel (kernel))
 
 ;;; Return a function that takes an element of the iteration space, i.e., a
-;;; list of integers, and that executes this particular statement.
-(defgeneric compile-statement (statement))
+;;; list of integers, and that executes this particular instruction.
+(defgeneric compile-instruction (instruction))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -21,7 +21,7 @@
   (let ((indices
           (set-elements (petalisp-ir:iteration-space simple-kernel)))
         (body-thunks
-          (mapcar #'compile-statement (petalisp-ir:body simple-kernel))))
+          (mapcar #'compile-instruction (petalisp-ir:body simple-kernel))))
     (lambda ()
       (loop for index in indices do
         (loop for body-thunk in body-thunks do
@@ -36,7 +36,7 @@
            (set-elements
             (petalisp-ir:iteration-space reduction-kernel)))
          (body-thunks
-           (mapcar #'compile-statement (petalisp-ir:body reduction-kernel)))
+           (mapcar #'compile-instruction (petalisp-ir:body reduction-kernel)))
          (load-thunks
            (loop for i below k
                  collect
@@ -66,12 +66,12 @@
                 for store-thunk in store-thunks do
                   (funcall store-thunk inner-index value)))))))
 
-(defmethod compile-statement ((statement petalisp-ir:statement))
+(defmethod compile-instruction ((instruction petalisp-ir:instruction))
   (let ((load-thunks
-          (mapcar #'make-load-thunk (petalisp-ir:loads statement)))
+          (mapcar #'make-load-thunk (petalisp-ir:loads instruction)))
         (store-thunks
-          (mapcar #'make-store-thunk (petalisp-ir:stores statement)))
-        (op (petalisp-ir:operator statement)))
+          (mapcar #'make-store-thunk (petalisp-ir:stores instruction)))
+        (op (petalisp-ir:operator instruction)))
     (lambda (index)
       (let ((args (loop for load-thunk in load-thunks
                         collect (funcall load-thunk index))))

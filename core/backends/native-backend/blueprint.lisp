@@ -20,7 +20,7 @@
    (ucons:umapcar #'blueprint-from-buffer (buffers kernel))
    (ucons:umapcar #'blueprint-from-reference (petalisp-ir:stores kernel))
    (ucons:umapcar #'blueprint-from-reference (petalisp-ir:loads kernel))
-   (ucons:umapcar #'blueprint-from-statement (petalisp-ir:body kernel))))
+   (ucons:umapcar #'blueprint-from-instruction (petalisp-ir:body kernel))))
 
 (defmethod blueprint ((kernel simple-kernel))
   (ucons:ulist*
@@ -64,11 +64,11 @@
      (ash 1 (1- bits))
      (ash 1 bits))))
 
-(defun blueprint-from-statement (statement)
+(defun blueprint-from-instruction (instruction)
   (ucons:ulist
-   (ucons:umapcar #'blueprint-from-store (petalisp-ir:stores statement))
-   (petalisp-ir:operator statement)
-   (ucons:umapcar #'blueprint-from-load (petalisp-ir:loads statement))))
+   (ucons:umapcar #'blueprint-from-store (petalisp-ir:stores instruction))
+   (petalisp-ir:operator instruction)
+   (ucons:umapcar #'blueprint-from-load (petalisp-ir:loads instruction))))
 
 (defun blueprint-from-transformation (transformation)
   (let ((result '()))

@@ -6,14 +6,14 @@
   (:export
 
    ;; Classes
-   #:statement
+   #:instruction
    #:buffer
    #:kernel
    #:simple-kernel
    #:reduction-kernel
 
    ;; Generic Constructors
-   #:make-statement
+   #:make-instruction
    #:make-kernel
    #:make-simple-kernel
    #:make-reduction-kernel

@@ -171,46 +171,46 @@
 ;;;
 ;;; Computing the Kernel Body
 
-(defvar *kernel-body-statements*)
+(defvar *instructions*)
 
 (defvar *kernel-root*)
 
-(defun emit-statement (operator loads stores)
-  (push (make-statement *backend* :operator operator :loads loads :stores stores)
-        *kernel-body-statements*))
+(defun emit-instruction (operator loads stores)
+  (push (make-instruction *backend* :operator operator :loads loads :stores stores)
+        *instructions*))
 
-;;; Emit a statement that writes the value of NODE to some location and
+;;; Emit a instruction that writes the value of NODE to some location and
 ;;; return that location.
 (defgeneric assign (node iteration-space transformation))
 
 (defun compute-simple-kernel-body (root iteration-space)
   (let ((*kernel-root* root)
-        (*kernel-body-statements* '())
+        (*instructions* '())
         (transformation
           (make-identity-transformation (dimension iteration-space))))
-    (emit-statement
+    (emit-instruction
      'values
      (list
       (assign root iteration-space transformation))
      (list
       (cons (gethash root *buffer-table*) transformation)))
-    (nreverse *kernel-body-statements*)))
+    (nreverse *instructions*)))
 
 (defun compute-reduction-kernel-body (root iteration-space)
   (let ((*backend* *backend*)
         (*kernel-root* root)
-        (*kernel-body-statements* '()))
+        (*instructions* '()))
     (let ((transformation
             (make-identity-transformation (dimension iteration-space))))
       (loop for input in (inputs root)
             for index from 0 do
-              (emit-statement
+              (emit-instruction
                'values
                (list
                 (assign input iteration-space transformation))
                (list
                 (reduction-value-symbol index)))))
-    (nreverse *kernel-body-statements*)))
+    (nreverse *instructions*)))
 
 ;; Check whether we are dealing with a leaf, i.e., a node that has a
 ;; corresponding entry in the buffer table and is not the root node.  If
@@ -233,7 +233,7 @@
                    (transformation transformation))
   (let ((value-n (value-n application))
         (result (gensym)))
-    (emit-statement
+    (emit-instruction
      (operator application)
      (loop for input in (inputs application)
            collect
