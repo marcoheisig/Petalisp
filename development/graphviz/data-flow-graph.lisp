@@ -2,13 +2,22 @@
 
 (in-package :petalisp-development)
 
-(defclass data-flow-graph (any-graph) ())
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Classes
 
-(defclass data-flow-edge (any-edge) ())
+(defclass data-flow-graph (petalisp-graph)
+  ())
 
-(defmethod graphviz-graph-attributes
-    ((graph data-flow-graph))
-  `(:splines "ortho"))
+(defclass data-flow-edge (petalisp-edge)
+  ())
+
+(defmethod graphviz-default-graph ((node strided-array))
+  'data-flow-graph)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Connectivity
 
 (defmethod graphviz-potential-edges append
     ((graph data-flow-graph)
@@ -24,11 +33,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Node Appearance
-
-(defmethod graphviz-node-attributes
-    ((graph data-flow-graph)
-     (node t))
-  `(:shape :box :style :filled))
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)

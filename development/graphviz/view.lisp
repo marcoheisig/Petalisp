@@ -2,8 +2,6 @@
 
 (in-package :petalisp-development)
 
-(defvar *graphviz-default-graph* (make-instance 'data-flow-graph))
-
 (defvar *graphviz-default-viewer*
   (flet ((program-in-path-p (program)
            (multiple-value-bind (out err exit-code)
@@ -19,7 +17,7 @@
 (defun view (graph-root &key
                           (format *graphviz-default-format*)
                           (viewer *graphviz-default-viewer*)
-                          (graph *graphviz-default-graph*))
+                          (graph (graphviz-default-graph graph-root)))
   (when (symbolp graph)
     (setf graph (make-instance graph)))
   (uiop:with-temporary-file (:pathname image-file)

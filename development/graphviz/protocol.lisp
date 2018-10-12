@@ -108,6 +108,11 @@
 (defgeneric graphviz-known-nodes (graph node)
   (:method-combination append))
 
+;;; This generic function decides what kind of graph to use by default for
+;;; a given node.
+
+(defgeneric graphviz-default-graph (node))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes
@@ -159,6 +164,17 @@
 (defmethod graphviz-known-nodes append
     ((graph any-graph) node)
   '())
+
+(defmethod graphviz-default-graph :around
+    ((node t))
+  (let ((value (call-next-method)))
+    (if (symbolp value)
+        (make-instance value)
+        value)))
+
+(defmethod graphviz-default-graph
+    ((node t))
+  'any-graph)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

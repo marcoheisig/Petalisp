@@ -29,7 +29,8 @@
     :components
     ((:file "utilities")
      (:file "protocol")
-     (:file "strided-arrays")
+     (:file "petalisp")
+     (:file "data-flow-graph")
      (:file "ir")
      (:file "view")))
 
