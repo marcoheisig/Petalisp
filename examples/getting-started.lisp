@@ -6,6 +6,9 @@
 
 (in-package :petalisp-getting-started)
 
+;;; First of all, we define an auxiliary function PRESENT, that first shows
+;;; the data flow representation of a Petalisp datum, then evaluates it and
+;;; finally prints its value to the standard output.
 (defun present (expression)
   (petalisp-dev:view expression)
   (format t "~%=> ~A~%~%" (compute expression)))
@@ -13,8 +16,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Petalisp Basics
-
-;;; σ defines an index space
 
 (present
  (reshape 0 '())) ; the empty space
@@ -149,3 +150,13 @@
  (jacobi-2d
   (jacobi-2d domain)))
 
+;;; Finally, let's have a glimpse at the Petalisp intermediate
+;;; representation of Jacobi's algorithm.
+
+(petalisp-dev:view
+ (first
+  (petalisp-ir:ir-from-strided-arrays
+   (list
+    (jacobi-2d
+     (jacobi-2d domain)))
+   (petalisp-ir-backend:make-ir-backend))))
