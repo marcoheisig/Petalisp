@@ -27,12 +27,8 @@ quantities."
          ,@body))))
 
 (defun indices (array &optional (axis 0))
-  "Return a list, containing one array of integers for each dimension of
-ARRAY.  Each returned array contains the index values varying along the
-corresponding axis.
-
-If the optional argument AXIS is given, return only the one index array
-corresponding to that axis."
+  "Return an array of integers, where the value of each entry (i_0 ... i_N)
+is i_AXIS.  If axis is not supplied, it defaults to zero."
   (make-range-immediate (shape (strided-array array)) axis))
 
 (defun reshape (array &rest shapes-and-transformations)
