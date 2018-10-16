@@ -35,7 +35,7 @@
     ((transformation identity-transformation) scale offset)
   (assert (zerop offset))
   (assert (= 1 scale))
-  (make-identity-transformation (1+ (input-dimension transformation))))
+  (identity-transformation (1+ (input-dimension transformation))))
 
 (defmethod map-transformation-outputs
     ((transformation identity-transformation) (function function) &key from-end)

@@ -72,7 +72,7 @@
                                 (:scaling sequence)))
                 make-transformation)
          (ftype (function (array-length))
-                make-identity-transformation))
+                identity-transformation))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

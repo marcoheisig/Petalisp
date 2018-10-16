@@ -6,7 +6,7 @@
 ;;;
 ;;; The Primary Transformation Constructors
 
-(defun make-identity-transformation (dimension)
+(defun identity-transformation (dimension)
   (petalisp-memoization:with-vector-memoization (dimension)
     (make-instance 'identity-transformation
       :dimension dimension)))
@@ -111,7 +111,7 @@
             (not scaling)
             (not permutation)
             (= input-dimension output-dimension))
-       (make-identity-transformation input-dimension))
+       (identity-transformation input-dimension))
       ;; Check whether the transformation is invertible.
       ((or (null permutation)
            (= (- output-dimension (count-if #'zerop scaling))

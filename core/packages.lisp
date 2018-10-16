@@ -47,7 +47,7 @@
    #:canonicalize-transformation
    #:with-shape-accessors
    #:make-transformation
-   #:make-identity-transformation
+   #:identity-transformation
    #:invert-transformation
    #:transformation-equal
    #:compose-transformations

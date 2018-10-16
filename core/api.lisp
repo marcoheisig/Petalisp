@@ -73,7 +73,7 @@ overlap partially, the value of the rightmost object is used."
              (make-reference
               (find piece objects :from-end t :key #'shape :test #'set-subsetp)
               piece
-              (make-identity-transformation (dimension piece)))))
+              (identity-transformation (dimension piece)))))
       (make-fusion (mapcar #'reference-origin (subdivision (mapcar #'shape objects)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
