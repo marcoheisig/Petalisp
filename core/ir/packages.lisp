@@ -9,28 +9,41 @@
    #:instruction
    #:buffer
    #:kernel
-   #:simple-kernel
-   #:reduction-kernel
+
+   ;; Instructions
+   #:instruction
+   #:iterating-instruction
+   #:call-instruction
+   #:load-instruction
+   #:store-instruction
+   #:iref-instruction
+   #:reduce-instruction
 
    ;; Generic Constructors
-   #:make-instruction
-   #:make-kernel
-   #:make-simple-kernel
-   #:make-reduction-kernel
    #:make-buffer
+   #:make-kernel
 
    ;; Accessors
-   #:operator
-   #:loads
-   #:stores
    #:shape
    #:element-type
    #:inputs
    #:outputs
    #:iteration-space
-   #:body
-   #:reduction-range
+   #:loads
+   #:stores
    #:reduction-stores
+   #:instruction-number
+   #:transformation
+   #:operator
+   #:arguments
+   #:value
+   #:axis
+
+   ;; Utilities
+   #:reduction-kernel-p
+   #:reduce-instructions
+   #:map-instructions
+   #:map-buffers
 
    ;; IR Conversion
    #:ir-from-strided-arrays

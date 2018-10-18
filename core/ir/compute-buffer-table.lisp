@@ -25,6 +25,10 @@
 ;;; values bigger than one by buffers and discarding all other hash table
 ;;; entries.
 
+(defvar *buffer-table*)
+
+(defgeneric compute-buffer-table (strided-arrays backend))
+
 (defmethod compute-buffer-table ((graph-roots list) (backend backend))
   (let ((refcount-table (make-hash-table :test #'eq)))
     (loop for graph-root in graph-roots do

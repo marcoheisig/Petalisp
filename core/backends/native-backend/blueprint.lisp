@@ -19,23 +19,11 @@
   (ucons:ulist
    (ucons:umapcar #'blueprint-from-buffer (buffers kernel))
    (ucons:umapcar #'blueprint-from-reference (petalisp-ir:stores kernel))
-   (ucons:umapcar #'blueprint-from-reference (petalisp-ir:loads kernel))
-   (ucons:umapcar #'blueprint-from-instruction (petalisp-ir:body kernel))))
+   (ucons:umapcar #'blueprint-from-reference (petalisp-ir:loads kernel))))
 
-(defmethod blueprint ((kernel simple-kernel))
+(defmethod blueprint ((kernel kernel))
   (ucons:ulist*
    (ucons:umapcar #'blueprint-from-loop-range (ranges (petalisp-ir:iteration-space kernel)))
-   (call-next-method)))
-
-(defmethod blueprint ((kernel reduction-kernel))
-  (ucons:ulist*
-   (ucons:ucons
-    (ucons:ulist*
-     :reduction
-     (ucons:umapcar #'blueprint-from-store (petalisp-ir:reduction-stores kernel))
-     (petalisp-ir:operator kernel)
-     (blueprint-from-range (petalisp-ir:reduction-range kernel)))
-    (ucons:umapcar #'blueprint-from-loop-range (ranges (petalisp-ir:iteration-space kernel))))
    (call-next-method)))
 
 (defgeneric blueprint-from-buffer (buffer)

@@ -10,5 +10,6 @@
   ((:file "packages")
    (:file "ir")
    (:file "compute-buffer-table")
-   (:file "compute-kernels")
+   (:file "compute-iteration-spaces")
+   (:file "ir-conversion")
    (:file "normalize-ir")))

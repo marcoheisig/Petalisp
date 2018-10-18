@@ -2,190 +2,148 @@
 
 (in-package :petalisp-ir)
 
-;;; The purpose of IR conversion is to turn a data flow graph, whose nodes
-;;; are strided arrays, into an analogous graph, whose nodes are buffers
-;;; and kernels.  Kernels and buffers alternate, such that the inputs and
-;;; outputs of a kernel are always buffers, and such that the inputs and
-;;; outputs of a buffer are always kernels.
-;;;
-;;; The IR conversion algorithm proceeds along the following steps:
-;;;
-;;; 1. A hash table is created that maps certain strided arrays to buffers
-;;;    of the same size and element type.  This table is constructed such
-;;;    that any subgraph without these nodes is a tree and contains no
-;;;    reduction nodes.
-;;;
-;;; 2. Each root of a subtree from step 1 is turned into one or more
-;;;    kernels.  All fusion nodes in the tree are eliminated by choosing
-;;;    the iteration space of the kernels appropriately.
-;;;
-;;; 3. All buffers are updated to contain a list of kernels that read to
-;;;    them or write from them.
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Generic Functions
-
-(defgeneric compute-buffer-table (strided-arrays backend))
-
-(defgeneric compute-kernels (root backend))
-
-(defgeneric make-buffer (strided-array backend))
-
-(defgeneric make-instruction
-    (backend &key operator loads stores))
-
-(defgeneric make-simple-kernel
-    (backend &key iteration-space body))
-
-(defgeneric make-reduction-kernel
-    (backend &key reduction-range iteration-space operator reduction-stores body))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes
 
+;;; A buffer represents a set of memory locations big enough to hold one
+;;; element of type ELEMENT-TYPE for each index of the buffer's shape.
+;;; Each buffer is written to by zero or more kernels and read from zero or
+;;; more kernels.
 (defclass buffer ()
-  ((%shape :initarg :shape :reader shape)
+  ((%shape :initarg :shape :accessor shape)
    (%element-type :initarg :element-type :reader element-type)
    ;; The list of kernels that store into this buffer.
    (%inputs :initarg :inputs :accessor inputs :initform nil)
    ;; The list of kernels that load from this buffer.
    (%outputs :initarg :outputs :accessor outputs :initform nil)))
 
-(defclass instruction ()
-  ((%operator :initarg :operator :reader operator)
-   ;; The slots LOADS and STORES both contain a list, where each element is
-   ;; either a symbol, or a cons cell whose car is a buffer and whose cdr
-   ;; is a transformation.
-   (%loads :initarg :loads :reader loads)
-   (%stores :initarg :stores :reader stores)))
-
+;;; A kernel represents a computation that, for each element in its
+;;; iteration space, reads from some buffers and writes to some buffers.
+;;; Its exact behavior is determined by its instructions, which are
+;;; accessible via the slots LOADS and STORES.
 (defclass kernel ()
-  ((%iteration-space :initarg :iteration-space :reader iteration-space)
-   (%body :initarg :body :reader body)
-   ;; The slots LOADS and STORES both contain a list, where each element is
-   ;; a cons cell whose car is a buffer and whose cdr is a transformation.
+  ((%iteration-space :initarg :iteration-space :accessor iteration-space)
    (%loads :initarg :loads :accessor loads)
-   (%stores :initarg :stores :accessor stores)))
+   (%stores :initarg :stores :accessor stores)
+   (%reduction-stores :initarg :reduction-stores :accessor reduction-stores)))
 
-(defclass simple-kernel (kernel)
-  ())
+;;; The behavior of a kernel is described by its iteration space and its
+;;; instructions.  The instructions form a DAG, whose leaves are loads or
+;;; references to iteration variables, and whose roots are store
+;;; instructions.
+;;;
+;;; The instruction number of an instruction is an integer that is unique
+;;; among all instructions of the current kernel.  Instruction numbers are
+;;; handed out in depth first order of instruction dependencies, such that
+;;; the roots (store instructions) have the highest numbers and that the
+;;; leaf nodes (load and iref instructions) have the lowest numbers.
+(defclass instruction ()
+  ((%number :initarg :number :accessor instruction-number)))
 
-(defclass reduction-kernel (kernel)
+;;; We call an instruction an iterating instruction, if its behavior
+;;; directly depends on the current element of the iteration space.
+(defclass iterating-instruction (instruction)
+  ((%transformation :initarg :transformation :accessor transformation)))
+
+;;; A call instruction represents the application of a function to a set of
+;;; values that are the result of other instructions.  Each argument is
+;;; represented as a cons cell, whose cdr is another instruction, and whose
+;;; car is an integer describing which of the multiple values of the cdr is
+;;; to be used.
+(defclass call-instruction (instruction)
   ((%operator :initarg :operator :reader operator)
-   (%reduction-range :initarg :reduction-range :reader reduction-range)
-   ;; A list, where each element is either NIL, or a cons cell whose car is
-   ;; a buffer and whose cdr is a transformation.
-   (%reduction-stores :initarg :reduction-stores :reader reduction-stores)))
+   (%arguments :initarg :arguments :reader arguments)))
+
+;;; A load instruction represents a read from main memory.  It returns a
+;;; single value --- the entry of the buffer storage at the location
+;;; specified by the current element of the iteration space and the load's
+;;; transformation.
+(defclass load-instruction (iterating-instruction)
+  ((%buffer :initarg :buffer :reader buffer)))
+
+;;; A store instruction represents a write to main memory.  It stores the
+;;; given value (represented as a cons cell, just like the arguments of a
+;;; call instruction) at the entry of the buffer storage specified by the
+;;; current element of the iteration space and the store instruction's
+;;; transformation.  A store instruction returns zero values.
+(defclass store-instruction (iterating-instruction)
+  ((%value :initarg :value :reader value)
+   (%buffer :initarg :buffer :reader buffer)))
+
+;;; An iref instruction represents an access to elements of the iteration
+;;; space itself.  It returns a single value --- the integer obtained by
+;;; taking the element denoted by AXIS of the index that is the result of
+;;; transforming the current element of the iteration space with the iref's
+;;; transformation.
+(defclass iref-instruction (iterating-instruction)
+  ((%axis :initarg :axis :reader axis)))
+
+;;; A reduce instruction represents a binary tree reduction along the axis
+;;; zero of the iteration space.  Each argument is represented as a cons
+;;; cell, whose cdr is another instruction, and whose car is an integer
+;;; describing which of the multiple values of the cdr is to be used.  The
+;;; operator of the reduce instruction is a function that takes twice as
+;;; many arguments as the instruction itself, and returns as many values as
+;;; the instruction has arguments.
+(defclass reduce-instruction (iterating-instruction)
+  ((%operator :initarg :operator :reader operator)
+   (%arguments :initarg :arguments :reader arguments)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Methods
+;;; Constructors
+
+(defgeneric make-buffer (strided-array backend))
+
+(defgeneric make-kernel (backend &key iteration-space loads stores reduction-stores))
 
 (defmethod make-buffer ((strided-array strided-array) (backend backend))
   (make-instance 'buffer
     :shape (shape strided-array)
     :element-type (element-type strided-array)))
 
-(defmethod make-instruction ((backend backend) &rest args)
-  (apply #'make-instance 'instruction args))
-
-(defmethod make-simple-kernel ((backend backend) &rest args)
-  (apply #'make-instance 'simple-kernel args))
-
-(defmethod make-reduction-kernel ((backend backend) &rest args)
-  (apply #'make-instance 'reduction-kernel args))
-
-;;; We compute the loads, stores and buffers of a kernel during
-;;; SHARED-INITIALIZE, such that one can use REINITIALIZE-INSTANCE to
-;;; recompute them after the kernel body has changed.
-(defmethod shared-initialize :after
-    ((kernel kernel) slots &rest initargs)
-  (declare (ignore slots initargs))
-  (with-accessors ((loads loads) (stores stores)) kernel
-    ;; Determine the loads and stores.
-    (multiple-value-setq (loads stores)
-      (compute-kernel-loads-and-stores kernel))))
-
-;;; In reduction kernels, not only the body can store values, but also the
-;;; kernel itself.  Luckily, :after methods are run in least-specific-first
-;;; order, so we can just append to the previously computed list.
-(defmethod shared-initialize :after
-    ((reduction-kernel reduction-kernel) slots &rest initargs)
-  (declare (ignore slots initargs))
-  (appendf (stores reduction-kernel)
-           (remove-if #'null (reduction-stores reduction-kernel))))
+(defmethod make-kernel ((backend backend) &rest args)
+  (apply #'make-instance 'kernel args))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Pretty Printing
+;;; Utilities
 
-(defmethod print-object ((instruction instruction) stream)
-  (format stream "{~{~S~^ ~} <- ~S ~{~S~^ ~}}"
-          (stores instruction)
-          (operator instruction)
-          (loads instruction)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; The IR conversion entry point
-
-(defvar *buffer-table*)
-
-(defun ir-from-strided-arrays (strided-arrays backend)
-  (let ((*buffer-table* (compute-buffer-table strided-arrays backend)))
-    ;; Now create a list of kernels for each entry in the buffer table.
-    (loop for root being each hash-key of *buffer-table* do
-      (let ((kernels (compute-kernels root backend)))
-        ;; Update the inputs and outputs of all buffers to match
-        ;; the inputs and outputs of the corresponding kernels.
-        (loop for kernel in kernels do
-          (loop for (buffer . nil) in (loads kernel) do
-            (pushnew kernel (outputs buffer)))
-          (loop for (buffer . nil) in (stores kernel) do
-            (pushnew kernel (inputs buffer))))))
-    ;; Finally, return the buffers corresponding to the root nodes.
-    (loop for strided-array in strided-arrays
-          collect (gethash strided-array *buffer-table*))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Miscellaneous Utilities
-
-(defun reduction-value-symbol (n)
-  (petalisp-memoization:with-vector-memoization (n)
-    (intern
-     (format nil "REDUCTION-VALUE-~D" n)
-     :petalisp-ir)))
-
-(defun ref= (a b)
-  (and (eq (car a) (car b))
-       (transformation-equal (cdr a) (cdr b))))
-
-(defun compute-kernel-loads-and-stores (kernel)
-  (let ((all-loads '())
-        (all-stores '()))
-    (labels ((scan-instruction (instruction)
-               (loop for load in (loads instruction)
-                     when (consp load)
-                       do (pushnew load all-loads :test #'ref=))
-               (loop for store in (stores instruction)
-                     when (consp store)
-                       do (pushnew store all-stores :test #'ref=))))
-      (mapc #'scan-instruction (body kernel)))
-    (values all-loads all-stores)))
+(defgeneric reduction-kernel-p (object)
+  (:method ((object t)) nil)
+  (:method ((kernel kernel))
+    (not (null (reduction-stores kernel)))))
 
 (defun map-buffers (function root-buffers)
   (let ((table (make-hash-table :test #'eq)))
     (labels ((process-buffer (buffer)
-               (multiple-value-bind (value already-visited)
-                   (gethash buffer table)
-                 (declare (ignore value))
-                 (unless already-visited
-                   (setf (gethash buffer table)
-                         (funcall function buffer))
-                   (loop for kernel in (inputs buffer) do
-                     (loop for (input-buffer . nil) in (loads kernel) do
-                       (process-buffer input-buffer)))))))
+               (unless (gethash buffer table)
+                 (setf (gethash buffer table) t)
+                 (funcall function buffer)
+                 (loop for kernel in (inputs buffer) do
+                   (loop for load in (loads kernel) do
+                     (process-buffer (buffer load)))))))
       (mapc #'process-buffer root-buffers))))
+
+(defun map-instructions (function kernel)
+  (labels ((process-instruction (instruction n)
+             (let ((n-new (instruction-number instruction)))
+               (when (< n-new n)
+                 (funcall function instruction)
+                 (typecase instruction
+                   (call-instruction
+                    (loop for (nil . instruction) in (arguments instruction) do
+                      (process-instruction instruction n-new)))
+                   (store-instruction
+                    (process-instruction (cdr (value instruction)) n-new)))))))
+    (loop for store in (petalisp-ir:stores kernel) do
+      (process-instruction store most-positive-fixnum))
+    (loop for store in (petalisp-ir:reduction-stores kernel) do
+      (process-instruction store most-negative-fixnum))))
+
+(defun reduce-instructions (kernel)
+  (let ((result '()))
+    (loop for reduction-store in (petalisp-ir:reduction-stores kernel) do
+      (pushnew (cdr (petalisp-ir:value reduction-store)) result))
+    result))

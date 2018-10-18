@@ -35,12 +35,6 @@
    (%executedp :initarg :executedp :accessor executedp
                :initform nil)))
 
-(defclass simple-kernel (petalisp-ir:simple-kernel kernel)
-  ())
-
-(defclass reduction-kernel (petalisp-ir:reduction-kernel kernel)
-  ())
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Methods
@@ -82,13 +76,9 @@
     :shape (shape strided-array)
     :element-type (element-type strided-array)))
 
-(defmethod petalisp-ir:make-simple-kernel
+(defmethod petalisp-ir:make-kernel
     ((backend native-backend) &rest args)
-  (apply #'make-instance 'simple-kernel args))
-
-(defmethod petalisp-ir:make-reduction-kernel
-    ((backend native-backend) &rest args)
-  (apply #'make-instance 'reduction-kernel args))
+  (apply #'make-instance 'kernel args))
 
 (defmethod shared-initialize :after ((kernel kernel) slot-names &rest args)
   (declare (ignore slot-names args))

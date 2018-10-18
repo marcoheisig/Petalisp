@@ -108,9 +108,4 @@
 (defmethod graphviz-node-properties append
     ((graph ir-graph)
      (kernel petalisp-ir:kernel))
-  `(("body" . ,(stringify
-                (loop for statement in (petalisp-ir:body kernel)
-                      collect
-                      (append (hide-buffers (petalisp-ir:stores statement))
-                              (list :<- (petalisp-ir:operator statement))
-                              (hide-buffers (petalisp-ir:loads statement))))))))
+  `(("body" . "TODO")))

@@ -16,24 +16,38 @@
 ;;; semantics is preserved.
 
 (defun normalize-ir (roots)
-  ;; The normalization table is a mapping from buffers to their respective
-  ;; normalizing transformation.  A normalizing transformation is a mapping
-  ;; from the indices of the old buffer shape to the indices of the new
-  ;; buffer shape.
   (map-buffers
    (lambda (buffer)
-     (let ((transformation (collapsing-transformation (shape buffer))))
-       (unless (identity-transformation-p transformation)
-         ;; Update all kernels that store into this buffer.
-         (loop for kernel in (inputs buffer) do
-           (loop for store in (stores kernel) do
-             (when (eq (car store) buffer)
-               (setf (cdr store)
-                     (compose-transformations transformation (cdr store))))))
-         ;; Update all kernels that load from this buffer.
-         (loop for kernel in (outputs buffer) do
-           (loop for load in (loads kernel) do
-             (when (eq (car load) buffer)
-               (setf (cdr load)
-                     (compose-transformations transformation (cdr load)))))))))
+     (transform buffer (collapsing-transformation (shape buffer))))
    roots))
+
+(defmethod transform
+    ((buffer buffer)
+     (transformation transformation))
+  (setf (shape buffer)
+        (transform (shape buffer) transformation)))
+
+(defmethod transform
+    ((instruction instruction)
+     (transformation transformation))
+  (values))
+
+(defmethod transform
+    ((iterating-instruction iterating-instruction)
+     (transformation transformation))
+  (setf (transformation iterating-instruction)
+        (compose-transformations
+         transformation
+         (transformation iterating-instruction))))
+
+;;; Once a buffer has been transformed, update all loads and stores
+;;; referencing the buffer to preserve the semantics of the IR.
+(defmethod transform :after ((buffer buffer) (transformation transformation))
+  (loop for kernel in (inputs buffer) do
+    (loop for store in (stores kernel) do
+      (when (eq (buffer store) buffer)
+        (transform store transformation))))
+  (loop for kernel in (outputs buffer) do
+    (loop for load in (loads kernel) do
+      (when (eq (buffer load) buffer)
+        (transform load transformation)))))
