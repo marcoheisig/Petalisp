@@ -12,7 +12,9 @@
    #:umapcar
    #:ulength
    #:copy-ulist
-   #:copy-utree))
+   #:copy-utree
+   #:*root-table*
+   #:make-root-table))
 
 (in-package :ucons)
 
@@ -65,10 +67,6 @@
 ;;; (bench  (list 1 2 3 4 5 6 7 8)) -> 25.77 nanoseconds
 ;;; (bench (ulist 1 2 3 4 5 6 7 8)) -> 38.18 nanoseconds
 
-(declaim (hash-table *root-table*))
-(defvar *root-table* (make-hash-table)
-  "The table of all uconses whose cdr is NIL.")
-
 (defstruct (ucons
             (:constructor make-fresh-ucons (car cdr))
             (:copier nil) ; This is the whole point, isn't it?
@@ -105,11 +103,6 @@ and past invocation of this function with the same arguments."
                   finally (return (ucons-list car cdr)))
             (ucons-hash car cdr)))))
 
-;;; Called for UCONSES with a CDR of NIL
-(defun ucons-leaf (car)
-  (values
-   (ensure-gethash car *root-table* (make-fresh-ucons car nil))))
-
 ;;; Called if the UTABLE of CDR is a hash table
 (defun ucons-hash (car cdr)
   (declare (ucons cdr))
@@ -126,6 +119,32 @@ and past invocation of this function with the same arguments."
           (let ((hash-table (alist-hash-table (utable cdr) :size 32)))
             (setf (gethash car hash-table) ucons)
             (setf (utable cdr) hash-table))))))
+
+;;; Lookup of root nodes, i.e., uconses whose cdr is NIL.
+
+(defstruct (root-table (:copier nil)
+                       (:predicate nil))
+  (cache (make-hash-table) :read-only t :type hash-table)
+  (small-integer-cache
+   (let ((array (make-array 32)))
+     (dotimes (index 32 array)
+       (setf (aref array index)
+             (make-fresh-ucons index nil))))
+   :read-only t
+   :type (simple-array ucons (32))))
+
+(declaim (root-table *root-table*))
+(defvar *root-table* (make-root-table)
+  "The table of all uconses whose cdr is NIL.")
+
+(defun ucons-leaf (car)
+  (if (typep car '(integer 0 (32)))
+      ;; Go to the small integer cache
+      (aref (root-table-small-integer-cache *root-table*) car)
+      ;; Else, go to the slightly slower general cache.
+      (let ((cache (root-table-cache *root-table*)))
+        (values
+         (ensure-gethash car cache (make-fresh-ucons car nil))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
