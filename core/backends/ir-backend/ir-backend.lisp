@@ -125,7 +125,7 @@
         (let* ((ranges (ranges (petalisp-ir:iteration-space kernel)))
                (reduction-range (first ranges))
                (non-reducing-iteration-space (shape-from-ranges (rest ranges)))
-               (reduce-instructions (petalisp-ir:reduce-instructions kernel)))
+               (reduce-instructions (petalisp-ir:kernel-reduce-instructions kernel)))
           (loop for non-reducing-index in (set-elements non-reducing-iteration-space) do
             (labels ((divide-and-conquer (range)
                        (if (unary-range-p range)

@@ -115,6 +115,22 @@
   (:method ((kernel kernel))
     (not (null (reduction-stores kernel)))))
 
+(defun kernel-reduce-instructions (kernel)
+  (let ((result '()))
+    (loop for reduction-store in (petalisp-ir:reduction-stores kernel) do
+      (pushnew (cdr (petalisp-ir:value reduction-store)) result))
+    result))
+
+(defun kernel-buffers (kernel)
+  (let ((buffers '()))
+    (loop for load in (loads kernel) do
+      (pushnew (buffer load) buffers))
+    (loop for store in (stores kernel) do
+      (pushnew (buffer store) buffers))
+    (loop for store in (reduction-stores kernel) do
+      (pushnew (buffer store) buffers))
+    buffers))
+
 (defun map-buffers (function root-buffers)
   (let ((table (make-hash-table :test #'eq)))
     (labels ((process-buffer (buffer)
@@ -145,20 +161,13 @@
              (let ((n-new (instruction-number instruction)))
                (when (< n-new n)
                  (funcall function instruction)
-                 (map-instructions-inputs
+                 (map-instruction-inputs
                   (lambda (next) (process-instruction next n-new))
                   instruction)))))
     (loop for store in (petalisp-ir:stores kernel) do
       (process-instruction store most-positive-fixnum))
     (loop for store in (petalisp-ir:reduction-stores kernel) do
       (process-instruction store most-negative-fixnum))))
-
-;;; TODO this is an unfortunate name.
-(defun reduce-instructions (kernel)
-  (let ((result '()))
-    (loop for reduction-store in (petalisp-ir:reduction-stores kernel) do
-      (pushnew (cdr (petalisp-ir:value reduction-store)) result))
-    result))
 
 ;;; This function exploits that the numbers are handed out starting from
 ;;; the leaf instructions.  So we know that the highest instruction number

@@ -39,11 +39,12 @@
 
    ;; Utilities
    #:reduction-kernel-p
-   #:reduce-instructions
    #:map-instructions
    #:map-buffers
    #:highest-instruction-number
    #:update-instruction-numbers
+   #:kernel-buffers
+   #:kernel-reduce-instructions
 
    ;; IR Conversion
    #:ir-from-strided-arrays

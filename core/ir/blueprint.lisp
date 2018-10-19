@@ -12,18 +12,11 @@
 ;;; A list of buffers referenced by the current kernel.
 (defvar *buffers*)
 
-(defun compute-kernel-buffers (kernel)
-  (let ((buffers '()))
-    (loop for load in (loads kernel) do
-      (pushnew (buffer load) buffers))
-    (loop for store in (stores kernel) do
-      (pushnew (buffer store) buffers))
-    (loop for store in (reduction-stores kernel) do
-      (pushnew (buffer store) buffers))
-    buffers))
+(defvar *function-counter*)
 
 (defmethod blueprint :around ((kernel kernel))
-  (let ((*buffers* (compute-kernel-buffers kernel)))
+  (let ((*buffers* (kernel-buffers kernel))
+        (*function-counter* -1))
     (call-next-method)))
 
 (defmethod blueprint ((kernel kernel))
@@ -70,7 +63,7 @@
 
 (defmethod blueprint ((call-instruction call-instruction))
   (ucons:ulist* :call
-                (operator call-instruction)
+                (blueprint-from-operator (operator call-instruction))
                 (ucons:umapcar #'blueprint-from-value
                                (arguments call-instruction))))
 
@@ -97,7 +90,7 @@
 
 (defmethod blueprint ((reduce-instruction reduce-instruction))
   (ucons:ulist* :reduce
-                (operator reduce-instruction)
+                (blueprint-from-operator (operator reduce-instruction))
                 (ucons:umapcar #'blueprint-from-value
                                (arguments reduce-instruction))))
 
@@ -117,3 +110,8 @@
 
 (defun buffer-number (buffer)
   (position buffer *buffers*))
+
+(defun blueprint-from-operator (operator)
+  (if (symbolp operator)
+      operator
+      (incf *function-counter*)))
