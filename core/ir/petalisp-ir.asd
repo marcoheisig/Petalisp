@@ -12,4 +12,5 @@
    (:file "compute-buffer-table")
    (:file "compute-iteration-spaces")
    (:file "ir-conversion")
-   (:file "normalize-ir")))
+   (:file "normalize-ir")
+   (:file "blueprint")))

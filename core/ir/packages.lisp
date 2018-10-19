@@ -9,8 +9,6 @@
    #:instruction
    #:buffer
    #:kernel
-
-   ;; Instructions
    #:instruction
    #:iterating-instruction
    #:call-instruction
@@ -19,7 +17,7 @@
    #:iref-instruction
    #:reduce-instruction
 
-   ;; Generic Constructors
+   ;; Constructors
    #:make-buffer
    #:make-kernel
 
@@ -52,4 +50,5 @@
    #:compute-buffer-table
    #:compute-kernels
    #:reduction-value-symbol
-   #:normalize-ir))
+   #:normalize-ir
+   #:blueprint))

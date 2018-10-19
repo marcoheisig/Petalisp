@@ -242,7 +242,7 @@ have been converted to lists."
   (cond (*print-pretty*
          (let ((list (ucons:copy-ulist ulist)))
            (pprint-logical-block (stream list :prefix "[" :suffix "]")
-             (pprint-fill stream list nil))))
+             (pprint-linear stream list nil))))
         (t
          (write-string "[" stream)
          (loop while ulist do

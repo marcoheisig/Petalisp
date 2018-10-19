@@ -14,7 +14,6 @@
    (:file "translation-unit")
    (:file "native-backend")
    (:file "ir-conversion")
-   (:file "blueprint")
    (:file "translation-unit-from-blueprint")
    (:file "lambda-expression-from-translation-unit")
    (:file "blueprint-compiler")

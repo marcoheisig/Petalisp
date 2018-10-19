@@ -31,8 +31,7 @@
   ((%axis :initarg :axis :reader axis)))
 
 (defclass kernel (petalisp-ir:kernel)
-  ((%buffers :initarg :buffers :accessor buffers)
-   (%executedp :initarg :executedp :accessor executedp
+  ((%executedp :initarg :executedp :accessor executedp
                :initform nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -79,12 +78,3 @@
 (defmethod petalisp-ir:make-kernel
     ((backend native-backend) &rest args)
   (apply #'make-instance 'kernel args))
-
-(defmethod shared-initialize :after ((kernel kernel) slot-names &rest args)
-  (declare (ignore slot-names args))
-  (let ((buffers '()))
-    (loop for (buffer . nil) in (petalisp-ir:loads kernel) do
-      (pushnew buffer buffers))
-    (loop for (buffer . nil) in (petalisp-ir:stores kernel) do
-      (pushnew buffer buffers))
-    (setf (buffers kernel) buffers)))
