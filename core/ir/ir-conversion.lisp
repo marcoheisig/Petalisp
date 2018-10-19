@@ -48,8 +48,7 @@
   (incf *instruction-counter*))
 
 (defmethod compute-kernels :around ((root strided-array) (backend backend))
-  (let ((*instruction-counter* -1)
-        (*kernel-root* root))
+  (let ((*kernel-root* root))
     (call-next-method)))
 
 (defgeneric compute-kernels (root backend))
@@ -76,18 +75,19 @@
   (let ((transformation (identity-transformation (dimension root))))
     (loop for iteration-space in (compute-iteration-spaces root)
           collect
-          (multiple-value-bind (value loads)
-              (compute-kernel-body root iteration-space transformation)
-            (make-kernel
-             backend
-             :iteration-space iteration-space
-             :loads loads
-             :reduction-stores '()
-             :stores (list (make-instance 'store-instruction
-                             :number (next-instruction-number)
-                             :value value
-                             :buffer (gethash root *buffer-table*)
-                             :transformation transformation)))))))
+          (let ((*instruction-counter* -1))
+            (multiple-value-bind (value loads)
+                (compute-kernel-body root iteration-space transformation)
+              (make-kernel
+               backend
+               :iteration-space iteration-space
+               :loads loads
+               :reduction-stores '()
+               :stores (list (make-instance 'store-instruction
+                               :number (next-instruction-number)
+                               :value value
+                               :buffer (gethash root *buffer-table*)
+                               :transformation transformation))))))))
 
 ;;; Reductions are exceptional in that iteration space has a higher
 ;;; dimension than the shape of the root node.
@@ -101,7 +101,8 @@
          (reduction-range (make-range 0 1 (1- (set-size reduction-range)))))
     (loop for iteration-space in (compute-iteration-spaces root)
           collect
-          (let ((iteration-space (enlarge-shape iteration-space reduction-range)))
+          (let ((*instruction-counter* -1)
+                (iteration-space (enlarge-shape iteration-space reduction-range)))
             (multiple-value-bind (value loads)
                 (compute-kernel-body root iteration-space inner-transformation)
               (make-kernel

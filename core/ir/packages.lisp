@@ -44,6 +44,8 @@
    #:reduce-instructions
    #:map-instructions
    #:map-buffers
+   #:highest-instruction-number
+   #:update-instruction-numbers
 
    ;; IR Conversion
    #:ir-from-strided-arrays

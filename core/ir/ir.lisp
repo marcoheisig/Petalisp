@@ -126,24 +126,62 @@
                      (process-buffer (buffer load)))))))
       (mapc #'process-buffer root-buffers))))
 
+(defgeneric map-instruction-inputs (function instruction)
+  (:method ((function function) (call-instruction call-instruction))
+    (loop for (nil . input) in (arguments call-instruction) do
+      (funcall function input)))
+  (:method ((function function) (reduce-instruction reduce-instruction))
+    (loop for (nil . input) in (arguments reduce-instruction) do
+      (funcall function input)))
+  (:method ((function function) (store-instruction store-instruction))
+    (funcall function (cdr (value store-instruction))))
+  (:method ((function function) (load-instruction load-instruction))
+    (values))
+  (:method ((function function) (iref-instruction iref-instruction))
+    (values)))
+
 (defun map-instructions (function kernel)
   (labels ((process-instruction (instruction n)
              (let ((n-new (instruction-number instruction)))
                (when (< n-new n)
                  (funcall function instruction)
-                 (typecase instruction
-                   (call-instruction
-                    (loop for (nil . instruction) in (arguments instruction) do
-                      (process-instruction instruction n-new)))
-                   (store-instruction
-                    (process-instruction (cdr (value instruction)) n-new)))))))
+                 (map-instructions-inputs
+                  (lambda (next) (process-instruction next n-new))
+                  instruction)))))
     (loop for store in (petalisp-ir:stores kernel) do
       (process-instruction store most-positive-fixnum))
     (loop for store in (petalisp-ir:reduction-stores kernel) do
       (process-instruction store most-negative-fixnum))))
 
+;;; TODO this is an unfortunate name.
 (defun reduce-instructions (kernel)
   (let ((result '()))
     (loop for reduction-store in (petalisp-ir:reduction-stores kernel) do
       (pushnew (cdr (petalisp-ir:value reduction-store)) result))
     result))
+
+;;; This function exploits that the numbers are handed out starting from
+;;; the leaf instructions.  So we know that the highest instruction number
+;;; must be somewhere at the root instructions.
+(defun highest-instruction-number (kernel)
+  (max (loop for store in (petalisp-ir:stores kernel)
+             maximize (petalisp-ir:instruction-number store))
+       (loop for store in (petalisp-ir:reduction-stores kernel)
+             maximize (petalisp-ir:instruction-number store))))
+
+(defun update-instruction-numbers (kernel)
+  ;; Step 1 - set all instruction numbers to NIL
+  (labels ((clear-instruction-numbers (instruction)
+             (unless (null (instruction-number instruction))
+               (map-instruction-inputs #'clear-instruction-numbers instruction)
+               (setf (instruction-number instruction) nil))))
+    (mapc #'clear-instruction-numbers (stores kernel))
+    (mapc #'clear-instruction-numbers (reduction-stores kernel)))
+  ;; Step 2 - assign new instruction numbers
+  (let ((n -1))
+    (labels ((assign-instruction-numbers (instruction)
+               (when (null (instruction-number instruction))
+                 (map-instruction-inputs #'assign-instruction-numbers instruction)
+                 (setf (instruction-number instruction) (incf n)))))
+      (mapc #'assign-instruction-numbers (stores kernel))
+      (mapc #'assign-instruction-numbers (reduction-stores kernel)))))

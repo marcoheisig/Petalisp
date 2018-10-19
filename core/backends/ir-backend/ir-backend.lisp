@@ -112,14 +112,8 @@
    (nth (petalisp-ir:axis iref-instruction)
         (transform *index* (petalisp-ir:transformation iref-instruction)))))
 
-(defun highest-instruction-number (kernel)
-  (max (loop for store in (petalisp-ir:stores kernel)
-             maximize (petalisp-ir:instruction-number store))
-       (loop for store in (petalisp-ir:reduction-stores kernel)
-             maximize (petalisp-ir:instruction-number store))))
-
 (defmethod execute ((kernel petalisp-ir:kernel))
-  (let* ((size (1+ (highest-instruction-number kernel)))
+  (let* ((size (1+ (petalisp-ir:highest-instruction-number kernel)))
          (*instruction-values* (make-array size)))
     (if (not (petalisp-ir:reduction-kernel-p kernel))
         ;; Non-reduction kernels.
@@ -157,4 +151,3 @@
               (let ((*index* non-reducing-index))
                 (loop for reduction-store in (petalisp-ir:reduction-stores kernel) do
                   (instruction-values reduction-store)))))))))
-
