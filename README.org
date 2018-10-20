@@ -6,39 +6,9 @@ programming language, but rather a carefully crafted extension of Common
 Lisp that allows for extreme optimization and parallelization.
 
 ** Getting Started
-*** 1. Install Lisp and a suitable IDE.
-The fastest way to get everything up and running is to use [[https://portacle.github.io/][Portacle]].
-
-*** 2. Download Petalisp.
-In order to be able to load Petalisp, you may have to place it in the
-appropriate project directory.
-
-For Portacle users
-#+BEGIN_SRC sh
-cd ~/portacle/projects && git clone https://github.com/marcoheisig/Petalisp.git
-#+END_SRC
-
-For Quicklisp users
-#+BEGIN_SRC sh
-cd ~/quicklisp/local-projects && git clone https://github.com/marcoheisig/Petalisp.git
-#+END_SRC
-*** 3. Load Petalisp
-Launch your Lisp IDE and evaluate the following commands:
-
-#+BEGIN_SRC lisp
-(ql:quickload :petalisp)
-(ql:quickload :petalisp-test-suite)
-#+END_SRC
-
-You may also want to run the Petalisp test suite.
-
-#+BEGIN_SRC lisp
-(asdf:test-system :petalisp)
-#+END_SRC
-
-*** 4. Done!
-Congratulations, you have now access to a highly experimental parallel
-programming environment! You should now be able to run the [[file:modules][examples]].
+1. Install Lisp and a suitable IDE.  If unsure, pick [[https://portacle.github.io/][Portacle]].
+2. Download Petalisp via [[https://www.quicklisp.org/][Quicklisp]].
+3. Check out some of the [[file:examples][examples]].
 
 ** Showcases
 Petalisp is still under development, so the following examples may still
@@ -81,13 +51,15 @@ Example 3: the numerical Jacobi scheme in two dimensions
 Coming soon!
 
 ** Frequently Asked Questions
-
 *** Why the Greek letters?
 There are several reasons:
 1. It underlines the beautiful, mathematical nature of this programming model.
 2. The α and β functions are a tribute to Connection Machine Lisp.
 3. Compared to programming a computer with billions of transistors and
    terabytes of memory, typing Greek letters is easy. Right?
+
+Note: Following community feedback, it is now also possible to write =a=
+instead of =α= and =b= instead of =β=.
 
 *** Why is Petalisp licensed under AGPL?
 I am aware that this license prevents some people from using or
@@ -108,5 +80,5 @@ basis.
 *** Why is Petalisp written in Common Lisp?
 I couldn't wish for a better tool for the job. Common Lisp is extremely
 rich in features, standardized, fast, safe and mature. The Lisp community
-is amazing and there are excellent libraries for every imaginable
+is amazing and there are excellent libraries for almost every imaginable
 task.
