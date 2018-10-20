@@ -84,9 +84,9 @@
 
    ;; High-level API
    #:α
-   #:alpha
+   #:a
    #:β
-   #:beta
+   #:b
    #:reshape
    #:transform
    #:τ
