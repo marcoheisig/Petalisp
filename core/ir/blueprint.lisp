@@ -9,9 +9,7 @@
 
 (defgeneric blueprint (kernel))
 
-;;; A list of buffers referenced by the current kernel.
 (defvar *buffers*)
-
 (defvar *function-counter*)
 
 (defmethod blueprint :around ((kernel kernel))
@@ -21,8 +19,8 @@
 
 (defmethod blueprint ((kernel kernel))
   (ucons:ulist
-   (ucons:umapcar #'blueprint *buffers*)
    (ucons:umapcar #'blueprint (ranges (iteration-space kernel)))
+   (ucons:umapcar #'blueprint *buffers*)
    ;; Now generate the blueprints for all instructions in the kernel
    (let* ((size (1+ (highest-instruction-number kernel)))
           (instruction-blueprints (make-array size))
@@ -62,10 +60,10 @@
 ;;; Instruction Blueprints
 
 (defmethod blueprint ((call-instruction call-instruction))
-  (ucons:ulist* :call
-                (blueprint-from-operator (operator call-instruction))
-                (ucons:umapcar #'blueprint-from-value
-                               (arguments call-instruction))))
+  (ucons:ulist*
+   :call
+   (blueprint-from-operator (operator call-instruction))
+   (ucons:umapcar #'blueprint-from-value (arguments call-instruction))))
 
 (defmethod blueprint ((load-instruction load-instruction))
   (ucons:ulist* :load
@@ -104,14 +102,14 @@
      :from-end t)
     result))
 
+(defun blueprint-from-operator (operator)
+  (etypecase operator
+    (function (incf *function-counter*))
+    (symbol operator)))
+
 (defun blueprint-from-value (value)
   (destructuring-bind (value-n . instruction) value
     (ucons:ulist value-n (instruction-number instruction))))
 
 (defun buffer-number (buffer)
   (position buffer *buffers*))
-
-(defun blueprint-from-operator (operator)
-  (if (symbolp operator)
-      operator
-      (incf *function-counter*)))

@@ -42,8 +42,7 @@
          (end (end-variable depth))
          (i (index-variable depth))
          (type (if (fixnum-p loop-block) 'fixnum 'integer)))
-    `(loop for ,i ,type from ,start by ,step below ,end
-           do ,(translate-basic-block (successor loop-block)))))
+    ))
 
 (defmethod translate-basic-block ((reduction reduction))
   (mapc #'translate-instruction (instructions reduction))

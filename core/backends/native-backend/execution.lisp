@@ -68,7 +68,7 @@
             (setf (aref storage-arguments index)
                   (storage buffer)))
     ;; Now call the compiled kernel.
-    (funcall (compile-blueprint (petalisp-ir:blueprint kernel) backend)
+    (funcall (compile-blueprint (petalisp-ir:blueprint kernel))
              range-arguments
              storage-arguments)))
 
