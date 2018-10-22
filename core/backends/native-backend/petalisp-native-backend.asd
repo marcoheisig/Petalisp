@@ -10,6 +10,7 @@
   :components
   ((:file "packages")
    (:file "utilities")
+   (:file "form-builder")
    (:file "memory-pool")
    (:file "translation-unit")
    (:file "native-backend")

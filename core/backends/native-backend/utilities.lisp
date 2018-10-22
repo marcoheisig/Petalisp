@@ -11,7 +11,7 @@
          (function-name (symbolicate name prefix)))
     `(defun ,function-name (n)
        (petalisp-memoization:with-vector-memoization (n)
-         (format-symbol *package* "~A-~D" ',prefix n)))))
+         (format-symbol *package* "~A-~D" ',name n)))))
 
 (define-compiler-gensym start)
 (define-compiler-gensym step)
@@ -19,6 +19,11 @@
 (define-compiler-gensym index)
 (define-compiler-gensym storage)
 (define-compiler-gensym range)
+
+;; Reduction variables.
+(define-compiler-gensym left)
+(define-compiler-gensym right)
+(define-compiler-gensym result)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
