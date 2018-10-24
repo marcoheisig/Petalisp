@@ -84,7 +84,7 @@
        (lambda (output-index input-index scaling offset)
          (when (= output-index axis)
            (return
-             (ucons:ulist 'range input-index scaling offset))))))))
+             (ucons:ulist :iref input-index scaling offset))))))))
 
 (defmethod blueprint ((reduce-instruction reduce-instruction))
   (ucons:ulist* :reduce

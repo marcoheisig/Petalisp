@@ -7,23 +7,24 @@
 ;;; Compiler "Gensyms"
 
 (defmacro define-compiler-gensym (name)
-  (let* ((prefix '#:-variable)
+  (let* ((prefix '#:-symbol)
          (function-name (symbolicate name prefix)))
     `(defun ,function-name (n)
        (petalisp-memoization:with-vector-memoization (n)
          (format-symbol *package* "~A-~D" ',name n)))))
 
-(define-compiler-gensym start)
-(define-compiler-gensym step)
-(define-compiler-gensym end)
+;; Loop indices.
 (define-compiler-gensym index)
-(define-compiler-gensym storage)
-(define-compiler-gensym range)
 
 ;; Reduction variables.
 (define-compiler-gensym left)
 (define-compiler-gensym right)
 (define-compiler-gensym result)
+
+(defun value-symbol (instruction-number &optional (value-number 0))
+  (format-symbol *package* "VALUE-~D-~D" instruction-number value-number))
+
+;; Multiple value references.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

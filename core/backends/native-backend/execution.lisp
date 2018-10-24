@@ -31,8 +31,8 @@
 
 (defmethod execute-kernel :before
     ((kernel kernel) (native-backend native-backend))
-  (loop for (buffer . nil) in (petalisp-ir:loads kernel) do
-    (compute-buffer buffer native-backend)))
+  (loop for load in (petalisp-ir:loads kernel) do
+    (compute-buffer (petalisp-ir:buffer load) native-backend)))
 
 (defmethod execute-kernel
     ((kernel kernel) (native-backend native-backend))
@@ -51,7 +51,10 @@
            nil))
         (storage-arguments
           (load-time-value
-           (make-array 0 :adjustable t))))
+           (make-array 0 :adjustable t)))
+        (lambda-expression
+          (lambda-expression-from-blueprint (petalisp-ir:blueprint kernel))))
+    (break)
     ;; Initialize the range arguments.
     (adjust-array range-arguments (* 3 (dimension (petalisp-ir:iteration-space kernel))))
     (loop for range in (ranges (petalisp-ir:iteration-space kernel))
@@ -68,9 +71,7 @@
             (setf (aref storage-arguments index)
                   (storage buffer)))
     ;; Now call the compiled kernel.
-    (funcall (compile-blueprint (petalisp-ir:blueprint kernel))
-             range-arguments
-             storage-arguments)))
+    (funcall (compile nil lambda-expression) range-arguments storage-arguments)))
 
 (defun free-storage (buffer backend)
   (let ((memory-pool (memory-pool backend))
