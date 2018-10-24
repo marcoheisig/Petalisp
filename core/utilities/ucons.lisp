@@ -138,14 +138,13 @@ and past invocation of this function with the same arguments."
   "The table of all uconses whose cdr is NIL.")
 
 (defun ucons-leaf (car)
-  (let ((root-table *root-table*))
-    (if (typep car '(integer 0 (32)))
-        ;; Go to the small integer cache
-        (aref (root-table-small-integer-cache root-table) car)
-        ;; Else, go to the slightly slower general cache.
-        (let ((cache (root-table-cache root-table)))
-          (values
-           (ensure-gethash car cache (make-fresh-ucons car nil)))))))
+  (if (typep car '(integer 0 (32)))
+      ;; Go to the small integer cache
+      (aref (root-table-small-integer-cache *root-table*) car)
+      ;; Else, go to the slightly slower general cache.
+      (let ((cache (root-table-cache *root-table*)))
+        (values
+         (ensure-gethash car cache (make-fresh-ucons car nil))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
