@@ -6,11 +6,17 @@
 ;;;
 ;;; Macros
 
-(defmacro bind (variables value-form &body body)
+(defmacro nest (&rest r)
+  (reduce (lambda (o i) `(,@o ,i)) r :from-end t))
+
+(defmacro bind (variables value-form &optional body)
   `(multiple-value-bind ,variables ,value-form
      (declare (ignorable ,@variables))
-     ,@body))
+     ,body))
 
+;;; We need this macro because our code generator can only handle forms
+;;; that are flat and would thus destroy (SETF (AREF ...) ...) forms by
+;;; lifting the AREF subform.
 (defmacro store (value array row-major-index)
   `(setf (row-major-aref ,array ,row-major-index)
          ,value))

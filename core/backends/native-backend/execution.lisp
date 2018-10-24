@@ -81,7 +81,12 @@
     ;; Now call the compiled kernel.
     (funcall (compile nil lambda-expression) ranges arrays functions)))
 
-(defun free-storage (buffer backend)
+(defgeneric free-storage (buffer backend))
+
+(defmethod free-storage ((buffer buffer) (backend native-backend))
+  (values))
+
+(defmethod free-storage ((buffer non-immediate-buffer) (backend native-backend))
   (let ((memory-pool (memory-pool backend))
         (storage (storage buffer)))
     (setf (storage buffer) nil)

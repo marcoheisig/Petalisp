@@ -57,11 +57,16 @@
           (if (consp tail) tail cons))
     form))
 
+(defmethod initialize-instance :after
+    ((simple-form-builder simple-form-builder) &rest rest)
+  (declare (ignore rest))
+  (let ((tail (list 'nest)))
+    (insert-form tail simple-form-builder tail)))
+
 (defmethod add-flat-form
     (form (simple-form-builder simple-form-builder) number-of-values)
-  (let* ((symbols (loop repeat number-of-values collect (gensym)))
-         (tail (list form)))
-    (insert-form `(bind ,symbols . ,tail) simple-form-builder tail)
+  (let* ((symbols (loop repeat number-of-values collect (gensym))))
+    (insert-form `(bind ,symbols ,form) simple-form-builder)
     (values-list symbols)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -72,7 +77,7 @@
   ())
 
 (defun make-loop-form-builder (var type start step end)
-  (let ((form `(loop for ,var ,type from ,start by ,step below ,end do)))
+  (let ((form (copy-list `(loop for ,var ,type from ,start by ,step below ,end do))))
     (make-instance 'loop-form-builder
       :form form
       :tail (last form))))
@@ -158,7 +163,8 @@
         (setf (gethash 'functions symbol-table) index)
         (setf (aref form-builders index)
               (make-simple-form-builder
-               `(lambda (ranges arrays functions)))))
+               (copy-list
+                `(lambda (ranges arrays functions))))))
       ;; Create one form builder for each loop or reduction, innermost-first.
       (loop for (size-bits step-bits type) in ranges
             for index from 0
@@ -175,11 +181,10 @@
 
 (defmethod form ((kernel-form-builder kernel-form-builder))
   (with-accessors ((form-builders form-builders)) kernel-form-builder
-    (form
-     (reduce (lambda (left right)
-               (insert-form (form left) right)
-               right)
-             form-builders))))
+    (loop for index from 1 below (length form-builders) do
+      (insert-form (form (aref form-builders (1- index)))
+                   (aref form-builders index)))
+    (form (aref form-builders (1- (length form-builders))))))
 
 (defmethod add-flat-form
     ((flat-form cons)
