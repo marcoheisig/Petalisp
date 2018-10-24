@@ -40,38 +40,46 @@
     (compile-and-execute-kernel kernel native-backend)
     (setf (executedp kernel) t)
     ;; Free the memory of buffers that are no longer in use.
-    (loop for buffer in (inputs kernel) do
+    (loop for buffer in (petalisp-ir:kernel-buffers kernel) do
       (when (every #'executedp (petalisp-ir:outputs buffer))
         (free-storage buffer native-backend)))))
 
 (defun compile-and-execute-kernel (kernel backend)
-  (let ((range-arguments
-          (load-time-value
-           (make-array 0 :adjustable t)
-           nil))
-        (storage-arguments
-          (load-time-value
-           (make-array 0 :adjustable t)))
+  (let ((ranges (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
+        (arrays (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
+        (functions (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
         (lambda-expression
           (lambda-expression-from-blueprint (petalisp-ir:blueprint kernel))))
-    (break)
+    (setf (fill-pointer ranges) 0)
+    (setf (fill-pointer arrays) 0)
+    (setf (fill-pointer functions) 0)
     ;; Initialize the range arguments.
-    (adjust-array range-arguments (* 3 (dimension (petalisp-ir:iteration-space kernel))))
     (loop for range in (ranges (petalisp-ir:iteration-space kernel))
           for offset from 0 by 3 do
             (multiple-value-bind (start step end)
                 (range-start-step-end range)
-              (setf (aref range-arguments (+ offset 0)) start)
-              (setf (aref range-arguments (+ offset 1)) step)
-              (setf (aref range-arguments (+ offset 2)) end)))
-    ;; Initialize the storage arguments.
-    (adjust-array storage-arguments (length (buffers kernel)))
-    (loop for buffer in (buffers kernel)
-          for index from 0 do
-            (setf (aref storage-arguments index)
-                  (storage buffer)))
+              (vector-push-extend start ranges)
+              (vector-push-extend step ranges)
+              (vector-push-extend end ranges)))
+    ;; Initialize the array arguments.
+    (loop for buffer in (petalisp-ir:kernel-buffers kernel) do
+      (vector-push-extend
+       (if (typep buffer 'scalar-buffer)
+           ;; TODO inefficient
+           (make-array '() :initial-element (storage buffer))
+           (storage buffer))
+       arrays))
+    ;; Initialize the function arguments.
+    (petalisp-ir:map-instructions
+     (lambda (instruction)
+       (when (typep instruction
+                    '(or petalisp-ir:call-instruction petalisp-ir:reduce-instruction))
+         (let ((operator (operator instruction)))
+           (when (functionp operator)
+             (vector-push-extend (operator instruction) functions)))))
+     kernel)
     ;; Now call the compiled kernel.
-    (funcall (compile nil lambda-expression) range-arguments storage-arguments)))
+    (funcall (compile nil lambda-expression) ranges arrays functions)))
 
 (defun free-storage (buffer backend)
   (let ((memory-pool (memory-pool backend))

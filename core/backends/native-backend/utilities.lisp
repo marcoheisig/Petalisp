@@ -4,6 +4,24 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; Macros
+
+(defmacro bind (variables value-form &body body)
+  `(multiple-value-bind ,variables ,value-form
+     (declare (ignorable ,@variables))
+     ,@body))
+
+(defmacro store (value array row-major-index)
+  `(setf (row-major-aref ,array ,row-major-index)
+         ,value))
+
+(defun stride (array axis)
+  (apply #'array-row-major-index array
+         (loop for i below (array-rank array)
+               collect (if (= i axis) 1 0))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; Compiler "Gensyms"
 
 (defmacro define-compiler-gensym (name)

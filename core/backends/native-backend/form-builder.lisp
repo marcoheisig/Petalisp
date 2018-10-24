@@ -27,7 +27,7 @@
 
 (defun add-form (form form-builder &optional (number-of-values 1))
   (labels ((pseudo-eval (form n)
-             (trivia:match form
+             (trivia:ematch form
                ((list* function arguments)
                 (add-flat-form
                  `(,function . ,(mapcar #'pseudo-eval-1 arguments))
@@ -60,13 +60,8 @@
 (defmethod add-flat-form
     (form (simple-form-builder simple-form-builder) number-of-values)
   (let* ((symbols (loop repeat number-of-values collect (gensym)))
-         (tail (list `(declare (ignorable ,@symbols)))))
-    (insert-form
-     (if (= 1 number-of-values)
-         `(let ((,(first symbols) ,form)) . ,tail)
-         `(multiple-value-bind ,symbols ,form . ,tail))
-     simple-form-builder
-     tail)
+         (tail (list form)))
+    (insert-form `(bind ,symbols . ,tail) simple-form-builder tail)
     (values-list symbols)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -122,7 +117,7 @@
             (let ((tail (list `(,operator ,@(subseq left-symbols start end)
                                           ,@(subseq right-symbols start end)))))
               (insert-form
-               `(multiple-value-bind ,(subseq result-symbols start end) . ,tail)
+               `(bind ,(subseq result-symbols start end) . ,tail)
                form-builder
                tail)))
     (insert-form `(values ,@result-symbols) form-builder)
@@ -180,7 +175,6 @@
 
 (defmethod form ((kernel-form-builder kernel-form-builder))
   (with-accessors ((form-builders form-builders)) kernel-form-builder
-    (break)
     (form
      (reduce (lambda (left right)
                (insert-form (form left) right)

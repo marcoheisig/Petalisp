@@ -29,10 +29,13 @@
          (symbol `(,operator . ,rest))
          (integer `(funcall (aref functions ,operator) . ,rest)))))
     ((list* :load array-number irefs)
-     (translate-memory-reference array-number irefs))
+     `(row-major-aref
+       (aref arrays ,array-number)
+       ,(translate-row-major-index array-number irefs)))
     ((list* :store argument array-number irefs)
-     `(setf ,(translate-memory-reference array-number irefs)
-            ,(translate-argument argument)))
+     `(store ,(translate-argument argument)
+             (aref arrays ,array-number)
+             ,(translate-row-major-index array-number irefs)))
     ((list* :iref index scale offset)
      `(+ (* ,(index-symbol index) ,scale) ,offset))))
 
@@ -40,21 +43,19 @@
   (destructuring-bind (value-n instruction-number) argument
     (nth value-n (aref *instruction-values* instruction-number))))
 
-(defun translate-memory-reference (array-number irefs)
+(defun translate-row-major-index (array-number irefs)
   (let ((quads (sort (loop for iref in irefs
                            for index from 0
                            collect (list* index iref))
                      #'< :key #'second)))
-    `(row-major-aref
-      (aref arrays ,array-number)
-      ,(reduce
-        (lambda (expression quad)
-          (destructuring-bind (stride-index index scale offset) quad
-            (let ((stride (translate-stride array-number stride-index)))
-              `(+ (+ ,expression (* ,stride ,offset))
-                  (* ,(index-symbol index) (* ,stride ,scale))))))
-        quads
-        :initial-value '0))))
+    (reduce
+     (lambda (expression quad)
+       (destructuring-bind (stride-index index scale offset) quad
+         (let ((stride (translate-stride array-number stride-index)))
+           `(+ (+ ,expression (* ,stride ,offset))
+               (* ,(index-symbol index) (* ,stride ,scale))))))
+     quads
+     :initial-value '0)))
 
 (defun translate-stride (array-number axis)
   `(stride (aref arrays ,array-number) ,axis))
