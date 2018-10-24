@@ -51,7 +51,7 @@ Example 3: the numerical Jacobi scheme in two dimensions
 Coming soon!
 
 ** Frequently Asked Questions
-*** Is Petalisp something like NumPy?
+*** Is Petalisp similar to NumPy?
 NumPy is a widely used Python library for scientific computing on arrays.
 It provides powerful N-dimensional arrays and a variety of functions for
 working with these arrays.
@@ -64,6 +64,12 @@ and array fusion.
 So Petalisp is not a substitute for NumPy.  However, it could be used to
 write a library that behaves like NumPy, but that is much faster and fully
 parallelized.  In fact, writing such a library is one of my future goals.
+*** Do I have to program Lisp to use Petalisp?
+Not necessarily.  Not everyone has the time to learn Common Lisp.  That is
+why I am also working on some [[https://github.com/marcoheisig/cl4py][convenient Python bindings]] for Petalisp.
+
+But: If you ever have time to learn Lisp, do it!  It is an enlightening
+experience.
 *** Why the Greek letters?
 There are several reasons:
 1. It underlines the beautiful, mathematical nature of this programming model.
