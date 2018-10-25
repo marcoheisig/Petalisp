@@ -8,6 +8,9 @@
     (petalisp-ir:normalize-ir root-buffers)
     (loop for root-buffer in root-buffers
           for strided-array in strided-arrays
+          ;; We add a fictitious kernel to the outputs of each root buffer,
+          ;; to avoid that their memory is reclaimed.
+          do (push (make-instance 'kernel) (petalisp-ir:outputs root-buffer))
           collect
           (if (immediatep strided-array)
               strided-array
@@ -40,9 +43,13 @@
     (compile-and-execute-kernel kernel native-backend)
     (setf (executedp kernel) t)
     ;; Free the memory of buffers that are no longer in use.
-    (loop for buffer in (petalisp-ir:kernel-buffers kernel) do
-      (when (every #'executedp (petalisp-ir:outputs buffer))
-        (free-storage buffer native-backend)))))
+    (flet ((maybe-free (buffer)
+             (when (every #'executedp (petalisp-ir:outputs buffer))
+               (free-storage buffer native-backend))))
+      (mapc (compose #'maybe-free #'petalisp-ir:buffer)
+            (petalisp-ir:stores kernel))
+      (mapc (compose #'maybe-free #'petalisp-ir:buffer)
+            (petalisp-ir:reduction-stores kernel)))))
 
 (defun compile-and-execute-kernel (kernel backend)
   (let ((ranges (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
@@ -63,12 +70,7 @@
               (vector-push-extend end ranges)))
     ;; Initialize the array arguments.
     (loop for buffer in (petalisp-ir:kernel-buffers kernel) do
-      (vector-push-extend
-       (if (typep buffer 'scalar-buffer)
-           ;; TODO inefficient
-           (make-array '() :initial-element (storage buffer))
-           (the array (storage buffer)))
-       arrays))
+      (vector-push-extend (the array (storage buffer)) arrays))
     ;; Initialize the function arguments.
     (petalisp-ir:map-instructions
      (lambda (instruction)

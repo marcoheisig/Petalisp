@@ -76,7 +76,7 @@
 
 (defmacro basic-block (&body body)
   (trivia:match body
-    ((list) `(values))
+    ((list tail) tail)
     ((list* (list variables instruction) rest)
      `(bind ,variables ,instruction (basic-block . ,rest)))))
 

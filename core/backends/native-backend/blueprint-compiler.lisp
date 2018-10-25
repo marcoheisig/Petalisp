@@ -14,7 +14,8 @@
 (defun lambda-expression-from-blueprint (blueprint)
   (multiple-value-bind (ranges arrays *instructions* reduction-spec)
       (parse-blueprint blueprint)
-    (let* ((*symbol-table* (make-hash-table :test #'eq))
+    (let* ((*gensym-counter* 0)
+           (*symbol-table* (make-hash-table :test #'eq))
            ;; Create the initial basic block.
            (*initial-basic-block*
              (let* ((lambda-list '(ranges arrays functions))
