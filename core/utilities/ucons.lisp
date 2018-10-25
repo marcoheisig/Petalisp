@@ -4,6 +4,7 @@
   (:use :cl :alexandria)
   (:export
    #:ucons
+   #:uconsp
    #:ucar
    #:ucdr
    #:ulist
