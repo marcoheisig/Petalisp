@@ -8,26 +8,35 @@
 
 (defgeneric form (basic-block))
 
+(defgeneric tail-form (basic-block))
+
 (defclass basic-block ()
-  (;; A (possibly empty) list containing all dominators of the basic block.
-   ;; The first element of this list is the immediate dominator.
-   (%dominators :initarg :dominators :reader dominators)
+  (;; Another basic block that immediately dominates this one, or NIL.
+   (%immediate-dominator :initarg :immediate-dominator :reader immediate-dominator
+                         :initform nil)
+   ;; A (possibly empty) list of basic blocks.
+   (%successors :initarg :successors :accessor successors
+                :initform '())
    ;; A list of lists of the form (variables form).  The instructions
    ;; are stored in reverse order of execution, because we typically insert
    ;; at the end.
-   (%instructions :initarg :instructions :accessor instructions)
+   (%instructions :initarg :instructions :accessor instructions
+                  :initform '())
    ;; A hash table, mapping from forms to (integer . symbol) alists,
    ;; describing which symbols carry which values of the form.
-   (%value-symbol-table :initarg :value-symbol-table :reader value-symbol-table)))
+   (%value-symbol-table :initarg :value-symbol-table :reader value-symbol-table
+                        :initform (make-hash-table :test #'equal))))
 
-(defun make-basic-block (&optional dominator)
+(defun make-basic-block (&key immediate-dominator)
   (make-instance 'basic-block
-    :dominators (if dominator (list* dominator (dominators dominator)) '())
-    :instructions '()
-    :value-symbol-table (make-hash-table :test #'equal)))
+    :immediate-dominator immediate-dominator))
 
 (defun dominates (a b)
-  (member a (dominators b)))
+  (let ((idom (immediate-dominator b)))
+    (if (not idom)
+        nil
+        (or (eq a idom)
+            (dominates a idom)))))
 
 (defmethod value-symbol (value-n form (basic-block basic-block))
   (with-accessors ((instructions instructions)
@@ -55,29 +64,30 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Basic Blocks to S-Expressions
+;;; Conversion to S-Expressions
 
 (defmacro bind (variables instruction body)
-  (let ((ignore '()))
-    (flet ((frob (variable)
-             (if (null variable)
-                 (let ((symbol (gensym)))
-                   (push symbol ignore)
-                   symbol)
-                 variable)))
-      `(multiple-value-bind ,(mapcar #'frob variables) ,instruction
-           (declare (ignore ,@ignore))
+  (flet ((frob (variable)
+           (if (null variable) (gensym) variable)))
+    (let ((symbols (mapcar #'frob variables)))
+      `(multiple-value-bind ,symbols ,instruction
+         (declare (ignorable ,@symbols))
          ,body))))
 
 (defmacro basic-block (&body body)
   (trivia:match body
     ((list) `(values))
     ((list* (list variables instruction) rest)
-     `(bind ,variables ,instruction (basic-block . ,rest))))
-  )
+     `(bind ,variables ,instruction (basic-block . ,rest)))))
 
 (defmethod form ((basic-block basic-block))
   `(basic-block
      ,@(loop for instruction in (reverse (instructions basic-block))
              for variables = (instruction-symbols instruction basic-block)
-             collect (list variables instruction))))
+             collect (list variables instruction))
+     ,(tail-form basic-block)))
+
+(defmethod tail-form ((basic-block basic-block))
+  (trivia:ematch (successors basic-block)
+    ((list) '(values))
+    ((list successor) (form successor))))

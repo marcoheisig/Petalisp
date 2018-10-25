@@ -67,7 +67,7 @@
        (if (typep buffer 'scalar-buffer)
            ;; TODO inefficient
            (make-array '() :initial-element (storage buffer))
-           (storage buffer))
+           (the array (storage buffer)))
        arrays))
     ;; Initialize the function arguments.
     (petalisp-ir:map-instructions

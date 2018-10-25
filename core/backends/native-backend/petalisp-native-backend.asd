@@ -10,7 +10,10 @@
   :components
   ((:file "packages")
    (:file "utilities")
-   (:file "form-builder")
+   (:file "basic-block")
+   (:file "lambda-block")
+   (:file "loop-block")
+   (:file "reduction-block")
    (:file "blueprint-compiler")
    (:file "memory-pool")
    (:file "native-backend")

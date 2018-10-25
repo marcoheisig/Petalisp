@@ -2,24 +2,93 @@
 
 (in-package :petalisp-native-backend)
 
-;;; A vector that has as many entries as there are instructions in the
-;;; blueprint.  Initially, each entry is an integer, denoting the number of
-;;; values of that instruction that are used.  During translation, this
-;;; integer is replaced with the list of variables that hold the values.
-(defvar *instruction-values*)
+;;; A vector of instructions.
+(defvar *instructions*)
+
+;;; A hash table, mapping from each symbol to its defining basic block.
+(defvar *symbol-table*)
+
+;;; A lambda block.
+(defvar *initial-basic-block*)
 
 (defun lambda-expression-from-blueprint (blueprint)
-  (multiple-value-bind (ranges arrays instructions *instruction-values* reduction-spec)
+  (multiple-value-bind (ranges arrays *instructions* reduction-spec)
       (parse-blueprint blueprint)
-    (let ((form-builder (make-kernel-form-builder ranges reduction-spec)))
-      (loop for instruction across instructions
+    (let* ((*symbol-table* (make-hash-table :test #'eq))
+           ;; Create the initial basic block.
+           (*initial-basic-block*
+             (let* ((lambda-list '(ranges arrays functions))
+                    (basic-block (make-lambda-block :lambda-list lambda-list)))
+               (loop for symbol in lambda-list
+                     do (setf (gethash symbol *symbol-table*) basic-block))
+               basic-block))
+           (idom *initial-basic-block*)
+           (reductions '()))
+      ;; Create one basic block for each loop or reduction.
+      (loop for (size-bits step-bits type) in (reverse ranges)
+            for index from (1- (length ranges)) downto 0 do
+              (let ((var (index-symbol index))
+                    (start (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 0))))
+                    (end (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 2)))))
+                (let ((bb (if (and (zerop index)
+                                   (not (null reduction-spec)))
+                              (make-reduction-block :immediate-dominator idom
+                                                    :reduction-min start
+                                                    :reduction-max end
+                                                    :reduction-spec reduction-spec
+                                                    :reduction-var var
+                                                    :reduction-var-type type)
+                              (make-loop-block :immediate-dominator idom
+                                               :loop-start start
+                                               :loop-step (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 1)))
+                                               :loop-end end
+                                               :loop-var var
+                                               :loop-var-type type))))
+                  (setf (gethash var *symbol-table*) bb)
+                  (setf (successors idom) (list bb))
+                  (setf idom bb))))
+      ;; Now translate all instructions of the blueprint.
+      (loop for instruction across *instructions*
             for index from 0 do
-              (setf (aref *instruction-values* index)
-                    (multiple-value-list
-                     (add-form (translate-instruction instruction)
-                               form-builder
-                               (aref *instruction-values* index)))))
-      (form form-builder))))
+              (let ((translated-instruction (translate-instruction instruction)))
+                (ecase (car instruction)
+                  (:reduce (push translated-instruction reductions))
+                  (:store (pseudo-eval-0 translated-instruction))
+                  ((:load :iref :call) (values)))
+                (setf (aref *instructions* index) translated-instruction)))
+      ;; Now generate the reduction bindings (if necessary)
+      (unless (null reduction-spec)
+        (setf (result-symbols idom)
+              (loop for (operator . arity) in reduction-spec
+                    for reduction in reductions
+                    append (loop for value-n below arity
+                                 collect (pseudo-eval value-n reduction)))))
+      ;; Done.
+      (form *initial-basic-block*))))
+
+(defun basic-block-or-die (symbol)
+  (or (gethash symbol *symbol-table*)
+      (error "Undefined symbol: ~S" symbol)))
+
+(defun pseudo-eval (value-n form)
+  (etypecase form
+    (symbol form)
+    (number form)
+    (cons
+     (let* ((basic-block *initial-basic-block*)
+            (arguments (mapcar #'pseudo-eval-0 (rest form))))
+       ;; Find the appropriate basic block.
+       (loop for argument in arguments do
+         (when (symbolp argument)
+           (let ((new-basic-block (basic-block-or-die argument)))
+             (when (dominates basic-block new-basic-block)
+               (setf basic-block new-basic-block)))))
+       (let ((symbol (value-symbol value-n (cons (first form) arguments) basic-block)))
+         (setf (gethash symbol *symbol-table*) basic-block)
+         symbol)))))
+
+(defun pseudo-eval-0 (form)
+  (pseudo-eval 0 form))
 
 (defun translate-instruction (instruction)
   (trivia:ematch instruction
@@ -41,7 +110,7 @@
 
 (defun translate-argument (argument)
   (destructuring-bind (value-n instruction-number) argument
-    (nth value-n (aref *instruction-values* instruction-number))))
+    (pseudo-eval value-n (aref *instructions* instruction-number))))
 
 (defun translate-row-major-index (array-number irefs)
   (let ((quads (sort (loop for iref in irefs
@@ -77,18 +146,9 @@
          (ulist (ucons:ucdr ulist)) (arrays (ucons:copy-utree (ucons:ucar ulist)))
          (ulist (ucons:ucdr ulist)) (instructions (apply #'vector (ucons:copy-utree (ucons:ucar ulist))))
          (n-instructions (length instructions))
-         (n-values (make-array n-instructions :initial-element 0))
          (reduction-spec '()))
-    (flet ((register-argument (argument)
-             (destructuring-bind (value-n instruction-number) argument
-               (maxf (aref n-values instruction-number) (1+ value-n)))))
-      (loop for instruction across instructions do
-        (trivia:match instruction
-          ((list* :call _ arguments)
-           (mapc #'register-argument arguments))
-          ((list* :store value _)
-           (register-argument value))
-          ((list* :reduce operator arguments)
-           (push (cons operator (length arguments)) reduction-spec)
-           (mapc #'register-argument arguments)))))
-    (values ranges arrays instructions n-values (nreverse reduction-spec))))
+    (loop for instruction across instructions do
+      (trivia:match instruction
+        ((list* :reduce operator arguments)
+         (push (cons operator (length arguments)) reduction-spec))))
+    (values ranges arrays instructions (nreverse reduction-spec))))
