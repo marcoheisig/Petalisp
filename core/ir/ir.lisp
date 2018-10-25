@@ -158,16 +158,16 @@
 
 (defun map-instructions (function kernel)
   (labels ((process-instruction (instruction n)
-             (let ((n-new (instruction-number instruction)))
-               (when (< n-new n)
+             (let ((new-n (instruction-number instruction)))
+               (when (< new-n n)
                  (funcall function instruction)
                  (map-instruction-inputs
-                  (lambda (next) (process-instruction next n-new))
+                  (lambda (next) (process-instruction next new-n))
                   instruction)))))
     (loop for store in (petalisp-ir:stores kernel) do
       (process-instruction store most-positive-fixnum))
     (loop for store in (petalisp-ir:reduction-stores kernel) do
-      (process-instruction store most-negative-fixnum))))
+      (process-instruction store most-positive-fixnum))))
 
 ;;; This function exploits that the numbers are handed out starting from
 ;;; the leaf instructions.  So we know that the highest instruction number
