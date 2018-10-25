@@ -41,6 +41,12 @@
                 (1am:is (immediate-equalp immediate expected-immediate))))
       reference-solutions)))
 
+(defmethod delete-backend ((testing-backend testing-backend))
+  (delete-backend (reference-backend testing-backend))
+  (delete-backend (ir-backend testing-backend))
+  (delete-backend (native-backend testing-backend))
+  (call-next-method))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Entry Point
