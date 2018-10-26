@@ -33,24 +33,26 @@
   (apply #'make-instance 'reduction-block args))
 
 (defmethod form :around ((reduction-block reduction-block))
-  `(labels ((divide-and-conquer (min max)
-              (declare (type ,(reduction-var-type reduction-block) min max))
-              (if (= min max)
-                  (let ((,(reduction-var reduction-block) min))
-                    ,(call-next-method))
-                  (let* ((size (- max min))
-                         (mid (+ min (floor size 2))))
-                    (multiple-value-call
-                        ,(make-reduction-lambda (reductions reduction-block))
-                      (divide-and-conquer min mid)
-                      (divide-and-conquer (1+ mid) max))))))
-     (multiple-value-call ,(form (first (successors reduction-block)))
-       (divide-and-conquer
-        ,(reduction-min reduction-block)
-        ,(reduction-max reduction-block)))))
+  `(lambda (min max)
+     (labels ((divide-and-conquer (min max)
+                (declare (type ,(reduction-var-type reduction-block) min max))
+                (if (= min max)
+                    (let ((,(reduction-var reduction-block) min))
+                      ,(call-next-method))
+                    (let* ((size (- max min))
+                           (mid (+ min (floor size 2))))
+                      (multiple-value-call
+                          ,(make-reduction-lambda (reductions reduction-block))
+                        (divide-and-conquer min mid)
+                        (divide-and-conquer (1+ mid) max))))))
+       (divide-and-conquer min max))))
 
 (defmethod tail-form ((reduction-block reduction-block))
   `(values ,@(reduction-symbols reduction-block)))
+
+(defun reduction-arity (reductions)
+  (loop for (nil nil . arguments) in reductions
+        sum (length arguments)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -66,8 +68,7 @@
   `(values ,@(result-symbols reduction-lambda-block)))
 
 (defun make-reduction-lambda (reductions)
-  (let* ((k (loop for (nil nil . arguments) in reductions
-                  sum (length arguments)))
+  (let* ((k (reduction-arity reductions))
          (left-symbols (loop repeat k collect (gensym)))
          (right-symbols (loop repeat k collect (gensym)))
          (result-symbols '())
