@@ -112,7 +112,7 @@
                :stores '()
                :reduction-stores
                (list
-                (make-instance 'store-instruction
+                (make-instance 'reduction-store-instruction
                   :number (next-instruction-number)
                   :value value
                   :buffer (gethash root *buffer-table*)

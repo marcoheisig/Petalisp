@@ -76,6 +76,12 @@
                 (buffer-number (buffer store-instruction))
                 (blueprint (transformation store-instruction))))
 
+(defmethod blueprint ((reduction-store-instruction reduction-store-instruction))
+  (ucons:ulist* :reduction-store
+                (blueprint-from-value (value reduction-store-instruction))
+                (buffer-number (buffer reduction-store-instruction))
+                (blueprint (transformation reduction-store-instruction))))
+
 (defmethod blueprint ((iref-instruction iref-instruction))
   (let ((axis (axis iref-instruction)))
     (block nil

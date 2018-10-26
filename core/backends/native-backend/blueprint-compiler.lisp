@@ -12,9 +12,10 @@
 (defvar *initial-basic-block*)
 
 (defun lambda-expression-from-blueprint (blueprint)
-  (multiple-value-bind (ranges arrays *instructions* reduction-spec)
+  (multiple-value-bind (ranges arrays *instructions* reductions)
       (parse-blueprint blueprint)
-    (let* ((*gensym-counter* 0)
+    (let* ((dim (length ranges))
+           (*gensym-counter* 0)
            (*symbol-table* (make-hash-table :test #'eq))
            ;; Create the initial basic block.
            (*initial-basic-block*
@@ -24,19 +25,20 @@
                      do (setf (gethash symbol *symbol-table*) basic-block))
                basic-block))
            (idom *initial-basic-block*)
-           (reductions '()))
+           (reduction-symbols '())
+           (reduction-stores '()))
       ;; Create one basic block for each loop or reduction.
       (loop for (size-bits step-bits type) in (reverse ranges)
-            for index from (1- (length ranges)) downto 0 do
+            for index from 0 do
               (let ((var (index-symbol index))
                     (start (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 0))))
                     (end (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 2)))))
-                (let ((bb (if (and (zerop index)
-                                   (not (null reduction-spec)))
+                (let ((bb (if (and (= index (1- dim))
+                                   (not (null reductions)))
                               (make-reduction-block :immediate-dominator idom
                                                     :reduction-min start
                                                     :reduction-max end
-                                                    :reduction-spec reduction-spec
+                                                    :reductions reductions
                                                     :reduction-var var
                                                     :reduction-var-type type)
                               (make-loop-block :immediate-dominator idom
@@ -51,19 +53,33 @@
       ;; Now translate all instructions of the blueprint.
       (loop for instruction across *instructions*
             for index from 0 do
-              (let ((translated-instruction (translate-instruction instruction)))
-                (ecase (car instruction)
-                  (:reduce (push translated-instruction reductions))
-                  (:store (pseudo-eval-0 translated-instruction))
-                  ((:load :iref :call) (values)))
-                (setf (aref *instructions* index) translated-instruction)))
+              (ecase (car instruction)
+                ((:call :load)
+                 (update-instruction index))
+                ((:store)
+                 (pseudo-eval-0 (update-instruction index)))
+                ((:reduce)
+                 (trivia:match (update-instruction index)
+                   ((or (list* 'funcall _ symbols)
+                        (list* _ symbols))
+                    (loop for symbol in symbols do
+                      (push symbol reduction-symbols)))))
+                ((:reduction-store)
+                 (push instruction reduction-stores))))
       ;; Now generate the reduction bindings (if necessary)
-      (unless (null reduction-spec)
-        (setf (result-symbols idom)
-              (loop for (operator . arity) in reduction-spec
-                    for reduction in reductions
-                    append (loop for value-n below arity
-                                 collect (pseudo-eval value-n reduction)))))
+      (unless (null reductions)
+        (let ((epilogue (make-lambda-block :lambda-list reduction-symbols
+                                           :immediate-dominator (immediate-dominator idom))))
+          (setf (successors idom) (list epilogue))
+          (loop for reduction-symbol in reduction-symbols do
+            (setf (gethash reduction-symbol *symbol-table*) epilogue))
+          (loop for (nil nil array-number . irefs) in reduction-stores
+                for symbol in (reverse reduction-symbols) do
+                  (pseudo-eval-0
+                   `(store ,symbol
+                           (aref arrays ,array-number)
+                           ,(translate-row-major-index array-number irefs))))
+          (setf (reduction-symbols idom) reduction-symbols)))
       ;; Done.
       (form *initial-basic-block*))))
 
@@ -91,6 +107,10 @@
 (defun pseudo-eval-0 (form)
   (pseudo-eval 0 form))
 
+(defun update-instruction (index)
+  (setf (aref *instructions* index)
+        (translate-instruction (aref *instructions* index))))
+
 (defun translate-instruction (instruction)
   (trivia:ematch instruction
     ((list* (or :call :reduce) operator arguments)
@@ -117,7 +137,7 @@
   (let ((quads (sort (loop for iref in irefs
                            for index from 0
                            collect (list* index iref))
-                     #'< :key #'second)))
+                     #'>= :key #'second)))
     (reduce
      (lambda (expression quad)
        (destructuring-bind (stride-index index scale offset) quad
@@ -147,9 +167,8 @@
          (ulist (ucons:ucdr ulist)) (arrays (ucons:copy-utree (ucons:ucar ulist)))
          (ulist (ucons:ucdr ulist)) (instructions (apply #'vector (ucons:copy-utree (ucons:ucar ulist))))
          (n-instructions (length instructions))
-         (reduction-spec '()))
+         (reductions '()))
     (loop for instruction across instructions do
-      (trivia:match instruction
-        ((list* :reduce operator arguments)
-         (push (cons operator (length arguments)) reduction-spec))))
-    (values ranges arrays instructions (nreverse reduction-spec))))
+      (when (eq (car instruction) :reduce)
+        (push instruction reductions)))
+    (values ranges arrays instructions (nreverse reductions))))

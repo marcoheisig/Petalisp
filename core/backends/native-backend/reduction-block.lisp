@@ -2,13 +2,32 @@
 
 (in-package :petalisp-native-backend)
 
+;;; Reduction blocks are the most complicated part of this backend.  They
+;;; are not linear, but consist of several parts:
+;;;
+;;; 1. The actual body.  This is where new instructions are appended.  It
+;;;    is invoked once for each index in the interval between REDUCTION-MIN
+;;;    and REDUCTION-MAX.  In contrast to regular basic blocks, this one
+;;;    has to end in a values form, that returns all inputs of all reduce
+;;;    instructions in the correct order.
+;;;
+;;; 2. The reduction lambda.  This is the function that is used to combine
+;;;    the multiple values of two invocations to a single one.  It contains
+;;;    one instruction for each reduce instruction in the blueprint and
+;;;    ends in a values form similar to the one of the body.
+;;;
+;;; 3. The epilogue.  This code binds the multiple values returned by the
+;;;    reduction and contains one or more store instructions that write the
+;;;    values to memory locations.  By convention, the successor of the
+;;;    reduction block is treated as the epilogue.
+
 (defclass reduction-block (basic-block)
   ((%reduction-min :initarg :reduction-min :reader reduction-min)
    (%reduction-max :initarg :reduction-max :reader reduction-max)
    (%reduction-var :initarg :reduction-var :reader reduction-var)
    (%reduction-var-type :initarg :reduction-var-type :reader reduction-var-type)
-   (%reduction-spec :initarg :reduction-spec :reader reduction-spec)
-   (%result-symbols :accessor result-symbols)))
+   (%reductions :initarg :reductions :reader reductions)
+   (%reduction-symbols :accessor reduction-symbols)))
 
 (defun make-reduction-block (&rest args)
   (apply #'make-instance 'reduction-block args))
@@ -22,15 +41,16 @@
                   (let* ((size (- max min))
                          (mid (+ min (floor size 2))))
                     (multiple-value-call
-                        ,(make-reduction-lambda (reduction-spec reduction-block))
+                        ,(make-reduction-lambda (reductions reduction-block))
                       (divide-and-conquer min mid)
                       (divide-and-conquer (1+ mid) max))))))
-     (divide-and-conquer
-      ,(reduction-min reduction-block)
-      ,(reduction-max reduction-block))))
+     (multiple-value-call ,(form (first (successors reduction-block)))
+       (divide-and-conquer
+        ,(reduction-min reduction-block)
+        ,(reduction-max reduction-block)))))
 
 (defmethod tail-form ((reduction-block reduction-block))
-  `(values ,@(result-symbols reduction-block)))
+  `(values ,@(reduction-symbols reduction-block)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -45,14 +65,16 @@
 (defmethod tail-form ((reduction-lambda-block reduction-lambda-block))
   `(values ,@(result-symbols reduction-lambda-block)))
 
-(defun make-reduction-lambda (reduction-spec)
-  (let* ((k (loop for elt in reduction-spec sum (cdr elt)))
+(defun make-reduction-lambda (reductions)
+  (let* ((k (loop for (nil nil . arguments) in reductions
+                  sum (length arguments)))
          (left-symbols (loop repeat k collect (gensym)))
          (right-symbols (loop repeat k collect (gensym)))
          (result-symbols '())
          (basic-block
            (make-reduction-lambda-block :lambda-list (append left-symbols right-symbols))))
-    (loop for (operator . arity) in reduction-spec
+    (loop for (nil operator . arguments) in reductions
+          for arity = (length arguments)
           for start = 0 then end
           for end = arity then (+ end arity)
           for left = (subseq left-symbols start end)

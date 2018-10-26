@@ -71,6 +71,12 @@
   ((%value :initarg :value :reader value)
    (%buffer :initarg :buffer :reader buffer)))
 
+;;; A reduction store instruction behaves just like a store instructions,
+;;; but is expected to be run outside of the innermost loop.  Its value
+;;; must be a reference to a reduce instruction.
+(defclass reduction-store-instruction (store-instruction)
+  ())
+
 ;;; An iref instruction represents an access to elements of the iteration
 ;;; space itself.  It returns a single value --- the integer obtained by
 ;;; taking the element denoted by AXIS of the index that is the result of
@@ -127,8 +133,8 @@
       (pushnew (buffer load) buffers))
     (loop for store in (stores kernel) do
       (pushnew (buffer store) buffers))
-    (loop for store in (reduction-stores kernel) do
-      (pushnew (buffer store) buffers))
+    (loop for reduction-store in (reduction-stores kernel) do
+      (pushnew (buffer reduction-store) buffers))
     buffers))
 
 (defun map-buffers (function root-buffers)
@@ -166,8 +172,8 @@
                   instruction)))))
     (loop for store in (petalisp-ir:stores kernel) do
       (process-instruction store most-positive-fixnum))
-    (loop for store in (petalisp-ir:reduction-stores kernel) do
-      (process-instruction store most-positive-fixnum))))
+    (loop for reduction-store in (petalisp-ir:reduction-stores kernel) do
+      (process-instruction reduction-store most-positive-fixnum))))
 
 ;;; This function exploits that the numbers are handed out starting from
 ;;; the leaf instructions.  So we know that the highest instruction number
