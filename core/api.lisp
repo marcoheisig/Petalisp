@@ -2,7 +2,7 @@
 
 (in-package :petalisp)
 
-(defvar *backend* (petalisp-ir-backend:make-ir-backend)
+(defvar *backend* (petalisp-native-backend:make-native-backend)
   "The backend on which Petalisp programs are executed.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
