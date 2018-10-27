@@ -55,8 +55,11 @@
   (let ((ranges (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
         (arrays (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
         (functions (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
-        (lambda-expression
-          (lambda-expression-from-blueprint (petalisp-ir:blueprint kernel))))
+        (compiled-kernel
+          (let ((blueprint (petalisp-ir:blueprint kernel)))
+            (petalisp-memoization:with-hash-table-memoization (blueprint)
+                (compile-cache backend)
+              (compile nil (lambda-expression-from-blueprint blueprint))))))
     (setf (fill-pointer ranges) 0)
     (setf (fill-pointer arrays) 0)
     (setf (fill-pointer functions) 0)
@@ -81,7 +84,7 @@
              (vector-push-extend (operator instruction) functions)))))
      kernel)
     ;; Now call the compiled kernel.
-    (funcall (compile nil lambda-expression) ranges arrays functions)))
+    (funcall compiled-kernel ranges arrays functions)))
 
 (defgeneric free-storage (buffer backend))
 
