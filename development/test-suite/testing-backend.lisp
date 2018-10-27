@@ -12,10 +12,7 @@
    (%native-backend
     :reader native-backend
     :initform
-    ;; TODO
-    (petalisp-native-backend:make-native-backend :threads 2)
-    #+nil
-    (petalisp-reference-backend:make-reference-backend))))
+    (petalisp-native-backend:make-native-backend))))
 
 (defun make-testing-backend ()
   (make-instance 'testing-backend))
