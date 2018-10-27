@@ -19,3 +19,29 @@
               :output-dimension dimension
               :translation (loop repeat dimension collect (funcall generator))
               :permutation (shuffle (iota dimension))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Equality
+
+(defgeneric approximately-equal (value-1 value-2))
+
+(defmethod approximately-equal ((immediate-1 immediate) (immediate-2 immediate))
+  (approximately-equal (storage immediate-1) (storage immediate-2)))
+
+(defmethod approximately-equal ((array-1 array) (array-2 array))
+  (and (equal (array-dimensions array-1)
+              (array-dimensions array-2))
+       (loop for index below (array-total-size array-1)
+             always (approximately-equal
+                     (row-major-aref array-1 index)
+                     (row-major-aref array-2 index)))))
+
+(defmethod approximately-equal ((object-1 t) (object-2 t))
+  (eql object-1 object-2))
+
+(defmethod approximately-equal ((a single-float) (b single-float))
+  (< (abs (- a b)) (* 64 single-float-epsilon)))
+
+(defmethod approximately-equal ((a double-float) (b double-float))
+  (< (abs (- a b)) (* 64 double-float-epsilon)))

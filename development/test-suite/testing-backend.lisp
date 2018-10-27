@@ -20,10 +20,6 @@
 (defun make-testing-backend ()
   (make-instance 'testing-backend))
 
-(defun immediate-equalp (immediate-1 immediate-2)
-  (equalp (storage immediate-1)
-          (storage immediate-2)))
-
 (defmethod compute-immediates ((data-structures list) (testing-backend testing-backend))
   (with-accessors ((reference-backend reference-backend)
                    (ir-backend ir-backend)
@@ -34,7 +30,7 @@
         (loop for immediate in (compute-immediates data-structures backend)
               for expected-immediate in reference-solutions
               for index from 0 do
-                (1am:is (immediate-equalp immediate expected-immediate))))
+                (1am:is (approximately-equal immediate expected-immediate))))
       reference-solutions)))
 
 (defmethod delete-backend ((testing-backend testing-backend))
