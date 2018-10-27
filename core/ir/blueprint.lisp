@@ -80,7 +80,17 @@
   (ucons:ulist* :reduction-store
                 (blueprint-from-value (value reduction-store-instruction))
                 (buffer-number (buffer reduction-store-instruction))
-                (blueprint (transformation reduction-store-instruction))))
+                ;; TODO This is a hack.  The proper fix is to give the
+                ;; transformations of reduction stores the same input
+                ;; dimension as the other stores.
+                (let ((result '()))
+                  (map-transformation-outputs
+                   (transformation reduction-store-instruction)
+                   (lambda (output-index input-index scaling offset)
+                     (declare (ignore output-index))
+                     (setf result (ucons:ucons (ucons:ulist (1+ input-index) scaling offset) result)))
+                   :from-end t)
+                  result)))
 
 (defmethod blueprint ((iref-instruction iref-instruction))
   (let ((axis (axis iref-instruction)))
