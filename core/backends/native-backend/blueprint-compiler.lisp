@@ -28,12 +28,12 @@
            (*final-basic-block* *initial-basic-block*)
            (reduction-block nil))
       (loop for loop-range in (reverse (if (null reductions) ranges (cdr ranges)))
-            for index from 0 do
+            for index downfrom (1- dim) do
               (push-loop-block loop-range index))
       ;; If necessary, add a reduction block.
       (unless (null reductions)
         (destructuring-bind (size-bits step-bits type) (first ranges)
-          (let* ((index (1- dim))
+          (let* ((index 0)
                  (var (index-symbol index))
                  (min (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 0))))
                  (max (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 2)))))
@@ -64,7 +64,7 @@
         (when reduction-block
           (setf (reduction-symbols reduction-block)
                 (nreverse reduction-symbols))
-          (let* ((index (1- dim))
+          (let* ((index 0)
                  (min (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 0))))
                  (max (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 2))))
                  (form `(,(form reduction-block) ,min ,max)))
@@ -74,11 +74,11 @@
                   for index from 0 do
                     (trivia:match instruction
                       ((list* :reduction-store (list value-n index) array-number irefs)
-                       (let ((value (pseudo-eval (+ value-n (aref *instructions* index)) form)))
-                         (pseudo-eval-0
-                          `(store ,value
-                                  (aref arrays ,array-number)
-                                  ,(translate-row-major-index array-number irefs))))))))))
+                       (let* ((value (pseudo-eval (+ value-n (aref *instructions* index)) form))
+                              (store-form `(store ,value
+                                                  (aref arrays ,array-number)
+                                                  ,(translate-row-major-index array-number irefs))))
+                         (value-symbol 0 store-form *final-basic-block*))))))))
       ;; Done.
       (form *initial-basic-block*))))
 
@@ -149,33 +149,36 @@
     (pseudo-eval value-n (aref *instructions* instruction-number))))
 
 (defun translate-row-major-index (array-number irefs)
-  (let ((quads (sort (loop for iref in irefs
-                           for index from 0
-                           collect (list* index iref))
-                     #'>= :key #'second)))
+  (let* ((quads (sort (loop for iref in irefs
+                            for axis from 0
+                            collect (list* axis iref))
+                      #'< :key #'second))
+         (array-rank (length irefs)))
     (reduce
      (lambda (expression quad)
-       (destructuring-bind (stride-index index scale offset) quad
-         (let ((stride (translate-stride array-number stride-index)))
-           `(+ (+ ,expression (* ,stride ,offset))
-               (* ,(index-symbol index) (* ,stride ,scale))))))
+       (destructuring-bind (axis index scale offset) quad
+         (let ((stride (translate-stride array-number array-rank axis)))
+           (i+ (i+ expression (i* stride offset))
+               (i* (index-symbol index)
+                   (i* stride scale))))))
      quads
      :initial-value '0)))
 
-(defun translate-stride (array-number axis)
-  `(stride (aref arrays ,array-number) ,axis))
+(defun translate-stride (array-number array-rank axis)
+  (if (= axis (1- array-rank))
+      1
+      (i* `(array-dimension (aref arrays ,array-number) ,(- array-rank 1 axis))
+          (translate-stride array-number array-rank (1+ axis)))))
 
 ;;; Return as multiple values
 ;;;
-;;; 1. A list of range specifications
+;;; 1. A list of range specifications.
 ;;;
-;;; 2. A list of array types
+;;; 2. A list of array types.
 ;;;
-;;; 3. A vector of instructions
+;;; 3. A vector of instructions.
 ;;;
-;;; 4. A vector with the number of return values of each instruction
-;;;
-;;; 5. An (operator . arity) alist describing the reductions of the blueprint.
+;;; 5. A list of all reduce instructions.
 (defun parse-blueprint (blueprint)
   ;; This cries for a DESTRUCTURE-ULIST macro...
   (let* ((ulist blueprint)          (ranges (ucons:copy-utree (ucons:ucar ulist)))

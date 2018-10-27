@@ -39,12 +39,21 @@
 
 (define-compiler-macro fixnum-+ (&rest forms)
   `(the fixnum
-        (+ ,@(loop for form in forms
-                   unless (eql form 0)
-                     collect `(the fixnum ,form)))))
+        (+ ,@(loop for form in forms collect `(the fixnum ,form)))))
 
 (define-compiler-macro fixnum-* (&rest forms)
   `(the fixnum
-        (* ,@(loop for form in forms
-                   unless (eql form 1)
-                     collect `(the fixnum ,form)))))
+        (* ,@(loop for form in forms collect `(the fixnum ,form)))))
+
+(defun i+ (&rest expressions)
+  (trivia:match (remove 0 expressions)
+    ((list) 0)
+    ((list expression) expression)
+    (expressions `(fixnum-+ ,@expressions))))
+
+(defun i* (&rest expressions)
+  (trivia:match (remove 1 expressions)
+    ((list) 1)
+    ((list expression) expression)
+    ((trivia:guard expressions (member 0 expressions)) 0)
+    (expressions `(fixnum-* ,@expressions))))
