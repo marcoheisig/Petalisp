@@ -149,9 +149,10 @@
     (pseudo-eval value-n (aref *instructions* instruction-number))))
 
 (defun translate-row-major-index (array-number irefs)
-  (let* ((quads (sort (loop for iref in irefs
+  (let* ((quads (sort (loop for (index scale offset) in irefs
                             for axis from 0
-                            collect (list* axis iref))
+                            unless (null index)
+                              collect (list axis index scale offset))
                       #'< :key #'second))
          (array-rank (length irefs)))
     (reduce
