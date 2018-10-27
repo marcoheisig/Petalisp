@@ -41,6 +41,7 @@
    (:module "test-suite"
     :components
     ((:file "utilities")
+     (:file "testing-backend")
      (:file "run")
      (:file "test-api")
      (:file "test-sets")

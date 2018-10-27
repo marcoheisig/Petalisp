@@ -17,5 +17,6 @@
    :petalisp-linear-algebra)
   (:export
    #:run-test-suite
+   #:make-testing-backend
    #:view))
 
