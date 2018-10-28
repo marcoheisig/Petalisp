@@ -78,7 +78,9 @@ There are several reasons:
    terabytes of memory, typing Greek letters is easy. Right?
 
 Note: Following community feedback, it is now also possible to write =a=
-instead of =α= and =b= instead of =β=.
+instead of =α= and =b= instead of =β=.  But as a convention, please use the
+ASCII aliases only as a shortcut for scripting.  If I ever see =a= and =b=
+being called in a Quicklisp project, I will remove them from the API :)
 
 *** Why is Petalisp licensed under AGPL?
 I am aware that this license prevents some people from using or
