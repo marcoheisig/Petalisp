@@ -1,7 +1,6 @@
 (in-package :common-lisp-user)
 
-(defpackage :petalisp-linear-algebra
-  (:nicknames :petalisp-la)
+(defpackage :petalisp/examples/linear-algebra
   (:shadowing-import-from :petalisp :set-difference)
   (:use :cl :petalisp)
   (:export
@@ -12,7 +11,7 @@
    #:amax
    #:matmul))
 
-(in-package :petalisp-linear-algebra)
+(in-package :petalisp/examples/linear-algebra)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

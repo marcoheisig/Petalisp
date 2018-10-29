@@ -7,8 +7,7 @@
   ("asdf"
    "uiop"
    "petalisp"
-   "petalisp-linear-algebra"
-   "petalisp-iterative-methods"
+   "petalisp-examples"
    "the-cost-of-nothing"
    "cl-dot"
    "1am")

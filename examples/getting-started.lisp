@@ -1,10 +1,13 @@
+;;;; Note: This file is not intended to be LOADed from Lisp, but to be
+;;;; executed expression by expression.
+
 (asdf:test-system :petalisp)
 
-(defpackage :petalisp-getting-started
+(defpackage :petalisp/examples/getting-started
   (:shadowing-import-from :petalisp :set-difference)
   (:use :common-lisp :petalisp))
 
-(in-package :petalisp-getting-started)
+(in-package :petalisp/examples/getting-started)
 
 ;;; First of all, we define an auxiliary function PRESENT, that first shows
 ;;; the data flow representation of a Petalisp datum, then evaluates it and
