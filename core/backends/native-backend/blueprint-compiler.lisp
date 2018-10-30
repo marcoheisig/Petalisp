@@ -185,7 +185,6 @@
   (let* ((ulist blueprint)          (ranges (ucons:copy-utree (ucons:ucar ulist)))
          (ulist (ucons:ucdr ulist)) (arrays (ucons:copy-utree (ucons:ucar ulist)))
          (ulist (ucons:ucdr ulist)) (instructions (apply #'vector (ucons:copy-utree (ucons:ucar ulist))))
-         (n-instructions (length instructions))
          (reductions '()))
     (loop for instruction across instructions do
       (when (eq (car instruction) :reduce)

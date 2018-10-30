@@ -10,7 +10,7 @@
    :element-generator (make-double-float-generator)))
 
 (defun reshape-randomly (array)
-  (let* ((strided-array (strided-array array))
+  (let* ((strided-array (coerce-to-strided-array array))
          (dimension (dimension strided-array))
          (generator (make-integer-generator :lower-limit -20 :upper-limit 21)))
     (reshape strided-array

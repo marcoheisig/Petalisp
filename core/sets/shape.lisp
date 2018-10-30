@@ -49,14 +49,7 @@
   shape)
 
 (defmethod make-shape ((shape-designator list))
-  (flet ((parse-range (range-designator)
-           (trivia:match range-designator
-             ((list start step end) (make-range start step end))
-             ((list start end)      (make-range start 1 end))
-             ((list start)          (make-range start 1 start))
-             (length                (make-range 0 1 (1- length))))))
-    (shape-from-ranges
-     (mapcar #'parse-range shape-designator))))
+  (parse-shape-designator shape-designator))
 
 (defmethod make-shape ((integer integer))
   (assert (plusp integer))
@@ -76,16 +69,6 @@
 
 (defmethod dimension ((shape shape))
   (length (ranges shape)))
-
-(defmethod print-object ((shape shape) stream)
-  (flet ((represent (range)
-           (trivia:match (multiple-value-list (range-start-step-end range))
-             ((list 0 1 a) (1+ a))
-             ((trivia:guard (list a 1 b) (= a b)) (list a))
-             ((list a 1 b) (list a b))
-             ((list a b c) (list a b c)))))
-    (print-unreadable-object (shape stream :type t)
-      (format stream "~{~S~^ ~}" (mapcar #'represent (ranges shape))))))
 
 (defmethod shape-difference-list ((shape-1 shape) (shape-2 shape))
   (let ((intersection (set-intersection shape-1 shape-2)))
@@ -253,3 +236,39 @@
     (cond ((emptyp shapes) '())
           ((= 1 (length shapes)) (list (elt shapes 0)))
           (t (reduce #'shatter shapes :initial-value nil)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Convenient Notation for Shapes
+
+(defun parse-shape-designator (shape-designator)
+  (if (integerp shape-designator)
+      (shape-from-ranges (list (make-range 0 1 (1- shape-designator))))
+      (shape-from-ranges
+       (mapcar (lambda (range-designator)
+                 (multiple-value-call #'make-range
+                   (parse-range-designator range-designator)))
+               shape-designator))))
+
+(trivia:defpattern list-of-ranges (&rest range-designators)
+  (if (null range-designators)
+      `(null)
+      (multiple-value-bind (start step end)
+          (parse-range-designator (first range-designators))
+        `(cons (range ,start ,step ,end)
+               (list-of-ranges ,@(rest range-designators))))))
+
+(trivia:defpattern shape (&rest range-designators)
+  (with-gensyms (it)
+    `(trivia:guard1 ,it (shapep ,it)
+                    (ranges ,it) (list-of-ranges ,@range-designators))))
+
+(defmethod print-object ((shape shape) stream)
+  (flet ((represent (range)
+           (trivia:match (multiple-value-list (range-start-step-end range))
+             ((list 0 1 a) (1+ a))
+             ((trivia:guard (list a 1 b) (= a b)) (list a))
+             ((list a 1 b) (list a b))
+             ((list a b c) (list a b c)))))
+    (print-unreadable-object (shape stream :type t)
+      (format stream "~{~S~^ ~}" (mapcar #'represent (ranges shape))))))

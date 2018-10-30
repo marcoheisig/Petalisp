@@ -6,7 +6,7 @@
 ;;;
 ;;; Generic Functions
 
-(defgeneric strided-array (array)
+(defgeneric coerce-to-strided-array (array)
   (:method-combination optimizing-constructor))
 
 (defgeneric element-type (strided-array))
@@ -31,7 +31,7 @@
 ;;;
 ;;; Methods
 
-(defmethod strided-array ((strided-array strided-array))
+(defmethod coerce-to-strided-array ((strided-array strided-array))
   strided-array)
 
 (defmethod size ((strided-array strided-array))

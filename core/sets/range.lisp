@@ -313,17 +313,6 @@
                     (make-instance 'non-unary-contiguous-range :start start :end end)
                     (make-instance 'non-contiguous-range :start start :step step :end end))))))))
 
-(defmethod print-object ((range range) stream)
-  (print-unreadable-object (range stream)
-    (format stream "RANGE ~D ~D ~D"
-            (range-start range)
-            (range-step range)
-            (range-end range))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Legacy Functions
-
 (declaim (inline size-one-range-p))
 (defun size-one-range-p (range)
   (= (range-start range)
@@ -349,3 +338,34 @@
                  (when (notevery (lambda (range) (set-intersectionp range result)) ranges)
                    (fail))
                  (return result))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Convenient Notation for Ranges
+
+(defun parse-range-designator (range-designator)
+  (trivia:match range-designator
+    ((list start step end) (values start step end))
+    ((list start end)      (values start 1 end))
+    ((list start)          (values start 1 start))
+    (length                (values 0 1 (1- length)))))
+
+(defun range (&rest range-designator)
+  (multiple-value-call #'make-range
+    (parse-range-designator range-designator)))
+
+(trivia:defpattern range (&rest start-step-end)
+  (multiple-value-bind (start step end)
+      (parse-range-designator start-step-end)
+    (with-gensyms (it)
+      `(trivia:guard1 ,it (rangep ,it)
+                      (range-start ,it) ,start
+                      (range-step ,it) ,step
+                      (range-end ,it) ,end))))
+
+(defmethod print-object ((range range) stream)
+  (print-unreadable-object (range stream)
+    (format stream "RANGE ~D ~D ~D"
+            (range-start range)
+            (range-step range)
+            (range-end range))))

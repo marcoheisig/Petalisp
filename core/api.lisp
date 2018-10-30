@@ -19,7 +19,7 @@ quantities."
   (check-type step symbol)
   (check-type end symbol)
   (with-gensyms (ranges)
-    `(let* ((,ranges (ranges (shape (strided-array ,datum))))
+    `(let* ((,ranges (ranges (shape (coerce-to-strided-array ,datum))))
             (,rank (length ,ranges)))
        (flet ((,start (index) (range-start (elt ,ranges index)))
               (,step (index) (range-step (elt ,ranges index)))
@@ -29,7 +29,7 @@ quantities."
 (defun indices (array &optional (axis 0))
   "Return an array of integers, where the value of each entry (i_0 ... i_N)
 is i_AXIS.  If axis is not supplied, it defaults to zero."
-  (make-range-immediate (shape (strided-array array)) axis))
+  (make-range-immediate (shape (coerce-to-strided-array array)) axis))
 
 (defun reshape (array &rest shapes-and-transformations)
   "Return a data structure of given SHAPE, either by selecting a subset of
@@ -57,31 +57,31 @@ Examples:
                     (reshape-with-shape strided-array modifier))
                    ((transformationp modifier)
                     (reshape-with-transformation strided-array modifier)))))
-    (reduce #'reshape1 shapes-and-transformations :initial-value (strided-array array))))
+    (reduce #'reshape1 shapes-and-transformations :initial-value (coerce-to-strided-array array))))
 
-(defun fuse (&rest objects)
-  "Combine OBJECTS into a single petalisp data structure. It is an error if
-some of the inputs overlap, or if there exists no suitable data structure
+(defun fuse (&rest arrays)
+  "Combine ARRAYS into a single strided array. It is an error if some of
+the supplied arrays overlap, or if there exists no suitable strided array
 to represent the fusion."
-  (make-fusion (mapcar #'strided-array objects)))
+  (make-fusion (mapcar #'coerce-to-strided-array arrays)))
 
-(defun fuse* (&rest objects)
-  "Combine OBJECTS into a single petalisp data structure. When some OBJECTS
-overlap partially, the value of the rightmost object is used."
-  (let ((objects (mapcar #'strided-array objects)))
+(defun fuse* (&rest arrays)
+  "Combine ARRAYS into a single strided array. When some of the supplied
+arguments overlap partially, the value of the rightmost object is used."
+  (let ((strided-arrays (mapcar #'coerce-to-strided-array arrays)))
     (flet ((reference-origin (piece)
              (make-reference
-              (find piece objects :from-end t :key #'shape :test #'set-subsetp)
+              (find piece strided-arrays :from-end t :key #'shape :test #'set-subsetp)
               piece
               (identity-transformation (dimension piece)))))
-      (make-fusion (mapcar #'reference-origin (subdivision (mapcar #'shape objects)))))))
+      (make-fusion (mapcar #'reference-origin (subdivision (mapcar #'shape strided-arrays)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Parallel MAP and REDUCE
 
 (defun broadcast-arguments (arguments)
-  (let* ((strided-arrays (mapcar #'strided-array arguments))
+  (let* ((strided-arrays (mapcar #'coerce-to-strided-array arguments))
          (shape (broadcast-shapes (mapcar #'shape strided-arrays))))
     (mapcar (lambda (strided-array) (reshape strided-array shape))
             strided-arrays)))
@@ -103,14 +103,14 @@ mismatch, the smaller objects are broadcast."
 ;;;
 ;;; Evaluation
 
-(defun compute (&rest data-structures)
-  "Return the computed values of all OBJECTS."
+(defun compute (&rest arguments)
+  "Return the computed values of all ARGUMENTS."
   (compute-on-backend
-   (mapcar #'strided-array data-structures)
+   (mapcar #'coerce-to-strided-array arguments)
    *backend*))
 
-(defun schedule (&rest data-structures)
-  "Instruct Petalisp to compute all given OBJECTS asynchronously."
+(defun schedule (&rest arguments)
+  "Instruct Petalisp to compute all given ARGUMENTS asynchronously."
   (schedule-on-backend
-   (mapcar #'strided-array data-structures)
+   (mapcar #'coerce-to-strided-array arguments)
    *backend*))

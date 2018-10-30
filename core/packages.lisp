@@ -57,6 +57,7 @@
 
    ;; Strided Arrays
    #:strided-array
+   #:coerce-to-strided-array
    #:element-type
    #:shape
    #:shapep

@@ -54,10 +54,10 @@
 (defmethod inputs ((immediate immediate))
   '())
 
-(defmethod strided-array ((array array))
+(defmethod coerce-to-strided-array ((array array))
   (make-array-immediate array))
 
-(defmethod strided-array ((object t))
+(defmethod coerce-to-strided-array ((object t))
   (make-scalar-immediate object))
 
 (defmethod print-object ((immediate immediate) stream)
