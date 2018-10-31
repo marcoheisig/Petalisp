@@ -97,3 +97,29 @@ mismatch, the smaller objects are broadcast."
   (schedule-on-backend
    (mapcar #'coerce-to-strided-array arguments)
    *backend*))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; The Petalisp Readtable
+
+(define-constant +whitespace+ '(#\space #\tab #\linefeed #\return #\page)
+  :test #'equal)
+
+(defun read-α (stream char)
+  (declare (ignore char))
+  (if (member (peek-char nil stream) +whitespace+)
+      `α
+      `(lambda (&rest args)
+         (apply 'α #',(read stream) args))))
+
+(defun read-β (stream char)
+  (declare (ignore char))
+  (if (member (peek-char nil stream) +whitespace+)
+      `β
+      `(lambda (&rest args)
+         (apply 'β #',(read stream) args))))
+
+(named-readtables:defreadtable petalisp-readtable
+  (:merge :common-lisp)
+  (:macro-char #\α #'read-α)
+  (:macro-char #\β #'read-β))

@@ -95,6 +95,7 @@
    #:compute
    #:schedule
    #:indices
+   #:petalisp-readtable
 
    ;; Backends
    #:*backend*

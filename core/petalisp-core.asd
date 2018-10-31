@@ -6,6 +6,7 @@
   ("agnostic-lizard"
    "alexandria"
    "bordeaux-threads"
+   "named-readtables"
    "lparallel"
    "trivia"
    "trivial-arguments")
