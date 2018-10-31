@@ -14,9 +14,9 @@
           collect
           (if (immediatep strided-array)
               strided-array
-              (immediate-from-buffer
-               (compute-buffer root-buffer native-backend)
-               native-backend)))))
+              (make-array-immediate
+               (storage
+                (compute-buffer root-buffer native-backend)))))))
 
 (defmethod compute-buffer ((buffer immediate-buffer) (native-backend native-backend))
   buffer)

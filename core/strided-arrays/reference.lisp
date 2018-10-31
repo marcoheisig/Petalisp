@@ -6,8 +6,6 @@
 ;;;
 ;;; Generic Functions
 
-(defgeneric transformation (object))
-
 (defgeneric make-reference (strided-array shape transformation)
   (:method-combination optimizing-constructor))
 

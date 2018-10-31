@@ -16,9 +16,11 @@
 
 (defgeneric compute-immediates (strided-arrays backend))
 
-(defgeneric delete-backend (backend))
+(defgeneric lisp-datum-from-immediate (strided-array))
 
 (defgeneric overwrite-instance (instance replacement))
+
+(defgeneric delete-backend (backend))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -63,7 +65,7 @@
               strided-array
               (make-reference immediate (shape strided-array) collapsing-transformation)))
     (values-list
-     (mapcar #'storage immediates))))
+     (mapcar #'lisp-datum-from-immediate immediates))))
 
 (defmethod schedule-on-backend ((strided-arrays list) (backend backend))
   (compute-on-backend strided-arrays backend))
@@ -79,6 +81,12 @@
      (scheduler-queue asynchronous-backend))
     promise))
 
+(defmethod lisp-datum-from-immediate ((array-immediate array-immediate))
+  (storage array-immediate))
+
+(defmethod lisp-datum-from-immediate ((scalar-immediate scalar-immediate))
+  (storage scalar-immediate))
+
 (defmethod delete-backend ((backend backend))
   (values))
 
@@ -89,20 +97,24 @@
     (bt:join-thread thread))
   (call-next-method))
 
-(defmethod overwrite-instance ((instance immediate) (replacement immediate))
-  (change-class instance (class-of replacement)
-    :storage (storage replacement)))
-
 (defmethod overwrite-instance ((instance reference) (replacement reference))
   (reinitialize-instance instance
     :transformation (transformation replacement)
     :inputs (inputs replacement)))
 
-(defmethod overwrite-instance (instance (replacement reference))
+(defmethod overwrite-instance ((instance strided-array) (replacement reference))
   (change-class instance (class-of replacement)
     :transformation (transformation replacement)
     :inputs (inputs replacement)))
 
-(defmethod overwrite-instance (instance (replacement immediate))
+(defmethod overwrite-instance ((instance strided-array) (replacement array-immediate))
   (change-class instance (class-of replacement)
     :storage (storage replacement)))
+
+(defmethod overwrite-instance ((instance strided-array) (replacement scalar-immediate))
+  (change-class instance (class-of replacement)
+    :storage (storage replacement)))
+
+(defmethod overwrite-instance ((instance strided-array) (replacement range-immediate))
+  (change-class instance (class-of replacement)
+    :axis (axis replacement)))

@@ -28,8 +28,7 @@
 ;;; Methods
 
 (defmethod compute-immediates ((strided-arrays list) (backend reference-backend))
-  (mapcar (compose #'immediate-from-intermediate-result #'evaluate)
-          strided-arrays))
+  (mapcar #'evaluate strided-arrays))
 
 ;;; Memoization
 
@@ -47,31 +46,31 @@
 
 ;;; Evaluation
 
-(defmethod evaluate ((intermediate-result intermediate-result))
-  intermediate-result)
+(defmethod evaluate ((simple-immediate simple-immediate))
+  simple-immediate)
 
 (defmethod evaluate ((scalar-immediate scalar-immediate))
-  (make-intermediate-result
+  (make-simple-immediate
    (shape scalar-immediate)
    (lambda (index)
      (assert (null index))
      (storage scalar-immediate))))
 
 (defmethod evaluate ((array-immediate array-immediate))
-  (make-intermediate-result
+  (make-simple-immediate
    (shape array-immediate)
    (lambda (index)
      (apply #'aref (storage array-immediate) index))))
 
 (defmethod evaluate ((range-immediate range-immediate))
-  (make-intermediate-result
+  (make-simple-immediate
    (shape range-immediate)
    (lambda (index)
      (nth (axis range-immediate) index))))
 
 (defmethod evaluate ((application application))
   (let ((inputs (mapcar #'evaluate (inputs application))))
-    (make-intermediate-result
+    (make-simple-immediate
      (shape application)
      (lambda (index)
        (nth-value
@@ -82,7 +81,7 @@
 (defmethod evaluate ((reduction reduction))
   (let* ((inputs (mapcar #'evaluate (inputs reduction)))
          (k (length inputs)))
-    (make-intermediate-result
+    (make-simple-immediate
      (shape reduction)
      (lambda (index)
        (labels ((divide-and-conquer (range)
@@ -106,7 +105,7 @@
 
 (defmethod evaluate ((fusion fusion))
   (let ((inputs (mapcar #'evaluate (inputs fusion))))
-    (make-intermediate-result
+    (make-simple-immediate
      (shape fusion)
      (lambda (index)
        (iref (find-if (lambda (input) (set-contains (shape input) index)) inputs)
@@ -114,7 +113,7 @@
 
 (defmethod evaluate ((reference reference))
   (let ((input (evaluate (input reference))))
-    (make-intermediate-result
+    (make-simple-immediate
      (shape reference)
      (lambda (index)
        (iref input (transform index (transformation reference)))))))

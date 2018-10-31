@@ -4,12 +4,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Generic Functions
-
-(defgeneric immediate-from-buffer (buffer backend))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
 ;;; Classes
 
 (defclass buffer (petalisp-ir:buffer)
@@ -34,12 +28,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Methods
-
-(defmethod immediate-from-buffer
-    ((buffer buffer)
-     (native-backend native-backend))
-  (make-array-immediate
-   (storage buffer)))
 
 (defmethod petalisp-ir:make-buffer
     ((array-immediate array-immediate)

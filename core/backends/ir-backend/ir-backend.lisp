@@ -12,8 +12,6 @@
 
 (defgeneric execute (ir-node))
 
-(defgeneric immediate-from-buffer (buffer))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes
@@ -36,10 +34,7 @@
   (let ((root-buffers (petalisp-ir:ir-from-strided-arrays strided-arrays ir-backend)))
     (petalisp-ir:normalize-ir root-buffers)
     (mapc #'execute root-buffers)
-    (mapcar #'immediate-from-buffer root-buffers)))
-
-(defmethod immediate-from-buffer ((ir-backend-buffer ir-backend-buffer))
-  (make-array-immediate (storage ir-backend-buffer)))
+    (mapcar (compose #'make-array-immediate #'storage) root-buffers)))
 
 (defmethod execute :before ((kernel petalisp-ir:kernel))
   (mapc (compose #'execute #'petalisp-ir:buffer)

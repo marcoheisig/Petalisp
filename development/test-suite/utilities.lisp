@@ -24,10 +24,15 @@
 ;;;
 ;;; Equality
 
-(defgeneric approximately-equal (value-1 value-2))
+(defgeneric approximately-equal (a b))
 
-(defmethod approximately-equal ((immediate-1 immediate) (immediate-2 immediate))
-  (approximately-equal (storage immediate-1) (storage immediate-2)))
+(defmethod approximately-equal ((a t) (b t))
+  nil)
+
+(defmethod approximately-equal ((a immediate) (b immediate))
+  (approximately-equal
+   (lisp-datum-from-immediate a)
+   (lisp-datum-from-immediate b)))
 
 (defmethod approximately-equal ((array-1 array) (array-2 array))
   (and (equal (array-dimensions array-1)
@@ -37,7 +42,7 @@
                      (row-major-aref array-1 index)
                      (row-major-aref array-2 index)))))
 
-(defmethod approximately-equal ((object-1 t) (object-2 t))
+(defmethod approximately-equal ((a t) (b t))
   (eql object-1 object-2))
 
 (defmethod approximately-equal ((a single-float) (b single-float))

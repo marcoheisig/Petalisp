@@ -60,9 +60,13 @@
 (defmethod coerce-to-strided-array ((object t))
   (make-scalar-immediate object))
 
-(defmethod print-object ((immediate immediate) stream)
-  (print-unreadable-object (immediate stream :type t :identity t)
-    (princ (storage immediate) stream)))
+(defmethod print-object ((array-immediate array-immediate) stream)
+  (print-unreadable-object (array-immediate stream :type t :identity t)
+    (princ (storage array-immediate) stream)))
+
+(defmethod print-object ((scalar-immediate scalar-immediate) stream)
+  (print-unreadable-object (scalar-immediate stream :type t :identity t)
+    (princ (storage scalar-immediate) stream)))
 
 (defmethod print-object ((range-immediate range-immediate) stream)
   (print-unreadable-object (range-immediate stream :type t :identity t)

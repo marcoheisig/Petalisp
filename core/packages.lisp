@@ -57,6 +57,7 @@
    ;; Strided Arrays
    #:strided-array
    #:coerce-to-strided-array
+   #:lisp-datum-from-immediate
    #:element-type
    #:shape
    #:shapep
@@ -104,4 +105,5 @@
    #:compute-immediates
    #:backend
    #:asynchronous-backend
+   #:overwrite-instance
    #:delete-backend))
