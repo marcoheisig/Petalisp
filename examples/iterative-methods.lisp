@@ -7,14 +7,11 @@
 
 (in-package :petalisp/examples/iterative-methods)
 
-(defun interior (shape)
-  (with-shape-accessors (rank start step-size end) shape
-    (loop for i below rank
-          collect
-          (let ((step (step-size i)))
-            (list (+ (start i) step)
-                  step
-                  (- (end i) step))))))
+(defun interior (array)
+  (loop for range in (ranges (shape (coerce-to-strided-array array)))
+        collect (multiple-value-bind (start step end)
+                    (range-start-step-end range)
+                  (list (+ start step) step (- end step)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -60,34 +57,35 @@
 ;;;
 ;;; The Gauss-Seidel Method
 
-(defun red-black-coloring (shape)
-  (with-shape-accessors (rank start step-size end) shape
+(defun red-black-coloring (array)
+  (let* ((strided-array (coerce-to-strided-array array))
+         (ranges (ranges (shape strided-array))))
     (labels ((prepend-1 (list)
                (cons 1 list))
              (prepend-2 (list)
                (cons 2 list))
              (offsets (red black depth)
-               (if (= depth rank)
+               (if (= depth (dimension strided-array))
                    (values red black)
                    (offsets
                     (append (mapcar #'prepend-1 red)
                             (mapcar #'prepend-2 black))
                     (append (mapcar #'prepend-1 black)
                             (mapcar #'prepend-2 red))
-                    (1+ depth))))
-             (offset-space (offsets)
-               (make-shape
-                (loop for offset in offsets
-                      for i from 0
-                      collect (let ((step (step-size i)))
-                                (list (+ (start i) (* step offset))
-                                      (* 2 step)
-                                      (- (end i) step)))))))
-      (multiple-value-bind (red-offsets black-offsets)
-          (offsets '((2)) '((1)) 1)
-        (values
-         (mapcar #'offset-space red-offsets)
-         (mapcar #'offset-space black-offsets))))))
+                    (1+ depth)))))
+      (multiple-value-bind (red-offsets black-offsets) (offsets '((2)) '((1)) 1)
+        (flet ((offset-space (offsets)
+                 (make-shape
+                  (loop for offset in offsets
+                        for range in ranges
+                        collect (multiple-value-bind (start step end)
+                                    (range-start-step-end range)
+                                  (list (+ start (* step offset))
+                                        (* 2 step)
+                                        (- end step)))))))
+          (values
+           (mapcar #'offset-space red-offsets)
+           (mapcar #'offset-space black-offsets)))))))
 
 (defun rbgs (u &key (iterations 1) (h 1.0) (f 0))
   "Iteratively solve the Poisson equation -Δu = f for a given uniform grid

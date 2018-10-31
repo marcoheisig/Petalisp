@@ -121,13 +121,10 @@
 ;;;  Jacobi's Method
 
 (defun interior (shape)
-  (with-shape-accessors (rank start step-size end) shape
-    (loop for i below rank
-          collect
-          (let ((step (step-size i)))
-            (list (+ (start i) step)
-                  step
-                  (- (end i) step))))))
+  (loop for range in (ranges shape) do
+    (multiple-value-bind (start step end)
+        (range-start-step-end range)
+      (list (+ start step) step (- end step)))))
 
 (defun jacobi-2d (grid)
   (let ((interior (interior grid)))

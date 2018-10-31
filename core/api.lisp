@@ -9,23 +9,6 @@
 ;;;
 ;;; Working With Shapes
 
-(defmacro with-shape-accessors ((rank start step end) datum &body body)
-  "For a shape specified by DATUM, bind rank to the rank of the specified
-shape. Furthermore, bind start, step and end to functions that map
-indices in the range from zero below the rank to the respective
-quantities."
-  (check-type rank symbol)
-  (check-type start symbol)
-  (check-type step symbol)
-  (check-type end symbol)
-  (with-gensyms (ranges)
-    `(let* ((,ranges (ranges (shape (coerce-to-strided-array ,datum))))
-            (,rank (length ,ranges)))
-       (flet ((,start (index) (range-start (elt ,ranges index)))
-              (,step (index) (range-step (elt ,ranges index)))
-              (,end (index) (range-end (elt ,ranges index))))
-         ,@body))))
-
 (defun indices (array &optional (axis 0))
   "Return an array of integers, where the value of each entry (i_0 ... i_N)
 is i_AXIS.  If axis is not supplied, it defaults to zero."

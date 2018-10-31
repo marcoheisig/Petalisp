@@ -45,7 +45,6 @@
    #:output-dimension
    #:invertible-transformation-p
    #:canonicalize-transformation
-   #:with-shape-accessors
    #:make-transformation
    #:identity-transformation
    #:invert-transformation
