@@ -14,7 +14,7 @@
 ;;; 5. The node is an immediate node.
 ;;;
 ;;; These rules 1-3 ensure that values that are used more than once reside
-;;; in main memory.  Rule 4 is not chosen in addition, because it greatly
+;;; in main memory.  Rule 4 is chosen in addition, because it greatly
 ;;; simplifies reasoning about kernels, while the cost of allocating the
 ;;; results of a reduction is usually negligible.
 ;;;
