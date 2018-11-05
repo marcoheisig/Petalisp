@@ -57,9 +57,8 @@ It provides powerful N-dimensional arrays and a variety of functions for
 working with these arrays.
 
 Petalisp works on a more fundamental level.  It provides even more powerful
-N-dimensional arrays, but just a few fundamental building blocks for
-working on them - element-wise function application, reduction, reshaping
-and array fusion.
+N-dimensional arrays, but just a few building blocks for working on them -
+element-wise function application, reduction, reshaping and array fusion.
 
 So Petalisp is not a substitute for NumPy.  However, it could be used to
 write a library that behaves like NumPy, but that is much faster and fully
