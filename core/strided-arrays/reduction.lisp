@@ -79,6 +79,6 @@
 (defmethod reduction-range ((reduction reduction))
   (first
    (ranges
-    (shape
+    (array-shape
      (first
       (inputs reduction))))))

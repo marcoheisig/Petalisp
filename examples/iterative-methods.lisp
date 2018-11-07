@@ -75,14 +75,14 @@
                     (1+ depth)))))
       (multiple-value-bind (red-offsets black-offsets) (offsets '((2)) '((1)) 1)
         (flet ((offset-space (offsets)
-                 (make-shape
+                 (apply #'shape
                   (loop for offset in offsets
                         for range in ranges
                         collect (multiple-value-bind (start step end)
                                     (range-start-step-end range)
-                                  (list (+ start (* step offset))
-                                        (* 2 step)
-                                        (- end step)))))))
+                                  (range (+ start (* step offset))
+                                         (* 2 step)
+                                         (- end step)))))))
           (values
            (mapcar #'offset-space red-offsets)
            (mapcar #'offset-space black-offsets)))))))
@@ -179,7 +179,7 @@
 
 (defun residual (u b)
   (let ((interior (interior u))
-        (h (/ (1- (sqrt (size u))))))
+        (h (/ (1- (sqrt (total-size u))))))
     (fuse* (reshape 0.0 (array-shape u))
            (α #'- (reshape b interior)
               (α #'* (/ (* h h))
@@ -191,7 +191,7 @@
                     (reshape u (τ (i j) (i (1- j))) interior)))))))
 
 (defun v-cycle (u f v1 v2)
-  (if (<= (size u) 25)
+  (if (<= (total-size u) 25)
       (rbgs u f 5) ; solve "exactly"
       (let* ((x (rbgs u f v1))
              (r (restrict (residual x f)))

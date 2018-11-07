@@ -58,7 +58,7 @@
     ((strided-array strided-array)
      (shape shape)
      (identity-transformation identity-transformation))
-  (when (set-equal (shape strided-array) shape)
+  (when (set-equal (array-shape strided-array) shape)
     strided-array))
 
 (defmethod make-reference

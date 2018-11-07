@@ -15,7 +15,7 @@
 
 (defgeneric refcount (strided-array))
 
-(defgeneric size (strided-array))
+(defgeneric total-size (strided-array))
 
 (defgeneric array-shape (strided-array))
 
@@ -25,7 +25,7 @@
 
 (defclass strided-array ()
   ((%element-type :initarg :element-type :reader element-type)
-   (%shape :initarg :shape :reader shape :reader array-shape)
+   (%shape :initarg :shape :reader array-shape)
    (%refcount :initform 0 :accessor refcount))
   (:default-initargs :element-type t))
 
@@ -36,10 +36,10 @@
 (defmethod coerce-to-strided-array ((strided-array strided-array))
   strided-array)
 
-(defmethod size ((strided-array strided-array))
+(defmethod total-size ((strided-array strided-array))
   (set-size (array-shape strided-array)))
 
-(defmethod size ((finite-set finite-set))
+(defmethod total-size ((finite-set finite-set))
   (set-size finite-set))
 
 (defmethod initialize-instance :after ((strided-array strided-array)
@@ -61,7 +61,7 @@
 ;;;
 ;;; Treating Arrays as Strided Arrays
 
-(defmethod size ((array array))
+(defmethod total-size ((array array))
   (array-total-size array))
 
 (defmethod array-shape ((array array))
