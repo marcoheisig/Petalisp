@@ -18,5 +18,4 @@
                           :max-size max-size
                           :max-extent max-extent)))))
     (lambda ()
-      (shape-from-ranges
-       (mapcar #'funcall range-generators)))))
+      (apply #'make-shape (mapcar #'funcall range-generators)))))

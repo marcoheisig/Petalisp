@@ -14,10 +14,6 @@
 ;;;
 ;;; Generic Functions
 
-(defgeneric make-shape (shape-designator))
-
-(defgeneric shape-from-ranges (ranges))
-
 (defgeneric rank (shape))
 
 (defgeneric ranges (shape))
@@ -39,33 +35,15 @@
 (defclass shape (finite-set)
   ((%ranges :initarg :ranges :reader ranges :type list)))
 
+(defun make-shape (&rest ranges)
+  (assert (every #'rangep ranges))
+  (make-instance 'shape :ranges ranges))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Methods
 
 (define-class-predicate shape)
-
-(defmethod make-shape ((shape shape))
-  shape)
-
-(defmethod make-shape ((shape-designator list))
-  (parse-shape-designator shape-designator))
-
-(defmethod make-shape ((integer integer))
-  (assert (plusp integer))
-  (shape-from-ranges
-   (list
-    (make-range 0 1 (1- integer)))))
-
-(defmethod shape-from-ranges ((ranges list))
-  (assert (every #'rangep ranges))
-  (make-instance 'shape :ranges ranges))
-
-(defmethod rank ((object t))
-  0)
-
-(defmethod rank ((array array))
-  (array-rank array))
 
 (defmethod rank ((shape shape))
   (length (ranges shape)))
@@ -81,8 +59,7 @@
                 for i from 0
                 for head = (subseq intersection-ranges 0 i) do
                   (loop for difference in (range-difference-list range-1 range-2) do
-                    (push (shape-from-ranges
-                           (append head (cons difference tail)))
+                    (push (apply #'make-shape (append head (cons difference tail)))
                           result)))
           result))))
 
@@ -107,15 +84,15 @@
                                  ~{~#[~;and ~S~;~S ~:;~S, ~]~}.~:@>"
                       shapes))))
                result)))
-      (shape-from-ranges
-       (loop for dim below maxdim
-             collect
-             (broadcast-ranges
-              (loop for cons on stacks
-                    for stack-depth in stack-depths
-                    collect (if (> (- maxdim stack-depth) dim)
-                                (load-time-value (make-range 0 1 0))
-                                (pop (car cons))))))))))
+      (apply #'make-shape
+             (loop for dim below maxdim
+                   collect
+                   (broadcast-ranges
+                    (loop for cons on stacks
+                          for stack-depth in stack-depths
+                          collect (if (> (- maxdim stack-depth) dim)
+                                      (load-time-value (make-range 0 1 0))
+                                      (pop (car cons))))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -158,14 +135,14 @@
   (if (/= (rank shape-1) (rank shape-2))
       (empty-set)
       (block nil
-        (shape-from-ranges
-         (mapcar (lambda (range-1 range-2)
-                   (let ((intersection (set-intersection range-1 range-2)))
-                     (if (set-emptyp intersection)
-                         (return (empty-set))
-                         intersection)))
-                 (ranges shape-1)
-                 (ranges shape-2))))))
+        (apply #'make-shape
+               (mapcar (lambda (range-1 range-2)
+                         (let ((intersection (set-intersection range-1 range-2)))
+                           (if (set-emptyp intersection)
+                               (return (empty-set))
+                               intersection)))
+                       (ranges shape-1)
+                       (ranges shape-2))))))
 
 (defmethod set-intersectionp ((shape-1 shape) (shape-2 shape))
   (every #'set-intersectionp (ranges shape-1) (ranges shape-2)))
@@ -185,8 +162,9 @@
     shapes))
 
 (defmethod shape-union ((shapes cons))
-  (shape-from-ranges
-   (apply #'mapcar #'shape-union-range-oracle (mapcar #'ranges shapes))))
+  (apply #'make-shape
+         (apply #'mapcar #'shape-union-range-oracle
+                (mapcar #'ranges shapes))))
 
 (defmethod shape-union :around ((shapes cons))
   (let ((union (call-next-method)))
@@ -219,7 +197,7 @@
                    (make-range global-start step-size global-end))))))
 
 (defmethod enlarge-shape ((shape shape) (range range))
-  (shape-from-ranges (cons range (ranges shape))))
+  (apply #'make-shape range (ranges shape)))
 
 ;;; Return a list of disjoint shapes. Each resulting object is a proper
 ;;; subspace of one or more of the arguments and their fusion covers all
@@ -247,27 +225,13 @@
 ;;;
 ;;; Convenient Notation for Shapes
 
-(defun parse-shape-designator (shape-designator)
-  (if (integerp shape-designator)
-      (shape-from-ranges (list (make-range 0 1 (1- shape-designator))))
-      (shape-from-ranges
-       (mapcar (lambda (range-designator)
-                 (multiple-value-call #'make-range
-                   (parse-range-designator range-designator)))
-               shape-designator))))
-
-(trivia:defpattern list-of-ranges (&rest range-designators)
-  (if (null range-designators)
-      `(null)
-      (multiple-value-bind (start step end)
-          (parse-range-designator (first range-designators))
-        `(cons (range ,start ,step ,end)
-               (list-of-ranges ,@(rest range-designators))))))
-
-(trivia:defpattern shape (&rest range-designators)
+(trivia:defpattern shape (&rest ranges)
   (with-gensyms (it)
     `(trivia:guard1 ,it (shapep ,it)
-                    (ranges ,it) (list-of-ranges ,@range-designators))))
+                    (ranges ,it) (list ,@ranges))))
+
+(trivia:defpattern make-shape (&rest ranges)
+  `(shape ,@ranges))
 
 (defmethod print-object ((shape shape) stream)
   (flet ((represent (range)

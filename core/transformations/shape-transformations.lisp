@@ -45,7 +45,7 @@
                           (* scaling (range-step input-range))
                           (+ offset (* scaling (range-end input-range)))))))))
       (map-transformation-outputs transformation #'store-output-range))
-    (shape-from-ranges output-ranges)))
+    (apply #'make-shape output-ranges)))
 
 (defmethod broadcasting-transformation ((from-shape shape) (to-shape shape))
   (let* ((from-ranges (ranges from-shape))

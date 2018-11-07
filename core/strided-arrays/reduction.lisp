@@ -73,8 +73,7 @@
                  :conditions conditions
                  :element-type element-type
                  :inputs inputs
-                 :shape (shape-from-ranges
-                         (cdr (ranges (shape (first inputs))))))))))))
+                 :shape (apply #'make-shape (cdr (ranges (shape (first inputs))))))))))))
 
 (defmethod reduction-range ((reduction reduction))
   (first

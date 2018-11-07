@@ -35,7 +35,7 @@
 (defun make-scalar-immediate (scalar)
   (make-instance 'scalar-immediate
     :element-type (type-of scalar)
-    :shape (load-time-value (make-shape '()))
+    :shape (load-time-value (make-shape))
     :storage scalar))
 
 (defun make-array-immediate (array)
@@ -43,13 +43,13 @@
       (make-scalar-immediate (aref array))
       (make-instance 'array-immediate
         :element-type (array-element-type array)
-        :shape (make-shape (array-dimensions array))
+        :shape (shape array)
         :storage array)))
 
 (defun make-range-immediate (range)
   (make-instance 'range-immediate
     :element-type `(integer ,(range-start range) ,(range-end range))
-    :shape (shape-from-ranges (list range))))
+    :shape (make-shape range)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

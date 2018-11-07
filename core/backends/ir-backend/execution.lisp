@@ -95,7 +95,7 @@
         ;; Reduction kernels.
         (let* ((ranges (ranges (petalisp-ir:iteration-space kernel)))
                (reduction-range (first ranges))
-               (non-reducing-iteration-space (shape-from-ranges (rest ranges)))
+               (non-reducing-iteration-space (apply #'make-shape (rest ranges)))
                (reduce-instructions (petalisp-ir:kernel-reduce-instructions kernel)))
           (set-for-each
            (lambda (non-reducing-index)

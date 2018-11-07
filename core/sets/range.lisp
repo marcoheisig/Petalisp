@@ -344,11 +344,10 @@
 ;;; Convenient Notation for Ranges
 
 (defun parse-range-designator (range-designator)
-  (trivia:match range-designator
+  (trivia:ematch range-designator
     ((list start step end) (values start step end))
     ((list start end)      (values start 1 end))
-    ((list start)          (values start 1 start))
-    (length                (values 0 1 (1- length)))))
+    ((list start)          (values start 1 start))))
 
 (defun range (&rest range-designator)
   (multiple-value-call #'make-range

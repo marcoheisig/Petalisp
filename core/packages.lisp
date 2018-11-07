@@ -37,7 +37,6 @@
    #:rank
    #:ranges
    #:shape-difference-list
-   #:shape-from-ranges
    #:enlarge-shape
 
    ;; Transformations

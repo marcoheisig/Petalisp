@@ -65,6 +65,9 @@
 (defmethod total-size ((array array))
   (array-total-size array))
 
+(defmethod rank ((object t))
+  0)
+
 (defmethod rank ((array array))
   (array-rank array))
 
@@ -72,7 +75,7 @@
   (array-element-type array))
 
 (defmethod shape ((array array))
-  (shape-from-ranges
-   (loop for axis below (array-rank array)
-         collect
-         (range 0 1 (1- (array-dimension array axis))))))
+  (apply #'make-shape
+         (loop for axis below (array-rank array)
+               collect
+               (range 0 1 (1- (array-dimension array axis))))))

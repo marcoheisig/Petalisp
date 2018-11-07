@@ -8,10 +8,11 @@
 (in-package :petalisp/examples/iterative-methods)
 
 (defun interior (array)
-  (loop for range in (ranges (shape (coerce-to-strided-array array)))
-        collect (multiple-value-bind (start step end)
-                    (range-start-step-end range)
-                  (list (+ start step) step (- end step)))))
+  (flet ((range-interior (range)
+           (multiple-value-bind (start step end)
+               (range-start-step-end range)
+             (range (+ start step) step (- end step)))))
+    (apply #'make-shape (mapcar #'range-interior (ranges (shape array))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -75,14 +76,15 @@
                     (1+ depth)))))
       (multiple-value-bind (red-offsets black-offsets) (offsets '((2)) '((1)) 1)
         (flet ((offset-space (offsets)
-                 (make-shape
-                  (loop for offset in offsets
-                        for range in ranges
-                        collect (multiple-value-bind (start step end)
-                                    (range-start-step-end range)
-                                  (list (+ start (* step offset))
-                                        (* 2 step)
-                                        (- end step)))))))
+                 (apply #'make-shape
+                        (loop for offset in offsets
+                              for range in ranges
+                              collect
+                              (multiple-value-bind (start step end)
+                                  (range-start-step-end range)
+                                (range (+ start (* step offset))
+                                       (* 2 step)
+                                       (- end step)))))))
           (values
            (mapcar #'offset-space red-offsets)
            (mapcar #'offset-space black-offsets)))))))
