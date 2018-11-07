@@ -76,10 +76,10 @@
 
 (defmethod print-object ((range-immediate range-immediate) stream)
   (print-unreadable-object (range-immediate stream :type t :identity t)
-    (format stream ":SHAPE ~A" (shape range-immediate))))
+    (format stream ":SHAPE ~A" (array-shape range-immediate))))
 
 (defmethod transform ((strided-array strided-array) (transformation transformation))
   (make-reference
    strided-array
-   (transform (shape strided-array) transformation)
+   (transform (array-shape strided-array) transformation)
    (invert-transformation transformation)))

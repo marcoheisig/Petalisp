@@ -23,7 +23,7 @@
 ;;; Methods
 
 (defmethod make-application :check ((function function) (inputs list))
-  (assert (identical inputs :test #'set-equal :key #'shape)))
+  (assert (identical inputs :test #'set-equal :key #'array-shape)))
 
 (defmethod make-application ((function function) inputs)
   (multiple-value-bind (result-types more-p conditions function-name)
@@ -41,7 +41,7 @@
                :conditions conditions
                :element-type element-type
                :inputs inputs
-               :shape (shape (first inputs))))))))
+               :shape (array-shape (first inputs))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -75,4 +75,4 @@
       (let ((arguments (mapcar #'value-or-fail inputs)))
         (reshape
          (make-scalar-immediate (apply function arguments))
-         (shape (first inputs)))))))
+         (array-shape (first inputs)))))))

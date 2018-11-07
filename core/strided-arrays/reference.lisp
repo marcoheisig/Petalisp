@@ -25,7 +25,7 @@
      (shape shape)
      (transformation transformation))
   (let ((relevant-shape (transform shape transformation))
-        (input-shape (shape strided-array)))
+        (input-shape (array-shape strided-array)))
     (demand (and (= (rank relevant-shape) (rank input-shape))
                  (set-subsetp relevant-shape input-shape))
       "~@<The index shape referenced by the current reference is ~S, ~
@@ -45,7 +45,9 @@
 
 ;;; Combine consecutive references
 (defmethod make-reference :optimize
-    ((reference reference) (shape shape) (transformation transformation))
+    ((reference reference)
+     (shape shape)
+     (transformation transformation))
   (make-reference
    (input reference)
    shape
@@ -53,12 +55,16 @@
 
 ;;; Drop references with no effect.
 (defmethod make-reference :optimize
-    ((strided-array strided-array) (shape shape) (identity-transformation identity-transformation))
+    ((strided-array strided-array)
+     (shape shape)
+     (identity-transformation identity-transformation))
   (when (set-equal (shape strided-array) shape)
     strided-array))
 
 (defmethod make-reference
-    ((strided-array strided-array) (shape shape) (transformation transformation))
+    ((strided-array strided-array)
+     (shape shape)
+     (transformation transformation))
   (make-instance 'reference
     :element-type (element-type strided-array)
     :inputs (list strided-array)

@@ -22,7 +22,7 @@
    #:make-kernel
 
    ;; Accessors
-   #:shape
+   #:buffer-shape
    #:element-type
    #:inputs
    #:outputs

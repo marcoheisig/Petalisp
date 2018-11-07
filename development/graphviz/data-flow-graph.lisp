@@ -71,7 +71,7 @@
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
      (strided-array strided-array))
-  `(("shape" . ,(stringify (shape strided-array)))))
+  `(("shape" . ,(stringify (array-shape strided-array)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)

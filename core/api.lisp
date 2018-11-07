@@ -13,7 +13,7 @@
   "Return an array of integers, where the value of each entry (i_0 ... i_N)
 is i_AXIS.  If axis is not supplied, it defaults to zero."
   (let* ((strided-array (coerce-to-strided-array array))
-         (shape (shape strided-array))
+         (shape (array-shape strided-array))
          (rank (rank shape)))
     (assert (<= 0 axis (1- rank)))
     (make-reference
@@ -34,11 +34,11 @@ Examples:
              (make-reference
               strided-array
               shape
-              (broadcasting-transformation shape (shape strided-array))))
+              (broadcasting-transformation shape (array-shape strided-array))))
            (reshape-with-transformation (strided-array transformation)
              (make-reference
               strided-array
-              (transform (shape strided-array) transformation)
+              (transform (array-shape strided-array) transformation)
               (invert-transformation transformation)))
            (reshape1 (strided-array modifier)
              (cond ((or (listp modifier) (integerp modifier))
@@ -63,10 +63,10 @@ arguments overlap partially, the value of the rightmost object is used."
   (let ((strided-arrays (mapcar #'coerce-to-strided-array arrays)))
     (flet ((reference-origin (piece)
              (make-reference
-              (find piece strided-arrays :from-end t :key #'shape :test #'set-subsetp)
+              (find piece strided-arrays :from-end t :key #'array-shape :test #'set-subsetp)
               piece
               (identity-transformation (rank piece)))))
-      (make-fusion (mapcar #'reference-origin (subdivision (mapcar #'shape strided-arrays)))))))
+      (make-fusion (mapcar #'reference-origin (subdivision (mapcar #'array-shape strided-arrays)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -74,7 +74,7 @@ arguments overlap partially, the value of the rightmost object is used."
 
 (defun broadcast-arguments (arguments)
   (let* ((strided-arrays (mapcar #'coerce-to-strided-array arguments))
-         (shape (broadcast-shapes (mapcar #'shape strided-arrays))))
+         (shape (broadcast-shapes (mapcar #'array-shape strided-arrays))))
     (mapcar (lambda (strided-array) (reshape strided-array shape))
             strided-arrays)))
 

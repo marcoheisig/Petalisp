@@ -8,7 +8,7 @@
 (in-package :petalisp/examples/iterative-methods)
 
 (defun interior (array)
-  (loop for range in (ranges (shape (coerce-to-strided-array array)))
+  (loop for range in (ranges (array-shape array))
         collect (multiple-value-bind (start step end)
                     (range-start-step-end range)
                   (list (+ start step) step (- end step)))))
@@ -59,7 +59,7 @@
 
 (defun red-black-coloring (array)
   (let* ((strided-array (coerce-to-strided-array array))
-         (ranges (ranges (shape strided-array))))
+         (ranges (ranges (array-shape strided-array))))
     (labels ((prepend-1 (list)
                (cons 1 list))
              (prepend-2 (list)
@@ -180,7 +180,7 @@
 (defun residual (u b)
   (let ((interior (interior u))
         (h (/ (1- (sqrt (size u))))))
-    (fuse* (reshape 0.0 (shape u))
+    (fuse* (reshape 0.0 (array-shape u))
            (α #'- (reshape b interior)
               (α #'* (/ (* h h))
                  (α #'+
@@ -195,6 +195,6 @@
       (rbgs u f 5) ; solve "exactly"
       (let* ((x (rbgs u f v1))
              (r (restrict (residual x f)))
-             (s (shape r))
+             (s (array-shape r))
              (c (v-cycle (reshape 0.0 s) r v1 v2)))
         (rbgs (α #'- x (prolongate c)) f v2))))

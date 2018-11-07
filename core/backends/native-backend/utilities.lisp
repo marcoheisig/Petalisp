@@ -2,18 +2,6 @@
 
 (in-package :petalisp-native-backend)
 
-;;; We need this macro because our code generator can only handle forms
-;;; that are flat and would thus destroy (SETF (AREF ...) ...) forms by
-;;; lifting the AREF subform.
-(defmacro store (value array row-major-index)
-  `(setf (row-major-aref ,array ,row-major-index)
-         ,value))
-
-(defun stride (array axis)
-  (apply #'array-row-major-index array
-         (loop for i below (array-rank array)
-               collect (if (= i axis) 1 0))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Compiler "Gensyms"

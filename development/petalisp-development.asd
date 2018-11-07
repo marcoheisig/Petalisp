@@ -5,7 +5,6 @@
 
   :depends-on
   ("asdf"
-   "uiop"
    "petalisp"
    "petalisp-examples"
    "the-cost-of-nothing"

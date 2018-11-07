@@ -100,7 +100,7 @@
 (defmethod graphviz-node-properties append
     ((graph ir-graph)
      (buffer petalisp-ir:buffer))
-  `(("shape" . ,(stringify (petalisp-ir:shape buffer)))))
+  `(("shape" . ,(stringify (petalisp-ir:buffer-shape buffer)))))
 
 (defun hide-buffers (references)
   (subst-if :buffer (lambda (x) (typep x 'petalisp-ir:buffer)) references))

@@ -32,6 +32,8 @@
 
    ;; Shapes
    #:make-shape
+   #:shape
+   #:shapep
    #:rank
    #:ranges
    #:shape-difference-list
@@ -60,8 +62,7 @@
    #:coerce-to-strided-array
    #:lisp-datum-from-immediate
    #:element-type
-   #:shape
-   #:shapep
+   #:array-shape
    #:size
    #:input
    #:inputs

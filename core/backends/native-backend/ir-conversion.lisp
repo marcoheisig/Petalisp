@@ -30,7 +30,7 @@
     ((array-immediate array-immediate)
      (native-backend native-backend))
   (make-instance 'array-buffer
-    :shape (shape array-immediate)
+    :shape (array-shape array-immediate)
     :element-type (element-type array-immediate)
     :storage (storage array-immediate)))
 
@@ -38,7 +38,7 @@
     ((scalar-immediate scalar-immediate)
      (native-backend native-backend))
   (make-instance 'array-buffer
-    :shape (shape scalar-immediate)
+    :shape (array-shape scalar-immediate)
     :element-type (element-type scalar-immediate)
     :storage (make-array '() :initial-element (storage scalar-immediate))))
 
@@ -46,7 +46,7 @@
     ((strided-array strided-array)
      (native-backend native-backend))
   (make-instance 'non-immediate-buffer
-    :shape (shape strided-array)
+    :shape (array-shape strided-array)
     :element-type (element-type strided-array)))
 
 (defmethod petalisp-ir:make-kernel
