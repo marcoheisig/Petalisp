@@ -86,37 +86,42 @@
          (*instruction-values* (make-array size)))
     (if (not (petalisp-ir:reduction-kernel-p kernel))
         ;; Non-reduction kernels.
-        (loop for index in (set-elements (petalisp-ir:iteration-space kernel)) do
-          (let ((*index* index))
-            (fill *instruction-values* 0) ; Clear the previous values
-            (mapc #'instruction-values (petalisp-ir:stores kernel))))
+        (set-for-each
+         (lambda (index)
+           (let ((*index* index))
+             (fill *instruction-values* 0) ; Clear the previous values
+             (mapc #'instruction-values (petalisp-ir:stores kernel))))
+         (petalisp-ir:iteration-space kernel))
         ;; Reduction kernels.
         (let* ((ranges (ranges (petalisp-ir:iteration-space kernel)))
                (reduction-range (first ranges))
                (non-reducing-iteration-space (shape-from-ranges (rest ranges)))
                (reduce-instructions (petalisp-ir:kernel-reduce-instructions kernel)))
-          (loop for non-reducing-index in (set-elements non-reducing-iteration-space) do
-            (labels ((divide-and-conquer (range)
-                       (if (unary-range-p range)
-                           (let ((*index* (cons (range-start range) non-reducing-index)))
-                             (fill *instruction-values* 0)
-                             (mapc #'instruction-values (petalisp-ir:stores kernel))
-                             (mapcar #'instruction-values reduce-instructions))
-                           (multiple-value-bind (left right)
-                               (split-range range)
-                             (loop for left-values in (divide-and-conquer left)
-                                   for right-values in (divide-and-conquer right)
-                                   for reduce-instruction in reduce-instructions
-                                   collect
-                                   (subseq
-                                    (multiple-value-list
-                                     (multiple-value-call (operator reduce-instruction)
-                                       (values-list left-values)
-                                       (values-list right-values)))
-                                    0 (length (petalisp-ir:arguments reduce-instruction))))))))
-              (loop for reduce-instruction in reduce-instructions
-                    for values in (divide-and-conquer reduction-range) do
-                      (setf (instruction-values reduce-instruction) values))
-              (let ((*index* non-reducing-index))
-                (loop for reduction-store in (petalisp-ir:reduction-stores kernel) do
-                  (instruction-values reduction-store)))))))))
+          (set-for-each
+           (lambda (non-reducing-index)
+             (labels ((divide-and-conquer (range)
+                        (if (unary-range-p range)
+                            (let ((*index* (cons (range-start range) non-reducing-index)))
+                              (fill *instruction-values* 0)
+                              (mapc #'instruction-values (petalisp-ir:stores kernel))
+                              (mapcar #'instruction-values reduce-instructions))
+                            (multiple-value-bind (left right)
+                                (split-range range)
+                              (loop for left-values in (divide-and-conquer left)
+                                    for right-values in (divide-and-conquer right)
+                                    for reduce-instruction in reduce-instructions
+                                    collect
+                                    (subseq
+                                     (multiple-value-list
+                                      (multiple-value-call (operator reduce-instruction)
+                                        (values-list left-values)
+                                        (values-list right-values)))
+                                     0
+                                     (length (petalisp-ir:arguments reduce-instruction))))))))
+               (loop for reduce-instruction in reduce-instructions
+                     for values in (divide-and-conquer reduction-range) do
+                       (setf (instruction-values reduce-instruction) values))
+               (let ((*index* non-reducing-index))
+                 (loop for reduction-store in (petalisp-ir:reduction-stores kernel) do
+                   (instruction-values reduction-store)))))
+           non-reducing-iteration-space)))))

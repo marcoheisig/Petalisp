@@ -17,9 +17,11 @@
 
 (defun make-simple-immediate (shape value-fn)
   (let ((table (make-hash-table :test #'equal)))
-    (loop for index in (set-elements shape) do
-      (setf (gethash index table)
-            (funcall value-fn index)))
+    (set-for-each
+     (lambda (index)
+       (setf (gethash index table)
+             (funcall value-fn index)))
+     shape)
     (make-instance 'simple-immediate
       :shape shape
       :table table)))
@@ -37,9 +39,11 @@
     (if (zerop (rank shape))
         (gethash '() table)
         (let ((array (make-array (mapcar #'set-size (ranges shape)))))
-          (loop for index in (set-elements shape) do
-            (setf (apply #'aref array index)
-                  (gethash index table)))
+          (set-for-each
+           (lambda (index)
+             (setf (apply #'aref array index)
+                   (gethash index table)))
+           shape)
           array))))
 
 (defmethod overwrite-instance ((instance strided-array) (replacement simple-immediate))
