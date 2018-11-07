@@ -18,14 +18,14 @@
 (defun normalize-ir (roots)
   (map-buffers
    (lambda (buffer)
-     (transform buffer (collapsing-transformation (buffer-shape buffer))))
+     (transform buffer (collapsing-transformation (shape buffer))))
    roots))
 
 (defmethod transform
     ((buffer buffer)
      (transformation transformation))
-  (setf (buffer-shape buffer)
-        (transform (buffer-shape buffer) transformation)))
+  (setf (shape buffer)
+        (transform (shape buffer) transformation)))
 
 (defmethod transform
     ((instruction instruction)

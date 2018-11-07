@@ -51,24 +51,24 @@
 
 (defmethod evaluate ((scalar-immediate scalar-immediate))
   (make-simple-immediate
-   (array-shape scalar-immediate)
+   (shape scalar-immediate)
    (lambda (index)
      (assert (null index))
      (storage scalar-immediate))))
 
 (defmethod evaluate ((array-immediate array-immediate))
   (make-simple-immediate
-   (array-shape array-immediate)
+   (shape array-immediate)
    (lambda (index)
      (apply #'aref (storage array-immediate) index))))
 
 (defmethod evaluate ((range-immediate range-immediate))
-  (make-simple-immediate (array-shape range-immediate) #'first))
+  (make-simple-immediate (shape range-immediate) #'first))
 
 (defmethod evaluate ((application application))
   (let ((inputs (mapcar #'evaluate (inputs application))))
     (make-simple-immediate
-     (array-shape application)
+     (shape application)
      (lambda (index)
        (nth-value
         (value-n application)
@@ -79,7 +79,7 @@
   (let* ((inputs (mapcar #'evaluate (inputs reduction)))
          (k (length inputs)))
     (make-simple-immediate
-     (array-shape reduction)
+     (shape reduction)
      (lambda (index)
        (labels ((divide-and-conquer (range)
                   (if (unary-range-p range)
@@ -98,19 +98,19 @@
                           0 k))))))
          (nth-value
           (value-n reduction)
-          (divide-and-conquer (first (ranges (array-shape (first inputs)))))))))))
+          (divide-and-conquer (first (ranges (shape (first inputs)))))))))))
 
 (defmethod evaluate ((fusion fusion))
   (let ((inputs (mapcar #'evaluate (inputs fusion))))
     (make-simple-immediate
-     (array-shape fusion)
+     (shape fusion)
      (lambda (index)
-       (iref (find-if (lambda (input) (set-contains (array-shape input) index)) inputs)
+       (iref (find-if (lambda (input) (set-contains (shape input) index)) inputs)
              index)))))
 
 (defmethod evaluate ((reference reference))
   (let ((input (evaluate (input reference))))
     (make-simple-immediate
-     (array-shape reference)
+     (shape reference)
      (lambda (index)
        (iref input (transform index (transformation reference)))))))

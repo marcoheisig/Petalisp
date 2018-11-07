@@ -50,7 +50,7 @@
   (multiple-value-bind (start step end)
       (range-start-step-end range)
     (ucons:ulist
-     (integer-length (total-size range))
+     (integer-length (size range))
      (integer-length step)
      (if (and (typep start 'fixnum)
               (typep end 'fixnum))

@@ -15,9 +15,7 @@
 
 (defgeneric refcount (strided-array))
 
-(defgeneric total-size (strided-array))
-
-(defgeneric array-shape (strided-array))
+(defgeneric size (strided-array))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -25,7 +23,7 @@
 
 (defclass strided-array ()
   ((%element-type :initarg :element-type :reader element-type)
-   (%shape :initarg :shape :reader array-shape)
+   (%shape :initarg :shape :reader shape :reader shape)
    (%refcount :initform 0 :accessor refcount))
   (:default-initargs :element-type t))
 
@@ -36,10 +34,13 @@
 (defmethod coerce-to-strided-array ((strided-array strided-array))
   strided-array)
 
-(defmethod total-size ((strided-array strided-array))
-  (set-size (array-shape strided-array)))
+(defmethod size ((strided-array strided-array))
+  (set-size (shape strided-array)))
 
-(defmethod total-size ((finite-set finite-set))
+(defmethod size ((array array))
+  (array-total-size array))
+
+(defmethod size ((finite-set finite-set))
   (set-size finite-set))
 
 (defmethod initialize-instance :after ((strided-array strided-array)
@@ -48,31 +49,11 @@
         (inputs strided-array)))
 
 (defmethod rank ((strided-array strided-array))
-  (rank (array-shape strided-array)))
+  (rank (shape strided-array)))
 
 (defun input (object)
   (destructuring-bind (input) (inputs object) input))
 
 (defmethod print-object ((strided-array strided-array) stream)
   (print-unreadable-object (strided-array stream :type t)
-    (format stream "~S ~S" (element-type strided-array) (array-shape strided-array))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Treating Arrays as Strided Arrays
-
-(defmethod total-size ((array array))
-  (array-total-size array))
-
-(defmethod array-shape ((array array))
-  (shape-from-ranges
-   (loop for axis below (array-rank array)
-         collect
-         (let ((dim (array-dimension array axis)))
-           (make-range 0 1 (1- dim))))))
-
-(defmethod element-type ((array array))
-  (array-element-type array))
-
-(defmethod rank ((array array))
-  (array-rank array))
+    (format stream "~S ~S" (element-type strided-array) (shape strided-array))))

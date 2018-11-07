@@ -247,10 +247,6 @@
 ;;;
 ;;; Convenient Notation for Shapes
 
-(defun shape (&rest ranges)
-  (assert (every #'rangep ranges))
-  (make-instance 'shape :ranges ranges))
-
 (defun parse-shape-designator (shape-designator)
   (if (integerp shape-designator)
       (shape-from-ranges (list (make-range 0 1 (1- shape-designator))))

@@ -82,12 +82,6 @@
       ;; Done.
       (form *initial-basic-block*))))
 
-;;; We need this macro because our code generator can only handle forms
-;;; that are flat and would thus destroy (SETF (AREF ...) ...) forms by
-;;; lifting the AREF subform.
-(defmacro store (value array row-major-index)
-  `(setf (row-major-aref ,array ,row-major-index) ,value))
-
 (defun push-loop-block (range index)
   (destructuring-bind (size-bits step-bits type) range
     (let ((var (index-symbol index))

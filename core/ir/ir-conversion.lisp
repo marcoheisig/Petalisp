@@ -188,7 +188,7 @@
   (compute-value
    (input reference)
    (transform
-    (set-intersection iteration-space (array-shape reference))
+    (set-intersection iteration-space (shape reference))
     (transformation reference))
    (compose-transformations (transformation reference) transformation)))
 
@@ -197,11 +197,11 @@
      (iteration-space shape)
      (transformation transformation))
   (let ((input (find iteration-space (inputs fusion)
-                     :key #'array-shape
+                     :key #'shape
                      :test #'set-intersectionp)))
     (compute-value
      input
-     (set-intersection iteration-space (array-shape input))
+     (set-intersection iteration-space (shape input))
      transformation)))
 
 (defmethod compute-value

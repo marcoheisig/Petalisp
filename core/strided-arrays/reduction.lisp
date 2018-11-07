@@ -47,9 +47,9 @@
 
 (defmethod make-reduction :check ((operator function) (inputs list))
   (declare (ignore operator))
-  (unless (identical inputs :test #'set-equal :key #'array-shape)
+  (unless (identical inputs :test #'set-equal :key #'shape)
     (error "~@<Can only reduce data structures of equal shape.~:@>"))
-  (unless (plusp (rank (array-shape (first inputs))))
+  (unless (plusp (rank (shape (first inputs))))
     (error "~@<Can only reduce data structures with rank greater than zero.~:@>")))
 
 (defmethod make-reduction ((operator function) (inputs list))
@@ -74,11 +74,11 @@
                  :element-type element-type
                  :inputs inputs
                  :shape (shape-from-ranges
-                         (cdr (ranges (array-shape (first inputs))))))))))))
+                         (cdr (ranges (shape (first inputs))))))))))))
 
 (defmethod reduction-range ((reduction reduction))
   (first
    (ranges
-    (array-shape
+    (shape
      (first
       (inputs reduction))))))

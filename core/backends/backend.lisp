@@ -52,7 +52,7 @@
 
 (defmethod compute-on-backend ((strided-arrays list) (backend backend))
   (let* ((collapsing-transformations
-           (mapcar (compose #'collapsing-transformation #'array-shape)
+           (mapcar (compose #'collapsing-transformation #'shape)
                    strided-arrays))
          (immediates
            (compute-immediates
@@ -63,7 +63,7 @@
           for immediate in immediates
           do (overwrite-instance
               strided-array
-              (make-reference immediate (array-shape strided-array) collapsing-transformation)))
+              (make-reference immediate (shape strided-array) collapsing-transformation)))
     (values-list
      (mapcar #'lisp-datum-from-immediate immediates))))
 
@@ -88,7 +88,7 @@
   (storage scalar-immediate))
 
 (defmethod lisp-datum-from-immediate ((range-immediate range-immediate))
-  (let* ((shape (array-shape range-immediate))
+  (let* ((shape (shape range-immediate))
          (range (first (ranges shape)))
          (size (set-size range))
          (array (make-array size)))

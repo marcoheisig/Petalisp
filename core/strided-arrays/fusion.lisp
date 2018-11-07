@@ -25,8 +25,8 @@
     (map-combinations
      (lambda (two-inputs)
        (destructuring-bind (input-1 input-2) two-inputs
-         (let ((shape-1 (array-shape input-1))
-               (shape-2 (array-shape input-2)))
+         (let ((shape-1 (shape input-1))
+               (shape-2 (shape input-2)))
            (demand (= (rank shape-1) (rank shape-2))
              "~@<The index shapes of the arguments to a fusion operation ~
               must have the same rank, but the supplied arguments are ~
@@ -54,4 +54,4 @@
                    (upgraded-array-element-type
                     `(or ,@(mapcar #'element-type inputs))))
     :inputs inputs
-    :shape (shape-union (mapcar #'array-shape inputs))))
+    :shape (shape-union (mapcar #'shape inputs))))
