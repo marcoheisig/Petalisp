@@ -13,7 +13,7 @@
 ;;;
 ;;; Methods on Empty Sets
 
-(defmethod set-for-each ((set empty-set) (function function))
+(defmethod set-for-each ((function function) (set empty-set))
   (values))
 
 (defmethod set-elements ((set empty-set))

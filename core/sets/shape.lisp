@@ -121,16 +121,16 @@
 ;;;
 ;;; Shapes as Sets
 
-(defmethod set-for-each ((shape shape) (function function))
+(defmethod set-for-each ((function function) (shape shape))
   (labels ((rec (ranges indices function)
              (if (null ranges)
                  (funcall function indices)
                  (set-for-each
-                  (first ranges)
                   (lambda (index)
                     (rec (rest ranges)
                          (cons index indices)
-                         function))))))
+                         function))
+                  (first ranges)))))
     (rec (reverse (ranges shape)) '() function)))
 
 (defmethod set-size ((shape shape))

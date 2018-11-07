@@ -63,18 +63,18 @@
 (defmethod set-elements ((set finite-set))
   (let ((result '()))
     (set-for-each
-     set
      (lambda (elt)
-       (push elt result)))
+       (push elt result))
+     set)
     result))
 
 (defmethod set-size ((set finite-set))
   (let ((result 0))
     (set-for-each
-     set
      (lambda (elt)
        (declare (ignore elt))
-       (incf result)))
+       (incf result))
+     set)
     result))
 
 (defmethod set-emptyp ((set any-set))

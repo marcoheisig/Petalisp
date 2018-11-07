@@ -74,7 +74,7 @@
   (let ((element (range-start range)))
     (values element 1 element)))
 
-(defmethod set-for-each ((range range) (function function))
+(defmethod set-for-each ((function function) (range range))
   (multiple-value-bind (start step end)
       (range-start-step-end range)
     (loop for element from start by step to end do
