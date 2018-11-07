@@ -37,9 +37,6 @@
 (defmethod size ((strided-array strided-array))
   (set-size (shape strided-array)))
 
-(defmethod size ((array array))
-  (array-total-size array))
-
 (defmethod size ((finite-set finite-set))
   (set-size finite-set))
 
@@ -57,3 +54,22 @@
 (defmethod print-object ((strided-array strided-array) stream)
   (print-unreadable-object (strided-array stream :type t)
     (format stream "~S ~S" (element-type strided-array) (shape strided-array))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Treating Arrays as Strided Arrays
+
+(defmethod size ((array array))
+  (array-total-size array))
+
+(defmethod rank ((array array))
+  (array-rank array))
+
+(defmethod element-type ((array array))
+  (array-element-type array))
+
+(defmethod shape ((array array))
+  (shape-from-ranges
+   (loop for axis below (array-rank array)
+         collect
+         (range 0 1 (1- (array-dimension array axis))))))
