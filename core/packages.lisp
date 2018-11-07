@@ -58,35 +58,35 @@
 
    ;; Strided Arrays
    #:strided-array
+   #:strided-array-p
    #:coerce-to-strided-array
-   #:lisp-datum-from-immediate
    #:element-type
    #:total-size
+   #:refcount
    #:input
    #:inputs
-   #:storage
-   #:axis
-   #:operator
-   #:value-n
-   #:refcount
-   #:reduction-range
    #:application
+   #:value-n
+   #:operator
    #:reduction
+   #:reduction-range
    #:fusion
    #:reference
    #:immediate
    #:immediatep
+   #:storage
    #:scalar-immediate
    #:array-immediate
    #:range-immediate
    #:make-scalar-immediate
    #:make-array-immediate
    #:make-range-immediate
+   #:lisp-datum-from-immediate
 
    ;; High-level API
    #:α
-   #:a
    #:β
+   #:a
    #:b
    #:reshape
    #:transform
