@@ -18,9 +18,9 @@
 ;;;
 ;;; Methods on Explicit Sets
 
-(defmethod set-elements ((set explicit-set))
-  (loop for element being the hash-keys of (set-element-table set)
-        collect element))
+(defmethod set-for-each ((set explicit-set) (function function))
+  (loop for element being the hash-keys of (set-element-table set) do
+    (funcall function element)))
 
 (defmethod set-size ((set explicit-set))
   (hash-table-count (set-element-table set)))

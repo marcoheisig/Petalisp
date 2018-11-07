@@ -74,11 +74,11 @@
   (let ((element (range-start range)))
     (values element 1 element)))
 
-(defmethod set-elements ((range range))
+(defmethod set-for-each ((range range) (function function))
   (multiple-value-bind (start step end)
       (range-start-step-end range)
-    (loop for integer from start by step to end
-          collect integer)))
+    (loop for element from start by step to end do
+      (funcall function element))))
 
 (defmethod set-size ((range range))
   (1+ (/ (- (range-end range) (range-start range))

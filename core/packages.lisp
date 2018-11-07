@@ -8,6 +8,7 @@
   (:export
 
    ;; Sets
+   #:set-for-each
    #:set-difference
    #:set-elements
    #:set-emptyp

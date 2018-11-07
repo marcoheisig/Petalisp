@@ -121,11 +121,17 @@
 ;;;
 ;;; Shapes as Sets
 
-(defmethod set-elements ((shape shape))
-  (if (null (ranges shape))
-      (list '())
-      (apply #'map-product #'list
-             (mapcar #'set-elements (ranges shape)))))
+(defmethod set-for-each ((shape shape) (function function))
+  (labels ((rec (ranges indices function)
+             (if (null ranges)
+                 (funcall function indices)
+                 (set-for-each
+                  (first ranges)
+                  (lambda (index)
+                    (rec (rest ranges)
+                         (cons index indices)
+                         function))))))
+    (rec (reverse (ranges shape)) '() function)))
 
 (defmethod set-size ((shape shape))
   (reduce #'* (ranges shape) :key #'set-size))

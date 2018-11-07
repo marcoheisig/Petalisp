@@ -15,6 +15,8 @@
 ;;;
 ;;; Generic Functions
 
+(defgeneric set-for-each (function set))
+
 (defgeneric set-elements (set))
 
 (defgeneric set-size (set))
@@ -58,8 +60,22 @@
 ;;;
 ;;; Miscellaneous Other Methods
 
+(defmethod set-elements ((set finite-set))
+  (let ((result '()))
+    (set-for-each
+     set
+     (lambda (elt)
+       (push elt result)))
+    result))
+
 (defmethod set-size ((set finite-set))
-  (length (set-elements set)))
+  (let ((result 0))
+    (set-for-each
+     set
+     (lambda (elt)
+       (declare (ignore elt))
+       (incf result)))
+    result))
 
 (defmethod set-emptyp ((set any-set))
   nil)
