@@ -3,9 +3,9 @@
 (in-package :petalisp-development)
 
 (test linear-algebra-test
-  (loop for dimension upto 2 do
+  (loop for rank upto 2 do
     (compute
-     (transpose (ndarray dimension))))
+     (transpose (ndarray rank))))
   (let ((a (ndarray 2))
         (b (ndarray 2)))
     (compute (matmul a b)))

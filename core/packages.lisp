@@ -31,7 +31,7 @@
 
    ;; Shapes
    #:make-shape
-   #:dimension
+   #:rank
    #:ranges
    #:shape-difference-list
    #:shape-from-ranges
@@ -41,8 +41,8 @@
    #:transformation
    #:transformationp
    #:identity-transformation-p
-   #:input-dimension
-   #:output-dimension
+   #:input-rank
+   #:output-rank
    #:invertible-transformation-p
    #:canonicalize-transformation
    #:make-transformation

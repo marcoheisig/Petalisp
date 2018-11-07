@@ -6,46 +6,46 @@
 ;;;
 ;;; The Primary Transformation Constructors
 
-(defun identity-transformation (dimension)
-  (petalisp-memoization:with-vector-memoization (dimension)
+(defun identity-transformation (rank)
+  (petalisp-memoization:with-vector-memoization (rank)
     (make-instance 'identity-transformation
-      :dimension dimension)))
+      :rank rank)))
 
 (defun make-transformation
-    (&key input-dimension output-dimension
+    (&key input-rank output-rank
        (input-constraints nil input-constraints-p)
        (translation nil translation-p)
        (permutation nil permutation-p)
        (scaling nil scaling-p))
-  (declare (type (or null array-length) input-dimension output-dimension))
-  ;; Step 1: Uniquely determine the input-dimension and output-dimension of
+  (declare (type (or null array-length) input-rank output-rank))
+  ;; Step 1: Uniquely determine the input-rank and output-rank of
   ;; the transformation or signal an error.
-  (flet ((check-input-dimension (value)
-           (if (not input-dimension)
-               (setf input-dimension value)
-               (demand (= input-dimension value)
-                 "~@<Contradictory input dimensions: ~D and ~D.~:@>"
-                 input-dimension value)))
-         (check-output-dimension (value)
-           (if (not output-dimension)
-               (setf output-dimension value)
-               (demand (= output-dimension value)
-                 "~@<Contradictory output dimensions: ~D and ~D.~:@>"
-                 output-dimension value))))
+  (flet ((check-input-rank (value)
+           (if (not input-rank)
+               (setf input-rank value)
+               (demand (= input-rank value)
+                 "~@<Contradictory input ranks: ~D and ~D.~:@>"
+                 input-rank value)))
+         (check-output-rank (value)
+           (if (not output-rank)
+               (setf output-rank value)
+               (demand (= output-rank value)
+                 "~@<Contradictory output ranks: ~D and ~D.~:@>"
+                 output-rank value))))
     (when input-constraints-p
-      (check-input-dimension (length input-constraints)))
+      (check-input-rank (length input-constraints)))
     (when translation-p
-      (check-output-dimension (length translation)))
+      (check-output-rank (length translation)))
     (when permutation-p
-      (check-output-dimension (length permutation)))
+      (check-output-rank (length permutation)))
     (when scaling-p
-      (check-output-dimension (length scaling))))
-  (demand (or input-dimension output-dimension)
+      (check-output-rank (length scaling))))
+  (demand (or input-rank output-rank)
     "~@<Too few arguments to derive a transformation.~:@>")
-  (cond ((not output-dimension)
-         (setf output-dimension input-dimension))
-        ((not input-dimension)
-         (setf input-dimension output-dimension)))
+  (cond ((not output-rank)
+         (setf output-rank input-rank))
+        ((not input-rank)
+         (setf input-rank output-rank)))
   ;; Step 2: Check that the content of each given sequence is sane and
   ;; ignore vectors whose content is boring.
   (let* ((input-constraints
@@ -83,7 +83,7 @@
                                (lambda (p)
                                  (eql p (incf i))))
                              permutation)
-                      (= (length permutation) input-dimension output-dimension))
+                      (= (length permutation) input-rank output-rank))
                  nil
                  (coerce permutation 'simple-vector))))
          (scaling
@@ -110,15 +110,15 @@
             (not translation)
             (not scaling)
             (not permutation)
-            (= input-dimension output-dimension))
-       (identity-transformation input-dimension))
+            (= input-rank output-rank))
+       (identity-transformation input-rank))
       ;; Check whether the transformation is invertible.
       ((or (null permutation)
-           (= (- output-dimension (count-if #'zerop scaling))
-              (- input-dimension (count-if #'numberp input-constraints))))
+           (= (- output-rank (count-if #'zerop scaling))
+              (- input-rank (count-if #'numberp input-constraints))))
        (make-instance 'hairy-invertible-transformation
-         :input-dimension input-dimension
-         :output-dimension output-dimension
+         :input-rank input-rank
+         :output-rank output-rank
          :input-constraints input-constraints
          :scaling scaling
          :permutation permutation
@@ -126,8 +126,8 @@
       ;; Default to a hairy, non-invertible transformation.
       (t
        (make-instance 'hairy-transformation
-         :input-dimension input-dimension
-         :output-dimension output-dimension
+         :input-rank input-rank
+         :output-rank output-rank
          :input-constraints input-constraints
          :scaling scaling
          :permutation permutation
@@ -139,34 +139,34 @@
 
 (defun make-transformation-from-function
     (function &optional (input-constraints nil input-constraints-p))
-  (let* ((input-dimension
+  (let* ((input-rank
            (if input-constraints-p
                (length input-constraints)
                (function-arity function)))
          (input-constraints
            (if (not input-constraints-p)
-               (make-array input-dimension :initial-element nil)
+               (make-array input-rank :initial-element nil)
                (coerce input-constraints 'simple-vector))))
-    (demand (= input-dimension (length input-constraints))
+    (demand (= input-rank (length input-constraints))
       "~@<Received the input constraints ~W of length ~D ~
           for a function with ~D arguments.~:@>"
-      input-constraints (length input-constraints) input-dimension)
+      input-constraints (length input-constraints) input-rank)
     (let ((args (map 'list (lambda (constraint) (or constraint 0)) input-constraints))
           ;; F is applied to many slightly different arguments, so we build a
           ;; vector pointing to the individual conses of ARGS for fast random
           ;; access.
-          (arg-conses (make-array input-dimension)))
+          (arg-conses (make-array input-rank)))
       (loop for arg-cons on args
             for index from 0 do
               (setf (aref arg-conses index) arg-cons))
       ;; Initially x is the zero vector (except for input constraints, which
       ;; are ignored by A), so f(x) = Ax + b = b
       (let* ((translation (multiple-value-call #'vector (apply function args)))
-             (output-dimension (length translation))
-             (permutation (make-array output-dimension
+             (output-rank (length translation))
+             (permutation (make-array output-rank
                                       :element-type '(or null array-index)
                                       :initial-element nil))
-             (scaling (make-array output-dimension
+             (scaling (make-array output-rank
                                   :element-type 'rational
                                   :initial-element 0)))
         ;; Set one input at a time from zero to one (ignoring those with
@@ -192,8 +192,8 @@
         ;; the original function and signal an error if not.
         (let ((transformation
                 (make-transformation
-                 :input-dimension input-dimension
-                 :output-dimension output-dimension
+                 :input-rank input-rank
+                 :output-rank output-rank
                  :input-constraints input-constraints
                  :translation translation
                  :scaling scaling

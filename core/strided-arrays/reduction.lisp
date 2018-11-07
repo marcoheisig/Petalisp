@@ -49,8 +49,8 @@
   (declare (ignore operator))
   (unless (identical inputs :test #'set-equal :key #'shape)
     (error "~@<Can only reduce data structures of equal shape.~:@>"))
-  (unless (plusp (dimension (shape (first inputs))))
-    (error "~@<Can only reduce data structures with dimension greater than zero.~:@>")))
+  (unless (plusp (rank (shape (first inputs))))
+    (error "~@<Can only reduce data structures with rank greater than zero.~:@>")))
 
 (defmethod make-reduction ((operator function) (inputs list))
   (let* ((input-types (mapcar #'element-type inputs))

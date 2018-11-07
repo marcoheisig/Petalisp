@@ -26,22 +26,22 @@
      (transformation transformation))
   (let ((relevant-shape (transform shape transformation))
         (input-shape (shape strided-array)))
-    (demand (and (= (dimension relevant-shape) (dimension input-shape))
+    (demand (and (= (rank relevant-shape) (rank input-shape))
                  (set-subsetp relevant-shape input-shape))
       "~@<The index shape referenced by the current reference is ~S, ~
           which is not a subshape of ~S, the index shape of the input of ~
           the current reference.~:@>"
       relevant-shape
       input-shape))
-  (demand (= (dimension shape) (input-dimension transformation))
-    "~@<The dimension of the index shape of a reference operation must ~
-        be equal to the input dimension of its transformation. The ~
-        index shape ~S has the dimension ~R, but the input dimension ~
+  (demand (= (rank shape) (input-rank transformation))
+    "~@<The rank of the index shape of a reference operation must ~
+        be equal to the input rank of its transformation. The ~
+        index shape ~S has the rank ~R, but the input rank ~
         of the transformation ~S is ~R.~:@>"
     shape
-    (dimension shape)
+    (rank shape)
     transformation
-    (input-dimension transformation)))
+    (input-rank transformation)))
 
 ;;; Combine consecutive references
 (defmethod make-reference :optimize

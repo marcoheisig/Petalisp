@@ -81,8 +81,8 @@
                 (blueprint-from-value (value reduction-store-instruction))
                 (buffer-number (buffer reduction-store-instruction))
                 ;; TODO This is a hack.  The proper fix is to give the
-                ;; transformations of reduction stores the same input
-                ;; dimension as the other stores.
+                ;; transformations of reduction stores the same input rank
+                ;; as the other stores.
                 (let ((result '()))
                   (map-transformation-outputs
                    (transformation reduction-store-instruction)

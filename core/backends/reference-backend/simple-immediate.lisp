@@ -34,7 +34,7 @@
 
 (defmethod lisp-datum-from-immediate ((simple-immediate simple-immediate))
   (with-accessors ((shape shape) (table table)) simple-immediate
-    (if (zerop (dimension shape))
+    (if (zerop (rank shape))
         (gethash '() table)
         (let ((array (make-array (mapcar #'set-size (ranges shape)))))
           (loop for index in (set-elements shape) do

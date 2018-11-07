@@ -21,7 +21,7 @@
   "Iteratively solve the Poisson equation -Δu = f for a given uniform grid
   with spacing h, using the Jacobi scheme."
   (let ((interior (interior u)))
-    (ecase (dimension u)
+    (ecase (rank u)
       (1
        (loop repeat iterations do
          (setf u (fuse* u (α #'* (float 1/2)
@@ -65,7 +65,7 @@
              (prepend-2 (list)
                (cons 2 list))
              (offsets (red black depth)
-               (if (= depth (dimension strided-array))
+               (if (= depth (rank strided-array))
                    (values red black)
                    (offsets
                     (append (mapcar #'prepend-1 red)
@@ -90,7 +90,7 @@
 (defun rbgs (u &key (iterations 1) (h 1.0) (f 0))
   "Iteratively solve the Poisson equation -Δu = f for a given uniform grid
   with spacing h, using the Red-Black Gauss-Seidel scheme."
-  (let ((stencil (ecase (dimension u)
+  (let ((stencil (ecase (rank u)
                    (1 (lambda (space)
                         (α #'* (float 1/2)
                            (α #'+

@@ -2,9 +2,9 @@
 
 (in-package :petalisp-development)
 
-(defgenerator shape (&key (dimension 3) (max-size 30) (max-extent 100) intersecting)
+(defgenerator shape (&key (rank 3) (max-size 30) (max-extent 100) intersecting)
   (assert (or (not intersecting)
-              (= dimension (dimension intersecting))))
+              (= rank (rank intersecting))))
   (let ((range-generators
           (if intersecting
               (mapcar (lambda (range)
@@ -13,7 +13,7 @@
                          :max-extent max-extent
                          :intersecting range))
                       (ranges intersecting))
-              (make-list dimension :initial-element
+              (make-list rank :initial-element
                          (make-range-generator
                           :max-size max-size
                           :max-extent max-extent)))))

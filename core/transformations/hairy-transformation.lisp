@@ -7,11 +7,11 @@
 ;;; Classes
 
 (defclass hairy-transformation (transformation)
-  ((%input-dimension :initarg :input-dimension
-                     :reader input-dimension
+  ((%input-rank :initarg :input-rank
+                     :reader input-rank
                      :type unsigned-byte)
-   (%output-dimension :initarg :output-dimension
-                      :reader output-dimension
+   (%output-rank :initarg :output-rank
+                      :reader output-rank
                       :type unsigned-byte)
    ;; The slots %INPUT-CONSTRAINTS, %TRANSLATION, %PERMUTATION and %SCALING
    ;; are either nil or a suitable simple vector. The number of slots of
@@ -94,10 +94,10 @@
 (defmethod transformation-equal
     ((transformation-1 hairy-transformation)
      (transformation-2 hairy-transformation))
-  (and (= (input-dimension transformation-1)
-          (input-dimension transformation-2))
-       (= (output-dimension transformation-1)
-          (output-dimension transformation-2))
+  (and (= (input-rank transformation-1)
+          (input-rank transformation-2))
+       (= (output-rank transformation-1)
+          (output-rank transformation-2))
        (equalp (input-constraints transformation-1)
                (input-constraints transformation-2))
        (equalp (translation transformation-1)
@@ -110,18 +110,18 @@
 (defmethod compose-transformations
     ((g hairy-transformation) (f hairy-transformation))
   ;; A2 (A1 x + b1) + b2 = A2 A1 x + A2 b1 + b2
-  (let ((input-dimension (input-dimension f))
-        (output-dimension (output-dimension g)))
+  (let ((input-rank (input-rank f))
+        (output-rank (output-rank g)))
     (let ((input-constraints
             (if-let ((input-constraints (input-constraints f)))
               (copy-array input-constraints)
-              (make-array input-dimension :initial-element nil)))
+              (make-array input-rank :initial-element nil)))
           (permutation
-            (make-array output-dimension :initial-element nil))
+            (make-array output-rank :initial-element nil))
           (scaling
-            (make-array output-dimension :initial-element 0))
+            (make-array output-rank :initial-element 0))
           (translation
-            (make-array output-dimension :initial-element 0)))
+            (make-array output-rank :initial-element 0)))
       (with-hairy-transformation-refs
           (:input-constraints iref
            :permutation pref
@@ -140,8 +140,8 @@
                               (+ (* a (tref input-index)) b))))))
           (map-transformation-outputs g #'set-output)))
       (make-transformation
-       :input-dimension input-dimension
-       :output-dimension output-dimension
+       :input-rank input-rank
+       :output-rank output-rank
        :input-constraints input-constraints
        :permutation permutation
        :scaling scaling
@@ -151,18 +151,18 @@
     ((transformation hairy-invertible-transformation))
   ;;    f(x) = (Ax + b)
   ;; f^-1(x) = A^-1(x - b) = A^-1 x - A^-1 b
-  (let ((output-dimension (input-dimension transformation))
-        (input-dimension (output-dimension transformation))
+  (let ((output-rank (input-rank transformation))
+        (input-rank (output-rank transformation))
         (original-input-constraints (input-constraints transformation)))
     (let ((input-constraints
-            (make-array input-dimension :initial-element nil))
+            (make-array input-rank :initial-element nil))
           (permutation
-            (make-array output-dimension :initial-element nil))
+            (make-array output-rank :initial-element nil))
           (scaling
-            (make-array output-dimension :initial-element 0))
+            (make-array output-rank :initial-element 0))
           (translation
             (if (not original-input-constraints)
-                (make-array output-dimension :initial-element 0)
+                (make-array output-rank :initial-element 0)
                 (copy-array (input-constraints transformation)))))
       (flet ((set-inputs (output-index input-index a b)
                (cond
@@ -174,8 +174,8 @@
                   (setf (aref translation input-index) (- (/ b a)))))))
         (map-transformation-outputs transformation #'set-inputs))
       (make-transformation
-       :input-dimension input-dimension
-       :output-dimension output-dimension
+       :input-rank input-rank
+       :output-rank output-rank
        :input-constraints input-constraints
        :permutation permutation
        :scaling scaling
@@ -183,25 +183,25 @@
 
 (defmethod enlarge-transformation
     ((transformation hairy-transformation) scale offset)
-  (let ((input-dimension (1+ (input-dimension transformation)))
-        (output-dimension (1+ (output-dimension transformation)))
+  (let ((input-rank (1+ (input-rank transformation)))
+        (output-rank (1+ (output-rank transformation)))
         (old-constraints (input-constraints transformation))
         (old-translation (translation transformation))
         (old-scaling (scaling transformation))
         (old-permutation (permutation transformation)))
-    (let ((input-constraints (make-array input-dimension))
-          (permutation       (make-array output-dimension))
-          (scaling           (make-array output-dimension))
-          (translation       (make-array output-dimension)))
+    (let ((input-constraints (make-array input-rank))
+          (permutation       (make-array output-rank))
+          (scaling           (make-array output-rank))
+          (translation       (make-array output-rank)))
       (if (not old-constraints)
           (fill input-constraints nil)
           (replace input-constraints old-constraints))
       (if (not old-permutation)
-          (loop for index below output-dimension do
+          (loop for index below output-rank do
             (setf (aref permutation index) index))
           (replace permutation old-permutation))
       (if (not old-scaling)
-          (loop for index below output-dimension
+          (loop for index below output-rank
                 for p across permutation do
             (setf (aref scaling index)
                   (if (not p) 0 1)))
@@ -209,13 +209,13 @@
       (if (not old-translation)
           (fill translation 0)
           (replace translation old-translation))
-      (setf (aref input-constraints (1- input-dimension)) nil)
-      (setf (aref permutation       (1- output-dimension)) (1- input-dimension))
-      (setf (aref scaling           (1- output-dimension)) scale)
-      (setf (aref translation       (1- output-dimension)) offset)
+      (setf (aref input-constraints (1- input-rank)) nil)
+      (setf (aref permutation       (1- output-rank)) (1- input-rank))
+      (setf (aref scaling           (1- output-rank)) scale)
+      (setf (aref translation       (1- output-rank)) offset)
       (make-transformation
-       :input-dimension input-dimension
-       :output-dimension output-dimension
+       :input-rank input-rank
+       :output-rank output-rank
        :input-constraints input-constraints
        :permutation permutation
        :scaling scaling
@@ -256,7 +256,7 @@
     ((transformation hairy-transformation)
      (function function)
      &key from-end)
-  (let ((output-dimension (output-dimension transformation)))
+  (let ((output-rank (output-rank transformation)))
     (with-hairy-transformation-refs
         (:input-constraints cref
          :scaling sref
@@ -264,12 +264,12 @@
          :translation tref)
         transformation
       (if (not from-end)
-          (loop for output-index below output-dimension
+          (loop for output-index below output-rank
                 for input-index = (pref output-index)
                 for scaling = (sref output-index)
                 for offset = (tref output-index) do
                   (funcall function output-index input-index scaling offset))
-          (loop for output-index downfrom (1- output-dimension) to 0
+          (loop for output-index downfrom (1- output-rank) to 0
                 for input-index = (pref output-index)
                 for scaling = (sref output-index)
                 for offset = (tref output-index) do

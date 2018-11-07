@@ -48,8 +48,8 @@
   (mapc (lambda (input) (incf (refcount input)))
         (inputs strided-array)))
 
-(defmethod dimension ((strided-array strided-array))
-  (dimension (shape strided-array)))
+(defmethod rank ((strided-array strided-array))
+  (rank (shape strided-array)))
 
 (defun input (object)
   (destructuring-bind (input) (inputs object) input))

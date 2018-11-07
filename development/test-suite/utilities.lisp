@@ -11,14 +11,14 @@
 
 (defun reshape-randomly (array)
   (let* ((strided-array (coerce-to-strided-array array))
-         (dimension (dimension strided-array))
+         (rank (rank strided-array))
          (generator (make-integer-generator :lower-limit -20 :upper-limit 21)))
     (reshape strided-array
              (make-transformation
-              :input-dimension dimension
-              :output-dimension dimension
-              :translation (loop repeat dimension collect (funcall generator))
-              :permutation (shuffle (iota dimension))))))
+              :input-rank rank
+              :output-rank rank
+              :translation (loop repeat rank collect (funcall generator))
+              :permutation (shuffle (iota rank))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

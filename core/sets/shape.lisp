@@ -2,10 +2,10 @@
 
 (in-package :petalisp)
 
-;;; A shape of dimension D is the Cartesian product of D ranges.  That
-;;; means each element of a shape is a D-tuple of integers, such that the
-;;; first integer is an element of the first range, the second integer is
-;;; an element of the second range and so on.  Ranges are never empty, so
+;;; A shape of rank D is the Cartesian product of D ranges.  That means
+;;; each element of a shape is a D-tuple of integers, such that the first
+;;; integer is an element of the first range, the second integer is an
+;;; element of the second range and so on.  Ranges are never empty, so
 ;;; there can also be no empty shapes.  However, there is one shape, that
 ;;; is the product of zero ranges, which has the empty tuple as its sole
 ;;; element.
@@ -18,7 +18,7 @@
 
 (defgeneric shape-from-ranges (ranges))
 
-(defgeneric dimension (shape))
+(defgeneric rank (shape))
 
 (defgeneric ranges (shape))
 
@@ -61,13 +61,13 @@
   (assert (every #'rangep ranges))
   (make-instance 'shape :ranges ranges))
 
-(defmethod dimension ((object t))
+(defmethod rank ((object t))
   0)
 
-(defmethod dimension ((array array))
+(defmethod rank ((array array))
   (array-rank array))
 
-(defmethod dimension ((shape shape))
+(defmethod rank ((shape shape))
   (length (ranges shape)))
 
 (defmethod shape-difference-list ((shape-1 shape) (shape-2 shape))
@@ -144,12 +144,12 @@
       (apply #'append (mapcar #'set-elements shapes))))))
 
 (defmethod set-equal ((shape-1 shape) (shape-2 shape))
-  (and (= (dimension shape-1)
-          (dimension shape-2))
+  (and (= (rank shape-1)
+          (rank shape-2))
        (every #'set-equal (ranges shape-1) (ranges shape-2))))
 
 (defmethod set-intersection ((shape-1 shape) (shape-2 shape))
-  (if (/= (dimension shape-1) (dimension shape-2))
+  (if (/= (rank shape-1) (rank shape-2))
       (empty-set)
       (block nil
         (shape-from-ranges
@@ -172,9 +172,9 @@
   (empty-set))
 
 (defmethod shape-union :before ((shapes cons))
-  (demand (identical shapes :key #'dimension)
+  (demand (identical shapes :key #'rank)
     "~@<Can only determine the union of index shapes with ~
-            equal dimension. The index shapes ~
+            equal rank. The index shapes ~
             ~{~#[~;and ~S~;~S ~:;~S, ~]~} violate this requirement.~:@>"
     shapes))
 

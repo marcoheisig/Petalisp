@@ -5,15 +5,21 @@
 
 (defpackage :petalisp/examples/getting-started
   (:shadowing-import-from :petalisp :set-difference)
-  (:use :common-lisp :petalisp))
+  (:use :common-lisp :petalisp :named-readtables))
 
 (in-package :petalisp/examples/getting-started)
+
+;; The Petalisp readtable makes it possible to write (α+ x y) or (βmax z)
+;; instead of (α #'+ x y) or (β #'max z).
+(in-readtable petalisp-readtable)
 
 ;;; First of all, we define an auxiliary function PRESENT, that first shows
 ;;; the data flow representation of a Petalisp datum, then evaluates it and
 ;;; finally prints its value to the standard output.
 (defun present (expression)
-  (petalisp-dev:view expression)
+  ;; Uncomment the following line to also show the data flow graph
+  ;; representation of EXPRESSION.
+  #+(or) (petalisp-dev:view expression)
   (format t "~%=> ~A~%~%" (compute expression)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -33,8 +39,7 @@
  (indices (zeros 10))) ; the numbers from 0 to 9 (inclusive)
 
 (present
- (reshape #2a((1 2 3 4) (5 6 7 8))
-          '((0 1) (1 2)))) ; selecting values
+ (reshape #2a((1 2 3 4) (5 6 7 8)) '((0 1) (1 2)))) ; selecting values
 
 (present
  (reshape #2a((1 2 3 4) (5 6 7 8))
@@ -73,14 +78,14 @@
 (present
  (α #'* 2 #(1 2 3))) ; α broadcasts automatically
 
-;; β reduces the first dimension of an array
+;; β reduces array elements
 
 (present
  (β #'+ #(1 2 3 4 5 6 7 8 9 10)))
 
 (present
  (β #'+
-    ;; only the first dimension is reduced
+    ;; only the axis zero is reduced
     #2A((1 2 3) (4 5 6))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

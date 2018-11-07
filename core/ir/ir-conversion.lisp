@@ -71,7 +71,7 @@
 ;;; s-expression describing the interplay of applications, reductions and
 ;;; references.
 (defmethod compute-kernels ((root strided-array) (backend backend))
-  (let ((transformation (identity-transformation (dimension root))))
+  (let ((transformation (identity-transformation (rank root))))
     (loop for iteration-space in (compute-iteration-spaces root)
           collect
           (with-instruction-numbering
@@ -87,11 +87,11 @@
                                :buffer (gethash root *buffer-table*)
                                :transformation transformation))))))))
 
-;;; Reductions are exceptional in that iteration space has a higher
-;;; dimension than the shape of the root node.
+;;; Reductions are exceptional in that iteration space has a higher rank
+;;; than the shape of the root node.
 (defmethod compute-kernels ((root reduction) (backend backend))
   (let* ((reduction-range (reduction-range root))
-         (outer-transformation (identity-transformation (dimension root)))
+         (outer-transformation (identity-transformation (rank root)))
          (inner-transformation (enlarge-transformation
                                 outer-transformation
                                 (range-step reduction-range)

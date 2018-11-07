@@ -13,13 +13,14 @@
   "Return an array of integers, where the value of each entry (i_0 ... i_N)
 is i_AXIS.  If axis is not supplied, it defaults to zero."
   (let* ((strided-array (coerce-to-strided-array array))
-         (shape (shape strided-array)))
-    (assert (<= 0 axis (1- (dimension shape))))
+         (shape (shape strided-array))
+         (rank (rank shape)))
+    (assert (<= 0 axis (1- rank)))
     (make-reference
      (make-range-immediate (nth axis (ranges shape)))
      shape
      (make-transformation
-      :input-dimension (dimension shape)
+      :input-rank rank
       :permutation (vector axis)))))
 
 (defun reshape (array &rest shapes-and-transformations)
@@ -64,7 +65,7 @@ arguments overlap partially, the value of the rightmost object is used."
              (make-reference
               (find piece strided-arrays :from-end t :key #'shape :test #'set-subsetp)
               piece
-              (identity-transformation (dimension piece)))))
+              (identity-transformation (rank piece)))))
       (make-fusion (mapcar #'reference-origin (subdivision (mapcar #'shape strided-arrays)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -79,8 +80,8 @@ arguments overlap partially, the value of the rightmost object is used."
 
 (defun α (function array &rest more-arrays)
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
-for Petalisp data structures. When the dimensions of some of the inputs
-mismatch, the smaller objects are broadcast."
+for Petalisp data structures.  When the rank of some of the inputs
+mismatch, broadcast the smaller objects."
   (make-application function (broadcast-arguments (list* array more-arrays))))
 
 (defun β (function array &rest more-arrays)

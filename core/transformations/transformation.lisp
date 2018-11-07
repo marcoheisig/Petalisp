@@ -7,9 +7,9 @@
 ;;;
 ;;; (1) translating the indices by a constant
 ;;; (2) multiplying the indices by a constant
-;;; (3) permuting the dimensions
-;;; (4) introducing dimensions with a one element range
-;;; (5) removing dimensions
+;;; (3) permuting the indices
+;;; (4) introducing ranks with a one element range
+;;; (5) removing ranks
 ;;;
 ;;; In linear algebra lingo, we have
 ;;;
@@ -35,9 +35,9 @@
 
 (defgeneric invert-transformation (transformation))
 
-(defgeneric input-dimension (transformation))
+(defgeneric input-rank (transformation))
 
-(defgeneric output-dimension (transformation))
+(defgeneric output-rank (transformation))
 
 (defgeneric input-constraints (transformation))
 
@@ -64,8 +64,8 @@
 
 ;; Forward declaration of the primary transformation constructors, because
 ;; they will be referenced before being defined.
-(declaim (ftype (function (&key (:input-dimension array-length)
-                                (:output-dimension array-length)
+(declaim (ftype (function (&key (:input-rank array-length)
+                                (:output-rank array-length)
                                 (:input-constraints sequence)
                                 (:translation sequence)
                                 (:permutation sequence)
@@ -89,8 +89,8 @@
 
 (defmethod compose-transformations :before
     ((transformation-1 transformation) (transformation-2 transformation))
-  (assert (= (output-dimension transformation-2)
-             (input-dimension transformation-1))))
+  (assert (= (output-rank transformation-2)
+             (input-rank transformation-1))))
 
 (defmethod input-constraints (transformation)
   (declare (ignore transformation))
@@ -98,7 +98,7 @@
 
 (defmethod print-object ((transformation transformation) stream)
   (let* ((variables
-           (loop for index below (input-dimension transformation)
+           (loop for index below (input-rank transformation)
                  collect (format-symbol :keyword "I~D" index)))
          (inputs
            (if (null (input-constraints transformation))
@@ -110,4 +110,4 @@
            stream)))
 
 (defmethod transform ((sequence sequence) (transformation transformation))
-  (assert (= (length sequence) (input-dimension transformation))))
+  (assert (= (length sequence) (input-rank transformation))))
