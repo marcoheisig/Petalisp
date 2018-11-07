@@ -9,13 +9,16 @@
 (defgeneric coerce-to-strided-array (array)
   (:method-combination optimizing-constructor))
 
+(defgeneric total-size (strided-array))
+
 (defgeneric element-type (strided-array))
+
+(defgeneric shape (strided-array))
 
 (defgeneric inputs (strided-array))
 
 (defgeneric refcount (strided-array))
 
-(defgeneric size (strided-array))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -34,10 +37,10 @@
 (defmethod coerce-to-strided-array ((strided-array strided-array))
   strided-array)
 
-(defmethod size ((strided-array strided-array))
+(defmethod total-size ((strided-array strided-array))
   (set-size (shape strided-array)))
 
-(defmethod size ((finite-set finite-set))
+(defmethod total-size ((finite-set finite-set))
   (set-size finite-set))
 
 (defmethod initialize-instance :after ((strided-array strided-array)
@@ -59,7 +62,7 @@
 ;;;
 ;;; Treating Arrays as Strided Arrays
 
-(defmethod size ((array array))
+(defmethod total-size ((array array))
   (array-total-size array))
 
 (defmethod rank ((array array))
