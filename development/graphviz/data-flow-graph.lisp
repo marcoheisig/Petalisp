@@ -86,7 +86,7 @@
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
      (range-immediate range-immediate))
-  `(("axis" . ,(stringify (axis range-immediate)))))
+  `())
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)

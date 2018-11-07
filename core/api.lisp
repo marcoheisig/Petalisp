@@ -12,7 +12,15 @@
 (defun indices (array &optional (axis 0))
   "Return an array of integers, where the value of each entry (i_0 ... i_N)
 is i_AXIS.  If axis is not supplied, it defaults to zero."
-  (make-range-immediate (shape (coerce-to-strided-array array)) axis))
+  (let* ((strided-array (coerce-to-strided-array array))
+         (shape (shape strided-array)))
+    (assert (<= 0 axis (1- (dimension shape))))
+    (make-reference
+     (make-range-immediate (nth axis (ranges shape)))
+     shape
+     (make-transformation
+      :input-dimension (dimension shape)
+      :permutation (vector axis)))))
 
 (defun reshape (array &rest shapes-and-transformations)
   "Return a data structure of given SHAPE, either by selecting a subset of

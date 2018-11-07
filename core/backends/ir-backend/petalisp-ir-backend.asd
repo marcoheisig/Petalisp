@@ -10,4 +10,5 @@
   :components
   ((:file "packages")
    (:file "ir-backend")
-   (:file "ir-conversion")))
+   (:file "ir-conversion")
+   (:file "execution")))

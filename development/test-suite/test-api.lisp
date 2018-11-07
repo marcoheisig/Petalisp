@@ -42,3 +42,9 @@
 
 (test multiple-arguments
   (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1))))
+
+(test indices-test
+  (compute (indices #(5 6 7)))
+  (let ((a (make-array '(2 3 4))))
+    (compute (indices a 1))
+    (compute (α #'+ (indices a 0) (indices a 1) (indices a 2)))))

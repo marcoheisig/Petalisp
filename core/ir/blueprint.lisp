@@ -93,14 +93,12 @@
                   result)))
 
 (defmethod blueprint ((iref-instruction iref-instruction))
-  (let ((axis (axis iref-instruction)))
-    (block nil
-      (map-transformation-outputs
-       (transformation iref-instruction)
-       (lambda (output-index input-index scaling offset)
-         (when (= output-index axis)
-           (return
-             (ucons:ulist :iref input-index scaling offset))))))))
+  (block nil
+    (map-transformation-outputs
+     (transformation iref-instruction)
+     (lambda (output-index input-index scaling offset)
+       (declare (ignore output-index))
+       (return (ucons:ulist :iref input-index scaling offset))))))
 
 (defmethod blueprint ((reduce-instruction reduce-instruction))
   (ucons:ulist* :reduce

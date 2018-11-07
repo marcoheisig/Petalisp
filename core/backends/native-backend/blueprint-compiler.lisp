@@ -52,7 +52,7 @@
         (loop for instruction across *instructions*
               for index from 0 do
                 (case (car instruction)
-                  ((:call :load)
+                  ((:call :load :iref)
                    (update-instruction index))
                   ((:store)
                    (pseudo-eval-0 (update-instruction index)))
@@ -141,8 +141,8 @@
      `(store ,(translate-argument argument)
              (aref arrays ,array-number)
              ,(translate-row-major-index array-number irefs)))
-    ((list* :iref index scale offset)
-     `(+ (* ,(index-symbol index) ,scale) ,offset))))
+    ((list :iref index scale offset)
+     `(identity ,(i+ (i* (index-symbol index) scale) offset)))))
 
 (defun translate-argument (argument)
   (destructuring-bind (value-n instruction-number) argument
@@ -168,7 +168,7 @@
 (defun translate-stride (array-number array-rank axis)
   (if (= axis (1- array-rank))
       1
-      (i* `(array-dimension (aref arrays ,array-number) ,(- array-rank 1 axis))
+      (i* `(array-dimension (aref arrays ,array-number) ,(1+ axis))
           (translate-stride array-number array-rank (1+ axis)))))
 
 ;;; Return as multiple values

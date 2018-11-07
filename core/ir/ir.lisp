@@ -39,7 +39,7 @@
 ;;; the roots (store instructions) have the highest numbers and that the
 ;;; leaf nodes (load and iref instructions) have the lowest numbers.
 (defclass instruction ()
-  ((%number :initarg :number :accessor instruction-number)))
+  ((%number :initform (next-instruction-number) :accessor instruction-number)))
 
 ;;; We call an instruction an iterating instruction, if its behavior
 ;;; directly depends on the current element of the iteration space.
@@ -78,12 +78,11 @@
   ())
 
 ;;; An iref instruction represents an access to elements of the iteration
-;;; space itself.  It returns a single value --- the integer obtained by
-;;; taking the element denoted by AXIS of the index that is the result of
-;;; transforming the current element of the iteration space with the iref's
-;;; transformation.
+;;; space itself.  Its transformation is a mapping from the iteration space
+;;; to a rank one space.  Its value is the single integer that is the
+;;; result of applying the transformation to the current iteration space.
 (defclass iref-instruction (iterating-instruction)
-  ((%axis :initarg :axis :reader axis)))
+  ())
 
 ;;; A reduce instruction represents a binary tree reduction along the axis
 ;;; zero of the iteration space.  Each argument is represented as a cons
@@ -175,6 +174,19 @@
     (loop for reduction-store in (petalisp-ir:reduction-stores kernel) do
       (process-instruction reduction-store most-positive-fixnum))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Assigning Instruction Numbers
+
+(defvar *instruction-counter*)
+
+(defun next-instruction-number ()
+  (incf *instruction-counter*))
+
+(defmacro with-instruction-numbering (&body body)
+  `(let ((*instruction-counter* -1))
+     ,@body))
+
 ;;; This function exploits that the numbers are handed out starting from
 ;;; the leaf instructions.  So we know that the highest instruction number
 ;;; must be somewhere at the root instructions.
@@ -200,3 +212,4 @@
                  (setf (instruction-number instruction) (incf n)))))
       (mapc #'assign-instruction-numbers (stores kernel))
       (mapc #'assign-instruction-numbers (reduction-stores kernel)))))
+

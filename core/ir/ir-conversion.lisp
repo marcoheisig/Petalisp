@@ -38,14 +38,13 @@
             (pushnew kernel (inputs (buffer reduction-store)))))))
     ;; Finally, return the buffers corresponding to the root nodes.
     (loop for strided-array in strided-arrays
-          collect (gethash strided-array *buffer-table*))))
+          collect
+          (let ((entry (gethash strided-array *buffer-table*)))
+            (if (eq entry 'range-immediate-placeholder)
+                (make-buffer strided-array backend)
+                entry)))))
 
 (defvar *kernel-root*)
-
-(defvar *instruction-counter*)
-
-(defun next-instruction-number ()
-  (incf *instruction-counter*))
 
 (defmethod compute-kernels :around ((root strided-array) (backend backend))
   (let ((*kernel-root* root))
@@ -75,7 +74,7 @@
   (let ((transformation (identity-transformation (dimension root))))
     (loop for iteration-space in (compute-iteration-spaces root)
           collect
-          (let ((*instruction-counter* -1))
+          (with-instruction-numbering
             (multiple-value-bind (value loads)
                 (compute-kernel-body root iteration-space transformation)
               (make-kernel
@@ -84,7 +83,6 @@
                :loads loads
                :reduction-stores '()
                :stores (list (make-instance 'store-instruction
-                               :number (next-instruction-number)
                                :value value
                                :buffer (gethash root *buffer-table*)
                                :transformation transformation))))))))
@@ -113,7 +111,6 @@
                :reduction-stores
                (list
                 (make-instance 'reduction-store-instruction
-                  :number (next-instruction-number)
                   :value value
                   :buffer (gethash root *buffer-table*)
                   :transformation outer-transformation))))))))
@@ -151,12 +148,14 @@
           (gethash node *buffer-table*)
         (if (not buffer-p)
             (call-next-method)
-            (let ((load (make-instance 'load-instruction
-                          :number (next-instruction-number)
-                          :transformation transformation
-                          :buffer buffer)))
-              (push load *loads*)
-              (cons 0 load))))))
+            (if (eq buffer 'range-immediate-placeholder)
+                (cons 0 (make-instance 'iref-instruction
+                          :transformation transformation))
+                (let ((load (make-instance 'load-instruction
+                              :transformation transformation
+                              :buffer buffer)))
+                  (push load *loads*)
+                  (cons 0 load)))))))
 
 (defmethod compute-value
     ((application application)
@@ -168,8 +167,7 @@
           :arguments
           (loop for input in (inputs application)
                 collect
-                (compute-value input iteration-space transformation))
-          :number (next-instruction-number))))
+                (compute-value input iteration-space transformation)))))
 
 (defmethod compute-value
     ((reduction reduction)
@@ -181,8 +179,7 @@
           :arguments
           (loop for input in (inputs reduction)
                 collect
-                (compute-value input iteration-space transformation))
-          :number (next-instruction-number))))
+                (compute-value input iteration-space transformation)))))
 
 (defmethod compute-value
     ((reference reference)

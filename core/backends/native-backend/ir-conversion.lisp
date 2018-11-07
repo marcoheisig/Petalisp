@@ -18,9 +18,6 @@
 (defclass array-buffer (immediate-buffer)
   ((%storage :initarg :storage :reader storage)))
 
-(defclass range-buffer (immediate-buffer)
-  ((%axis :initarg :axis :reader axis)))
-
 (defclass kernel (petalisp-ir:kernel)
   ((%executedp :initarg :executedp :accessor executedp
                :initform nil)))
@@ -44,14 +41,6 @@
     :shape (shape scalar-immediate)
     :element-type (element-type scalar-immediate)
     :storage (make-array '() :initial-element (storage scalar-immediate))))
-
-(defmethod petalisp-ir:make-buffer
-    ((range-immediate range-immediate)
-     (native-backend native-backend))
-  (make-instance 'range-buffer
-    :shape (shape range-immediate)
-    :element-type (element-type range-immediate)
-    :axis (axis range-immediate)))
 
 (defmethod petalisp-ir:make-buffer
     ((strided-array strided-array)

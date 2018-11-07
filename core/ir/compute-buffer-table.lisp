@@ -44,7 +44,9 @@
                (return))
               ((< 1 refcount)
                (setf (gethash strided-array hash-table)
-                     (make-buffer strided-array backend)))
+                     (if (typep strided-array 'range-immediate)
+                         'range-immediate-placeholder
+                         (make-buffer strided-array backend))))
               (t
                (remhash strided-array hash-table))))))
   hash-table)

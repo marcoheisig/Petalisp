@@ -63,10 +63,7 @@
      (apply #'aref (storage array-immediate) index))))
 
 (defmethod evaluate ((range-immediate range-immediate))
-  (make-simple-immediate
-   (shape range-immediate)
-   (lambda (index)
-     (nth (axis range-immediate) index))))
+  (make-simple-immediate (shape range-immediate) #'first))
 
 (defmethod evaluate ((application application))
   (let ((inputs (mapcar #'evaluate (inputs application))))

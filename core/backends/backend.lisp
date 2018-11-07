@@ -87,6 +87,15 @@
 (defmethod lisp-datum-from-immediate ((scalar-immediate scalar-immediate))
   (storage scalar-immediate))
 
+(defmethod lisp-datum-from-immediate ((range-immediate range-immediate))
+  (let* ((shape (shape range-immediate))
+         (range (first (ranges shape)))
+         (size (set-size range))
+         (array (make-array size)))
+    (loop for index below size do
+      (setf (aref array index) index))
+    array))
+
 (defmethod delete-backend ((backend backend))
   (values))
 
@@ -116,5 +125,4 @@
     :storage (storage replacement)))
 
 (defmethod overwrite-instance ((instance strided-array) (replacement range-immediate))
-  (change-class instance (class-of replacement)
-    :axis (axis replacement)))
+  (change-class instance (class-of replacement)))

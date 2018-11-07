@@ -12,14 +12,21 @@
 (defclass non-immediate (strided-array)
   ((%inputs :initarg :inputs :reader inputs)))
 
-(defclass scalar-immediate (immediate)
-  ((%storage :initarg :storage :reader storage)))
-
+;;; An array immediate is a strided array whose elements reside directly in
+;;; a Lisp array.
 (defclass array-immediate (immediate)
   ((%storage :initarg :storage :reader storage)))
 
+;;; A scalar immediate is equivalent to an array immediate with rank zero.
+;;; By introducing a separate class for this common case, we avoid boxing
+;;; scalars as arrays and we can dispatch specifically on scalars.
+(defclass scalar-immediate (immediate)
+  ((%storage :initarg :storage :reader storage)))
+
+;;; A range immediate is a rank one array, where every element with index
+;;; (I), has the value I.
 (defclass range-immediate (immediate)
-  ((%axis :initarg :axis :reader axis)))
+  ())
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -39,11 +46,10 @@
         :shape (make-shape (array-dimensions array))
         :storage array)))
 
-(defun make-range-immediate (shape axis)
+(defun make-range-immediate (range)
   (make-instance 'range-immediate
-    :element-type 'integer
-    :shape shape
-    :axis axis))
+    :element-type `(integer ,(range-start range) ,(range-end range))
+    :shape (shape-from-ranges (list range))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -70,7 +76,7 @@
 
 (defmethod print-object ((range-immediate range-immediate) stream)
   (print-unreadable-object (range-immediate stream :type t :identity t)
-    (format stream ":AXIS ~D" (axis range-immediate))))
+    (format stream ":SHAPE ~A" (shape range-immediate))))
 
 (defmethod transform ((strided-array strided-array) (transformation transformation))
   (make-reference
