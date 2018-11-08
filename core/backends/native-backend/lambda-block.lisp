@@ -14,4 +14,5 @@
   (let ((symbols (lambda-list lambda-block)))
     `(lambda ,symbols
        (declare (ignorable ,@symbols))
-       ,(call-next-method))))
+       (with-unsafe-optimizations
+         ,(call-next-method)))))

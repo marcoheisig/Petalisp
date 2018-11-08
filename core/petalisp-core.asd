@@ -18,8 +18,7 @@
 
    (:module "utilities"
     :components
-    ((:file "optimization")
-     (:file "memoization")
+    ((:file "memoization")
      (:file "extended-euclid")
      (:file "identical")
      (:file "miscellaneous")
