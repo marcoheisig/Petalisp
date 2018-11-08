@@ -11,7 +11,7 @@
 ;;; Each buffer is written to by zero or more kernels and read from zero or
 ;;; more kernels.
 (defclass buffer ()
-  ((%shape :initarg :shape :accessor shape)
+  ((%shape :initarg :shape :accessor buffer-shape)
    (%element-type :initarg :element-type :reader element-type)
    ;; The list of kernels that store into this buffer.
    (%inputs :initarg :inputs :accessor inputs :initform nil)
