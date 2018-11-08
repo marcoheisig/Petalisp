@@ -35,7 +35,7 @@
       input-shape))
   (demand (= (rank shape) (input-rank transformation))
     "~@<The rank of the index shape of a reference operation must ~
-        be equal to the input rank of its transformation. The ~
+        be equal to the input rank of its transformation.  The ~
         index shape ~S has the rank ~R, but the input rank ~
         of the transformation ~S is ~R.~:@>"
     shape

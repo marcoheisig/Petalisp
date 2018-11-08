@@ -3,7 +3,7 @@
 (in-package :petalisp)
 
 (defun function-lambda-list (function)
-  "Return the lambda list of FUNCTION. Signal an error if the
+  "Return the lambda list of FUNCTION.  Signal an error if the
 implementation has no means to determine the function's lambda list."
   (let ((arglist (trivial-arguments:arglist function)))
     (if (eq arglist :unknown)

@@ -2,8 +2,8 @@
 
 (in-package :petalisp)
 
-;;; There are two good reasons to do type inference. The first one is to
-;;; detect incorrect programs early, the second one is for performance. We
+;;; There are two good reasons to do type inference.  The first one is to
+;;; detect incorrect programs early, the second one is for performance.  We
 ;;; want both.
 ;;;
 ;;; Petalisp differs significantly from the general problem of type
@@ -17,7 +17,7 @@
 ;;; data flow nodes.
 ;;;
 ;;; Type inference works by associating known functions with inference
-;;; functions. Each inference function is a closure that receives a list of
+;;; functions.  Each inference function is a closure that receives a list of
 ;;; type specifiers and returns the following values:
 ;;;
 ;;; 1. A list of types, one for each of the returned multiple values.

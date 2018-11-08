@@ -6,7 +6,7 @@
                           (max-size (floor (sqrt max-extent)))
                           intersecting)
   "Return a random range with at most MAX-SIZE elements, whose (absolute)
-start and end are bounded by MAX-EXTENT. If another range INTERSECTING is
+start and end are bounded by MAX-EXTENT.  If another range INTERSECTING is
 given, the result will intersect this range (potentially violating MAX-EXTENT)."
   (assert (and (plusp max-extent)
                (plusp max-size)

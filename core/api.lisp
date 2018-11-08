@@ -47,13 +47,13 @@ Examples:
     (reduce #'reshape1 shapes-and-transformations :initial-value (coerce-to-strided-array array))))
 
 (defun fuse (&rest arrays)
-  "Combine ARRAYS into a single strided array. It is an error if some of
+  "Combine ARRAYS into a single strided array.  It is an error if some of
 the supplied arrays overlap, or if there exists no suitable strided array
 to represent the fusion."
   (make-fusion (mapcar #'coerce-to-strided-array arrays)))
 
 (defun fuse* (&rest arrays)
-  "Combine ARRAYS into a single strided array. When some of the supplied
+  "Combine ARRAYS into a single strided array.  When some of the supplied
 arguments overlap partially, the value of the rightmost object is used."
   (let ((strided-arrays (mapcar #'coerce-to-strided-array arrays)))
     (flet ((reference-origin (piece)

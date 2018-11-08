@@ -8,15 +8,15 @@
 ;;;
 ;;; We differentiate between two kinds of errors -- those triggered by
 ;;; improper usage of Petalisp (user errors) and those occurring even
-;;; though Petalisp has been used correctly (internal errors). The former
+;;; though Petalisp has been used correctly (internal errors).  The former
 ;;; are expected to be far more frequent and part of the everyday user
 ;;; experience, while the latter should ideally never arise.
 ;;;
 ;;; We frequently use CL:ASSERT to ensure the internal consistency of
-;;; Petalisp. However, for user input, we want CL:ASSERT to emit conditions
-;;; of type PETALISP-USER-ERROR instead of CL:ERROR. This can be done, but
-;;; the syntax is quite verbose. To simplify the notation in this case, we
-;;; provide the shorthand macro DEMAND.
+;;; Petalisp.  However, for user input, we want CL:ASSERT to emit
+;;; conditions of type PETALISP-USER-ERROR instead of CL:ERROR.  This can
+;;; be done, but the syntax is quite verbose.  To simplify the notation in
+;;; this case, we provide the shorthand macro DEMAND.
 
 (define-condition petalisp-user-error (simple-error) ())
 

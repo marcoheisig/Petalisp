@@ -4,7 +4,7 @@
 
 ;;; This type inference function deliberately ignores most numeric types
 ;;; and distinguishes primarily between subtypes of float, including
-;;; complex floating point numbers. Rational numbers are slow anyways and
+;;; complex floating point numbers.  Rational numbers are slow anyways and
 ;;; fast integer operations would require proper bounds tracking, which is
 ;;; currently not a priority.
 (defun numeric-supertype (argument-types)

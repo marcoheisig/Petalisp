@@ -14,10 +14,10 @@
                       :reader output-rank
                       :type unsigned-byte)
    ;; The slots %INPUT-CONSTRAINTS, %TRANSLATION, %PERMUTATION and %SCALING
-   ;; are either nil or a suitable simple vector. The number of slots of
+   ;; are either nil or a suitable simple vector.  The number of slots of
    ;; many transformations could be reduced by introducing separate classes
-   ;; for the nil case and the simple vector case. However, this would
-   ;; amount to 2^4 = 16 classes and a lot of added complexity. So we
+   ;; for the nil case and the simple vector case.  However, this would
+   ;; amount to 2^4 = 16 classes and a lot of added complexity.  So we
    ;; remain with a single class HAIRY-TRANSFORMATION to cover all these
    ;; cases.
    (%input-constraints :initarg :input-constraints

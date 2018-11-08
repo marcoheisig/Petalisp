@@ -71,9 +71,9 @@
                  (coerce translation 'simple-vector))))
          (permutation
            (when permutation-p
-             ;; Permutations are the most complicated sequences to
-             ;; check. If an output does not reference any input, the
-             ;; corresponding entry in the permutation must be nil NIL. No
+             ;; Permutations are the most complicated sequences to check.
+             ;; If an output does not reference any input, the
+             ;; corresponding entry in the permutation must be nil NIL.  No
              ;; index must appear more than once.
 
              ;; TODO check permutations...
@@ -176,8 +176,8 @@
               for column-index from 0
               when (not input-constraint) do
                 (setf (car arg-cons) 1)
-                ;; Find the row of A corresponding to the mutated input. It
-                ;; is the only output that differs from b.
+                ;; Find the row of A corresponding to the mutated input.
+                ;; It is the only output that differs from b.
                 (let ((outputs (multiple-value-call #'vector (apply function args))))
                   (loop for output across outputs
                         for offset across translation

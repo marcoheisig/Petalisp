@@ -3,7 +3,7 @@
 (in-package :petalisp)
 
 ;;; For some applications, it is desirable to use atomic type specifiers
-;;; only. This library introduces atomic aliases for all upgraded array
+;;; only.  This library introduces atomic aliases for all upgraded array
 ;;; element types, and a function ATOMIC-TYPE to convert type specifiers to
 ;;; their atomic equivalent.
 
