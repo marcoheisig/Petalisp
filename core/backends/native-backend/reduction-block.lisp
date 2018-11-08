@@ -38,6 +38,7 @@
                 (declare (type ,(reduction-var-type reduction-block) min max))
                 (if (= min max)
                     (let ((,(reduction-var reduction-block) min))
+                      (declare (ignorable ,(reduction-var reduction-block)))
                       ,(call-next-method))
                     (let* ((size (- max min))
                            (mid (+ min (floor size 2))))
