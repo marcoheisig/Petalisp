@@ -343,20 +343,18 @@
 ;;;
 ;;; Convenient Notation for Ranges
 
-(defun parse-range-designator (range-designator)
-  (trivia:ematch range-designator
-    ((list start step end) (values start step end))
-    ((list start end)      (values start 1 end))
-    ((list start)          (values start 1 start))))
-
-(defun range (&rest range-designator)
-  (multiple-value-call #'make-range
-    (parse-range-designator range-designator)))
+(defun range (start &optional (step-or-end 1 two-args-p) (end start three-args-p))
+  (cond (three-args-p (make-range start step-or-end end))
+        (two-args-p (make-range start 1 step-or-end))
+        (t (make-range start step-or-end end))))
 
 (trivia:defpattern range (&rest start-step-end)
-  (multiple-value-bind (start step end)
-      (parse-range-designator start-step-end)
-    (with-gensyms (it)
+  (with-gensyms (it tmp)
+    (multiple-value-bind (start step end)
+        (trivia:ematch start-step-end
+          ((list start step end) (values start step end))
+          ((list start end) (values start 1 end))
+          ((list start) (values `(and ,start ,tmp) 1 `(= ,tmp))))
       `(trivia:guard1 ,it (rangep ,it)
                       (range-start ,it) ,start
                       (range-step ,it) ,step

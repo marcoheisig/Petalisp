@@ -29,15 +29,7 @@
                      do (setf (gethash symbol *symbol-table*) basic-block))
                basic-block))
            (*final-basic-block* *initial-basic-block*)
-           (reduction-block nil)
-           (*array-symbols*
-             (let* ((n-arrays (length array-types))
-                    (array-symbols (make-array n-arrays)))
-               (loop for index below n-arrays
-                     for array-type in array-types do
-                 (setf (aref array-symbols index)
-                       (pseudo-eval 0 `(aref arrays ,index) array-type)))
-               array-symbols)))
+           (reduction-block nil))
       (loop for loop-range in (reverse (if (null reductions) ranges (cdr ranges)))
             for index downfrom (1- dim) do
               (push-loop-block loop-range index))
@@ -59,7 +51,15 @@
       ;; Translate all load, store and call instructions and add them to
       ;; the relevant basic blocks.
       (let ((reduce-counter 0)
-            (reduction-symbols '()))
+            (reduction-symbols '())
+            (*array-symbols*
+             (let* ((n-arrays (length array-types))
+                    (array-symbols (make-array n-arrays)))
+               (loop for index below n-arrays
+                     for array-type in array-types do
+                 (setf (aref array-symbols index)
+                       (pseudo-eval 0 `(aref arrays ,index) array-type)))
+               array-symbols)))
         (loop for instruction across *instructions*
               for index from 0 do
                 (case (car instruction)
@@ -85,11 +85,13 @@
                   for index from 0 do
                     (trivia:match instruction
                       ((list* :reduction-store (list value-n index) array-number irefs)
-                       (let* ((value (pseudo-eval (+ value-n (aref *instructions* index)) form))
-                              (store-form `(store ,value
-                                                  ,(aref *array-symbols* array-number)
-                                                  ,(translate-row-major-index array-number irefs))))
-                         (value-symbol 0 store-form *final-basic-block*))))))))
+                       (value-symbol
+                        0
+                        `(store ,(pseudo-eval (+ value-n (aref *instructions* index)) form)
+                                ,(aref *array-symbols* array-number)
+                                ,(pseudo-eval-0
+                                  (translate-row-major-index array-number irefs)))
+                        *final-basic-block*)))))))
       ;; Done.
       (form *initial-basic-block*))))
 

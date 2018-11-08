@@ -195,24 +195,24 @@
           (translation       (make-array output-rank)))
       (if (not old-constraints)
           (fill input-constraints nil)
-          (replace input-constraints old-constraints))
+          (replace input-constraints old-constraints :start1 1))
       (if (not old-permutation)
           (loop for index below output-rank do
             (setf (aref permutation index) index))
-          (replace permutation old-permutation))
+          (replace permutation old-permutation :start1 1))
       (if (not old-scaling)
           (loop for index below output-rank
                 for p across permutation do
             (setf (aref scaling index)
                   (if (not p) 0 1)))
-          (replace scaling old-scaling))
+          (replace scaling old-scaling :start1 1))
       (if (not old-translation)
           (fill translation 0)
           (replace translation old-translation))
-      (setf (aref input-constraints (1- input-rank)) nil)
-      (setf (aref permutation       (1- output-rank)) (1- input-rank))
-      (setf (aref scaling           (1- output-rank)) scale)
-      (setf (aref translation       (1- output-rank)) offset)
+      (setf (aref input-constraints 0) nil)
+      (setf (aref permutation       0) (1- input-rank))
+      (setf (aref scaling           0) scale)
+      (setf (aref translation       0) offset)
       (make-transformation
        :input-rank input-rank
        :output-rank output-rank

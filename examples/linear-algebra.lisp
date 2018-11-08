@@ -2,7 +2,7 @@
 
 (defpackage :petalisp/examples/linear-algebra
   (:shadowing-import-from :petalisp :set-difference)
-  (:use :cl :petalisp)
+  (:use :cl :petalisp :named-readtables)
   (:export
    #:transpose
    #:norm
@@ -13,45 +13,61 @@
 
 (in-package :petalisp/examples/linear-algebra)
 
-(defun as-matrix (x)
-  (ecase (rank x)
-    (0 (reshape x (τ () (0 0))))
-    (1 (reshape x (τ (i) (i 0))))
-    (2 x)))
+(in-readtable petalisp-readtable)
 
-(defun as-vector (x)
-  (ecase (rank x)
-    (0 (reshape x (τ () (0))))
-    (1 x)))
+(defun coerce-to-matrix (x)
+  (setf x (coerce-to-strided-array x))
+  (trivia:ematch (shape x)
+    ;; Rank 0
+    ((shape) (reshape x (τ () (1 1))))
+    ;; Rank 1
+    ((shape (range 1 _)) (reshape x (τ (i) (i 1))))
+    ((shape (range 0 _)) (reshape x (τ (i) ((1+ i) 1))))
+    ;; Rank 2
+    ((shape (range 1 _) (range 1 _)) (reshape x (τ (i j) (i j))))
+    ((shape (range 0 _) (range 1 _)) (reshape x (τ (i j) ((1+ i) j))))
+    ((shape (range 1 _) (range 0 _)) (reshape x (τ (i j) (i (1+ j)))))
+    ((shape (range 0 _) (range 0 _)) (reshape x (τ (i j) ((1+ i) (1+ j)))))))
+
+(defun coerce-to-scalar (x)
+  (setf x (coerce-to-strided-array x))
+  (trivia:ematch (shape x)
+    ((shape) x)
+    ((shape (range _)) (reshape x (τ (i) ())))
+    ((shape (range _) (range j)) (reshape x (τ (i j) ())))))
 
 (defun transpose (x)
   (reshape
-   (as-matrix x)
+   (coerce-to-matrix x)
    (τ (m n) (n m))))
 
 (defun dot (x y)
   (reshape
    (matmul
     (transpose x)
-    (as-matrix y))
+    (coerce-to-matrix y))
    (τ (0 0) ())))
 
 (defun norm (x)
   (α #'sqrt (dot x x)))
 
 (defun asum (x)
-  (β #'+ (α #'abs (as-vector x))))
+  (coerce-to-scalar
+   (β #'+ (α #'abs (coerce-to-matrix x)))))
 
 (defun amax (x)
   (flet ((amax-fn (lmax lind rmax rind)
            (if (>= lmax rmax)
                (values lmax lind)
                (values rmax rind))))
-    (let ((vector (as-vector x)))
-      (nth-value 1 (β #'amax-fn vector (indices vector))))))
+    (let ((vector (coerce-to-matrix x)))
+      (multiple-value-bind (max index)
+          (β #'amax-fn vector (indices vector))
+        (values (coerce-to-scalar max)
+                (coerce-to-scalar index))))))
 
 (defun matmul (a b)
   (β #'+
      (α #'*
-        (reshape (as-matrix a) (τ (m n) (n m 0)))
-        (reshape (as-matrix b) (τ (n k) (n 0 k))))))
+        (reshape (coerce-to-matrix a) (τ (m n) (n m 1)))
+        (reshape (coerce-to-matrix b) (τ (n k) (n 1 k))))))

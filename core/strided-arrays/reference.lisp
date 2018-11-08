@@ -28,8 +28,8 @@
         (input-shape (shape strided-array)))
     (demand (and (= (rank relevant-shape) (rank input-shape))
                  (set-subsetp relevant-shape input-shape))
-      "~@<The index shape referenced by the current reference is ~S, ~
-          which is not a subshape of ~S, the index shape of the input of ~
+      "~@<The shape referenced by the current reference is ~S, ~
+          which is not a subspace of ~S, the shape of the input of ~
           the current reference.~:@>"
       relevant-shape
       input-shape))

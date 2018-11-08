@@ -234,11 +234,5 @@
   `(shape ,@ranges))
 
 (defmethod print-object ((shape shape) stream)
-  (flet ((represent (range)
-           (trivia:match (multiple-value-list (range-start-step-end range))
-             ((list 0 1 a) (1+ a))
-             ((trivia:guard (list a 1 b) (= a b)) (list a))
-             ((list a 1 b) (list a b))
-             ((list a b c) (list a b c)))))
-    (print-unreadable-object (shape stream :type t)
-      (format stream "~{~S~^ ~}" (mapcar #'represent (ranges shape))))))
+  (print-unreadable-object (shape stream :type t)
+    (format stream "~{~S~^ ~}" (ranges shape))))

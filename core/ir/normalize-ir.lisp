@@ -46,7 +46,10 @@
   (loop for kernel in (inputs buffer) do
     (loop for store in (stores kernel) do
       (when (eq (buffer store) buffer)
-        (transform store transformation))))
+        (transform store transformation)))
+    (loop for reduction-store in (reduction-stores kernel) do
+      (when (eq (buffer reduction-store) buffer)
+        (transform reduction-store transformation))))
   (loop for kernel in (outputs buffer) do
     (loop for load in (loads kernel) do
       (when (eq (buffer load) buffer)

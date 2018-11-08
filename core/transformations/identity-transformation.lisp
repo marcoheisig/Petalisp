@@ -32,10 +32,21 @@
   transformation)
 
 (defmethod enlarge-transformation
-    ((transformation identity-transformation) scale offset)
-  (assert (zerop offset))
-  (assert (= 1 scale))
+    ((transformation identity-transformation) (scale (eql 1)) (offset (eql 0)))
   (identity-transformation (1+ (input-rank transformation))))
+
+(defmethod enlarge-transformation
+    ((transformation identity-transformation) (scale rational) (offset rational))
+  (let* ((rank (1+ (input-rank transformation)))
+         (translation (make-array rank :initial-element 0))
+         (scaling (make-array rank :initial-element 1)))
+    (setf (aref translation 0) offset)
+    (setf (aref scaling 0) scale)
+    (make-transformation
+     :input-rank rank
+     :output-rank rank
+     :scaling scaling
+     :translation translation)))
 
 (defmethod map-transformation-outputs
     ((transformation identity-transformation) (function function) &key from-end)
