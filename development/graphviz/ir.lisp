@@ -51,13 +51,13 @@
     ((graph ir-graph)
      (edge load-edge)
      (kernel petalisp-ir:kernel))
-  (mapcar #'car (petalisp-ir:loads kernel)))
+  (mapcar #'petalisp-ir:buffer (petalisp-ir:loads kernel)))
 
 (defmethod graphviz-outgoing-edge-targets
     ((graph ir-graph)
      (edge store-edge)
      (kernel petalisp-ir:kernel))
-  (mapcar #'car (petalisp-ir:stores kernel)))
+  (mapcar #'petalisp-ir:buffer (petalisp-ir:stores kernel)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
