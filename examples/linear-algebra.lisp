@@ -33,8 +33,12 @@
   (setf x (coerce-to-strided-array x))
   (trivia:ematch (shape x)
     ((shape) x)
-    ((shape (range _)) (reshape x (τ (i) ())))
-    ((shape (range _) (range j)) (reshape x (τ (i j) ())))))
+    ((shape (range i)) (reshape x (make-transformation
+                                   :input-constraints (vector i)
+                                   :output-rank 0)))
+    ((shape (range i) (range j)) (reshape x (make-transformation
+                                             :input-constraints (vector i j)
+                                             :output-rank 0)))))
 
 (defun transpose (x)
   (reshape
