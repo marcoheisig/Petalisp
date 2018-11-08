@@ -17,9 +17,9 @@
    ;; A (possibly empty) list of basic blocks.
    (%successors :initarg :successors :accessor successors
                 :initform '())
-   ;; A list of lists of the form (variables form).  The instructions
-   ;; are stored in reverse order of execution, because we typically insert
-   ;; at the end.
+   ;; A list of lists of the form (variables form).  The instructions are
+   ;; stored in reverse order of execution, because we typically insert at
+   ;; the end.
    (%instructions :initarg :instructions :accessor instructions
                   :initform '())
    ;; A hash table, mapping from forms to (integer . symbol) alists,

@@ -8,12 +8,15 @@
 ;;; A hash table, mapping from each symbol to its defining basic block.
 (defvar *symbol-table*)
 
+;;; A vector.
+(defvar *array-symbols*)
+
 (defvar *initial-basic-block*)
 
 (defvar *final-basic-block*)
 
 (defun lambda-expression-from-blueprint (blueprint)
-  (multiple-value-bind (ranges arrays *instructions* reductions)
+  (multiple-value-bind (ranges array-types *instructions* reductions)
       (parse-blueprint blueprint)
     (let* ((dim (length ranges))
            (*gensym-counter* 0)
@@ -26,7 +29,15 @@
                      do (setf (gethash symbol *symbol-table*) basic-block))
                basic-block))
            (*final-basic-block* *initial-basic-block*)
-           (reduction-block nil))
+           (reduction-block nil)
+           (*array-symbols*
+             (let* ((n-arrays (length array-types))
+                    (array-symbols (make-array n-arrays)))
+               (loop for index below n-arrays
+                     for array-type in array-types do
+                 (setf (aref array-symbols index)
+                       (pseudo-eval 0 `(aref arrays ,index) array-type)))
+               array-symbols)))
       (loop for loop-range in (reverse (if (null reductions) ranges (cdr ranges)))
             for index downfrom (1- dim) do
               (push-loop-block loop-range index))
@@ -76,7 +87,7 @@
                       ((list* :reduction-store (list value-n index) array-number irefs)
                        (let* ((value (pseudo-eval (+ value-n (aref *instructions* index)) form))
                               (store-form `(store ,value
-                                                  (aref arrays ,array-number)
+                                                  ,(aref *array-symbols* array-number)
                                                   ,(translate-row-major-index array-number irefs))))
                          (value-symbol 0 store-form *final-basic-block*))))))))
       ;; Done.
@@ -102,22 +113,28 @@
   (or (gethash symbol *symbol-table*)
       (error "Undefined symbol: ~S" symbol)))
 
-(defun pseudo-eval (value-n form)
+(defun pseudo-eval (value-n form &optional (type 't))
   (etypecase form
     (symbol form)
     (number form)
     (cons
-     (let* ((basic-block *initial-basic-block*)
-            (arguments (mapcar #'pseudo-eval-0 (rest form))))
-       ;; Find the appropriate basic block.
-       (loop for argument in arguments do
-         (when (symbolp argument)
-           (let ((new-basic-block (basic-block-or-die argument)))
-             (when (dominates basic-block new-basic-block)
-               (setf basic-block new-basic-block)))))
-       (let ((symbol (value-symbol value-n (cons (first form) arguments) basic-block)))
-         (setf (gethash symbol *symbol-table*) basic-block)
-         symbol)))))
+     (destructuring-bind (first . rest) form
+       (let* ((basic-block *initial-basic-block*)
+              (arguments (mapcar #'pseudo-eval-0 rest)))
+         ;; Find the appropriate basic block.
+         (loop for argument in arguments do
+           (when (symbolp argument)
+             (let ((new-basic-block (basic-block-or-die argument)))
+               (when (dominates basic-block new-basic-block)
+                 (setf basic-block new-basic-block)))))
+         (let ((symbol (value-symbol
+                        value-n
+                        (if (eq type 't)
+                            `(,first ,@arguments)
+                            `(the ,type (,first ,@arguments)))
+                        basic-block)))
+           (setf (gethash symbol *symbol-table*) basic-block)
+           symbol))))))
 
 (defun pseudo-eval-0 (form)
   (pseudo-eval 0 form))
@@ -135,11 +152,11 @@
          (integer `(funcall (aref functions ,operator) . ,rest)))))
     ((list* :load array-number irefs)
      `(row-major-aref
-       (aref arrays ,array-number)
+       ,(aref *array-symbols* array-number)
        ,(translate-row-major-index array-number irefs)))
     ((list* :store argument array-number irefs)
      `(store ,(translate-argument argument)
-             (aref arrays ,array-number)
+             ,(aref *array-symbols* array-number)
              ,(translate-row-major-index array-number irefs)))
     ((list :iref index scale offset)
      `(identity ,(i+ (i* (index-symbol index) scale) offset)))))
@@ -168,7 +185,7 @@
 (defun translate-stride (array-number array-rank axis)
   (if (= axis (1- array-rank))
       1
-      (i* `(array-dimension (aref arrays ,array-number) ,(1+ axis))
+      (i* `(array-dimension ,(aref *array-symbols* array-number) ,(1+ axis))
           (translate-stride array-number array-rank (1+ axis)))))
 
 ;;; Return as multiple values
