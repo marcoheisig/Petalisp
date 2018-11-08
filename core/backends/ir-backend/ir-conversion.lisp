@@ -49,15 +49,6 @@
     :storage (storage array-immediate)))
 
 (defmethod petalisp-ir:make-buffer
-    ((scalar-immediate scalar-immediate) (ir-backend ir-backend))
-  (make-instance 'buffer
-    :executedp t
-    :shape (shape scalar-immediate)
-    :element-type (element-type scalar-immediate)
-    :storage (make-array '() :initial-element (storage scalar-immediate))
-    ))
-
-(defmethod petalisp-ir:make-buffer
     ((range-immediate range-immediate) (ir-backend ir-backend))
   (let* ((size (set-size (shape range-immediate)))
          (element-type (element-type range-immediate))
@@ -71,7 +62,7 @@
       :storage array)))
 
 (defmethod immediate-from-buffer ((buffer buffer))
-  (make-array-immediate (storage buffer)))
+  (coerce-to-strided-array (storage buffer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

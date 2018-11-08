@@ -49,13 +49,6 @@
 (defmethod evaluate ((simple-immediate simple-immediate))
   simple-immediate)
 
-(defmethod evaluate ((scalar-immediate scalar-immediate))
-  (make-simple-immediate
-   (shape scalar-immediate)
-   (lambda (index)
-     (assert (null index))
-     (storage scalar-immediate))))
-
 (defmethod evaluate ((array-immediate array-immediate))
   (make-simple-immediate
    (shape array-immediate)

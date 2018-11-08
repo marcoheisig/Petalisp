@@ -14,7 +14,7 @@
           collect
           (if (immediatep strided-array)
               strided-array
-              (make-array-immediate
+              (coerce-to-strided-array
                (storage
                 (compute-buffer root-buffer native-backend)))))))
 

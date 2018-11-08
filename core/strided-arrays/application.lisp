@@ -63,16 +63,15 @@
 
 (defmethod make-application :optimize ((function function) (inputs list))
   (block nil
-    (flet ((value-or-fail (input)
-             (typecase input
-               (scalar-immediate (storage input))
-               (reference
-                (let ((predecessor (input input)))
-                  (if (typep predecessor 'scalar-immediate)
-                      (storage predecessor)
-                      (return nil))))
-               (t (return nil)))))
-      (let ((arguments (mapcar #'value-or-fail inputs)))
-        (reshape
-         (make-scalar-immediate (apply function arguments))
-         (shape (first inputs)))))))
+    (labels ((fail () (return))
+             (value-or-fail (strided-array)
+               (typecase strided-array
+                 (array-immediate
+                  (if (= 1 (total-size (shape strided-array)))
+                      (aref (storage strided-array))
+                      (fail)))
+                 (reference
+                  (value-or-fail (input strided-array)))
+                 (t (fail)))))
+      (reshape (apply function (mapcar #'value-or-fail inputs))
+               (shape (first inputs))))))

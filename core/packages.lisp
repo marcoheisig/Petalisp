@@ -75,11 +75,8 @@
    #:immediate
    #:immediatep
    #:storage
-   #:scalar-immediate
    #:array-immediate
    #:range-immediate
-   #:make-scalar-immediate
-   #:make-array-immediate
    #:make-range-immediate
    #:lisp-datum-from-immediate
 

@@ -82,10 +82,9 @@
     promise))
 
 (defmethod lisp-datum-from-immediate ((array-immediate array-immediate))
-  (storage array-immediate))
-
-(defmethod lisp-datum-from-immediate ((scalar-immediate scalar-immediate))
-  (storage scalar-immediate))
+  (if (zerop (rank (shape array-immediate)))
+      (aref (storage array-immediate))
+      (storage array-immediate)))
 
 (defmethod lisp-datum-from-immediate ((range-immediate range-immediate))
   (let* ((shape (shape range-immediate))
@@ -117,10 +116,6 @@
     :inputs (inputs replacement)))
 
 (defmethod overwrite-instance ((instance strided-array) (replacement array-immediate))
-  (change-class instance (class-of replacement)
-    :storage (storage replacement)))
-
-(defmethod overwrite-instance ((instance strided-array) (replacement scalar-immediate))
   (change-class instance (class-of replacement)
     :storage (storage replacement)))
 

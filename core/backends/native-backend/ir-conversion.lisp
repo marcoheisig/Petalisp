@@ -35,14 +35,6 @@
     :storage (storage array-immediate)))
 
 (defmethod petalisp-ir:make-buffer
-    ((scalar-immediate scalar-immediate)
-     (native-backend native-backend))
-  (make-instance 'array-buffer
-    :shape (shape scalar-immediate)
-    :element-type (element-type scalar-immediate)
-    :storage (make-array '() :initial-element (storage scalar-immediate))))
-
-(defmethod petalisp-ir:make-buffer
     ((strided-array strided-array)
      (native-backend native-backend))
   (make-instance 'non-immediate-buffer

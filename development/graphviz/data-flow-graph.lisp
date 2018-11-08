@@ -36,11 +36,6 @@
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (immediate scalar-immediate))
-  `(:fillcolor "cadetblue1"))
-
-(defmethod graphviz-node-attributes
-    ((graph data-flow-graph)
      (immediate array-immediate))
   `(:fillcolor "cadetblue1"))
 
@@ -72,11 +67,6 @@
     ((graph data-flow-graph)
      (strided-array strided-array))
   `(("shape" . ,(stringify (shape strided-array)))))
-
-(defmethod graphviz-node-properties append
-    ((graph data-flow-graph)
-     (scalar-immediate scalar-immediate))
-  `(("storage" . ,(stringify (storage scalar-immediate)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
