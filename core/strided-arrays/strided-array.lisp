@@ -50,6 +50,9 @@
   (mapc (lambda (input) (incf (refcount input)))
         (inputs strided-array)))
 
+(defmethod shape ((shape shape))
+  shape)
+
 (defmethod rank ((strided-array strided-array))
   (rank (shape strided-array)))
 

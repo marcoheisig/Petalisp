@@ -9,11 +9,10 @@
 ;;;
 ;;; Working With Shapes
 
-(defun indices (array &optional (axis 0))
+(defun indices (array-or-shape &optional (axis 0))
   "Return an array of integers, where the value of each entry (i_0 ... i_N)
 is i_AXIS.  If axis is not supplied, it defaults to zero."
-  (let* ((strided-array (coerce-to-strided-array array))
-         (shape (shape strided-array))
+  (let* ((shape (shape array-or-shape))
          (rank (rank shape)))
     (assert (<= 0 axis (1- rank)))
     (make-reference
