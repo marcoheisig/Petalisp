@@ -2,12 +2,12 @@
 
 (in-package :petalisp-development)
 
-(defgenerator integer (&key (lower-limit -496) (upper-limit 496))
-  "Generate an integer between LOWER-LIMIT (inclusive) and UPPER-LIMIT (exclusive)."
-  (assert (> upper-limit lower-limit))
-  (let ((delta (- upper-limit lower-limit)))
+(defgenerator integer (&key (min -496) (max 496))
+  "Generate an integer between MIN (inclusive) and MAX (exclusive)."
+  (assert (> max min))
+  (let ((delta (- max min)))
     (lambda ()
-      (+ lower-limit (random delta)))))
+      (+ min (random delta)))))
 
 (defmacro define-float-generator (type)
   (let ((zero (coerce 0 type))

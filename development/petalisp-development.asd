@@ -30,15 +30,13 @@
    (:module "generators"
     :components
     ((:file "defgenerator")
-     (:file "number-generators")
-     (:file "array-generators")
-     (:file "range-generators")
-     (:file "shape-generators")))
+     (:file "numbers")
+     (:file "petalisp-primitives")
+     (:file "petalisp-programs")))
 
    (:module "test-suite"
     :components
-    ((:file "utilities")
-     (:file "test-suite")
+    ((:file "test-suite")
      (:file "code-statistics")
      (:file "testing-backend")
      (:file "run-petalisp-test-suite")

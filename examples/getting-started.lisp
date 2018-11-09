@@ -13,9 +13,6 @@
 ;; instead of (α #'+ x y) or (β #'max z).
 (in-readtable petalisp-readtable)
 
-;;; First of all, we define an auxiliary function PRESENT, that first shows
-;;; the data flow representation of a Petalisp datum, then evaluates it and
-;;; finally prints its value to the standard output.
 (defun present (expression)
   ;; Uncomment the following line to also show the data flow graph
   ;; representation of EXPRESSION.
