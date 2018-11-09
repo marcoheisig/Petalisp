@@ -67,7 +67,7 @@
                (typecase strided-array
                  (array-immediate
                   (if (= 1 (total-size (shape strided-array)))
-                      (aref (storage strided-array))
+                      (row-major-aref (storage strided-array) 0)
                       (fail)))
                  (reference
                   (value-or-fail (input strided-array)))
