@@ -27,7 +27,7 @@
         (loop for immediate in (compute-immediates data-structures backend)
               for expected-immediate in reference-solutions
               for index from 0 do
-                (1am:is (approximately-equal immediate expected-immediate))))
+                (is (approximately-equal immediate expected-immediate))))
       reference-solutions)))
 
 (defmethod delete-backend ((testing-backend testing-backend))
@@ -35,3 +35,11 @@
   (delete-backend (ir-backend testing-backend))
   (delete-backend (native-backend testing-backend))
   (call-next-method))
+
+(defun call-with-testing-backend (thunk)
+  (let ((*backend* (make-testing-backend)))
+    (unwind-protect (funcall thunk)
+      (delete-backend *backend*))))
+
+(defmacro with-testing-backend (&body body)
+  `(call-with-testing-backend (lambda () ,@body)))

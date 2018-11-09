@@ -2,11 +2,7 @@
 
 (in-package :petalisp-development)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Entry Point
-
-(defun run-test-suite ()
+(defun run-petalisp-test-suite ()
   (format t "~&== Testing Petalisp ==~%")
   (print-platform-information)
   (print-system-statistics :petalisp)
@@ -15,8 +11,6 @@
   (print-system-statistics :petalisp-ir-backend)
   (print-system-statistics :petalisp-native-backend)
   (print-package-statistics :petalisp)
-  (format t "~&Git revision: ~a" (system-git-revision :petalisp))
-  (let ((*backend* (make-testing-backend)))
-    (unwind-protect (1am:run)
-      (delete-backend *backend*))))
-
+  (format t "~&Git revision: ~a~%" (system-git-revision :petalisp))
+  (with-testing-backend
+    (apply #'run-tests (all-tests))))

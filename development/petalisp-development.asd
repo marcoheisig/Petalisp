@@ -9,16 +9,14 @@
    "petalisp"
    "petalisp-examples"
    "the-cost-of-nothing"
-   "cl-dot"
-   "1am")
+   "cl-dot")
 
   :perform
-  (test-op (o c) (symbol-call "PETALISP-DEVELOPMENT" "RUN-TEST-SUITE"))
+  (test-op (o c) (symbol-call "PETALISP-DEVELOPMENT" "RUN-PETALISP-TEST-SUITE"))
 
   :serial t
   :components
   ((:file "packages")
-   (:file "code-statistics")
 
    (:module "graphviz"
     :components
@@ -40,9 +38,11 @@
    (:module "test-suite"
     :components
     ((:file "utilities")
+     (:file "test-suite")
+     (:file "code-statistics")
      (:file "testing-backend")
-     (:file "run")
-     (:file "test-api")
-     (:file "test-sets")
-     (:file "test-iterative-methods")
-     (:file "test-linear-algebra")))))
+     (:file "run-petalisp-test-suite")
+     (:file "api")
+     (:file "sets")
+     (:file "iterative-methods")
+     (:file "linear-algebra")))))

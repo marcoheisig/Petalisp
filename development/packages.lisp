@@ -8,7 +8,6 @@
   (:use
    :closer-common-lisp
    :alexandria
-   :1am
    :petalisp
    :petalisp-reference-backend
    :petalisp-ir-backend
