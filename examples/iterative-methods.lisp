@@ -1,11 +1,11 @@
 (in-package :common-lisp-user)
 
-(defpackage :petalisp/examples/iterative-methods
+(defpackage :petalisp-examples-iterative-methods
   (:shadowing-import-from :petalisp :set-difference)
   (:use :cl :petalisp)
   (:export #:jacobi #:rbgs))
 
-(in-package :petalisp/examples/iterative-methods)
+(in-package :petalisp-examples-iterative-methods)
 
 (defun interior (array)
   (flet ((range-interior (range)

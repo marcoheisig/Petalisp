@@ -3,11 +3,11 @@
 
 (asdf:test-system :petalisp)
 
-(defpackage :petalisp/examples/getting-started
+(defpackage :petalisp-examples-getting-started
   (:shadowing-import-from :petalisp :set-difference)
   (:use :common-lisp :petalisp :named-readtables))
 
-(in-package :petalisp/examples/getting-started)
+(in-package :petalisp-examples-getting-started)
 
 ;; The Petalisp readtable makes it possible to write (α+ x y) or (βmax z)
 ;; instead of (α #'+ x y) or (β #'max z).

@@ -1,6 +1,6 @@
 (in-package :common-lisp-user)
 
-(defpackage :petalisp/examples/linear-algebra
+(defpackage :petalisp-examples-linear-algebra
   (:shadowing-import-from :petalisp :set-difference)
   (:use :cl :petalisp :named-readtables)
   (:export
@@ -11,7 +11,7 @@
    #:amax
    #:matmul))
 
-(in-package :petalisp/examples/linear-algebra)
+(in-package :petalisp-examples-linear-algebra)
 
 (in-readtable petalisp-readtable)
 
