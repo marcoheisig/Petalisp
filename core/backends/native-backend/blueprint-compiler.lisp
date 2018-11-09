@@ -161,7 +161,9 @@
              ,(aref *array-symbols* array-number)
              ,(translate-row-major-index array-number irefs)))
     ((list :iref index scale offset)
-     `(identity ,(i+ (i* (index-symbol index) scale) offset)))))
+     (if (null index)
+         `(identity ,offset)
+         `(identity ,(i+ (i* (index-symbol index) scale) offset))))))
 
 (defun translate-argument (argument)
   (destructuring-bind (value-n instruction-number) argument

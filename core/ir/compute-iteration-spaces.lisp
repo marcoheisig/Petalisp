@@ -74,11 +74,8 @@
      (iteration-space shape)
      (transformation transformation))
   (let* ((range (reduction-range reduction))
-         (size (set-size range))
          (iteration-space
-           (enlarge-shape
-            iteration-space
-            (make-range 0 1 (1- size))))
+           (enlarge-shape iteration-space range))
          (transformation
            (enlarge-transformation
             transformation

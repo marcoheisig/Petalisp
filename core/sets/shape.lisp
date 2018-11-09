@@ -65,34 +65,27 @@
 
 (defmethod broadcast-shapes ((shapes list))
   ;; Each stack is of the form (LENGTH . RANGES).
-  (let* ((stacks (mapcar #'ranges shapes))
-         (stack-depths (mapcar #'length stacks))
-         (maxdim (apply #'max stack-depths)))
-    (flet ((broadcast-ranges (ranges)
-             (let ((result (load-time-value (make-range 0 1 0))))
-               (loop for range in ranges do
-                 (cond
-                   ((set-equal range result)
-                    (values))
-                   ((size-one-range-p range)
-                    (values))
-                   ((size-one-range-p result)
-                    (setf result range))
-                   (t
-                    (demand nil
-                      "~@<There is no common broadcast shape for the shapes ~
-                                 ~{~#[~;and ~S~;~S ~:;~S, ~]~}.~:@>"
-                      shapes))))
-               result)))
-      (apply #'make-shape
-             (loop for dim below maxdim
-                   collect
-                   (broadcast-ranges
-                    (loop for cons on stacks
-                          for stack-depth in stack-depths
-                          collect (if (> (- maxdim stack-depth) dim)
-                                      (load-time-value (make-range 0 1 0))
-                                      (pop (car cons))))))))))
+  (let ((list-of-ranges (mapcar #'ranges shapes))
+        (result-ranges '()))
+    (loop
+      (let ((result nil))
+        (loop for cons on list-of-ranges do
+          (let ((range (pop (car cons))))
+            (unless (null range)
+              (cond ((null result)
+                     (setf result range))
+                    ((or (size-one-range-p range)
+                         (set-equal range result))
+                     (values))
+                    ((size-one-range-p result)
+                     (setf result range))
+                    (t
+                     (error "~@<There is no common broadcast shape for the shapes ~
+                                ~{~#[~;and ~S~;~S ~:;~S, ~]~}.~:@>"
+                            shapes))))))
+        (if (null result)
+            (return (apply #'make-shape (nreverse result-ranges)))
+            (push result result-ranges))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
