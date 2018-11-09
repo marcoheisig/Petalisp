@@ -4,6 +4,8 @@
   (:shadowing-import-from :petalisp :set-difference)
   (:use :cl :petalisp :named-readtables)
   (:export
+   #:zeros
+   #:eye
    #:transpose
    #:norm
    #:dot
@@ -40,6 +42,22 @@
                                              :input-constraints (vector i j)
                                              :output-rank 0)))))
 
+(defun zeros (m &optional (n m))
+  (assert (plusp m))
+  (assert (plusp n))
+  (reshape 0 (make-shape (range 1 m) (range 1 n))))
+
+(declaim (inline δ))
+(defun δ (i j)
+  (declare (type integer i j))
+  (if (= i j) 1 0))
+
+(defun eye (m &optional (n m))
+  (assert (plusp m))
+  (assert (plusp n))
+  (let ((shape (make-shape (range 1 m) (range 1 n))))
+    (αδ (indices shape 0) (indices shape 1))))
+
 (defun transpose (x)
   (reshape
    (coerce-to-matrix x)
@@ -61,7 +79,7 @@
 
 (defun amax (x)
   (flet ((amax-fn (lmax lind rmax rind)
-           (if (>= lmax rmax)
+           (if (>= (abs lmax) (abs rmax))
                (values lmax lind)
                (values rmax rind))))
     (let ((vector (coerce-to-matrix x)))
@@ -70,8 +88,18 @@
         (values (coerce-to-scalar max)
                 (coerce-to-scalar index))))))
 
-(defun matmul (a b)
+(defun matmul (A B)
   (β #'+
      (α #'*
-        (reshape (coerce-to-matrix a) (τ (m n) (n m 1)))
-        (reshape (coerce-to-matrix b) (τ (n k) (n 1 k))))))
+        (reshape (coerce-to-matrix A) (τ (m n) (n m 1)))
+        (reshape (coerce-to-matrix B) (τ (n k) (n 1 k))))))
+
+#+nil
+(defun lu (A)
+  (setf A (coerce-to-matrix A))
+  (trivia:ematch (shape A)
+    ((shape (range 1 m) (range 1 (= m)))
+     (labels ((rec (i P L U)
+                (multiple-value-bind (pivot pivot-index)
+                    (amax (reshape U)))))
+       (rec 1 (eye m) (zeros m) A)))))
