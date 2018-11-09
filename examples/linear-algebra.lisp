@@ -2,7 +2,7 @@
 
 (defpackage :petalisp-examples-linear-algebra
   (:shadowing-import-from :petalisp :set-difference)
-  (:use :cl :petalisp :named-readtables)
+  (:use :cl :alexandria :petalisp :named-readtables)
   (:export
    #:zeros
    #:eye
@@ -10,12 +10,16 @@
    #:norm
    #:dot
    #:asum
-   #:amax
+   #:argmax
    #:matmul))
 
 (in-package :petalisp-examples-linear-algebra)
 
 (in-readtable petalisp-readtable)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Matrix Utilities
 
 (defun coerce-to-matrix (x)
   (setf x (coerce-to-strided-array x))
@@ -42,6 +46,19 @@
                                              :input-constraints (vector i j)
                                              :output-rank 0)))))
 
+(trivia:defpattern matrix (m n)
+  (with-gensyms (it)
+    `(trivia:guard1 ,it (strided-array-p ,it)
+                    (shape ,it) (shape (range 1 ,m) (range 1 ,n)))))
+
+(trivia:defpattern square-matrix (m)
+  (with-gensyms (g)
+    `(matrix (and ,m ,g) (= ,g))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Linear Algebra Subroutines
+
 (defun zeros (m &optional (n m))
   (assert (plusp m))
   (assert (plusp n))
@@ -64,11 +81,10 @@
    (τ (m n) (n m))))
 
 (defun dot (x y)
-  (reshape
+  (coerce-to-scalar
    (matmul
     (transpose x)
-    (coerce-to-matrix y))
-   (τ (0 0) ())))
+    (coerce-to-matrix y))))
 
 (defun norm (x)
   (α #'sqrt (dot x x)))
@@ -77,16 +93,12 @@
   (coerce-to-scalar
    (β #'+ (α #'abs (coerce-to-matrix x)))))
 
-(defun amax (x)
-  (flet ((amax-fn (lmax lind rmax rind)
-           (if (>= (abs lmax) (abs rmax))
-               (values lmax lind)
-               (values rmax rind))))
-    (let ((vector (coerce-to-matrix x)))
-      (multiple-value-bind (max index)
-          (β #'amax-fn vector (indices vector))
-        (values (coerce-to-scalar max)
-                (coerce-to-scalar index))))))
+(defun argmax (x)
+  (β (lambda (li lv ri rv)
+       (if (>= (abs lv) (abs rv))
+           (values li lv)
+           (values ri rv)))
+     (indices x) x))
 
 (defun matmul (A B)
   (β #'+
@@ -94,12 +106,49 @@
         (reshape (coerce-to-matrix A) (τ (m n) (n m 1)))
         (reshape (coerce-to-matrix B) (τ (n k) (n 1 k))))))
 
-#+nil
+(defun pivot-and-value (A d)
+  (setf A (coerce-to-matrix A))
+  (trivia:ematch A
+    ((square-matrix m)
+     (assert (<= 1 d m))
+     (multiple-value-bind (p v)
+         (argmax (reshape A (make-shape (range d m) (range d))))
+       (compute (coerce-to-scalar p)
+                (coerce-to-scalar v))))))
+
+(defun swap-rows (A i j)
+  (setf A (coerce-to-matrix A))
+  (trivia:ematch A
+    ((matrix m n)
+     (assert (<= 1 i m))
+     (assert (<= 1 j m))
+     (if (= i j)
+         A
+         (let ((si (make-shape (range i) (range n)))
+               (sj (make-shape (range j) (range n))))
+           (fuse* A
+                  (reshape si sj)
+                  (reshape sj si)))))))
+
 (defun lu (A)
   (setf A (coerce-to-matrix A))
-  (trivia:ematch (shape A)
-    ((shape (range 1 m) (range 1 (= m)))
-     (labels ((rec (i P L U)
-                (multiple-value-bind (pivot pivot-index)
-                    (amax (reshape U)))))
+  (trivia:ematch A
+    ((square-matrix m)
+     (labels ((rec (d P L U)
+                (if (= d m)
+                    (compute (transpose P) L U)
+                    (multiple-value-bind (pivot value)
+                        (pivot-and-value U d)
+                      (assert (plusp value))
+                      (let* ((P (swap-rows P d pivot))
+                             (L (swap-rows L d pivot))
+                             (U (swap-rows U d pivot))
+                             (S (α/ (reshape U (make-shape (range (1+ d) m) (range d)))
+                                    (coerce-to-matrix value))))
+                        (rec (1+ d)
+                             P
+                             (fuse* L S (reshape 1 (make-shape (range d) (range d))))
+                             (fuse* U
+                                    (α- (reshape U (make-shape (range (1+ d) m) (range d m)))
+                                        (α* S (reshape U (make-shape (range d) (range d m))))))))))))
        (rec 1 (eye m) (zeros m) A)))))
