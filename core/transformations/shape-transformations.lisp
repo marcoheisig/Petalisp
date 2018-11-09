@@ -70,18 +70,18 @@
                      (setf (aref scaling index) 1))
                     ( ;; Move
                      (= output-size input-size)
-                     (setf (aref translation index)
-                           (- (range-start output-range)
-                              (range-start input-range)))
-                     (setf (aref scaling index)
-                           (if (size-one-range-p output-range)
-                               0
-                               (/ (range-step output-range)
-                                  (range-step input-range)))))
+                     (let ((scale (/ (range-step output-range)
+                                     (range-step input-range))))
+                       (setf (aref scaling index) scale)
+                       (setf (aref translation index)
+                             (- (range-start output-range)
+                                (* scale (range-start input-range))))))
                     ( ;; Broadcast
                      (= 1 output-size)
                      (setf (aref translation index) (range-start output-range))
-                     (setf (aref scaling index) 0)))))
+                     (setf (aref scaling index) 0))
+                    (t (error "Cannot broadcast the range ~S to the range ~S."
+                              input-range output-range)))))
     (make-transformation
      :input-rank input-rank
      :output-rank output-rank
