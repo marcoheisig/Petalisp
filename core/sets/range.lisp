@@ -171,8 +171,8 @@
 
 (defmethod range-difference-list ((range-1 unary-range) (range-2 unary-range))
   (if (= (range-start range-1) (range-start range-2))
-      (list range-1)
-      '()))
+      (list)
+      (list range-1)))
 
 (defmethod range-difference-list ((range-1 range) (range-2 unary-range))
   (multiple-value-call #'range-difference-list--single
