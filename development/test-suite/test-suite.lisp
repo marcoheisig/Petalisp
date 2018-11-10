@@ -19,17 +19,26 @@
 ;; The number of successful checks that have been performed so far.
 (defvar *pass-count*)
 
+(defun call-with-random-state (thunk)
+  (let ((*random-state*
+          (if (not *failed-random-state*)
+              (load-time-value (make-random-state t))
+              *failed-random-state*)))
+    (setf *failed-random-state* (make-random-state *random-state*))
+    (multiple-value-prog1 (funcall thunk)
+      (setf *failed-random-state* nil))))
+
+(defmacro with-random-state (&body body)
+  `(call-with-random-state (lambda () ,@body)))
+
 (defun call-with-test-harness (thunk)
   (if (and (boundp '*test-count*)
            (boundp '*pass-count*))
       (funcall thunk)
       (let* ((*test-count* 0)
-             (*pass-count* 0)
-             (*random-state* (make-random-state nil)))
-        (setf *failed-random-state* *random-state*)
-        (multiple-value-prog1 (funcall thunk)
-          (setf *failed-random-state* nil)
-          (report *test-count* *pass-count*)))))
+             (*pass-count* 0))
+        (with-random-state (funcall thunk))
+        (report *test-count* *pass-count*))))
 
 (defmacro with-test-harness (&body body)
   `(call-with-test-harness (lambda () ,@body)))
