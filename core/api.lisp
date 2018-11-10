@@ -66,6 +66,29 @@ arguments overlap partially, the value of the rightmost object is used."
 ;;;
 ;;; Parallel MAP and REDUCE
 
+(defun broadcast-shapes (shapes)
+  (let ((list-of-ranges (mapcar #'ranges shapes))
+        (broadcast-ranges '()))
+    (loop
+      (let ((broadcast-range nil))
+        (loop for cons on list-of-ranges do
+          (unless (null (car cons))
+            (let ((range (pop (car cons))))
+              (cond ((null broadcast-range)
+                     (setf broadcast-range range))
+                    ((or (size-one-range-p range)
+                         (set-equal range broadcast-range))
+                     (values))
+                    ((size-one-range-p broadcast-range)
+                     (setf broadcast-range range))
+                    (t
+                     (error "~@<There is no common broadcast shape for the shapes ~
+                                ~{~#[~;and ~S~;~S ~:;~S, ~]~}.~:@>"
+                            shapes))))))
+        (if (null broadcast-range)
+            (return (apply #'make-shape (nreverse broadcast-ranges)))
+            (push broadcast-range broadcast-ranges))))))
+
 (defun broadcast-arguments (arguments)
   (let* ((strided-arrays (mapcar #'coerce-to-strided-array arguments))
          (shape (broadcast-shapes (mapcar #'shape strided-arrays))))

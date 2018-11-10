@@ -20,8 +20,6 @@
 
 (defgeneric shape-difference-list (shape-1 shape-2))
 
-(defgeneric broadcast-shapes (shapes))
-
 (defgeneric shapep (shape))
 
 (defgeneric shape-union (shapes))
@@ -62,30 +60,6 @@
                     (push (apply #'make-shape (append head (cons difference tail)))
                           result)))
           result))))
-
-(defmethod broadcast-shapes ((shapes list))
-  ;; Each stack is of the form (LENGTH . RANGES).
-  (let ((list-of-ranges (mapcar #'ranges shapes))
-        (result-ranges '()))
-    (loop
-      (let ((result nil))
-        (loop for cons on list-of-ranges do
-          (let ((range (pop (car cons))))
-            (unless (null range)
-              (cond ((null result)
-                     (setf result range))
-                    ((or (size-one-range-p range)
-                         (set-equal range result))
-                     (values))
-                    ((size-one-range-p result)
-                     (setf result range))
-                    (t
-                     (error "~@<There is no common broadcast shape for the shapes ~
-                                ~{~#[~;and ~S~;~S ~:;~S, ~]~}.~:@>"
-                            shapes))))))
-        (if (null result)
-            (return (apply #'make-shape (nreverse result-ranges)))
-            (push result result-ranges))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
