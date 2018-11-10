@@ -64,10 +64,10 @@ arguments overlap partially, the value of the rightmost object is used."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Parallel MAP and REDUCE
+;;; Broadcasting
 
-(defun broadcast-shapes (shapes)
-  (let ((list-of-ranges (mapcar #'ranges shapes))
+(defun broadcast-shapes (&rest objects)
+  (let ((list-of-ranges (mapcar (compose #'ranges #'shape) objects))
         (broadcast-ranges '()))
     (loop
       (let ((broadcast-range nil))
@@ -84,25 +84,30 @@ arguments overlap partially, the value of the rightmost object is used."
                     (t
                      (error "~@<There is no common broadcast shape for the shapes ~
                                 ~{~#[~;and ~S~;~S ~:;~S, ~]~}.~:@>"
-                            shapes))))))
+                            (mapcar #'shape objects)))))))
         (if (null broadcast-range)
             (return (apply #'make-shape (nreverse broadcast-ranges)))
             (push broadcast-range broadcast-ranges))))))
 
-(defun broadcast-arguments (arguments)
-  (let* ((strided-arrays (mapcar #'coerce-to-strided-array arguments))
-         (shape (broadcast-shapes (mapcar #'shape strided-arrays))))
-    (mapcar (lambda (strided-array) (reshape strided-array shape))
-            strided-arrays)))
+(defun broadcast-arrays (&rest arrays)
+  (let* ((strided-arrays (mapcar #'coerce-to-strided-array arrays))
+         (shape (apply #'broadcast-shapes strided-arrays)))
+    (map-into strided-arrays
+              (lambda (strided-array) (reshape strided-array shape))
+              strided-arrays)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Parallel MAP and REDUCE
 
 (defun α (function array &rest more-arrays)
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
 for Petalisp data structures.  When the rank of some of the inputs
 mismatch, broadcast the smaller objects."
-  (make-application function (broadcast-arguments (list* array more-arrays))))
+  (make-application function (apply #'broadcast-arrays array more-arrays)))
 
 (defun β (function array &rest more-arrays)
-  (make-reduction function (broadcast-arguments (list* array more-arrays))))
+  (make-reduction function (apply #'broadcast-arrays array more-arrays)))
 
 (defalias a α)
 
