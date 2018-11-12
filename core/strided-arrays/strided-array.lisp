@@ -19,7 +19,6 @@
 
 (defgeneric refcount (strided-array))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes
@@ -65,13 +64,25 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Treating Arrays as Strided Arrays
+;;; Lisp Objects as Strided Arrays
 
-(defmethod total-size ((array array))
-  (array-total-size array))
+(defmethod total-size ((object t))
+  1)
 
 (defmethod rank ((object t))
   0)
+
+(defmethod element-type ((object t))
+  (type-of object))
+
+(defmethod shape ((object t))
+  (load-time-value (make-shape)))
+
+(defmethod inputs ((object t))
+  '())
+
+(defmethod total-size ((array array))
+  (array-total-size array))
 
 (defmethod rank ((array array))
   (array-rank array))
