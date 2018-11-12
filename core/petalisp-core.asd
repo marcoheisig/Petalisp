@@ -5,11 +5,12 @@
   :depends-on
   ("agnostic-lizard"
    "alexandria"
+   "closer-mop"
    "bordeaux-threads"
-   "named-readtables"
    "lparallel"
-   "trivia"
    "trivial-arguments")
+
+  :in-order-to ((test-op (test-op :petalisp-development)))
 
   :serial t
   :components

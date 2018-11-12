@@ -1,6 +1,6 @@
 ;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
-(in-package :petalisp)
+(in-package :petalisp-core)
 
 ;;; This protocol for working with sets is fairly generic, with one
 ;;; exception.  The set elements are always compared with EQUAL.  The

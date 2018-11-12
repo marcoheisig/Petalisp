@@ -1,6 +1,6 @@
 ;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
-(in-package :petalisp)
+(in-package :petalisp-core)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -27,7 +27,7 @@
   (trivia:match inputs
     ((list)
      (error "Cannot create a fusion with zero inputs."))
-    ((list input)
+    ((list _)
      (values))
     ((list* _ _ _)
      (unless (identical inputs :key #'rank)

@@ -75,7 +75,7 @@
      (shape reduction)
      (lambda (index)
        (labels ((divide-and-conquer (range)
-                  (if (unary-range-p range)
+                  (if (size-one-range-p range)
                       (values-list
                        (mapcar (lambda (input)
                                  (iref input (cons (range-start range) index)))

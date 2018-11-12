@@ -1,6 +1,6 @@
 ;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
-(in-package :petalisp)
+(in-package :petalisp-api)
 
 (defvar *backend* (petalisp-native-backend:make-native-backend)
   "The backend on which Petalisp programs are executed.")
@@ -62,12 +62,36 @@ arguments overlap partially, the value of the rightmost object is used."
               (identity-transformation (rank piece)))))
       (make-fusion (mapcar #'reference-origin (subdivision (mapcar #'shape strided-arrays)))))))
 
+;;; Return a list of disjoint shapes. Each resulting object is a proper
+;;; subspace of one or more of the arguments and their fusion covers all
+;;; arguments.
+(defun subdivision (shapes)
+  (labels ((subtract (shapes what)
+             (loop for shape in shapes
+                   append (shape-difference-list shape what)))
+           (shatter (dust object) ; dust is a list of disjoint shapes
+             (let* ((object-w/o-dust (list object))
+                    (new-dust '()))
+               (loop for particle in dust do
+                 (setf object-w/o-dust (subtract object-w/o-dust particle))
+                 (loop for shape in (shape-difference-list particle object) do
+                   (push shape new-dust))
+                 (let ((it (set-intersection particle object)))
+                   (unless (set-emptyp it)
+                     (push it new-dust))))
+               (append object-w/o-dust new-dust))))
+    (trivia:ematch shapes
+      ((list) '())
+      ((list shape) shapes)
+      ((list* _ _ _)
+       (reduce #'shatter shapes :initial-value nil)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Broadcasting
 
 (defun broadcast-shapes (&rest objects)
-  (let ((list-of-ranges (mapcar (compose #'ranges #'shape) objects))
+  (let ((list-of-ranges (mapcar (alexandria:compose #'ranges #'shape) objects))
         (broadcast-ranges '()))
     (loop
       (let ((broadcast-range nil))
@@ -96,6 +120,49 @@ arguments overlap partially, the value of the rightmost object is used."
               (lambda (strided-array) (reshape strided-array shape))
               strided-arrays)))
 
+
+(defun broadcasting-transformation (input-shape output-shape)
+  (let* ((input-ranges (ranges input-shape))
+         (output-ranges (ranges output-shape))
+         (input-rank (length input-ranges))
+         (output-rank (length output-ranges))
+         (translation (make-array output-rank :initial-element 0))
+         (scaling (make-array output-rank :initial-element 1))
+         (input-constraints
+           (map 'vector (lambda (range)
+                          (when (size-one-range-p range)
+                            (range-start range)))
+                input-ranges)))
+    (loop for index below (min input-rank output-rank)
+          for input-range in input-ranges
+          for output-range in output-ranges do
+            (let ((output-size (set-size output-range))
+                  (input-size (set-size input-range)))
+              (cond ( ;; Select
+                     (> output-size input-size)
+                     (setf (aref translation index) 0)
+                     (setf (aref scaling index) 1))
+                    ( ;; Move
+                     (= output-size input-size)
+                     (let ((scale (/ (range-step output-range)
+                                     (range-step input-range))))
+                       (setf (aref scaling index) scale)
+                       (setf (aref translation index)
+                             (- (range-start output-range)
+                                (* scale (range-start input-range))))))
+                    ( ;; Broadcast
+                     (= 1 output-size)
+                     (setf (aref translation index) (range-start output-range))
+                     (setf (aref scaling index) 0))
+                    (t (error "Cannot broadcast the range ~S to the range ~S."
+                              input-range output-range)))))
+    (make-transformation
+     :input-rank input-rank
+     :output-rank output-rank
+     :translation translation
+     :scaling scaling
+     :input-constraints input-constraints)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Parallel MAP and REDUCE
@@ -108,6 +175,11 @@ mismatch, broadcast the smaller objects."
 
 (defun β (function array &rest more-arrays)
   (make-reduction function (apply #'broadcast-arrays array more-arrays)))
+
+(defmacro defalias (alias function)
+  `(progn (setf (fdefinition ',alias) #',function)
+          (setf (documentation ',alias 'function)
+                (documentation ',function 'function))))
 
 (defalias a α)
 
@@ -133,7 +205,7 @@ mismatch, broadcast the smaller objects."
 ;;;
 ;;; The Petalisp Readtable
 
-(define-constant +whitespace+ '(#\space #\tab #\linefeed #\return #\page)
+(alexandria:define-constant +whitespace+ '(#\space #\tab #\linefeed #\return #\page)
   :test #'equal)
 
 (defun read-α (stream char)

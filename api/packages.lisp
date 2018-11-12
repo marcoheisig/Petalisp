@@ -2,28 +2,39 @@
 
 (cl:in-package #:common-lisp-user)
 
-(cl:defpackage :petalisp-core
-  (:use :closer-common-lisp :alexandria)
-  (:shadow cl:set-difference alexandria:set-equal)
+(cl:defpackage :petalisp-api
+  (:nicknames :petalisp)
+  (:use :common-lisp :petalisp-core)
   (:export
+   ;; High-level API
+   #:α
+   #:β
+   #:a
+   #:b
+   #:broadcast-arrays
+   #:broadcast-shapes
+   #:reshape
+   #:transform
+   #:τ
+   #:fuse
+   #:fuse*
+   #:compute
+   #:schedule
+   #:indices
+   #:petalisp-readtable
 
-   ;; Sets
-   #:set-for-each
-   #:set-difference
-   #:set-elements
-   #:set-emptyp
-   #:set-equal
-   #:set-contains
-   #:set-intersection
-   #:set-intersectionp
-   #:set-subsetp
-   #:set-size
-   #:set-union
+   ;; Backends
+   #:*backend*
+   #:make-reference-backend
+   #:make-ir-backend
+   #:make-native-backend
+
+   ;; Re-exports from petalisp-core
 
    ;; Ranges
    #:range
    #:rangep
-   #:size-one-range-p
+   #:unary-range-p
    #:split-range
    #:make-range
    #:range-start-step-end
@@ -79,35 +90,9 @@
    #:array-immediate
    #:range-immediate
    #:make-range-immediate
-   #:make-application
-   #:make-reduction
-   #:make-fusion
-   #:make-reference
-   #:lisp-datum-from-immediate
+   #:lisp-datum-from-immediate)
 
-   ;; High-level API
-   #:α
-   #:β
-   #:a
-   #:b
-   #:broadcast-arrays
-   #:broadcast-shapes
-   #:reshape
-   #:transform
-   #:τ
-   #:fuse
-   #:fuse*
-   #:compute
-   #:schedule
-   #:indices
-   #:petalisp-readtable
-
-   ;; Backends
-   #:*backend*
-   #:compute-on-backend
-   #:schedule-on-backend
-   #:compute-immediates
-   #:backend
-   #:asynchronous-backend
-   #:overwrite-instance
-   #:delete-backend))
+  (:shadowing-import-from :petalisp-core #:set-difference)
+  (:shadowing-import-from :petalisp-reference-backend #:make-reference-backend)
+  (:shadowing-import-from :petalisp-ir-backend #:make-ir-backend)
+  (:shadowing-import-from :petalisp-native-backend #:make-native-backend))

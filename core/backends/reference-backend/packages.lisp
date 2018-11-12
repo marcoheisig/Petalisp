@@ -3,8 +3,8 @@
 (cl:in-package #:common-lisp-user)
 
 (cl:defpackage :petalisp-reference-backend
-  (:shadowing-import-from :petalisp :set-difference)
-  (:use :closer-common-lisp :alexandria :petalisp)
+  (:use :closer-common-lisp :alexandria :petalisp-core)
+  (:shadowing-import-from :petalisp-core #:set-difference #:set-equal)
   (:export
    #:make-reference-backend))
 

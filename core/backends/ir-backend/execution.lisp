@@ -100,7 +100,7 @@
           (set-for-each
            (lambda (non-reducing-index)
              (labels ((divide-and-conquer (range)
-                        (if (unary-range-p range)
+                        (if (size-one-range-p range)
                             (let ((*index* (cons (range-start range) non-reducing-index)))
                               (fill *instruction-values* 0)
                               (mapc #'instruction-values (petalisp-ir:stores kernel))

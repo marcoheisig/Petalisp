@@ -1,11 +1,6 @@
 ;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
-(in-package :petalisp)
-
-(defmacro defalias (alias function)
-  `(progn (setf (fdefinition ',alias) #',function)
-          (setf (documentation ',alias 'function)
-                (documentation ',function 'function))))
+(in-package :petalisp-core)
 
 (defun free-variables (form &optional environment)
   (let (result)

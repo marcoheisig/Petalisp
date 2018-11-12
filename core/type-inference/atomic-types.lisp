@@ -1,6 +1,6 @@
 ;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
-(in-package :petalisp)
+(in-package :petalisp-core)
 
 ;;; For some applications, it is desirable to use atomic type specifiers
 ;;; only.  This library introduces atomic aliases for all upgraded array

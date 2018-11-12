@@ -4,11 +4,11 @@
 
 (cl:defpackage :petalisp-development
   (:nicknames :petalisp-dev)
-  (:shadowing-import-from :petalisp #:set-difference)
+  (:shadowing-import-from :petalisp-core #:set-difference #:set-equal)
   (:use
    :closer-common-lisp
    :alexandria
-   :petalisp
+   :petalisp-core
    :petalisp-reference-backend
    :petalisp-ir-backend
    :petalisp-native-backend

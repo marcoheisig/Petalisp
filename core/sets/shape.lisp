@@ -1,6 +1,6 @@
 ;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
-(in-package :petalisp)
+(in-package :petalisp-core)
 
 ;;; A shape of rank D is the Cartesian product of D ranges.  That means
 ;;; each element of a shape is a D-tuple of integers, such that the first
@@ -165,28 +165,6 @@
 
 (defmethod enlarge-shape ((shape shape) (range range))
   (apply #'make-shape range (ranges shape)))
-
-;;; Return a list of disjoint shapes. Each resulting object is a proper
-;;; subspace of one or more of the arguments and their fusion covers all
-;;; arguments.
-(defun subdivision (shapes)
-  (labels ((subtract (shapes what)
-             (loop for shape in shapes
-                   append (shape-difference-list shape what)))
-           (shatter (dust object) ; dust is a list of disjoint shapes
-             (let* ((object-w/o-dust (list object))
-                    (new-dust '()))
-               (loop for particle in dust do
-                 (setf object-w/o-dust (subtract object-w/o-dust particle))
-                 (loop for shape in (shape-difference-list particle object) do
-                   (push shape new-dust))
-                 (let ((it (set-intersection particle object)))
-                   (unless (set-emptyp it)
-                     (push it new-dust))))
-               (append object-w/o-dust new-dust))))
-    (cond ((emptyp shapes) '())
-          ((= 1 (length shapes)) (list (elt shapes 0)))
-          (t (reduce #'shatter shapes :initial-value nil)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

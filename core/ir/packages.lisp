@@ -1,8 +1,8 @@
 ;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
 (cl:defpackage :petalisp-ir
-  (:shadowing-import-from :petalisp #:set-difference)
-  (:use :closer-common-lisp :alexandria :petalisp)
+  (:use :closer-common-lisp :alexandria :petalisp-core)
+  (:shadowing-import-from :petalisp-core #:set-difference #:set-equal)
   (:export
 
    ;; Classes

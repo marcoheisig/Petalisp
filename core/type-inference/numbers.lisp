@@ -1,6 +1,6 @@
 ;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
-(in-package :petalisp)
+(in-package :petalisp-core)
 
 ;;; This type inference function deliberately ignores most numeric types
 ;;; and distinguishes primarily between subtypes of float, including

@@ -1,6 +1,6 @@
 ;;;; © 2016-2018 Marco Heisig - licensed under AGPLv3, see the file COPYING     -*- coding: utf-8 -*-
 
-(in-package :petalisp)
+(in-package :petalisp-core)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -18,7 +18,7 @@
 
 (defgeneric make-range (start step end))
 
-(defgeneric unary-range-p (object))
+(defgeneric size-one-range-p (object))
 
 (defgeneric split-range (range))
 
@@ -37,11 +37,11 @@
 (defclass contiguous-range (range)
   ())
 
-(defclass unary-range (contiguous-range)
+(defclass size-one-range (contiguous-range)
   ((%element :initarg :start :reader range-start
              :initarg :end :reader range-end)))
 
-(defclass non-unary-contiguous-range (contiguous-range)
+(defclass non-size-one-contiguous-range (contiguous-range)
   ((%start :initarg :start :reader range-start)
    (%end :initarg :end :reader range-end)))
 
@@ -51,11 +51,7 @@
 
 (define-class-predicate range)
 
-(defmethod unary-range-p ((object t))
-  nil)
-
-(defmethod unary-range-p ((unary-range unary-range))
-  t)
+(define-class-predicate size-one-range :hyphenate t)
 
 (defmethod range-step ((range contiguous-range))
   1)
@@ -70,7 +66,7 @@
           1
           (range-end range)))
 
-(defmethod range-start-step-end ((range unary-range))
+(defmethod range-start-step-end ((range size-one-range))
   (let ((element (range-start range)))
     (values element 1 element)))
 
@@ -87,7 +83,7 @@
 (defmethod set-size ((range contiguous-range))
   (1+ (- (range-end range) (range-start range))))
 
-(defmethod set-size ((range unary-range))
+(defmethod set-size ((range size-one-range))
   1)
 
 (defmethod set-contains ((range range) (integer integer))
@@ -98,7 +94,7 @@
 (defmethod set-contains ((range contiguous-range) (integer integer))
   (<= (range-start range) integer (range-end range)))
 
-(defmethod set-contains ((range unary-range) (integer integer))
+(defmethod set-contains ((range size-one-range) (integer integer))
   (= integer (range-start range)))
 
 (defmethod set-equal ((range-1 range) (range-2 range))
@@ -109,10 +105,10 @@
        (= (range-end range-1)
           (range-end range-2))))
 
-(defmethod set-equal ((range-1 unary-range) (range-2 unary-range))
+(defmethod set-equal ((range-1 size-one-range) (range-2 size-one-range))
   (= (range-start range-1) (range-start range-2)))
 
-(define-method-pair set-equal ((range-1 unary-range) (range-2 range))
+(define-method-pair set-equal ((range-1 size-one-range) (range-2 range))
   (declare (ignore range-1 range-2))
   nil)
 
@@ -169,12 +165,12 @@
                    (* step step-1)
                    (+ (* end step-1) start-1)))))))))))
 
-(defmethod range-difference-list ((range-1 unary-range) (range-2 unary-range))
+(defmethod range-difference-list ((range-1 size-one-range) (range-2 size-one-range))
   (if (= (range-start range-1) (range-start range-2))
       (list)
       (list range-1)))
 
-(defmethod range-difference-list ((range-1 range) (range-2 unary-range))
+(defmethod range-difference-list ((range-1 range) (range-2 size-one-range))
   (multiple-value-call #'range-difference-list--single
     (range-start-step-end range-1)
     (range-start range-2)))
@@ -300,23 +296,18 @@
 (defmethod make-range ((start integer) (step integer) (end integer))
   (if (zerop step)
       (if (= start end)
-          (make-instance 'unary-range :start start)
+          (make-instance 'size-one-range :start start)
           (error "Bad step size 0 for range with start ~d and end ~d" start end))
       (let ((steps (truncate (- end start) step)))
         (if (= steps 0)
-            (make-instance 'unary-range :start start)
+            (make-instance 'size-one-range :start start)
             (let ((congruent-end (+ start (* step steps))))
               (let ((step (abs step))
                     (start (min start congruent-end))
                     (end (max start congruent-end)))
                 (if (= 1 step)
-                    (make-instance 'non-unary-contiguous-range :start start :end end)
+                    (make-instance 'non-size-one-contiguous-range :start start :end end)
                     (make-instance 'non-contiguous-range :start start :step step :end end))))))))
-
-(declaim (inline size-one-range-p))
-(defun size-one-range-p (range)
-  (= (range-start range)
-     (range-end range)))
 
 (defun range-fusion (ranges)
   ;; Assuming that all supplied RANGES are non-overlapping, the only

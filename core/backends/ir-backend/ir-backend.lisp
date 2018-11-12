@@ -10,7 +10,7 @@
 ;;;
 ;;; Classes
 
-(defclass ir-backend (petalisp:backend)
+(defclass ir-backend (backend)
   ())
 
 (defun make-ir-backend ()

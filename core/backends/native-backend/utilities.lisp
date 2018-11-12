@@ -15,7 +15,7 @@
 
 (defmacro define-compiler-gensym (name)
   (let* ((prefix '#:-symbol)
-         (function-name (symbolicate name prefix)))
+         (function-name (alexandria:symbolicate name prefix)))
     `(defun ,function-name (n)
        (petalisp-memoization:with-vector-memoization (n)
          (format-symbol :petalisp-native-backend "~A-~D" ',name n)))))
