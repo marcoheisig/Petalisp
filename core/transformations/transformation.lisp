@@ -27,11 +27,9 @@
 ;;;
 ;;; Generic Functions
 
-(defgeneric canonicalize-transformation (object))
-
 (defgeneric transformation-equal (transformation-1 transformation-2))
 
-(defgeneric compose-transformations (transformation-1 transformation-2))
+(defgeneric compose-transformations (g f))
 
 (defgeneric invert-transformation (transformation))
 
@@ -39,19 +37,30 @@
 
 (defgeneric output-rank (transformation))
 
-(defgeneric input-constraints (transformation))
+;;; For each input of TRANSFORMATION, invoke FUNCTION with the input index
+;;; and the corresponding input constraint, or null, if there is no input
+;;; constraint for this input.
+;;;
+;;; If FROM-END is false, the input indices are traversed in ascending
+;;; order.  Otherwise, they are traversed in descending order.
+(defgeneric map-transformation-inputs (function transformation &key from-end))
 
 ;;; For each output of TRANSFORMATION, invoke FUNCTION with the output
-;;; index, input index and the scaling and offset necessary to project an
-;;; input value at that input index to an output value at that output
-;;; index.
-(defgeneric map-transformation-outputs (transformation function &key from-end))
+;;; index, input index, the scaling and the offset of that output.
+;;;
+;;; An input index of NIL and a scaling of zero is used, if (and only if)
+;;; the output is constant.
+;;;
+;;; If FROM-END is false, the output indices are traversed in ascending
+;;; order.  Otherwise, they are traversed in descending order.
+(defgeneric map-transformation-outputs (function transformation &key from-end))
 
 ;;; Given a transformation mapping from (i1 ... iN) to (j1 ... jM),
-;;; return a transformation mapping from (i1 ... iN iN+1) to
-;;; (j1 ... jM iN+1).
+;;; return a transformation mapping from (i0 i1 ... iN iN+1) to
+;;; ((+(* i0 SCALE) OFFSET) j1 ... jM).
 (defgeneric enlarge-transformation (transformation scale offset))
 
+;;; Reorder, scale and shift the given OBJECT according to TRANSFORMATION.
 (defgeneric transform (object transformation)
   (:argument-precedence-order transformation object))
 
@@ -64,12 +73,12 @@
 
 ;; Forward declaration of the primary transformation constructors, because
 ;; they will be referenced before being defined.
-(declaim (ftype (function (&key (:input-rank array-length)
-                                (:output-rank array-length)
-                                (:input-constraints sequence)
-                                (:translation sequence)
-                                (:permutation sequence)
-                                (:scaling sequence)))
+(declaim (ftype (function (&key (:input-rank array-rank)
+                                (:output-rank array-rank)
+                                (:input-mask sequence)
+                                (:output-mask sequence)
+                                (:offsets sequence)
+                                (:scalings sequence)))
                 make-transformation)
          (ftype (function (array-length))
                 identity-transformation))
@@ -80,34 +89,26 @@
 
 (define-class-predicate transformation)
 
-(defmethod canonicalize-transformation ((transformation transformation))
-  transformation)
-
-(defmethod canonicalize-transformation ((object t))
-  (error 'petalisp-user-error
-         "~@<~A is not a valid transformation.~:@>" object))
+(defmethod transformation-equal ((t1 transformation) (t2 transformation))
+  (= (input-rank t1)
+     (input-rank t2))
+  (= (output-rank t1)
+     (output-rank t2)))
 
 (defmethod compose-transformations :before
-    ((transformation-1 transformation) (transformation-2 transformation))
-  (assert (= (output-rank transformation-2)
-             (input-rank transformation-1))))
-
-(defmethod input-constraints (transformation)
-  (declare (ignore transformation))
-  nil)
-
-(defmethod print-object ((transformation transformation) stream)
-  (let* ((variables
-           (loop for index below (input-rank transformation)
-                 collect (format-symbol :keyword "I~D" index)))
-         (inputs
-           (if (null (input-constraints transformation))
-               variables
-               (loop for input-constraint across (input-constraints transformation)
-                     for variable in variables
-                     collect (or input-constraint variable)))))
-    (princ `(τ ,inputs ,(transform inputs transformation))
-           stream)))
+    ((g transformation) (f transformation))
+  (assert (= (output-rank f) (input-rank g))))
 
 (defmethod transform ((sequence sequence) (transformation transformation))
   (assert (= (length sequence) (input-rank transformation))))
+
+(defmethod print-object ((transformation transformation) stream)
+  (let ((inputs '()))
+    (map-transformation-inputs
+     (lambda (input-index input-constraint)
+       (if (null input-constraint)
+           (push (format-symbol :keyword "I~D" input-index) inputs)
+           (push input-constraint inputs)))
+     transformation
+     :from-end t)
+    (princ `(τ ,inputs ,(transform inputs transformation)) stream)))

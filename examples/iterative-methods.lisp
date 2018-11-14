@@ -74,7 +74,8 @@
                     (append (mapcar #'prepend-1 black)
                             (mapcar #'prepend-2 red))
                     (1+ depth)))))
-      (multiple-value-bind (red-offsets black-offsets) (offsets '((2)) '((1)) 1)
+      (multiple-value-bind (red-offsets black-offsets)
+          (offsets '((2)) '((1)) 1)
         (flet ((offset-space (offsets)
                  (apply #'make-shape
                         (loop for offset in offsets

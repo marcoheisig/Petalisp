@@ -11,10 +11,12 @@
     "~@<Cannot apply the transformation ~A with input rank ~R ~
         to the index shape ~A with rank ~R.~:@>"
     transformation (input-rank transformation)
-    shape (rank shape))
-  (when-let ((input-constraints (input-constraints transformation)))
+    shape (rank shape)))
+
+(defmethod transform :before ((shape shape) (transformation hairy-transformation))
+  (let ((input-mask (input-mask transformation)))
     (loop for range in (ranges shape)
-          for constraint across input-constraints
+          for constraint across input-mask
           for index from 0 do
             (unless (not constraint)
               (demand (and (= constraint (range-start range))
@@ -38,7 +40,7 @@
                           (+ offset (* scaling (range-start input-range)))
                           (* scaling (range-step input-range))
                           (+ offset (* scaling (range-end input-range)))))))))
-      (map-transformation-outputs transformation #'store-output-range))
+      (map-transformation-outputs #'store-output-range transformation))
     (apply #'make-shape output-ranges)))
 
 (defun collapsing-transformation (shape)
@@ -50,5 +52,5 @@
 (defun from-storage-transformation (shape)
   (let ((ranges (ranges shape)))
     (make-transformation
-     :scaling (map 'vector #'range-step ranges)
-     :translation (map 'vector #'range-start ranges))))
+     :scalings (map 'vector #'range-step ranges)
+     :offsets (map 'vector #'range-start ranges))))

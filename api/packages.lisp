@@ -58,7 +58,6 @@
    #:input-rank
    #:output-rank
    #:invertible-transformation-p
-   #:canonicalize-transformation
    #:make-transformation
    #:identity-transformation
    #:invert-transformation

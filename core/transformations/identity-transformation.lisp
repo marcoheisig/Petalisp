@@ -10,9 +10,6 @@
 
 (define-class-predicate identity-transformation :hyphenate t)
 
-(defmethod transform ((sequence sequence) (operator identity-transformation))
-  sequence)
-
 (defmethod transformation-equal
     ((transformation-1 identity-transformation)
      (transformation-2 identity-transformation))
@@ -38,20 +35,31 @@
 (defmethod enlarge-transformation
     ((transformation identity-transformation) (scale rational) (offset rational))
   (let* ((rank (1+ (input-rank transformation)))
-         (translation (make-array rank :initial-element 0))
-         (scaling (make-array rank :initial-element 1)))
-    (setf (aref translation 0) offset)
-    (setf (aref scaling 0) scale)
+         (offsets (make-array rank :initial-element 0))
+         (scalings (make-array rank :initial-element 1)))
+    (setf (aref offsets 0) offset)
+    (setf (aref scalings 0) scale)
     (make-transformation
      :input-rank rank
      :output-rank rank
-     :scaling scaling
-     :translation translation)))
+     :scalings scalings
+     :offsets offsets)))
+
+(defmethod map-transformation-inputs
+    ((function function) (transformation identity-transformation) &key from-end)
+  (if (not from-end)
+      (loop for input-index below (input-rank transformation) do
+        (funcall function input-index nil))
+      (loop for input-index downfrom (1- (input-rank transformation)) to 0 do
+        (funcall function input-index nil))))
 
 (defmethod map-transformation-outputs
-    ((transformation identity-transformation) (function function) &key from-end)
+    ((function function) (transformation identity-transformation) &key from-end)
   (if (not from-end)
-      (loop for index below (input-rank transformation) do
+      (loop for index below (output-rank transformation) do
         (funcall function index index 1 0))
-      (loop for index downfrom (1- (input-rank transformation)) to 0 do
+      (loop for index downfrom (1- (output-rank transformation)) to 0 do
         (funcall function index index 1 0))))
+
+(defmethod transform ((sequence sequence) (operator identity-transformation))
+  sequence)

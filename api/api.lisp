@@ -20,7 +20,7 @@ is i_AXIS.  If axis is not supplied, it defaults to zero."
      shape
      (make-transformation
       :input-rank rank
-      :permutation (vector axis)))))
+      :output-mask (vector axis)))))
 
 (defun reshape (array &rest shapes-and-transformations)
   "Return a data structure of given SHAPE, either by selecting a subset of
@@ -82,7 +82,7 @@ arguments overlap partially, the value of the rightmost object is used."
                (append object-w/o-dust new-dust))))
     (trivia:ematch shapes
       ((list) '())
-      ((list shape) shapes)
+      ((list _) shapes)
       ((list* _ _ _)
        (reduce #'shatter shapes :initial-value nil)))))
 
@@ -126,12 +126,13 @@ arguments overlap partially, the value of the rightmost object is used."
          (output-ranges (ranges output-shape))
          (input-rank (length input-ranges))
          (output-rank (length output-ranges))
-         (translation (make-array output-rank :initial-element 0))
-         (scaling (make-array output-rank :initial-element 1))
-         (input-constraints
-           (map 'vector (lambda (range)
-                          (when (size-one-range-p range)
-                            (range-start range)))
+         (offsets (make-array output-rank :initial-element 0))
+         (scalings (make-array output-rank :initial-element 1))
+         (input-mask
+           (map 'simple-vector
+                (lambda (range)
+                  (when (size-one-range-p range)
+                    (range-start range)))
                 input-ranges)))
     (loop for index below (min input-rank output-rank)
           for input-range in input-ranges
@@ -140,28 +141,28 @@ arguments overlap partially, the value of the rightmost object is used."
                   (input-size (set-size input-range)))
               (cond ( ;; Select
                      (> output-size input-size)
-                     (setf (aref translation index) 0)
-                     (setf (aref scaling index) 1))
+                     (setf (svref offsets index) 0)
+                     (setf (svref scalings index) 1))
                     ( ;; Move
                      (= output-size input-size)
                      (let ((scale (/ (range-step output-range)
                                      (range-step input-range))))
-                       (setf (aref scaling index) scale)
-                       (setf (aref translation index)
+                       (setf (svref scalings index) scale)
+                       (setf (svref offsets index)
                              (- (range-start output-range)
                                 (* scale (range-start input-range))))))
                     ( ;; Broadcast
                      (= 1 output-size)
-                     (setf (aref translation index) (range-start output-range))
-                     (setf (aref scaling index) 0))
+                     (setf (svref offsets index) (range-start output-range))
+                     (setf (svref scalings index) 0))
                     (t (error "Cannot broadcast the range ~S to the range ~S."
                               input-range output-range)))))
     (make-transformation
      :input-rank input-rank
      :output-rank output-rank
-     :translation translation
-     :scaling scaling
-     :input-constraints input-constraints)))
+     :offsets offsets
+     :scalings scalings
+     :input-mask input-mask)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

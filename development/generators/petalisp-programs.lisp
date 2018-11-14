@@ -10,5 +10,5 @@
              (make-transformation
               :input-rank rank
               :output-rank rank
-              :translation (loop repeat rank collect (funcall generator))
-              :permutation (shuffle (iota rank))))))
+              :scalings (loop repeat rank collect (funcall generator))
+              :output-mask (shuffle (iota rank))))))

@@ -40,10 +40,10 @@
   (trivia:ematch (shape x)
     ((shape) x)
     ((shape (range i)) (reshape x (make-transformation
-                                   :input-constraints (vector i)
+                                   :input-mask (vector i)
                                    :output-rank 0)))
     ((shape (range i) (range j)) (reshape x (make-transformation
-                                             :input-constraints (vector i j)
+                                             :input-mask (vector i j)
                                              :output-rank 0)))))
 
 (trivia:defpattern matrix (m n)

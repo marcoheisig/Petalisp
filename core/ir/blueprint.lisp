@@ -85,20 +85,20 @@
                 ;; as the other stores.
                 (let ((result '()))
                   (map-transformation-outputs
-                   (transformation reduction-store-instruction)
                    (lambda (output-index input-index scaling offset)
                      (declare (ignore output-index))
                      (setf result (ucons:ucons (ucons:ulist (1+ input-index) scaling offset) result)))
+                   (transformation reduction-store-instruction)
                    :from-end t)
                   result)))
 
 (defmethod blueprint ((iref-instruction iref-instruction))
   (block nil
     (map-transformation-outputs
-     (transformation iref-instruction)
      (lambda (output-index input-index scaling offset)
        (declare (ignore output-index))
-       (return (ucons:ulist :iref input-index scaling offset))))))
+       (return (ucons:ulist :iref input-index scaling offset)))
+     (transformation iref-instruction))))
 
 (defmethod blueprint ((reduce-instruction reduce-instruction))
   (ucons:ulist* :reduce
@@ -109,10 +109,10 @@
 (defmethod blueprint ((transformation transformation))
   (let ((result '()))
     (map-transformation-outputs
-     transformation
      (lambda (output-index input-index scaling offset)
        (declare (ignore output-index))
        (setf result (ucons:ucons (ucons:ulist input-index scaling offset) result)))
+     transformation
      :from-end t)
     result))
 

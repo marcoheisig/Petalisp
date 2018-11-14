@@ -12,146 +12,142 @@
       :rank rank)))
 
 (defun make-transformation
-    (&key input-rank output-rank
-       (input-constraints nil input-constraints-p)
-       (translation nil translation-p)
-       (permutation nil permutation-p)
-       (scaling nil scaling-p))
-  (declare (type (or null array-length) input-rank output-rank))
-  ;; Step 1: Uniquely determine the input-rank and output-rank of
-  ;; the transformation or signal an error.
-  (flet ((check-input-rank (value)
-           (if (not input-rank)
-               (setf input-rank value)
-               (demand (= input-rank value)
-                 "~@<Contradictory input ranks: ~D and ~D.~:@>"
-                 input-rank value)))
-         (check-output-rank (value)
-           (if (not output-rank)
-               (setf output-rank value)
-               (demand (= output-rank value)
-                 "~@<Contradictory output ranks: ~D and ~D.~:@>"
-                 output-rank value))))
-    (when input-constraints-p
-      (check-input-rank (length input-constraints)))
-    (when translation-p
-      (check-output-rank (length translation)))
-    (when permutation-p
-      (check-output-rank (length permutation)))
-    (when scaling-p
-      (check-output-rank (length scaling))))
-  (demand (or input-rank output-rank)
-    "~@<Too few arguments to derive a transformation.~:@>")
-  (cond ((not output-rank)
-         (setf output-rank input-rank))
-        ((not input-rank)
-         (setf input-rank output-rank)))
-  ;; Step 2: Check that the content of each given sequence is sane and
-  ;; ignore vectors whose content is boring.
-  (let* ((input-constraints
-           (when input-constraints-p
-             (demand (every (lambda (x)
-                              (typep x '(or null integer)))
-                            input-constraints)
-               "~@<Invalid transformation input constraints: ~W~:@>"
-               input-constraints)
-             ;; An input constraint sequence is boring if it consists of
-             ;; NIL only.
-             (if (every #'null input-constraints)
-                 nil
-                 (coerce input-constraints 'simple-vector))))
-         (translation
-           (when translation-p
-             (demand (every #'rationalp translation)
-               "~@<Invalid transformation translation: ~W~:@>"
-               translation)
-             ;; A translation is boring if its entries are all zero.
-             (if (every #'zerop translation)
-                 nil
-                 (coerce translation 'simple-vector))))
-         (permutation
-           (when permutation-p
-             ;; Permutations are the most complicated sequences to check.
-             ;; If an output does not reference any input, the
-             ;; corresponding entry in the permutation must be nil NIL.  No
-             ;; index must appear more than once.
+    (&key
+       (input-mask nil input-mask-supplied-p)
+       (output-mask nil output-mask-supplied-p)
+       (offsets nil offsets-supplied-p)
+       (scalings nil scalings-supplied-p)
+       (input-rank nil input-rank-supplied-p)
+       (output-rank nil output-rank-supplied-p))
+  ;; Attempt to derive the input and output rank.
+  (multiple-value-bind (input-rank output-rank)
+      (labels ((two-value-fixpoint (f x1 x2)
+                 (multiple-value-bind (y1 y2) (funcall f x1 x2)
+                   (if (and (eql x1 y1)
+                            (eql x2 y2))
+                       (values x1 x2)
+                       (two-value-fixpoint f y1 y2))))
+               (narrow-input-and-output-rank (i o)
+                 (values
+                  (cond (i i)
+                        (input-rank-supplied-p input-rank)
+                        (input-mask-supplied-p (length input-mask))
+                        (o o))
+                  (cond (o o)
+                        (output-rank-supplied-p output-rank)
+                        (output-mask-supplied-p (length output-mask))
+                        (offsets-supplied-p (length offsets))
+                        (scalings-supplied-p (length scalings))
+                        (i i)))))
+        (two-value-fixpoint #'narrow-input-and-output-rank nil nil))
+    (check-type input-rank array-rank)
+    (check-type output-rank array-rank)
+    ;; Canonicalize all sequence arguments.
+    (multiple-value-bind (input-mask identity-input-mask-p)
+        (canonicalize-input-mask input-mask input-mask-supplied-p input-rank)
+      (multiple-value-bind (output-mask identity-output-mask-p)
+          (canonicalize-output-mask output-mask output-mask-supplied-p output-rank)
+        (multiple-value-bind (scalings identity-scalings-p)
+            (canonicalize-scalings scalings scalings-supplied-p output-rank)
+          (multiple-value-bind (offsets identity-offsets-p)
+              (canonicalize-offsets offsets offsets-supplied-p output-rank)
+            (unless (or identity-scalings-p identity-input-mask-p)
+              (loop for input-index across output-mask
+                    for scaling across scalings
+                    do (assert (or (zerop scaling) input-index))))
+            (if (and (= input-rank output-rank)
+                     identity-input-mask-p
+                     identity-output-mask-p
+                     identity-scalings-p
+                     identity-offsets-p)
+                (identity-transformation input-rank)
+                ;; A transformation is invertible, if each unused argument
+                ;; has a corresponding input constraint.
+                (if (loop for constraint across input-mask
+                          for input-index from 0
+                          always (or constraint (find input-index output-mask)))
+                    (make-instance 'hairy-invertible-transformation
+                      :input-mask input-mask
+                      :output-mask output-mask
+                      :scalings scalings
+                      :offsets offsets)
+                    (make-instance 'hairy-transformation
+                      :input-mask input-mask
+                      :output-mask output-mask
+                      :scalings scalings
+                      :offsets offsets)))))))))
 
-             ;; TODO check permutations...
+(defun canonicalize-input-mask (value supplied-p input-rank)
+  (if (not supplied-p)
+      (values (make-sequence 'simple-vector input-rank :initial-element nil) t)
+      (let ((vector (coerce value 'simple-vector))
+            (identity-p t))
+        (assert (= (length vector) input-rank))
+        (loop for element across vector
+              do (assert (typep element '(or rational null)))
+              unless (eql element 0) do
+                (setf identity-p nil))
+        (values vector identity-p))))
 
-             ;; A permutation is boring if it maps each index to itself.
-             (if (and (every (let ((i -1))
-                               (lambda (p)
-                                 (eql p (incf i))))
-                             permutation)
-                      (= (length permutation) input-rank output-rank))
-                 nil
-                 (coerce permutation 'simple-vector))))
-         (scaling
-           (when scaling-p
-             (demand (every #'rationalp scaling)
-               "~@<Invalid transformation scaling: ~W~:@>"
-               scaling)
-             (unless (not permutation)
-               (demand (every (lambda (p s)
-                                (or p (zerop s)))
-                              permutation
-                              scaling)
-                       "~@<The scaling ~W has nonzero entries in places ~
-                           where the permutation ~W is NIL.~:@>"
-                       scaling permutation))
-             ;; A scaling is boring if it is always one
-             (if (every (lambda (x) (= x 1)) scaling)
-                 nil
-                 (coerce scaling 'simple-vector)))))
-    ;; Step 3: Create the transformation
-    (cond
-      ;; Check whether we have an identity transformation.
-      ((and (not input-constraints)
-            (not translation)
-            (not scaling)
-            (not permutation)
-            (= input-rank output-rank))
-       (identity-transformation input-rank))
-      ;; Check whether the transformation is invertible.
-      ((or (null permutation)
-           (= (- output-rank (count-if #'zerop scaling))
-              (- input-rank (count-if #'numberp input-constraints))))
-       (make-instance 'hairy-invertible-transformation
-         :input-rank input-rank
-         :output-rank output-rank
-         :input-constraints input-constraints
-         :scaling scaling
-         :permutation permutation
-         :translation translation))
-      ;; Default to a hairy, non-invertible transformation.
-      (t
-       (make-instance 'hairy-transformation
-         :input-rank input-rank
-         :output-rank output-rank
-         :input-constraints input-constraints
-         :scaling scaling
-         :permutation permutation
-         :translation translation)))))
+(defun canonicalize-output-mask (value supplied-p output-rank)
+  (if (not supplied-p)
+      (let ((vector (make-sequence 'simple-vector output-rank)))
+        (loop for index below output-rank do
+          (setf (svref vector index) index))
+        (values vector t))
+      (let ((vector (coerce value 'simple-vector))
+            (identity-p t))
+        (assert (= (length vector) output-rank))
+        (loop for index below output-rank
+              for element across vector
+              do (assert (typep element '(or array-rank null)))
+              unless (eql element index) do
+                (setf identity-p nil))
+        (values vector identity-p))))
+
+(defun canonicalize-scalings (value supplied-p output-rank)
+  (if (not supplied-p)
+      (values (make-sequence 'simple-vector output-rank :initial-element 1))
+      (let ((vector (coerce value 'simple-vector))
+            (identity-p t))
+        (assert (= (length vector) output-rank))
+        (loop for element across vector
+              do (assert (rationalp element))
+              unless (eql element 1) do
+                (setf identity-p nil))
+        (values vector identity-p))))
+
+(defun canonicalize-offsets (value supplied-p output-rank)
+  (if (not supplied-p)
+      (values (make-sequence 'simple-vector output-rank :initial-element 0))
+      (let ((vector (coerce value 'simple-vector))
+            (identity-p t))
+        (assert (= (length vector) output-rank))
+        (loop for element across vector
+              do (assert (rationalp element))
+              unless (eql element 0) do
+                (setf identity-p nil))
+        (values vector identity-p))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Conversion of Functions to Transformations
 
 (defun make-transformation-from-function
-    (function &optional (input-constraints nil input-constraints-p))
+    (function &optional (input-mask nil input-mask-p))
   (let* ((input-rank
-           (if input-constraints-p
-               (length input-constraints)
+           (if input-mask-p
+               (length input-mask)
                (function-arity function)))
-         (input-constraints
-           (if (not input-constraints-p)
+         (input-mask
+           (if (not input-mask-p)
                (make-array input-rank :initial-element nil)
-               (coerce input-constraints 'simple-vector))))
-    (demand (= input-rank (length input-constraints))
+               (coerce input-mask 'simple-vector))))
+    (demand (= input-rank (length input-mask))
       "~@<Received the input constraints ~W of length ~D ~
           for a function with ~D arguments.~:@>"
-      input-constraints (length input-constraints) input-rank)
-    (let ((args (map 'list (lambda (constraint) (or constraint 0)) input-constraints))
+      input-mask (length input-mask) input-rank)
+    (let ((args (map 'list (lambda (constraint) (or constraint 0)) input-mask))
           ;; F is applied to many slightly different arguments, so we build a
           ;; vector pointing to the individual conses of ARGS for fast random
           ;; access.
@@ -161,17 +157,13 @@
               (setf (aref arg-conses index) arg-cons))
       ;; Initially x is the zero vector (except for input constraints, which
       ;; are ignored by A), so f(x) = Ax + b = b
-      (let* ((translation (multiple-value-call #'vector (apply function args)))
-             (output-rank (length translation))
-             (permutation (make-array output-rank
-                                      :element-type '(or null array-index)
-                                      :initial-element nil))
-             (scaling (make-array output-rank
-                                  :element-type 'rational
-                                  :initial-element 0)))
+      (let* ((offsets (multiple-value-call #'vector (apply function args)))
+             (output-rank (length offsets))
+             (output-mask (make-array output-rank :initial-element nil))
+             (scalings (make-array output-rank :initial-element 0)))
         ;; Set one input at a time from zero to one (ignoring those with
         ;; constraints) and check how it changes the output.
-        (loop for input-constraint across input-constraints
+        (loop for input-constraint across input-mask
               for arg-cons across arg-conses
               for column-index from 0
               when (not input-constraint) do
@@ -180,11 +172,11 @@
                 ;; It is the only output that differs from b.
                 (let ((outputs (multiple-value-call #'vector (apply function args))))
                   (loop for output across outputs
-                        for offset across translation
+                        for offset across offsets
                         for row-index from 0
                         when (/= output offset) do
-                          (setf (aref permutation row-index) column-index)
-                          (setf (aref scaling row-index) (- output offset))
+                          (setf (aref output-mask row-index) column-index)
+                          (setf (aref scalings row-index) (- output offset))
                           (return)))
                 ;; Restore the argument to zero.
                 (setf (car arg-cons) 0))
@@ -194,12 +186,12 @@
                 (make-transformation
                  :input-rank input-rank
                  :output-rank output-rank
-                 :input-constraints input-constraints
-                 :translation translation
-                 :scaling scaling
-                 :permutation permutation)))
+                 :input-mask input-mask
+                 :offsets offsets
+                 :scalings scalings
+                 :output-mask output-mask)))
           (loop for arg-cons on args
-                for input-constraint across input-constraints
+                for input-constraint across input-mask
                 when (not input-constraint) do
                   (setf (car arg-cons) 2))
           (demand (equalp (transform args transformation)
@@ -210,8 +202,8 @@
 
 (define-compiler-macro make-transformation-from-function
     (&whole whole &environment environment
-            function &optional (input-constraints nil input-constraints-p))
-  (if (or (not (constantp input-constraints environment))
+            function &optional (input-mask nil input-mask-p))
+  (if (or (not (constantp input-mask environment))
           (free-variables function))
       whole
       `(load-time-value
@@ -219,7 +211,7 @@
             (declare (notinline make-transformation-from-function))
           (make-transformation-from-function
            ,function
-           ,@(when input-constraints-p `(,input-constraints))))))
+           ,@(when input-mask-p `(,input-mask))))))
   whole)
 
 (defmethod ensure-transformation ((function function))
@@ -234,7 +226,7 @@
            (etypecase input-form
              (integer (gensym))
              (symbol input-form))))
-    (let* ((input-constraints
+    (let* ((input-mask
              (map 'vector #'constraint input-forms))
            (variables
              (map 'list #'variable input-forms)))
@@ -242,5 +234,5 @@
         (lambda ,variables
           (declare (ignorable ,@variables))
           (values ,@output-forms))
-        ,input-constraints))))
+        ,input-mask))))
 

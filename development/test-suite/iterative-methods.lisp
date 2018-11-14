@@ -14,6 +14,7 @@
   (compute (rbgs (ndarray 3) :iterations 2))
   (compute (rbgs (ndarray 3) :iterations 5)))
 
+#+nil
 (test iterate-randomly
   (flet ((act-randomly (array)
            (funcall
