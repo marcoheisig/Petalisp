@@ -38,12 +38,14 @@
         (destructuring-bind (size-bits step-bits type) (first ranges)
           (let* ((index 0)
                  (var (index-symbol index))
-                 (min (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 0))))
-                 (max (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 2)))))
+                 (start (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 0))))
+                 (step (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 1))))
+                 (end (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 2)))))
             (setf reduction-block
                   (make-reduction-block :immediate-dominator *final-basic-block*
-                                        :reduction-min min
-                                        :reduction-max max
+                                        :reduction-start start
+                                        :reduction-step step
+                                        :reduction-end end
                                         :reductions reductions
                                         :reduction-var var
                                         :reduction-var-type type))
@@ -75,19 +77,18 @@
         (when reduction-block
           (setf (reduction-symbols reduction-block)
                 (nreverse reduction-symbols))
-          (let* ((index 0)
-                 (min (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 0))))
-                 (max (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 2))))
-                 (form `(,(form reduction-block) ,min ,max)))
-            (setf (gethash min *symbol-table*) *final-basic-block*)
-            (setf (gethash max *symbol-table*) *final-basic-block*)
+          (let ((reduction-thunk-symbol
+                  (value-symbol 0 (form reduction-block) *final-basic-block*)))
+            (setf (gethash reduction-thunk-symbol *symbol-table*) *final-basic-block*)
             (loop for instruction across *instructions*
                   for index from 0 do
                     (trivia:match instruction
                       ((list* :reduction-store (list value-n index) array-number irefs)
                        (value-symbol
                         0
-                        `(store ,(pseudo-eval (+ value-n (aref *instructions* index)) form)
+                        `(store ,(pseudo-eval
+                                  (+ value-n (aref *instructions* index))
+                                  `(funcall ,reduction-thunk-symbol))
                                 ,(aref *array-symbols* array-number)
                                 ,(pseudo-eval-0
                                   (translate-row-major-index array-number irefs)))
