@@ -43,12 +43,14 @@
                  (end (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 2)))))
             (setf reduction-block
                   (make-reduction-block :immediate-dominator *final-basic-block*
-                                        :reduction-start start
-                                        :reduction-step step
-                                        :reduction-end end
                                         :reductions reductions
-                                        :reduction-var var
-                                        :reduction-var-type type))
+                                        :start start
+                                        :step step
+                                        :end end
+                                        :var var
+                                        :var-type type
+                                        :size-bits size-bits
+                                        :step-bits step-bits))
             (setf (gethash var *symbol-table*) reduction-block))))
       ;; Translate all load, store and call instructions and add them to
       ;; the relevant basic blocks.
@@ -103,11 +105,13 @@
           (step (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 1))))
           (end (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 2)))))
       (let ((loop-block (make-loop-block :immediate-dominator *final-basic-block*
-                                         :loop-start start
-                                         :loop-step step
-                                         :loop-end end
-                                         :loop-var var
-                                         :loop-var-type type)))
+                                         :start start
+                                         :step step
+                                         :end end
+                                         :var var
+                                         :var-type type
+                                         :size-bits size-bits
+                                         :step-bits step-bits)))
         (setf (gethash var *symbol-table*) loop-block)
         (setf (successors *final-basic-block*) (list loop-block))
         (setf *final-basic-block* loop-block)))))
