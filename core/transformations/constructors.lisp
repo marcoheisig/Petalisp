@@ -119,7 +119,7 @@
 
 (defun canonicalize-offsets (value supplied-p output-rank)
   (if (not supplied-p)
-      (values (make-sequence 'simple-vector output-rank :initial-element 0))
+      (values (make-sequence 'simple-vector output-rank :initial-element 0) t)
       (let ((vector (coerce value 'simple-vector))
             (identity-p t))
         (assert (= (length vector) output-rank))
