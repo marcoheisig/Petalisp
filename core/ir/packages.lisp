@@ -3,7 +3,14 @@
 (cl:defpackage :petalisp-ir
   (:use :closer-common-lisp :alexandria :petalisp-core)
   (:shadowing-import-from :petalisp-core #:set-difference #:set-equal)
+  (:shadow #:rotate)
   (:export
+
+   ;; Generic Functions
+   #:make-buffer
+   #:make-kernel
+   #:rotate
+   #:map-instruction-inputs
 
    ;; Classes
    #:instruction
@@ -16,10 +23,6 @@
    #:store-instruction
    #:iref-instruction
    #:reduce-instruction
-
-   ;; Constructors
-   #:make-buffer
-   #:make-kernel
 
    ;; Accessors
    #:buffer-shape
@@ -35,7 +38,6 @@
    #:operator
    #:arguments
    #:value
-   #:axis
 
    ;; Utilities
    #:reduction-kernel-p

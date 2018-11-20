@@ -4,6 +4,19 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; Generic Functions
+
+(defgeneric make-buffer (strided-array backend))
+
+(defgeneric make-kernel (backend &key iteration-space loads stores reduction-stores))
+
+(defgeneric map-instruction-inputs (function instruction))
+
+(defgeneric rotate (object transformation)
+  (:argument-precedence-order transformation object))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; Classes
 
 ;;; A buffer represents a set of memory locations big enough to hold one
@@ -97,11 +110,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Constructors
-
-(defgeneric make-buffer (strided-array backend))
-
-(defgeneric make-kernel (backend &key iteration-space loads stores reduction-stores))
+;;; Methods
 
 (defmethod make-buffer ((strided-array strided-array) (backend backend))
   (make-instance 'buffer
@@ -110,6 +119,60 @@
 
 (defmethod make-kernel ((backend backend) &rest args)
   (apply #'make-instance 'kernel args))
+
+;;; MAP-INSTRUCTION-INPUTS
+
+(defmethod map-instruction-inputs ((function function) (call-instruction call-instruction))
+  (loop for (nil . input) in (arguments call-instruction) do
+    (funcall function input)))
+
+(defmethod map-instruction-inputs ((function function) (reduce-instruction reduce-instruction))
+  (loop for (nil . input) in (arguments reduce-instruction) do
+    (funcall function input)))
+
+(defmethod map-instruction-inputs ((function function) (store-instruction store-instruction))
+  (funcall function (cdr (value store-instruction))))
+
+(defmethod map-instruction-inputs ((function function) (load-instruction load-instruction))
+  (values))
+
+(defmethod map-instruction-inputs ((function function) (iref-instruction iref-instruction))
+  (values))
+
+;;; ROTATE
+
+(defmethod rotate ((object t) (transformation identity-transformation))
+  (declare (ignore object transformation))
+  (values))
+
+(defmethod rotate ((buffer buffer) (transformation transformation))
+  (setf (buffer-shape buffer)
+        (transform (buffer-shape buffer) transformation)))
+
+;;; After rotating a buffer, rotate all loads and stores referencing the
+;;; buffer to preserve the semantics of the IR.
+(defmethod rotate :after ((buffer buffer) (transformation transformation))
+  (loop for kernel in (inputs buffer) do
+    (loop for store in (stores kernel) do
+      (when (eq (buffer store) buffer)
+        (rotate store transformation)))
+    (loop for reduction-store in (reduction-stores kernel) do
+      (when (eq (buffer reduction-store) buffer)
+        (rotate reduction-store transformation))))
+  (loop for kernel in (outputs buffer) do
+    (loop for load in (loads kernel) do
+      (when (eq (buffer load) buffer)
+        (rotate load transformation)))))
+
+(defmethod rotate ((instruction instruction) (transformation transformation))
+  (values))
+
+(defmethod rotate ((iterating-instruction iterating-instruction)
+     (transformation transformation))
+  (setf (transformation iterating-instruction)
+        (compose-transformations
+         transformation
+         (transformation iterating-instruction))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -146,20 +209,6 @@
                    (loop for load in (loads kernel) do
                      (process-buffer (buffer load)))))))
       (mapc #'process-buffer root-buffers))))
-
-(defgeneric map-instruction-inputs (function instruction)
-  (:method ((function function) (call-instruction call-instruction))
-    (loop for (nil . input) in (arguments call-instruction) do
-      (funcall function input)))
-  (:method ((function function) (reduce-instruction reduce-instruction))
-    (loop for (nil . input) in (arguments reduce-instruction) do
-      (funcall function input)))
-  (:method ((function function) (store-instruction store-instruction))
-    (funcall function (cdr (value store-instruction))))
-  (:method ((function function) (load-instruction load-instruction))
-    (values))
-  (:method ((function function) (iref-instruction iref-instruction))
-    (values)))
 
 (defun map-instructions (function kernel)
   (labels ((process-instruction (instruction n)
@@ -213,3 +262,25 @@
       (mapc #'assign-instruction-numbers (stores kernel))
       (mapc #'assign-instruction-numbers (reduction-stores kernel)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; IR Normalization
+
+;;; The IR consists of buffers of arbitrary shape, and of kernels that
+;;; reference some buffers via arbitrary affine linear transformations.  A
+;;; downside of this representation is that it includes a useless degree of
+;;; freedom.  We can reshape each buffer with another affine-linear
+;;; transformation, as long as we also update the transformations of all
+;;; references to the buffer.
+;;;
+;;; The purpose of this IR transformation is to get rid of this useless
+;;; degree of freedom.  To do so, we reshape each buffer such that all
+;;; ranges of its shape have a start of zero and a step size of one.  Of
+;;; course, we also update all references to each buffer, such that the
+;;; semantics is preserved.
+
+(defun normalize-ir (roots)
+  (map-buffers
+   (lambda (buffer)
+     (rotate buffer (collapsing-transformation (buffer-shape buffer))))
+   roots))
