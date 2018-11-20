@@ -12,8 +12,17 @@
 
 (defgeneric map-instruction-inputs (function instruction))
 
-(defgeneric rotate (object transformation)
-  (:argument-precedence-order transformation object))
+(defgeneric rotate-buffer (buffer transformation)
+  (:argument-precedence-order transformation buffer))
+
+(defgeneric rotate-kernel (kernel transformation)
+  (:argument-precedence-order transformation kernel))
+
+(defgeneric rotate-instruction-input (instruction transformation)
+  (:argument-precedence-order transformation instruction))
+
+(defgeneric rotate-instruction-output (instruction transformation)
+  (:argument-precedence-order transformation instruction))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -139,36 +148,59 @@
 (defmethod map-instruction-inputs ((function function) (iref-instruction iref-instruction))
   (values))
 
-;;; ROTATE
+;;; ROTATE-BUFFER
 
-(defmethod rotate ((object t) (transformation identity-transformation))
-  (declare (ignore object transformation))
-  (values))
-
-(defmethod rotate ((buffer buffer) (transformation transformation))
+(defmethod rotate-buffer ((buffer buffer) (transformation transformation))
   (setf (buffer-shape buffer)
         (transform (buffer-shape buffer) transformation)))
 
 ;;; After rotating a buffer, rotate all loads and stores referencing the
 ;;; buffer to preserve the semantics of the IR.
-(defmethod rotate :after ((buffer buffer) (transformation transformation))
+(defmethod rotate-buffer :after ((buffer buffer) (transformation transformation))
   (loop for kernel in (inputs buffer) do
     (loop for store in (stores kernel) do
       (when (eq (buffer store) buffer)
-        (rotate store transformation)))
+        (rotate-instruction-output store transformation)))
     (loop for reduction-store in (reduction-stores kernel) do
       (when (eq (buffer reduction-store) buffer)
-        (rotate reduction-store transformation))))
+        (rotate-instruction-output reduction-store transformation))))
   (loop for kernel in (outputs buffer) do
     (loop for load in (loads kernel) do
       (when (eq (buffer load) buffer)
-        (rotate load transformation)))))
+        (rotate-instruction-output load transformation)))))
 
-(defmethod rotate ((instruction instruction) (transformation transformation))
+;;; ROTATE-KERNEL
+
+(defmethod rotate-kernel ((kernel kernel) (transformation identity-transformation))
+  (declare (ignore kernel transformation)))
+
+(defmethod rotate-kernel ((kernel kernel) (transformation transformation))
+  (setf (iteration-space kernel)
+        (transform (iteration-space kernel) transformation))
+  (let ((inverse (invert-transformation transformation)))
+    (map-instructions
+     (lambda (instruction)
+       (rotate-instruction-input instruction inverse))
+     kernel)))
+
+;;; ROTATE-INSTRUCTION-*
+
+(defmethod rotate-instruction-input ((instruction instruction) (transformation transformation))
   (values))
 
-(defmethod rotate ((iterating-instruction iterating-instruction)
-     (transformation transformation))
+(defmethod rotate-instruction-input ((iterating-instruction iterating-instruction)
+                                     (transformation transformation))
+  (setf (transformation iterating-instruction)
+        (compose-transformations
+         (transformation iterating-instruction)
+         transformation)))
+
+(defmethod rotate-instruction-output ((instruction instruction) (transformation transformation))
+  (values))
+
+
+(defmethod rotate-instruction-output ((iterating-instruction iterating-instruction)
+                                      (transformation transformation))
   (setf (transformation iterating-instruction)
         (compose-transformations
          transformation
@@ -211,17 +243,26 @@
       (mapc #'process-buffer root-buffers))))
 
 (defun map-instructions (function kernel)
-  (labels ((process-instruction (instruction n)
+  (map-inner-instructions function kernel)
+  (map-outer-instructions function kernel))
+
+(defun map-inner-instructions (function kernel)
+  (loop for store in (petalisp-ir:stores kernel) do
+    (map-instruction-tree function store)))
+
+(defun map-outer-instructions (function kernel)
+  (loop for reduction-store in (petalisp-ir:reduction-stores kernel) do
+    (map-instruction-tree function reduction-store)))
+
+(defun map-instruction-tree (function root-instruction)
+  (labels ((process-node (instruction n)
              (let ((new-n (instruction-number instruction)))
                (when (< new-n n)
                  (funcall function instruction)
                  (map-instruction-inputs
-                  (lambda (next) (process-instruction next new-n))
+                  (lambda (next) (process-node next new-n))
                   instruction)))))
-    (loop for store in (petalisp-ir:stores kernel) do
-      (process-instruction store most-positive-fixnum))
-    (loop for reduction-store in (petalisp-ir:reduction-stores kernel) do
-      (process-instruction reduction-store most-positive-fixnum))))
+    (process-node root-instruction most-positive-fixnum)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -282,5 +323,5 @@
 (defun normalize-ir (roots)
   (map-buffers
    (lambda (buffer)
-     (rotate buffer (collapsing-transformation (buffer-shape buffer))))
+     (rotate-buffer buffer (collapsing-transformation (buffer-shape buffer))))
    roots))

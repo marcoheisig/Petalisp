@@ -3,13 +3,13 @@
 (cl:defpackage :petalisp-ir
   (:use :closer-common-lisp :alexandria :petalisp-core)
   (:shadowing-import-from :petalisp-core #:set-difference #:set-equal)
-  (:shadow #:rotate)
   (:export
 
    ;; Generic Functions
    #:make-buffer
    #:make-kernel
-   #:rotate
+   #:rotate-buffer
+   #:rotate-kernel
    #:map-instruction-inputs
 
    ;; Classes
