@@ -18,8 +18,6 @@
 
 (defgeneric make-range (start step end))
 
-(defgeneric size-one-range-p (object))
-
 (defgeneric split-range (range))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

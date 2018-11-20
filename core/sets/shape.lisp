@@ -20,8 +20,6 @@
 
 (defgeneric shape-difference-list (shape-1 shape-2))
 
-(defgeneric shapep (shape))
-
 (defgeneric shape-union (shapes))
 
 (defgeneric enlarge-shape (shape range))

@@ -51,7 +51,7 @@
 (defgeneric approximately-equal (a b))
 
 (defmethod approximately-equal ((a t) (b t))
-  nil)
+  (eql a b))
 
 (defmethod approximately-equal ((a immediate) (b immediate))
   (approximately-equal
@@ -65,9 +65,6 @@
              always (approximately-equal
                      (row-major-aref array-1 index)
                      (row-major-aref array-2 index)))))
-
-(defmethod approximately-equal ((a t) (b t))
-  (eql a b))
 
 (defmethod approximately-equal ((a single-float) (b single-float))
   (< (abs (- a b)) (* 64 single-float-epsilon)))
