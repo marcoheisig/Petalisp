@@ -231,16 +231,26 @@
       (pushnew (buffer reduction-store) buffers))
     buffers))
 
-(defun map-buffers (function root-buffers)
+(defun map-buffers-and-kernels (buffer-fn kernel-fn root-buffers )
   (let ((table (make-hash-table :test #'eq)))
     (labels ((process-buffer (buffer)
                (unless (gethash buffer table)
                  (setf (gethash buffer table) t)
-                 (funcall function buffer)
-                 (loop for kernel in (inputs buffer) do
-                   (loop for load in (loads kernel) do
-                     (process-buffer (buffer load)))))))
+                 (funcall buffer-fn buffer)
+                 (mapc #'process-kernel (inputs buffer))))
+             (process-kernel (kernel)
+               (unless (gethash kernel table)
+                 (setf (gethash kernel table) t)
+                 (funcall kernel-fn kernel)
+                 (loop for load in (loads kernel) do
+                   (process-buffer (buffer load))))))
       (mapc #'process-buffer root-buffers))))
+
+(defun map-buffers (function root-buffers)
+  (map-buffers-and-kernels function #'identity root-buffers))
+
+(defun map-kernels (function root-buffers)
+  (map-buffers-and-kernels #'identity function root-buffers))
 
 (defun map-instructions (function kernel)
   (map-inner-instructions function kernel)
@@ -306,7 +316,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; IR Normalization
-
+;;;
 ;;; The IR consists of buffers of arbitrary shape, and of kernels that
 ;;; reference some buffers via arbitrary affine linear transformations.  A
 ;;; downside of this representation is that it includes a useless degree of
@@ -320,8 +330,34 @@
 ;;; course, we also update all references to each buffer, such that the
 ;;; semantics is preserved.
 
-(defun normalize-ir (roots)
-  (map-buffers
-   (lambda (buffer)
-     (rotate-buffer buffer (collapsing-transformation (buffer-shape buffer))))
-   roots))
+(defun normalize-ir (root-buffers)
+  (map-buffers #'normalize-buffer root-buffers))
+
+(defun normalize-buffer (buffer)
+  (rotate-buffer buffer (collapsing-transformation (buffer-shape buffer))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Locality Optimization
+;;;
+;;; Even after IR normalization, there remains another degree of freedom -
+;;; the order in which the iteration space of each kernel is traversed.  By
+;;; construction, kernels have no data dependencies, so the order does not
+;;; matter.
+;;;
+;;; The purpose of this IR transformation is to improve the data locality
+;;; by interchanging the ranges of the iteration space.  By convention,
+;;; backends treat the first range as the innermost loop and the last range
+;;; as the outermost loop.  So the goal is to move the loops with the
+;;; highest locality to the front.
+;;;
+;;; One invariant that is not touched by this transformation is that if the
+;;; kernel is a reduction kernel, then the first range of the iteration
+;;; space is always the range of the reduction.  Otherwise, we would need
+;;; to allocate an awful lot of temporaries for the reduction.
+
+(defun optimize-locality (root-buffers)
+  (map-kernels #'optimize-kernel-locality root-buffers))
+
+(defun optimize-kernel-locality (kernel)
+  (rotate-kernel kernel (identity-transformation (rank (iteration-space kernel)))))
