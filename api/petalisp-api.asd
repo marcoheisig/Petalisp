@@ -4,7 +4,8 @@
   :license "AGPLv3"
 
   :depends-on
-  ("alexandria"
+  ("agnostic-lizard"
+   "alexandria"
    "closer-mop"
    "trivia"
    "named-readtables"
@@ -18,4 +19,5 @@
   :serial t
   :components
   ((:file "packages")
+   (:file "transformations")
    (:file "api")))

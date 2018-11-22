@@ -46,11 +46,11 @@
 
 (defvar *kernel-root*)
 
+(defgeneric compute-kernels (root backend))
+
 (defmethod compute-kernels :around ((root strided-array) (backend backend))
   (let ((*kernel-root* root))
     (call-next-method)))
-
-(defgeneric compute-kernels (root backend))
 
 ;;; An immediate node has no kernels.
 (defmethod compute-kernels ((root immediate) (backend backend))

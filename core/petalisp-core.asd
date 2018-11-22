@@ -3,8 +3,7 @@
   :license "AGPLv3"
 
   :depends-on
-  ("agnostic-lizard"
-   "alexandria"
+  ("alexandria"
    "closer-mop"
    "bordeaux-threads"
    "lparallel"
@@ -56,10 +55,10 @@
     :components
     ((:file "strided-array")
      (:file "immediate")
+     (:file "reference")
      (:file "application")
      (:file "reduction")
-     (:file "fusion")
-     (:file "reference")))
+     (:file "fusion")))
 
    (:module "backends"
     :components

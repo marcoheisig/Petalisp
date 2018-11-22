@@ -9,6 +9,7 @@
    :closer-common-lisp
    :alexandria
    :petalisp-core
+   :petalisp-api
    :petalisp-reference-backend
    :petalisp-ir-backend
    :petalisp-native-backend

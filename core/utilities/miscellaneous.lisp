@@ -2,19 +2,6 @@
 
 (in-package :petalisp-core)
 
-(defun free-variables (form &optional environment)
-  (let (result)
-    (agnostic-lizard:walk-form
-     form environment
-     :on-every-atom
-     (lambda (form env)
-       (prog1 form
-         (when (and (symbolp form)
-                    (not (find form (agnostic-lizard:metaenv-variable-like-entries env)
-                               :key #'first)))
-           (pushnew form result)))))
-    result))
-
 (defmacro define-class-predicate (class-name &key hyphenate)
   (check-type class-name symbol)
   (let ((predicate-name

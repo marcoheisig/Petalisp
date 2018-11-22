@@ -43,6 +43,7 @@
    ;; Transformations
    #:transformation
    #:transformationp
+   #:transform
    #:identity-transformation-p
    #:input-rank
    #:output-rank
@@ -83,23 +84,6 @@
    #:make-fusion
    #:make-reference
    #:lisp-datum-from-immediate
-
-   ;; High-level API
-   #:α
-   #:β
-   #:a
-   #:b
-   #:broadcast-arrays
-   #:broadcast-shapes
-   #:reshape
-   #:transform
-   #:τ
-   #:fuse
-   #:fuse*
-   #:compute
-   #:schedule
-   #:indices
-   #:petalisp-readtable
 
    ;; Backends
    #:*backend*
