@@ -6,7 +6,7 @@
 ;;;
 ;;; Generic Functions
 
-(defgeneric make-application (operator inputs)
+(defgeneric make-application (n-outputs operator inputs)
   (:method-combination optimizing-constructor))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -22,26 +22,23 @@
 ;;;
 ;;; Methods
 
-(defmethod make-application :check ((function function) (inputs list))
+(defmethod make-application :check ((n-outputs integer) (function function) (inputs list))
+  (assert (plusp n-outputs))
   (assert (identical inputs :test #'set-equal :key #'shape)))
 
-(defmethod make-application ((function function) inputs)
-  (multiple-value-bind (result-types more-p conditions function-name)
+(defmethod make-application ((n-outputs integer) (function function) inputs)
+  (multiple-value-bind (element-types more-p conditions function-name)
       (infer-type function (mapcar #'element-type inputs))
-    (let ((element-types (if (and more-p (null result-types))
-                             '(t)
-                             result-types)))
-      (values-list
-       (loop for element-type in element-types
-             for value-n from 0
-             collect
-             (make-instance 'application
-               :operator (or function-name function)
-               :value-n value-n
-               :conditions conditions
-               :element-type element-type
-               :inputs inputs
-               :shape (shape (first inputs))))))))
+    (values-list
+     (loop for value-n below n-outputs
+           collect
+           (make-instance 'application
+             :operator (or function-name function)
+             :value-n value-n
+             :conditions conditions
+             :element-type (or (pop element-types) 't)
+             :inputs inputs
+             :shape (shape (first inputs)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -60,7 +57,14 @@
 ;;; such references need themselves not be of size one -- they may also be
 ;;; broadcasting references.
 
-(defmethod make-application :optimize ((function function) (inputs list))
+(defun broadcasting-transformation (shape)
+  (let ((ranges (ranges shape)))
+    (make-transformation
+     :input-rank 0
+     :scalings (map 'vector #'range-step ranges)
+     :offsets (map 'vector #'range-start ranges))))
+
+(defmethod make-application :optimize ((n-outputs integer) (function function) (inputs list))
   (block nil
     (labels ((fail () (return))
              (value-or-fail (strided-array)
@@ -72,5 +76,14 @@
                  (reference
                   (value-or-fail (input strided-array)))
                  (t (fail)))))
-      (reshape (apply function (mapcar #'value-or-fail inputs))
-               (shape (first inputs))))))
+      (let* ((values (multiple-value-list
+                      (apply function (mapcar #'value-or-fail inputs))))
+             (shape (shape (first inputs)))
+            (transformation (broadcasting-transformation shape)))
+        (values-list
+         (loop for value-n below n-outputs
+               collect
+               (make-reference
+                (coerce-to-strided-array (pop values))
+                shape
+                transformation)))))))

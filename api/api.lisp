@@ -168,11 +168,20 @@ arguments overlap partially, the value of the rightmost object is used."
 ;;;
 ;;; Parallel MAP and REDUCE
 
-(defun α (function array &rest more-arrays)
+(defun α (&rest arguments)
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
 for Petalisp data structures.  When the rank of some of the inputs
 mismatch, broadcast the smaller objects."
-  (make-application function (apply #'broadcast-arrays array more-arrays)))
+  (trivia:ematch arguments
+    ((list* (and function (type function))
+            array
+            more-arrays)
+     (make-application 1 function (apply #'broadcast-arrays array more-arrays)))
+    ((list* (and integer (type integer))
+            (and function (type function))
+            array
+            more-arrays)
+     (make-application integer function (apply #'broadcast-arrays array more-arrays)))))
 
 (defun β (function array &rest more-arrays)
   (make-reduction function (apply #'broadcast-arrays array more-arrays)))
@@ -209,12 +218,23 @@ mismatch, broadcast the smaller objects."
 (alexandria:define-constant +whitespace+ '(#\space #\tab #\linefeed #\return #\page)
   :test #'equal)
 
+(defun whitespace-char-p (char)
+  (member char +whitespace+))
+
+(defun read-integer (input-stream)
+  (parse-integer
+   (with-output-to-string (output-stream)
+     (loop for char = (peek-char nil input-stream)
+           while (digit-char-p char)
+           do (write-char (read-char input-stream) output-stream)))
+   :junk-allowed t))
+
 (defun read-α (stream char)
   (declare (ignore char))
-  (if (member (peek-char nil stream) +whitespace+)
+  (if (whitespace-char-p (peek-char nil stream))
       `α
       `(lambda (&rest args)
-         (apply 'α #',(read stream) args))))
+         (apply 'α ,(read-integer stream) #',(read stream) args))))
 
 (defun read-β (stream char)
   (declare (ignore char))
@@ -227,3 +247,4 @@ mismatch, broadcast the smaller objects."
   (:merge :common-lisp)
   (:macro-char #\α #'read-α)
   (:macro-char #\β #'read-β))
+
