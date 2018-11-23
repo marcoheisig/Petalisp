@@ -168,20 +168,18 @@ arguments overlap partially, the value of the rightmost object is used."
 ;;;
 ;;; Parallel MAP and REDUCE
 
-(defun α (&rest arguments)
+(defun α (arg-1 arg-2 &rest more-args)
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
 for Petalisp data structures.  When the rank of some of the inputs
 mismatch, broadcast the smaller objects."
-  (trivia:ematch arguments
-    ((list* (and function (type function))
-            array
-            more-arrays)
-     (make-application 1 function (apply #'broadcast-arrays array more-arrays)))
-    ((list* (and integer (type integer))
-            (and function (type function))
-            array
-            more-arrays)
-     (make-application integer function (apply #'broadcast-arrays array more-arrays)))))
+  (multiple-value-bind (n-outputs function strided-arrays)
+      (if (integerp arg-1)
+          (values arg-1 (coerce arg-2 'function) (apply #'broadcast-arrays more-args))
+          (values 1 (coerce arg-1 'function) (apply #'broadcast-arrays arg-2 more-args)))
+    (values-list
+     (loop for value-n below n-outputs
+           collect
+           (make-application value-n function strided-arrays)))))
 
 (defun β (function array &rest more-arrays)
   (make-reduction function (apply #'broadcast-arrays array more-arrays)))
@@ -218,33 +216,36 @@ mismatch, broadcast the smaller objects."
 (alexandria:define-constant +whitespace+ '(#\space #\tab #\linefeed #\return #\page)
   :test #'equal)
 
-(defun whitespace-char-p (char)
-  (member char +whitespace+))
+(defun stop-char-p (char)
+  (or (member char +whitespace+)
+      (char= char #\))))
 
-(defun read-integer (input-stream)
+(defun read-integer (input-stream &optional (radix 10))
+  "Read one integer in the given RADIX form INPUT-STREAM.  If the stream
+does not start with at least one digit, return NIL."
   (parse-integer
    (with-output-to-string (output-stream)
      (loop for char = (peek-char nil input-stream)
-           while (digit-char-p char)
+           while (digit-char-p char radix)
            do (write-char (read-char input-stream) output-stream)))
    :junk-allowed t))
 
 (defun read-α (stream char)
   (declare (ignore char))
-  (if (whitespace-char-p (peek-char nil stream))
-      `α
+  (if (stop-char-p (peek-char nil stream))
+      'α
       `(lambda (&rest args)
-         (apply 'α ,(read-integer stream) #',(read stream) args))))
+         (apply 'α ,(or (read-integer stream) 1) #',(read stream) args))))
 
 (defun read-β (stream char)
   (declare (ignore char))
-  (if (member (peek-char nil stream) +whitespace+)
+  (if (stop-char-p (peek-char nil stream))
       `β
       `(lambda (&rest args)
          (apply 'β #',(read stream) args))))
 
 (named-readtables:defreadtable petalisp-readtable
   (:merge :common-lisp)
-  (:macro-char #\α #'read-α)
-  (:macro-char #\β #'read-β))
+  (:macro-char #\α 'read-α t)
+  (:macro-char #\β 'read-β t))
 

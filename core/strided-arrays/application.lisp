@@ -6,7 +6,7 @@
 ;;;
 ;;; Generic Functions
 
-(defgeneric make-application (n-outputs operator inputs)
+(defgeneric make-application (value-n operator inputs)
   (:method-combination optimizing-constructor))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -22,23 +22,20 @@
 ;;;
 ;;; Methods
 
-(defmethod make-application :check ((n-outputs integer) (function function) (inputs list))
-  (assert (plusp n-outputs))
+(defmethod make-application :check ((value-n integer) (function function) (inputs list))
+  (assert (<= 0 value-n (1- multiple-values-limit)))
   (assert (identical inputs :test #'set-equal :key #'shape)))
 
-(defmethod make-application ((n-outputs integer) (function function) inputs)
+(defmethod make-application ((value-n integer) (function function) inputs)
   (multiple-value-bind (element-types more-p conditions function-name)
       (infer-type function (mapcar #'element-type inputs))
-    (values-list
-     (loop for value-n below n-outputs
-           collect
-           (make-instance 'application
-             :operator (or function-name function)
-             :value-n value-n
-             :conditions conditions
-             :element-type (or (pop element-types) 't)
-             :inputs inputs
-             :shape (shape (first inputs)))))))
+    (make-instance 'application
+      :operator (or function-name function)
+      :value-n value-n
+      :conditions conditions
+      :element-type (or (nth value-n element-types) t)
+      :inputs inputs
+      :shape (shape (first inputs)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -64,7 +61,7 @@
      :scalings (map 'vector #'range-step ranges)
      :offsets (map 'vector #'range-start ranges))))
 
-(defmethod make-application :optimize ((n-outputs integer) (function function) (inputs list))
+(defmethod make-application :optimize ((value-n integer) (function function) (inputs list))
   (block nil
     (labels ((fail () (return))
              (value-or-fail (strided-array)
@@ -76,14 +73,9 @@
                  (reference
                   (value-or-fail (input strided-array)))
                  (t (fail)))))
-      (let* ((values (multiple-value-list
-                      (apply function (mapcar #'value-or-fail inputs))))
-             (shape (shape (first inputs)))
-            (transformation (broadcasting-transformation shape)))
-        (values-list
-         (loop for value-n below n-outputs
-               collect
-               (make-reference
-                (coerce-to-strided-array (pop values))
-                shape
-                transformation)))))))
+      (let ((value (nth-value value-n (apply function (mapcar #'value-or-fail inputs))))
+            (shape (shape (first inputs))))
+        (make-reference
+         (coerce-to-strided-array value)
+         shape
+         (broadcasting-transformation shape))))))
