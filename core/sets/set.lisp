@@ -93,6 +93,11 @@
 (defmethod set-intersectionp ((set-1 any-set) (set-2 any-set))
   (and (set-intersection set-1 set-2) t))
 
+(defmethod set-equal :around ((set-1 any-set) (set-2 any-set))
+  (if (eq set-1 set-2)
+      t
+      (call-next-method)))
+
 (define-method-pair set-equal ((set-1 finite-set) (set-2 infinite-set))
   (declare (ignore set-1 set-2))
   nil)
