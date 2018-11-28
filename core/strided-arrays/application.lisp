@@ -55,11 +55,9 @@
 ;;; broadcasting references.
 
 (defun broadcasting-transformation (shape)
-  (let ((ranges (ranges shape)))
-    (make-transformation
-     :input-rank 0
-     :scalings (map 'vector #'range-step ranges)
-     :offsets (map 'vector #'range-start ranges))))
+  (make-transformation
+   :output-rank 0
+   :input-rank (rank shape)))
 
 (defmethod make-application :optimize ((value-n integer) (function function) (inputs list))
   (block nil

@@ -46,7 +46,7 @@
     (multiple-value-bind (input-mask identity-input-mask-p)
         (canonicalize-input-mask input-mask input-mask-supplied-p input-rank)
       (multiple-value-bind (output-mask identity-output-mask-p)
-          (canonicalize-output-mask output-mask output-mask-supplied-p output-rank)
+          (canonicalize-output-mask output-mask output-mask-supplied-p output-rank input-rank)
         (multiple-value-bind (scalings identity-scalings-p)
             (canonicalize-scalings scalings scalings-supplied-p output-rank)
           (multiple-value-bind (offsets identity-offsets-p)
@@ -89,10 +89,10 @@
                 (setf identity-p nil))
         (values vector identity-p))))
 
-(defun canonicalize-output-mask (value supplied-p output-rank)
+(defun canonicalize-output-mask (value supplied-p output-rank input-rank)
   (if (not supplied-p)
-      (let ((vector (make-sequence 'simple-vector output-rank)))
-        (loop for index below output-rank do
+      (let ((vector (make-sequence 'simple-vector output-rank :initial-element nil)))
+        (loop for index below (min input-rank output-rank) do
           (setf (svref vector index) index))
         (values vector t))
       (let ((vector (coerce value 'simple-vector))
