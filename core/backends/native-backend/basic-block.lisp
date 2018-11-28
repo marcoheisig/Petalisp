@@ -12,20 +12,20 @@
 
 (defclass basic-block ()
   (;; Another basic block that immediately dominates this one, or NIL.
-   (%immediate-dominator :initarg :immediate-dominator :reader immediate-dominator
-                         :initform nil)
+   (%immediate-dominator :initarg :immediate-dominator :reader immediate-dominator)
    ;; A (possibly empty) list of basic blocks.
-   (%successors :initarg :successors :accessor successors
-                :initform '())
+   (%successors :initarg :successors :accessor successors)
    ;; A list of lists of the form (variables form).  The instructions are
    ;; stored in reverse order of execution, because we typically insert at
    ;; the end.
-   (%instructions :initarg :instructions :accessor instructions
-                  :initform '())
+   (%instructions :initarg :instructions :accessor instructions)
    ;; A hash table, mapping from forms to (integer . symbol) alists,
    ;; describing which symbols carry which values of the form.
-   (%value-symbol-table :initarg :value-symbol-table :reader value-symbol-table
-                        :initform (make-hash-table :test #'equal))))
+   (%value-symbol-table :initarg :value-symbol-table :reader value-symbol-table))
+  (:default-initargs :immediate-dominator nil
+                     :successors '()
+                     :instructions '()
+                     :value-symbol-table (make-hash-table :test #'equal)))
 
 (defun make-basic-block (&key immediate-dominator)
   (make-instance 'basic-block

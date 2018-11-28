@@ -32,12 +32,12 @@
    #:iteration-space
    #:loads
    #:stores
-   #:reduction-stores
    #:instruction-number
    #:transformation
    #:operator
    #:arguments
    #:value
+   #:reduction-range
 
    ;; Utilities
    #:reduction-kernel-p
@@ -47,11 +47,11 @@
    #:update-instruction-numbers
    #:kernel-buffers
    #:kernel-reduce-instructions
+   #:parse-blueprint
 
    ;; IR Conversion
    #:ir-from-strided-arrays
    #:compute-buffer-table
    #:compute-kernels
-   #:reduction-value-symbol
    #:normalize-ir
    #:blueprint))

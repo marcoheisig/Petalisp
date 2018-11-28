@@ -8,7 +8,7 @@
 
 (defgeneric make-buffer (strided-array backend))
 
-(defgeneric make-kernel (backend &key iteration-space loads stores reduction-stores))
+(defgeneric make-kernel (backend &key iteration-space loads stores reduction-range))
 
 (defgeneric map-instruction-inputs (function instruction))
 
@@ -46,9 +46,9 @@
 ;;; accessible via the slots LOADS and STORES.
 (defclass kernel ()
   ((%iteration-space :initarg :iteration-space :accessor iteration-space)
+   (%reduction-range :initarg :reduction-range :reader reduction-range)
    (%loads :initarg :loads :accessor loads)
-   (%stores :initarg :stores :accessor stores)
-   (%reduction-stores :initarg :reduction-stores :accessor reduction-stores)))
+   (%stores :initarg :stores :accessor stores)))
 
 ;;; The behavior of a kernel is described by its iteration space and its
 ;;; instructions.  The instructions form a DAG, whose leaves are loads or
@@ -93,12 +93,6 @@
   ((%value :initarg :value :reader value)
    (%buffer :initarg :buffer :reader buffer)))
 
-;;; A reduction store instruction behaves just like a store instructions,
-;;; but is expected to be run outside of the innermost loop.  Its value
-;;; must be a reference to a reduce instruction.
-(defclass reduction-store-instruction (store-instruction)
-  ())
-
 ;;; An iref instruction represents an access to elements of the iteration
 ;;; space itself.  Its transformation is a mapping from the iteration space
 ;;; to a rank one space.  Its value is the single integer that is the
@@ -115,7 +109,8 @@
 ;;; the instruction has arguments.
 (defclass reduce-instruction (iterating-instruction)
   ((%operator :initarg :operator :reader operator)
-   (%arguments :initarg :arguments :reader arguments)))
+   (%arguments :initarg :arguments :reader arguments)
+   (%range :initarg :reduction-range :reader reduction-range)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -160,10 +155,7 @@
   (loop for kernel in (inputs buffer) do
     (loop for store in (stores kernel) do
       (when (eq (buffer store) buffer)
-        (rotate-instruction-output store transformation)))
-    (loop for reduction-store in (reduction-stores kernel) do
-      (when (eq (buffer reduction-store) buffer)
-        (rotate-instruction-output reduction-store transformation))))
+        (rotate-instruction-output store transformation))))
   (loop for kernel in (outputs buffer) do
     (loop for load in (loads kernel) do
       (when (eq (buffer load) buffer)
@@ -213,13 +205,7 @@
 (defgeneric reduction-kernel-p (object)
   (:method ((object t)) nil)
   (:method ((kernel kernel))
-    (not (null (reduction-stores kernel)))))
-
-(defun kernel-reduce-instructions (kernel)
-  (let ((result '()))
-    (loop for reduction-store in (petalisp-ir:reduction-stores kernel) do
-      (pushnew (cdr (petalisp-ir:value reduction-store)) result))
-    result))
+    (not (null (reduction-range kernel)))))
 
 (defun kernel-buffers (kernel)
   (let ((buffers '()))
@@ -227,8 +213,6 @@
       (pushnew (buffer load) buffers))
     (loop for store in (stores kernel) do
       (pushnew (buffer store) buffers))
-    (loop for reduction-store in (reduction-stores kernel) do
-      (pushnew (buffer reduction-store) buffers))
     buffers))
 
 (defun map-buffers-and-kernels (buffer-fn kernel-fn root-buffers )
@@ -253,16 +237,8 @@
   (map-buffers-and-kernels #'identity function root-buffers))
 
 (defun map-instructions (function kernel)
-  (map-inner-instructions function kernel)
-  (map-outer-instructions function kernel))
-
-(defun map-inner-instructions (function kernel)
   (loop for store in (petalisp-ir:stores kernel) do
     (map-instruction-tree function store)))
-
-(defun map-outer-instructions (function kernel)
-  (loop for reduction-store in (petalisp-ir:reduction-stores kernel) do
-    (map-instruction-tree function reduction-store)))
 
 (defun map-instruction-tree (function root-instruction)
   (labels ((process-node (instruction n)
@@ -292,8 +268,6 @@
 ;;; must be somewhere at the root instructions.
 (defun highest-instruction-number (kernel)
   (max (loop for store in (petalisp-ir:stores kernel)
-             maximize (petalisp-ir:instruction-number store))
-       (loop for store in (petalisp-ir:reduction-stores kernel)
              maximize (petalisp-ir:instruction-number store))))
 
 (defun update-instruction-numbers (kernel)
@@ -302,16 +276,14 @@
              (unless (null (instruction-number instruction))
                (map-instruction-inputs #'clear-instruction-numbers instruction)
                (setf (instruction-number instruction) nil))))
-    (mapc #'clear-instruction-numbers (stores kernel))
-    (mapc #'clear-instruction-numbers (reduction-stores kernel)))
+    (mapc #'clear-instruction-numbers (stores kernel)))
   ;; Step 2 - assign new instruction numbers
   (let ((n -1))
     (labels ((assign-instruction-numbers (instruction)
                (when (null (instruction-number instruction))
                  (map-instruction-inputs #'assign-instruction-numbers instruction)
                  (setf (instruction-number instruction) (incf n)))))
-      (mapc #'assign-instruction-numbers (stores kernel))
-      (mapc #'assign-instruction-numbers (reduction-stores kernel)))))
+      (mapc #'assign-instruction-numbers (stores kernel)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

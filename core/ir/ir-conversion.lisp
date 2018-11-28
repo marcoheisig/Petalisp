@@ -33,9 +33,7 @@
           (loop for load in (loads kernel) do
             (pushnew kernel (outputs (buffer load))))
           (loop for store in (stores kernel) do
-            (pushnew kernel (inputs (buffer store))))
-          (loop for reduction-store in (reduction-stores kernel) do
-            (pushnew kernel (inputs (buffer reduction-store)))))))
+            (pushnew kernel (inputs (buffer store)))))))
     ;; Finally, return the buffers corresponding to the root nodes.
     (loop for strided-array in strided-arrays
           collect
@@ -46,74 +44,33 @@
 
 (defvar *kernel-root*)
 
-(defgeneric compute-kernels (root backend))
+;;; We compute a partitioning of the shape of the root into multiple
+;;; iteration spaces.  These spaces are chosen such that their union is the
+;;; shape of the root, but such that each iteration space selects only a
+;;; single input of each encountered fusion node. Each such iteration space
+;;; is used to create one kernel.
+(defun compute-kernels (root backend)
+  (unless (immediatep root)
+    (let ((*kernel-root* root))
+      (loop for iteration-space in (compute-iteration-spaces root)
+            collect
+            (compute-kernel root iteration-space backend)))))
 
-(defmethod compute-kernels :around ((root strided-array) (backend backend))
-  (let ((*kernel-root* root))
-    (call-next-method)))
-
-;;; An immediate node has no kernels.
-(defmethod compute-kernels ((root immediate) (backend backend))
-  '())
-
-;;; The goal is to convert a given subtree of a data flow graph to a list
-;;; of kernels.  The subtree is delimited by nodes that have a
-;;; corresponding entry in the buffer table.  By choosing the iteration
-;;; space of our kernels appropriately, we can eliminate all fusion nodes
-;;; in the subtree.
-;;;
-;;; The algorithm consists of two phases.  In the first phase, we compute a
-;;; partitioning of the shape of the root into multiple iteration spaces.
-;;; These spaces are chosen such that their union is the shape of the root,
-;;; but such that each iteration space selects only a single input of each
-;;; encountered fusion node.  In the second phase, each iteration space is
-;;; used to create one kernel and its body.  The body of a kernel is an
-;;; s-expression describing the interplay of applications, reductions and
-;;; references.
-(defmethod compute-kernels ((root strided-array) (backend backend))
-  (let ((transformation (identity-transformation (rank root))))
-    (loop for iteration-space in (compute-iteration-spaces root)
-          collect
-          (with-instruction-numbering
-            (multiple-value-bind (value loads)
-                (compute-kernel-body root iteration-space transformation)
-              (make-kernel
-               backend
-               :iteration-space iteration-space
-               :loads loads
-               :reduction-stores '()
-               :stores (list (make-instance 'store-instruction
-                               :value value
-                               :buffer (gethash root *buffer-table*)
-                               :transformation transformation))))))))
-
-;;; Reductions are exceptional in that iteration space has a higher rank
-;;; than the shape of the root node.
-(defmethod compute-kernels ((root reduction) (backend backend))
-  (let* ((reduction-range (reduction-range root))
-         (outer-transformation (identity-transformation (rank root)))
-         (inner-transformation (enlarge-transformation
-                                outer-transformation
-                                (range-step reduction-range)
-                                (range-start reduction-range)))
-         (reduction-range (make-range 0 1 (1- (set-size reduction-range)))))
-    (loop for iteration-space in (compute-iteration-spaces root)
-          collect
-          (let ((*instruction-counter* -1)
-                (iteration-space (enlarge-shape iteration-space reduction-range)))
-            (multiple-value-bind (value loads)
-                (compute-kernel-body root iteration-space inner-transformation)
-              (make-kernel
-               backend
-               :iteration-space iteration-space
-               :loads loads
-               :stores '()
-               :reduction-stores
-               (list
-                (make-instance 'reduction-store-instruction
-                  :value value
-                  :buffer (gethash root *buffer-table*)
-                  :transformation outer-transformation))))))))
+(defun compute-kernel (root iteration-space backend)
+  (let* ((root-rank (rank root))
+         (transformation (identity-transformation root-rank)))
+    (with-instruction-numbering
+      (multiple-value-bind (value loads reduction-range)
+          (compute-kernel-body root iteration-space transformation)
+        (make-kernel
+         backend
+         :iteration-space iteration-space
+         :reduction-range reduction-range
+         :loads loads
+         :stores (list (make-instance 'store-instruction
+                         :value value
+                         :buffer (gethash root *buffer-table*)
+                         :transformation transformation)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -121,11 +78,14 @@
 
 (defvar *loads*)
 
+(defvar *reduction-range*)
+
 (defun compute-kernel-body (root iteration-space transformation)
-  (let ((*loads* '()))
-    (values
-     (compute-value root iteration-space transformation)
-     *loads*)))
+  (let ((*loads* '())
+        (*reduction-range* nil))
+    (values (compute-value root iteration-space transformation)
+            *loads*
+            *reduction-range*)))
 
 ;;; Return the 'value' of ROOT for a given point in the iteration space of
 ;;; the kernel, i.e., return a cons cell whose cdr is an instruction and
@@ -173,13 +133,23 @@
     ((reduction reduction)
      (iteration-space shape)
      (transformation transformation))
-  (cons (value-n reduction)
-        (make-instance 'reduce-instruction
-          :operator (operator reduction)
-          :arguments
-          (loop for input in (inputs reduction)
-                collect
-                (compute-value input iteration-space transformation)))))
+  (let* ((shape (shape (first (inputs reduction))))
+         (reduction-range (first (ranges shape))))
+    (cond ((null *reduction-range*)
+           (setf *reduction-range* reduction-range))
+          ((not (set-equal *reduction-range* reduction-range))
+           (error "A kernel can only have a single reduction range.")))
+    (cons (value-n reduction)
+          (make-instance 'reduce-instruction
+            :operator (operator reduction)
+            :reduction-range reduction-range
+            :arguments
+            (loop for input in (inputs reduction)
+                  collect
+                  (compute-value
+                   input
+                   shape
+                   (enlarge-transformation transformation 1 0)))))))
 
 (defmethod compute-value
     ((reference reference)
@@ -208,4 +178,4 @@
     ((strided-array strided-array)
      (iteration-space shape)
      (transformation transformation))
-  (error "Can't compute the value of ~S" strided-array))
+  (error "Can't IR convert ~S" strided-array))

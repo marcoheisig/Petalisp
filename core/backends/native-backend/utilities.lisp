@@ -11,19 +11,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Compiler "Gensyms"
-
-(defmacro define-compiler-gensym (name)
-  (let* ((prefix '#:-symbol)
-         (function-name (alexandria:symbolicate name prefix)))
-    `(defun ,function-name (n)
-       (petalisp-memoization:with-vector-memoization (n)
-         (format-symbol :petalisp-native-backend "~A-~D" ',name n)))))
-
-(define-compiler-gensym index)
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
 ;;; Working with addresses and loops
 
 (defun fixnum-+ (&rest fixnums)

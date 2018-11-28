@@ -17,9 +17,12 @@
         (*function-counter* -1))
     (call-next-method)))
 
+(defmethod blueprint ((null null)) null)
+
 (defmethod blueprint ((kernel kernel))
   (ucons:ulist
    (ucons:umapcar #'blueprint (ranges (iteration-space kernel)))
+   (blueprint (reduction-range kernel))
    (ucons:umapcar #'blueprint *buffers*)
    ;; Now generate the blueprints for all instructions in the kernel
    (let* ((size (1+ (highest-instruction-number kernel)))
@@ -76,22 +79,6 @@
                 (buffer-number (buffer store-instruction))
                 (blueprint (transformation store-instruction))))
 
-(defmethod blueprint ((reduction-store-instruction reduction-store-instruction))
-  (ucons:ulist* :reduction-store
-                (blueprint-from-value (value reduction-store-instruction))
-                (buffer-number (buffer reduction-store-instruction))
-                ;; TODO This is a hack.  The proper fix is to give the
-                ;; transformations of reduction stores the same input rank
-                ;; as the other stores.
-                (let ((result '()))
-                  (map-transformation-outputs
-                   (lambda (output-index input-index scaling offset)
-                     (declare (ignore output-index))
-                     (setf result (ucons:ucons (ucons:ulist (1+ input-index) scaling offset) result)))
-                   (transformation reduction-store-instruction)
-                   :from-end t)
-                  result)))
-
 (defmethod blueprint ((iref-instruction iref-instruction))
   (block nil
     (map-transformation-outputs
@@ -127,3 +114,18 @@
 
 (defun buffer-number (buffer)
   (position buffer *buffers*))
+
+;;; Return as multiple values
+;;;
+;;; 1. A list of range specifications.
+;;;
+;;; 2. The specification of the reduction range, or NIL.
+;;;
+;;; 3. A list of array types.
+;;;
+;;; 4. A list of instructions.
+
+(defun parse-blueprint (blueprint)
+  (destructuring-bind (ranges reduction-range array-types instructions)
+      (ucons:copy-utree blueprint)
+    (values ranges reduction-range array-types instructions)))

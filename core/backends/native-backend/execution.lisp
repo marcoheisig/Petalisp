@@ -47,12 +47,11 @@
              (when (every #'executedp (petalisp-ir:outputs buffer))
                (free-storage buffer native-backend))))
       (mapc (compose #'maybe-free #'petalisp-ir:buffer)
-            (petalisp-ir:stores kernel))
-      (mapc (compose #'maybe-free #'petalisp-ir:buffer)
-            (petalisp-ir:reduction-stores kernel)))))
+            (petalisp-ir:stores kernel)))))
 
 (defun compile-and-execute-kernel (kernel backend)
   (let ((ranges (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
+        (reduction-range (load-time-value (make-array 3) nil))
         (arrays (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
         (functions (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
         (compiled-kernel
@@ -71,6 +70,14 @@
               (vector-push-extend start ranges)
               (vector-push-extend step ranges)
               (vector-push-extend end ranges)))
+    ;; Initialize the reduction range.
+    (let ((range (reduction-range kernel)))
+      (unless (null range)
+        (multiple-value-bind (start step end)
+            (range-start-step-end range)
+          (setf (aref reduction-range 0) start)
+          (setf (aref reduction-range 1) step)
+          (setf (aref reduction-range 2) end))))
     ;; Initialize the array arguments.
     (loop for buffer in (petalisp-ir:kernel-buffers kernel) do
       (vector-push-extend (the array (storage buffer)) arrays))
@@ -84,7 +91,7 @@
              (vector-push-extend (operator instruction) functions)))))
      kernel)
     ;; Now call the compiled kernel.
-    (funcall compiled-kernel ranges arrays functions)))
+    (funcall compiled-kernel ranges reduction-range arrays functions)))
 
 (defgeneric free-storage (buffer backend))
 

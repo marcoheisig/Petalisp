@@ -5,180 +5,187 @@
 ;;; A vector of instructions.
 (defvar *instructions*)
 
-;;; A hash table, mapping from each symbol to its defining basic block.
-(defvar *symbol-table*)
-
-;;; A vector.
-(defvar *array-symbols*)
-
-(defvar *initial-basic-block*)
-
-(defvar *final-basic-block*)
+(defvar *reductionp*)
 
 (defun lambda-expression-from-blueprint (blueprint)
-  (multiple-value-bind (ranges array-types *instructions* reductions)
-      (parse-blueprint blueprint)
-    (let* ((dim (length ranges))
-           (*gensym-counter* 0)
-           (*symbol-table* (make-hash-table :test #'eq))
-           ;; Create the initial basic block.
-           (*initial-basic-block*
-             (let* ((lambda-list '(ranges arrays functions))
-                    (basic-block (make-lambda-block :lambda-list lambda-list)))
-               (loop for symbol in lambda-list
-                     do (setf (gethash symbol *symbol-table*) basic-block))
-               basic-block))
-           (*final-basic-block* *initial-basic-block*)
-           (reduction-block nil))
-      (loop for loop-range in (reverse (if (null reductions) ranges (cdr ranges)))
-            for index downfrom (1- dim) do
-              (push-loop-block loop-range index))
-      ;; If necessary, add a reduction block.
-      (unless (null reductions)
-        (destructuring-bind (size-bits step-bits type) (first ranges)
-          (let* ((index 0)
-                 (var (index-symbol index))
-                 (start (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 0))))
-                 (step (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 1))))
-                 (end (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 2)))))
-            (setf reduction-block
-                  (make-reduction-block :immediate-dominator *final-basic-block*
-                                        :reductions reductions
-                                        :start start
-                                        :step step
-                                        :end end
-                                        :var var
-                                        :var-type type
-                                        :size-bits size-bits
-                                        :step-bits step-bits))
-            (setf (gethash var *symbol-table*) reduction-block))))
-      ;; Translate all load, store and call instructions and add them to
-      ;; the relevant basic blocks.
-      (let ((reduce-counter 0)
-            (reduction-symbols '())
-            (*array-symbols*
-             (let* ((n-arrays (length array-types))
-                    (array-symbols (make-array n-arrays)))
-               (loop for index below n-arrays
-                     for array-type in array-types do
-                 (setf (aref array-symbols index)
-                       (pseudo-eval 0 `(aref arrays ,index) array-type)))
-               array-symbols)))
-        (loop for instruction across *instructions*
+  (multiple-value-bind (ranges reduction-range array-types instructions)
+      (petalisp-ir:parse-blueprint blueprint)
+    (let ((*instructions* (coerce instructions 'simple-vector))
+          (*translation-unit* (make-translation-unit array-types))
+          (*gensym-counter* 0)
+          (*reductionp* nil)
+          (innermost-block nil))
+      ;; Add loop blocks.
+      (let ((immediate-dominator *initial-basic-block*))
+        (loop for range in ranges
               for index from 0 do
-                (case (car instruction)
-                  ((:call :load :iref)
-                   (update-instruction index))
-                  ((:store)
-                   (pseudo-eval-0 (update-instruction index)))
-                  ((:reduce)
-                   (setf (aref *instructions* index) reduce-counter)
-                   (loop for (value-n inst) in (cddr instruction) do
-                     (push (pseudo-eval value-n (aref *instructions* inst)) reduction-symbols)
-                     (incf reduce-counter)))))
-        (when reduction-block
-          (setf (reduction-symbols reduction-block)
-                (nreverse reduction-symbols))
-          (let ((reduction-thunk-symbol
-                  (value-symbol 0 (form reduction-block) *final-basic-block*)))
-            (setf (gethash reduction-thunk-symbol *symbol-table*) *final-basic-block*)
-            (loop for instruction across *instructions*
-                  for index from 0 do
-                    (trivia:match instruction
-                      ((list* :reduction-store (list value-n index) array-number irefs)
-                       (value-symbol
-                        0
-                        `(store ,(pseudo-eval
-                                  (+ value-n (aref *instructions* index))
-                                  `(funcall ,reduction-thunk-symbol))
-                                ,(aref *array-symbols* array-number)
-                                ,(pseudo-eval-0
-                                  (translate-row-major-index array-number irefs)))
-                        *final-basic-block*)))))))
+                (let ((loop-block (add-loop-block range index immediate-dominator)))
+                  (setf (successors immediate-dominator)
+                        (list loop-block))
+                  (setf immediate-dominator loop-block)))
+        (setf innermost-block immediate-dominator))
+      ;; If we are dealing with a reduction kernel, emit a single
+      ;; instruction that combines all reduce instructions in that kernel.
+      (unless (null reduction-range)
+        (setf *reductionp* t)
+        (handle-reductions reduction-range innermost-block))
+      ;; Now translate and pseudo-evaluate all store instructions and their
+      ;; dependencies.
+      (loop for instruction across *instructions*
+            for index from 0 do
+              (when (eq (car instruction) :store)
+                (pseudo-eval 0 (instruction index))))
       ;; Done.
       (form *initial-basic-block*))))
 
-(defun push-loop-block (range index)
+(defun add-loop-block (range index immediate-dominator)
   (destructuring-bind (size-bits step-bits type) range
-    (let ((var (index-symbol index))
-          (start (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 0))))
-          (step (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 1))))
-          (end (pseudo-eval-0 `(aref ranges ,(+ (* index 3) 2)))))
-      (let ((loop-block (make-loop-block :immediate-dominator *final-basic-block*
-                                         :start start
-                                         :step step
-                                         :end end
-                                         :var var
-                                         :var-type type
-                                         :size-bits size-bits
-                                         :step-bits step-bits)))
-        (setf (gethash var *symbol-table*) loop-block)
-        (setf (successors *final-basic-block*) (list loop-block))
-        (setf *final-basic-block* loop-block)))))
+    (let* ((loop-index (index-symbol index))
+           (start (start-symbol index))
+           (step (step-symbol index))
+           (end (end-symbol index)))
+      (setf (defining-basic-block loop-index)
+            (make-loop-block
+             :start start
+             :step step
+             :end end
+             :var loop-index
+             :var-type type
+             :size-bits size-bits
+             :step-bits step-bits
+             :immediate-dominator immediate-dominator)))))
 
-(defun basic-block-or-die (symbol)
-  (or (gethash symbol *symbol-table*)
-      (error "Undefined symbol: ~S" symbol)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Reductions
+;;;
+;;; The handling of reductions is somewhat involved, because instead
+;;; of having several reduction statements in the final code, we want to
+;;; have a single reduction that computes all reduction values
+;;; simultaneously.
+;;;
+;;; To achieve this, we collect a list of all reduce instructions in the
+;;; kernel and combine them into a single instruction.  In the process, all
+;;; reduce instructions are replaced with :rref instructions, i.e.,
+;;; references to some of the values of the combined reduction instruction.
 
-(defun pseudo-eval (value-n form &optional (type 't))
-  (etypecase form
-    (symbol form)
-    (number form)
-    (cons
-     (destructuring-bind (first . rest) form
-       (let* ((basic-block *initial-basic-block*)
-              (arguments (mapcar #'pseudo-eval-0 rest)))
-         ;; Find the appropriate basic block.
-         (loop for argument in arguments do
-           (when (symbolp argument)
-             (let ((new-basic-block (basic-block-or-die argument)))
-               (when (dominates basic-block new-basic-block)
-                 (setf basic-block new-basic-block)))))
-         (let ((symbol (value-symbol
-                        value-n
-                        (if (eq type 't)
-                            `(,first ,@arguments)
-                            `(the ,type (,first ,@arguments)))
-                        basic-block)))
-           (setf (gethash symbol *symbol-table*) basic-block)
-           symbol))))))
+(defun handle-reductions (range immediate-dominator)
+  ;; Add an auxiliary basic block to the symbol table, to collect all
+  ;; instructions that depend on the reduction index.
+  (let ((tail-block (make-tail-block :immediate-dominator immediate-dominator))
+        (reduction-index (index-symbol -1))
+        (reduction-values '())
+        (reduction-spec '()))
+    (setf (defining-basic-block reduction-index) tail-block)
+    ;; Process all dependencies of all reduce instructions.
+    (loop for instruction across *instructions*
+          when (eq (car instruction) :reduce) do
+            (destructuring-bind (operator . arguments) (rest instruction)
+              (push (cons operator (length arguments)) reduction-spec)
+              (loop for argument in arguments do
+                (push (pseudo-eval-argument argument) reduction-values))))
+    ;; Define the reduction thunk.
+    (setf (tail tail-block)
+          `(values . ,(nreverse reduction-values)))
+    (let* ((start (start-symbol -1))
+           (step (step-symbol -1))
+           (end (end-symbol -1))
+           (thunk-form
+             (destructuring-bind (size-bits step-bits index-type) range
+               (declare (ignore size-bits step-bits))
+               `(lambda ()
+                  (labels
+                      ((divide-and-conquer (min max)
+                         (declare (type ,index-type min max))
+                         (if (= min max)
+                             (let ((,reduction-index (+ min (* ,start ,step))))
+                               (declare (ignorable ,reduction-index))
+                               ,(form tail-block))
+                             (let ((mid (+ min (floor (- max min) 2))))
+                               (multiple-value-call
+                                   ,(make-reduction-lambda (nreverse reduction-spec))
+                                 (divide-and-conquer min mid)
+                                 (divide-and-conquer (1+ mid) max))))))
+                    (divide-and-conquer 0 (/ (- ,end ,start) ,step))))))
+           (thunk (value-symbol 0 thunk-form immediate-dominator)))
+      (setf (defining-basic-block thunk) immediate-dominator)
+      ;; Replace all reduce instructions with references to the result of
+      ;; evaluating the reduction thunk.
+      (loop with offset = 0
+            for instruction across *instructions*
+            for instruction-index from 0
+            when (eq (car instruction) :reduce) do
+              (let ((arity (length (cddr instruction))))
+                (setf (aref *instructions* instruction-index)
+                      `(:rref ,@(loop for value-n below arity
+                                      collect
+                                      (pseudo-eval
+                                       (+ value-n offset)
+                                       `(funcall ,thunk)))))
+                (incf offset arity))))))
 
-(defun pseudo-eval-0 (form)
-  (pseudo-eval 0 form))
+(defun make-reduction-lambda (reduction-spec)
+  (loop for (op . arity) in reduction-spec
+        collect (loop repeat arity collect (gensym)) into left
+        collect (loop repeat arity collect (gensym)) into right
+        collect (loop repeat arity collect (gensym)) into value-symbols
+        finally
+           (return
+             `(lambda ,(append (apply #'append left) (apply #'append right))
+                (basic-block
+                  ,@(loop for (op . nil) in reduction-spec
+                          for l in left
+                          for r in right
+                          for v in value-symbols
+                          collect
+                          (if (symbolp op)
+                              `(,v (,op ,@l ,@r))
+                              `(,v (funcall (aref functions ,op) ,@l ,@r))))
+                  (values ,@(apply #'append value-symbols)))))))
 
-(defun update-instruction (index)
-  (setf (aref *instructions* index)
-        (translate-instruction (aref *instructions* index))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Translation
+
+(defun instruction (instruction-number)
+  (let ((form (aref *instructions* instruction-number)))
+    (if (not (keywordp (first form)))
+        form
+        (setf (aref *instructions* instruction-number)
+              (translate-instruction form)))))
 
 (defun translate-instruction (instruction)
   (trivia:ematch instruction
     ((list* :call operator arguments)
-     (let ((rest (mapcar #'translate-argument arguments)))
+     (let ((rest (mapcar #'pseudo-eval-argument arguments)))
        (etypecase operator
          (symbol `(,operator . ,rest))
-         (integer `(funcall (aref functions ,operator) . ,rest)))))
+         (integer `(funcall ,(function-symbol operator) . ,rest)))))
     ((list* :load array-number irefs)
      `(row-major-aref
-       ,(aref *array-symbols* array-number)
-       ,(translate-row-major-index array-number irefs)))
+       ,(array-symbol array-number)
+       ,(translate-row-major-index array-number irefs *reductionp*)))
     ((list* :store argument array-number irefs)
-     `(store ,(translate-argument argument)
-             ,(aref *array-symbols* array-number)
+     `(store ,(pseudo-eval-argument argument)
+             ,(array-symbol array-number)
              ,(translate-row-major-index array-number irefs)))
     ((list :iref index scale offset)
      (if (null index)
          `(identity ,offset)
-         `(identity ,(i+ (i* (index-symbol index) scale) offset))))))
+         `(identity ,(i+ (i* (index-symbol (if *reductionp* (1- index) index)) scale) offset))))
+    ((list* :rref symbols)
+     `(values ,@symbols))))
 
-(defun translate-argument (argument)
+(defun pseudo-eval-argument (argument)
   (destructuring-bind (value-n instruction-number) argument
-    (pseudo-eval value-n (aref *instructions* instruction-number))))
+    (pseudo-eval value-n (instruction instruction-number))))
 
-(defun translate-row-major-index (array-number irefs)
+(defun translate-row-major-index (array-number irefs &optional reductionp)
   (let* ((quads (sort (loop for (index scale offset) in irefs
                             for axis from 0
                             unless (null index)
-                              collect (list axis index scale offset))
+                              collect
+                              (list axis (if reductionp (1- index) index) scale offset))
                       #'< :key #'second))
          (array-rank (length irefs)))
     (reduce
@@ -194,25 +201,5 @@
 (defun translate-stride (array-number array-rank axis)
   (if (= axis (1- array-rank))
       1
-      (i* `(array-dimension ,(aref *array-symbols* array-number) ,(1+ axis))
+      (i* `(array-dimension ,(array-symbol array-number) ,(1+ axis))
           (translate-stride array-number array-rank (1+ axis)))))
-
-;;; Return as multiple values
-;;;
-;;; 1. A list of range specifications.
-;;;
-;;; 2. A list of array types.
-;;;
-;;; 3. A vector of instructions.
-;;;
-;;; 5. A list of all reduce instructions.
-(defun parse-blueprint (blueprint)
-  ;; This cries for a DESTRUCTURE-ULIST macro...
-  (let* ((ulist blueprint)          (ranges (ucons:copy-utree (ucons:ucar ulist)))
-         (ulist (ucons:ucdr ulist)) (arrays (ucons:copy-utree (ucons:ucar ulist)))
-         (ulist (ucons:ucdr ulist)) (instructions (apply #'vector (ucons:copy-utree (ucons:ucar ulist))))
-         (reductions '()))
-    (loop for instruction across instructions do
-      (when (eq (car instruction) :reduce)
-        (push instruction reductions)))
-    (values ranges arrays instructions (nreverse reductions))))

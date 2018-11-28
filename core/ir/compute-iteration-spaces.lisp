@@ -74,13 +74,8 @@
      (iteration-space shape)
      (transformation transformation))
   (let* ((range (reduction-range reduction))
-         (iteration-space
-           (enlarge-shape iteration-space range))
-         (transformation
-           (enlarge-transformation
-            transformation
-            (range-step range)
-            (range-start range))))
+         (iteration-space (enlarge-shape iteration-space range))
+         (transformation (enlarge-transformation transformation 1 0)))
     (loop for input in (inputs reduction)
             thereis
             (compute-iteration-spaces-aux root input iteration-space transformation))))
