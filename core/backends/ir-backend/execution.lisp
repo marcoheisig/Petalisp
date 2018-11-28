@@ -63,7 +63,7 @@
                (if (size-one-range-p range)
                    (let ((*index* (cons (range-start range) *index*)))
                      ;; *index* is changed, so we also have to clear the cache.
-                     (fill *instruction-values-cache* 0)
+                     (clear-instruction-values-cache)
                      (loop for (value-n . instruction)
                              in (petalisp-ir:arguments reduce-instruction)
                            collect (nth value-n (instruction-values instruction))))
@@ -94,6 +94,9 @@
   (setf (aref *instruction-values-cache* (petalisp-ir:instruction-number instruction))
         value))
 
+(defun clear-instruction-values-cache ()
+  (fill *instruction-values-cache* 0))
+
 (defmethod instruction-values :around
     ((instruction petalisp-ir:instruction))
   (let ((cache (instruction-values-cache instruction)))
@@ -113,7 +116,7 @@
      (lambda (index)
        (let ((*index* index))
          ;; Clear the cached values of the previous iteration.
-         (fill *instruction-values-cache* 0)
+         (clear-instruction-values-cache)
          ;; Evaluate all instructions with side-effects (= store
          ;; instructions) and their dependencies.
          (mapc #'instruction-values (petalisp-ir:stores kernel))))
