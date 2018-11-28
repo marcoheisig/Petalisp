@@ -9,6 +9,7 @@
    "closer-mop"
    "trivia"
    "named-readtables"
+   "split-sequence"
    "petalisp-core"
    "petalisp-reference-backend"
    "petalisp-ir-backend"
@@ -20,4 +21,5 @@
   :components
   ((:file "packages")
    (:file "transformations")
+   (:file "shapes")
    (:file "api")))
