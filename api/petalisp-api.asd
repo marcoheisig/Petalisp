@@ -22,4 +22,5 @@
   ((:file "packages")
    (:file "transformations")
    (:file "shapes")
-   (:file "api")))
+   (:file "api")
+   (:file "readtable")))

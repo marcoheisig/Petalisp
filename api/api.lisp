@@ -208,7 +208,3 @@ mismatch, broadcast the smaller objects."
   (schedule-on-backend
    (mapcar #'coerce-to-strided-array arguments)
    *backend*))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; The Petalisp Readtable
