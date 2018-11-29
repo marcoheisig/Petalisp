@@ -62,7 +62,10 @@
       :storage array)))
 
 (defmethod immediate-from-buffer ((buffer buffer))
-  (coerce-to-strided-array (storage buffer)))
+  (make-instance 'array-immediate
+    :element-type (element-type buffer)
+    :shape (petalisp-ir:buffer-shape buffer)
+    :storage (storage buffer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
