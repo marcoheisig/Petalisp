@@ -6,8 +6,7 @@
 ;;;
 ;;; Generic Functions
 
-(defgeneric coerce-to-strided-array (array)
-  (:method-combination optimizing-constructor))
+(defgeneric coerce-to-strided-array (array))
 
 (defgeneric total-size (strided-array))
 
