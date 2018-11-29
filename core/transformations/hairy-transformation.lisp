@@ -7,22 +7,12 @@
 ;;; Classes
 
 (defclass hairy-transformation (transformation)
-  ((%input-mask :initarg :input-mask
-                :reader input-mask
-                :initform nil
-                :type simple-vector)
-   (%output-mask :initarg :output-mask
-                 :reader output-mask
-                 :initform nil
-                 :type simple-vector)
-   (%offsets :initarg :offsets
-             :reader offsets
-             :initform nil
-             :type simple-vector)
-   (%scalings :initarg :scalings
-              :reader scalings
-              :initform nil
-              :type  simple-vector)))
+  ((%input-rank :initarg :input-rank :reader input-rank)
+   (%output-rank :initarg :output-rank :reader output-rank)
+   (%input-mask :initarg :input-mask :reader input-mask :type simple-vector)
+   (%output-mask :initarg :output-mask :reader output-mask :type simple-vector)
+   (%offsets :initarg :offsets :reader offsets :type simple-vector)
+   (%scalings :initarg :scalings :reader scalings :type  simple-vector)))
 
 (defclass hairy-invertible-transformation
     (hairy-transformation
@@ -43,12 +33,6 @@
                (offsets t2))
        (equalp (scalings t1)
                (scalings t2))))
-
-(defmethod input-rank ((hairy-transformation hairy-transformation))
-  (length (input-mask hairy-transformation)))
-
-(defmethod output-rank ((hairy-transformation hairy-transformation))
-  (length (output-mask hairy-transformation)))
 
 (defmethod compose-transformations
     ((g hairy-transformation) (f hairy-transformation))

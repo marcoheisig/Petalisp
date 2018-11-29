@@ -2,15 +2,6 @@
 
 (in-package :petalisp-core)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; The Primary Transformation Constructors
-
-(defun identity-transformation (rank)
-  (petalisp-memoization:with-vector-memoization (rank)
-    (make-instance 'identity-transformation
-      :rank rank)))
-
 (defun make-transformation
     (&key
        (input-mask nil input-mask-supplied-p)
@@ -45,12 +36,20 @@
     ;; Canonicalize all sequence arguments.
     (multiple-value-bind (input-mask identity-input-mask-p)
         (canonicalize-input-mask input-mask input-mask-supplied-p input-rank)
+      (declare (simple-vector input-mask)
+               (boolean identity-input-mask-p))
       (multiple-value-bind (output-mask identity-output-mask-p)
           (canonicalize-output-mask output-mask output-mask-supplied-p output-rank input-rank)
+        (declare (simple-vector output-mask)
+                 (boolean identity-output-mask-p))
         (multiple-value-bind (scalings identity-scalings-p)
             (canonicalize-scalings scalings scalings-supplied-p output-rank)
+          (declare (simple-vector scalings)
+                   (boolean identity-scalings-p))
           (multiple-value-bind (offsets identity-offsets-p)
               (canonicalize-offsets offsets offsets-supplied-p output-rank)
+            (declare (simple-vector offsets)
+                     (boolean identity-offsets-p))
             (unless (or identity-scalings-p identity-input-mask-p)
               (loop for input-index across output-mask
                     for scaling across scalings
@@ -67,11 +66,15 @@
                           for input-index from 0
                           always (or constraint (find input-index output-mask)))
                     (make-instance 'hairy-invertible-transformation
+                      :input-rank input-rank
+                      :output-rank output-rank
                       :input-mask input-mask
                       :output-mask output-mask
                       :scalings scalings
                       :offsets offsets)
                     (make-instance 'hairy-transformation
+                      :input-rank input-rank
+                      :output-rank output-rank
                       :input-mask input-mask
                       :output-mask output-mask
                       :scalings scalings

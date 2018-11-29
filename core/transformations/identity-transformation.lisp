@@ -8,6 +8,11 @@
           :reader output-rank
           :type (integer 0 *))))
 
+(defun identity-transformation (rank)
+  (petalisp-memoization:with-vector-memoization (rank)
+    (make-instance 'identity-transformation
+      :rank rank)))
+
 (define-class-predicate identity-transformation :hyphenate t)
 
 (defmethod transformation-equal
