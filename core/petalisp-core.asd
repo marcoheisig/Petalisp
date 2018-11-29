@@ -7,6 +7,7 @@
    "closer-mop"
    "bordeaux-threads"
    "lparallel"
+   "trivia"
    "trivial-arguments")
 
   :in-order-to ((test-op (test-op :petalisp-development)))
@@ -48,7 +49,7 @@
      (:file "identity-transformation")
      (:file "invertible-transformation")
      (:file "hairy-transformation")
-     (:file "constructors")
+     (:file "make-transformation")
      (:file "shape-transformations")))
 
    (:module "strided-arrays"
