@@ -4,6 +4,8 @@
   (:shadowing-import-from :petalisp :set-difference)
   (:use :cl :alexandria :petalisp :named-readtables)
   (:export
+   #:matrix
+   #:square-matrix
    #:zeros
    #:eye
    #:transpose
@@ -11,7 +13,8 @@
    #:dot
    #:asum
    #:argmax
-   #:matmul))
+   #:matmul
+   #:lu))
 
 (in-package :petalisp-examples-linear-algebra)
 
@@ -113,8 +116,10 @@
      (assert (<= 1 d m))
      (multiple-value-bind (p v)
          (argmax (reshape A (make-shape (range d m) (range d))))
-       (compute (coerce-to-scalar p)
-                (coerce-to-scalar v))))))
+       (let ((p (coerce-to-scalar p))
+             (v (coerce-to-scalar v)))
+         ;(schedule A p v)
+         (compute p v))))))
 
 (defun swap-rows (A i j)
   (setf A (coerce-to-matrix A))
@@ -124,31 +129,32 @@
      (assert (<= 1 j m))
      (if (= i j)
          A
-         (let ((si (make-shape (range i) (range n)))
-               (sj (make-shape (range j) (range n))))
+         (let ((si (make-shape (range i) (range 1 n)))
+               (sj (make-shape (range j) (range 1 n))))
            (fuse* A
-                  (reshape si sj)
-                  (reshape sj si)))))))
+                  (reshape A sj si)
+                  (reshape A si sj)))))))
 
 (defun lu (A)
   (setf A (coerce-to-matrix A))
   (trivia:ematch A
     ((square-matrix m)
-     (labels ((rec (d P L U)
-                (if (= d m)
-                    (compute (transpose P) L U)
-                    (multiple-value-bind (pivot value)
-                        (pivot-and-value U d)
-                      (assert (plusp value))
-                      (let* ((P (swap-rows P d pivot))
-                             (L (swap-rows L d pivot))
-                             (U (swap-rows U d pivot))
-                             (S (α/ (reshape U (make-shape (range (1+ d) m) (range d)))
-                                    (coerce-to-matrix value))))
-                        (rec (1+ d)
-                             P
-                             (fuse* L S (reshape 1 (make-shape (range d) (range d))))
-                             (fuse* U
-                                    (α- (reshape U (make-shape (range (1+ d) m) (range d m)))
-                                        (α* S (reshape U (make-shape (range d) (range d m))))))))))))
+     (labels
+         ((rec (d P L U)
+            (if (= d m)
+                (compute (transpose P) L U)
+                (multiple-value-bind (pivot value)
+                    (pivot-and-value U d)
+                  (assert (not (zerop value)))
+                  (let* ((P (swap-rows P d pivot))
+                         (L (swap-rows L d pivot))
+                         (U (swap-rows U d pivot))
+                         (S (α/ (reshape U (make-shape (range (1+ d) m) (range d)))
+                                (coerce-to-matrix value))))
+                    (rec (1+ d)
+                         P
+                         (fuse* L S (reshape 1 (make-shape (range d) (range d))))
+                         (fuse* U
+                                (α- (reshape U (make-shape (range (1+ d) m) (range d m)))
+                                    (α* S (reshape U (make-shape (range d) (range d m))))))))))))
        (rec 1 (eye m) (zeros m) A)))))
