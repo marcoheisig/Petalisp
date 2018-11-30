@@ -29,20 +29,18 @@
 ;;; Classes
 
 (defclass shape (finite-set)
-  ((%ranges :initarg :ranges :reader ranges :type list)))
+  ((%rank :initarg :rank :reader rank :type array-rank)
+   (%ranges :initarg :ranges :reader ranges :type list)))
 
 (defun make-shape (&rest ranges)
   (assert (every #'rangep ranges))
-  (make-instance 'shape :ranges ranges))
+  (make-instance 'shape :ranges ranges :rank (length ranges)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Methods
 
 (define-class-predicate shape)
-
-(defmethod rank ((shape shape))
-  (length (ranges shape)))
 
 (defmethod shape-difference-list ((shape-1 shape) (shape-2 shape))
   (let ((intersection (set-intersection shape-1 shape-2)))
