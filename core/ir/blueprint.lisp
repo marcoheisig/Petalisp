@@ -40,7 +40,7 @@
      result)))
 
 (defmethod blueprint ((buffer buffer))
-  (ucons:ulist 'simple-array (element-type buffer)))
+  (ucons:ulist 'simple-array (ucons:utree-from-tree (element-type buffer))))
 
 ;;; Return an ulist with the following elements:
 ;;;
@@ -127,5 +127,5 @@
 
 (defun parse-blueprint (blueprint)
   (destructuring-bind (ranges reduction-range array-types instructions)
-      (ucons:copy-utree blueprint)
+      (ucons:tree-from-utree blueprint)
     (values ranges reduction-range array-types instructions)))

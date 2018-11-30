@@ -12,8 +12,9 @@
    #:do-ulist
    #:umapcar
    #:ulength
-   #:copy-ulist
-   #:copy-utree
+   #:list-from-ulist
+   #:tree-from-utree
+   #:utree-from-tree
    #:*root-table*
    #:make-root-table))
 
@@ -241,26 +242,30 @@ long as the shortest supplied sequence."
   (loop for elt = ulist then (ucdr elt)
         while elt count t))
 
-(defun copy-ulist (ulist)
+(defun list-from-ulist (ulist)
   "Return a list of the elements of ULIST."
   (declare (ulist ulist))
   (loop for elt = ulist then (ucdr elt)
         while elt collect (ucar elt)))
 
-(defun copy-utree (utree)
+(defun tree-from-utree (utree)
   "Return a tree of the same shape as UTREE, but where all occuring ulists
 have been converted to lists."
-  (declare (ulist utree))
-  (loop for elt = utree then (ucdr elt)
-        while elt
-        for car = (ucar elt)
-        collect (if (uconsp car)
-                    (copy-utree car)
-                    car)))
+  (if (not (uconsp utree))
+      utree
+      (loop for elt = utree then (ucdr elt) while elt
+            for car = (ucar elt)
+            collect (tree-from-utree car))))
+
+(defun utree-from-tree (tree)
+  (if (atom tree)
+      tree
+      (ucons (utree-from-tree (car tree))
+             (utree-from-tree (cdr tree)))))
 
 (defmethod print-object ((ulist ucons) stream)
   (cond (*print-pretty*
-         (let ((list (ucons:copy-ulist ulist)))
+         (let ((list (ucons:list-from-ulist ulist)))
            (pprint-logical-block (stream list :prefix "[" :suffix "]")
              (pprint-linear stream list nil))))
         (t
