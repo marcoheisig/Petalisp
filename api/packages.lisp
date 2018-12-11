@@ -12,6 +12,7 @@
    #:a
    #:b
    #:x
+   #:~
    #:broadcast-arrays
    #:broadcast-shapes
    #:reshape
