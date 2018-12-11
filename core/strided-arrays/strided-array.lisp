@@ -94,3 +94,12 @@
          (loop for axis below (array-rank array)
                collect
                (range 0 1 (1- (array-dimension array axis))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Pattern Matching
+
+(trivia:defpattern strided-array (shape)
+  (alexandria:with-gensyms (it)
+    `(trivia:guard1 ,it (strided-array-p ,it)
+                    (shape ,it) ,shape)))

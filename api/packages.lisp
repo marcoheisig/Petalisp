@@ -11,7 +11,6 @@
    #:β
    #:a
    #:b
-   #:x
    #:~
    #:broadcast-arrays
    #:broadcast-shapes
