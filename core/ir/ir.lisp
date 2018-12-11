@@ -114,6 +114,62 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; Printing
+
+(defmethod print-object ((buffer buffer) stream)
+  (print-unreadable-object (buffer stream :type t :identity t)
+    (format stream "~S ~S"
+            (element-type buffer)
+            (buffer-shape buffer))))
+
+(defmethod print-object ((kernel kernel) stream)
+  (print-unreadable-object (kernel stream :type t :identity t)
+    (format stream "~S ~S"
+            (iteration-space kernel)
+            (reduction-range kernel))))
+
+(defun simplify-argument (argument)
+  (destructuring-bind (value-n . instruction) argument
+    (cons value-n (instruction-number instruction))))
+
+(defmethod print-object ((call-instruction call-instruction) stream)
+  (print-unreadable-object (call-instruction stream :type t)
+    (format stream "~S ~S ~S"
+            (instruction-number call-instruction)
+            (operator call-instruction)
+            (mapcar #'simplify-argument (arguments call-instruction)))))
+
+(defmethod print-object ((load-instruction load-instruction) stream)
+  (print-unreadable-object (load-instruction stream :type t)
+    (format stream "~S ~S ~S"
+            (instruction-number load-instruction)
+            :buffer ;(buffer load-instruction)
+            (transformation load-instruction))))
+
+(defmethod print-object ((store-instruction store-instruction) stream)
+  (print-unreadable-object (store-instruction stream :type t)
+    (format stream "~S ~S ~S ~S"
+            (instruction-number store-instruction)
+            (simplify-argument (value store-instruction))
+            :buffer ;(buffer store-instruction)
+            (transformation store-instruction))))
+
+(defmethod print-object ((iref-instruction iref-instruction) stream)
+  (print-unreadable-object (iref-instruction stream :type t)
+    (format stream "~S ~S"
+            (instruction-number iref-instruction)
+            (transformation iref-instruction))))
+
+(defmethod print-object ((reduce-instruction reduce-instruction) stream)
+  (print-unreadable-object (reduce-instruction stream :type t)
+    (format stream "~S ~S ~S ~S"
+            (instruction-number reduce-instruction)
+            (reduction-range reduce-instruction)
+            (operator reduce-instruction)
+            (mapcar #'simplify-argument (arguments reduce-instruction)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; Methods
 
 (defmethod make-buffer ((strided-array strided-array) (backend backend))

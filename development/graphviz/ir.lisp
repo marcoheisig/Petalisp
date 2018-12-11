@@ -108,4 +108,12 @@
 (defmethod graphviz-node-properties append
     ((graph ir-graph)
      (kernel petalisp-ir:kernel))
-  `(("body" . "TODO")))
+  `(("body" . ,(with-output-to-string (stream)
+                 (let ((instructions '()))
+                   (petalisp-ir:map-instructions
+                    (lambda (instruction)
+                      (push instruction instructions))
+                    kernel)
+                   (loop for instruction
+                           in (sort instructions #'< :key #'petalisp-ir:instruction-number)
+                         do (print instruction stream)))))))
