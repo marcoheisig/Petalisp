@@ -22,7 +22,7 @@
    #:compute
    #:schedule
    #:indices
-   #:petalisp-readtable
+   #:define-parallel-aliases
 
    ;; Backends
    #:*backend*

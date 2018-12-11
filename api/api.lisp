@@ -208,3 +208,22 @@ mismatch, broadcast the smaller objects."
   (schedule-on-backend
    (mapcar #'coerce-to-strided-array arguments)
    *backend*))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Parallel Aliases
+
+(defmacro define-parallel-aliases (name)
+  (let ((αsym (alexandria:symbolicate 'α name))
+        (βsym (alexandria:symbolicate 'β name)))
+    `(progn
+       (declaim (inline ,αsym ,βsym))
+       (defun ,αsym (&rest args)
+         (apply #'α #',name args))
+       (defun ,βsym (&rest args)
+         (apply #'β #',name args))
+       (define-compiler-macro ,αsym (&rest args)
+         `(funcall #'α #',name ,@args))
+       (define-compiler-macro ,βsym (&rest args)
+         `(funcall #'β #',name ,@args))
+       ',name)))

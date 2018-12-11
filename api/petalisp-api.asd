@@ -8,7 +8,6 @@
    "alexandria"
    "closer-mop"
    "trivia"
-   "named-readtables"
    "split-sequence"
    "petalisp-core"
    "petalisp-reference-backend"
@@ -22,5 +21,4 @@
   ((:file "packages")
    (:file "transformations")
    (:file "shapes")
-   (:file "api")
-   (:file "readtable")))
+   (:file "api")))

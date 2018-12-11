@@ -2,7 +2,7 @@
 
 (defpackage :petalisp-examples-linear-algebra
   (:shadowing-import-from :petalisp :set-difference)
-  (:use :cl :alexandria :petalisp :named-readtables)
+  (:use :cl :alexandria :petalisp)
   (:export
    #:matrix
    #:square-matrix
@@ -17,8 +17,6 @@
    #:lu))
 
 (in-package :petalisp-examples-linear-algebra)
-
-(in-readtable petalisp-readtable)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -76,7 +74,7 @@
   (assert (plusp m))
   (assert (plusp n))
   (let ((shape (make-shape (range 1 m) (range 1 n))))
-    (αδ (indices shape 0) (indices shape 1))))
+    (α #'δ (indices shape 0) (indices shape 1))))
 
 (defun transpose (x)
   (reshape
@@ -149,12 +147,12 @@
                   (let* ((P (swap-rows P d pivot))
                          (L (swap-rows L d pivot))
                          (U (swap-rows U d pivot))
-                         (S (α/ (reshape U (make-shape (range (1+ d) m) (range d)))
+                         (S (α #'/ (reshape U (make-shape (range (1+ d) m) (range d)))
                                 (coerce-to-matrix value))))
                     (rec (1+ d)
                          P
                          (fuse* L S (reshape 1 (make-shape (range d) (range d))))
                          (fuse* U
-                                (α- (reshape U (make-shape (range (1+ d) m) (range d m)))
-                                    (α* S (reshape U (make-shape (range d) (range d m))))))))))))
+                                (α #'- (reshape U (make-shape (range (1+ d) m) (range d m)))
+                                    (α #'* S (reshape U (make-shape (range d) (range d m))))))))))))
        (rec 1 (eye m) (zeros m) A)))))
