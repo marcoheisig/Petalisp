@@ -176,6 +176,10 @@
     ((node t))
   'any-graph)
 
+(defmethod graphviz-default-graph
+    ((list cons))
+  (graphviz-default-graph (first list)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; CL-DOT Integration

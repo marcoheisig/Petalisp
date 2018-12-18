@@ -22,7 +22,7 @@
     (setf graph (make-instance graph)))
   (uiop:with-temporary-file (:pathname image-file)
     (cl-dot:dot-graph
-     (cl-dot:generate-graph-from-roots graph (list graph-root))
+     (cl-dot:generate-graph-from-roots graph (alexandria:ensure-list graph-root))
      image-file
      :format format)
     (uiop:run-program

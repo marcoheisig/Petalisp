@@ -108,7 +108,9 @@
 (defmethod graphviz-node-properties append
     ((graph ir-graph)
      (kernel petalisp-ir:kernel))
-  `(("body" . ,(with-output-to-string (stream)
+  `(("iteration-space" . ,(stringify (petalisp-ir:iteration-space kernel)))
+    ("reduction-range" . ,(stringify (petalisp-ir:reduction-range kernel)))
+    ("body" . ,(with-output-to-string (stream)
                  (let ((instructions '()))
                    (petalisp-ir:map-instructions
                     (lambda (instruction)
