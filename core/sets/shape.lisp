@@ -165,7 +165,9 @@
   (apply #'make-shape range (ranges shape)))
 
 (defmethod shrink-shape ((shape shape))
-  (apply #'make-shape (rest (ranges shape))))
+  (let ((ranges (ranges shape)))
+    (values (apply #'make-shape (rest ranges))
+            (first ranges))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

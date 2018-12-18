@@ -52,15 +52,15 @@
 (defun compute-kernels (root backend)
   (unless (immediatep root)
     (let ((*kernel-root* root))
-      (loop for iteration-space in (compute-iteration-spaces root)
+      (loop for (iteration-space . reduction-range) in (compute-iteration-spaces root)
             collect
-            (compute-kernel root iteration-space backend)))))
+            (compute-kernel root iteration-space reduction-range backend)))))
 
-(defun compute-kernel (root iteration-space backend)
+(defun compute-kernel (root iteration-space reduction-range backend)
   (let* ((root-rank (rank root))
          (transformation (identity-transformation root-rank)))
     (with-instruction-numbering
-      (multiple-value-bind (value loads reduction-range)
+      (multiple-value-bind (value loads)
           (compute-kernel-body root iteration-space transformation)
         (make-kernel
          backend
@@ -78,14 +78,9 @@
 
 (defvar *loads*)
 
-(defvar *reduction-range*)
-
 (defun compute-kernel-body (root iteration-space transformation)
-  (let ((*loads* '())
-        (*reduction-range* nil))
-    (values (compute-value root iteration-space transformation)
-            *loads*
-            *reduction-range*)))
+  (let ((*loads* '()))
+    (values (compute-value root iteration-space transformation) *loads*)))
 
 ;;; Return the 'value' of ROOT for a given point in the iteration space of
 ;;; the kernel, i.e., return a cons cell whose cdr is an instruction and
@@ -133,12 +128,7 @@
     ((reduction reduction)
      (iteration-space shape)
      (transformation transformation))
-  (let* ((shape (shape (first (inputs reduction))))
-         (reduction-range (first (ranges shape))))
-    (cond ((null *reduction-range*)
-           (setf *reduction-range* reduction-range))
-          ((not (set-equal *reduction-range* reduction-range))
-           (error "A kernel can only have a single reduction range.")))
+  (let* ((shape (shape (first (inputs reduction)))))
     (cons (value-n reduction)
           (make-instance 'reduce-instruction
             :operator (operator reduction)
