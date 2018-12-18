@@ -109,8 +109,7 @@
 ;;; the instruction has arguments.
 (defclass reduce-instruction (iterating-instruction)
   ((%operator :initarg :operator :reader operator)
-   (%arguments :initarg :arguments :reader arguments)
-   (%range :initarg :reduction-range :reader reduction-range)))
+   (%arguments :initarg :arguments :reader arguments)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -162,9 +161,8 @@
 
 (defmethod print-object ((reduce-instruction reduce-instruction) stream)
   (print-unreadable-object (reduce-instruction stream :type t)
-    (format stream "~S ~S ~S ~S"
+    (format stream "~S ~S ~S"
             (instruction-number reduce-instruction)
-            (reduction-range reduce-instruction)
             (operator reduce-instruction)
             (mapcar #'simplify-argument (arguments reduce-instruction)))))
 

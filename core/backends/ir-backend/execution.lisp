@@ -29,6 +29,9 @@
 ;;;
 ;;; Execution of Instructions
 
+;;; The current kernel.
+(defvar *kernel*)
+
 ;;; The current loop index.
 (defvar *index*)
 
@@ -75,7 +78,7 @@
                          (values-list (divide-and-conquer left))
                          (values-list (divide-and-conquer right))))
                       0 k)))))
-      (divide-and-conquer (reduction-range reduce-instruction)))))
+      (divide-and-conquer (reduction-range *kernel*)))))
 
 (defmethod instruction-values ((iref-instruction petalisp-ir:iref-instruction))
   (transform *index* (petalisp-ir:transformation iref-instruction)))
@@ -111,7 +114,8 @@
 
 (defmethod execute ((kernel petalisp-ir:kernel))
   (let* ((n-instructions (1+ (petalisp-ir:highest-instruction-number kernel)))
-         (*instruction-values-cache* (make-array n-instructions)))
+         (*instruction-values-cache* (make-array n-instructions))
+         (*kernel* kernel))
     (set-for-each
      (lambda (index)
        (let ((*index* index))

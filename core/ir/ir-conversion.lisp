@@ -142,7 +142,6 @@
     (cons (value-n reduction)
           (make-instance 'reduce-instruction
             :operator (operator reduction)
-            :reduction-range reduction-range
             :arguments
             (loop for input in (inputs reduction)
                   collect
