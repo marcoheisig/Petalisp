@@ -10,3 +10,8 @@
                            (τ (i) (0 i)))
                   (reshape a (~ 1 (- size 1))
                            (τ (i) (1 (1- i)))))))))
+
+(test reduction-of-fusions
+  (compute
+   (β #'+ (fuse #(1 2 3)
+                (reshape #(4 5 6) (τ (i) ((+ i 3))))))))

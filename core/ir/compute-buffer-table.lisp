@@ -10,73 +10,116 @@
 ;;; 1. The node is one of the root nodes.
 ;;; 2. The node is referenced by multiple other nodes.
 ;;; 3. The node is the target of a broadcasting reference.
-;;; 4. The node is a reduction node.
-;;; 5. The node is an immediate node.
+;;; 4. The node is an immediate node.
+;;; 5. The node is a reduction node.
+;;; 6. The node is a fusion node and would break a reduction range.
 ;;;
-;;; These rules 1-3 ensure that values that are used more than once reside
-;;; in main memory.  Rule 4 is chosen in addition, because it greatly
+;;; These rules 1-4 ensure that values that are used more than once reside
+;;; in main memory.  Rule 5 is chosen in addition, because it greatly
 ;;; simplifies reasoning about kernels, while the cost of allocating the
-;;; results of a reduction is usually negligible.
+;;; results of a reduction is usually negligible.  Rule 6 is potentially
+;;; costly, but the alternative of implementing heterogeneous reduction
+;;; kernels is a nightmare.
 ;;;
 ;;; The derivation of the buffer table of a graph consists of two steps.
-;;; In the first step, we build a hash table that assigns each strided
-;;; array that should have a corresponding buffer a number bigger than one.
-;;; In the second step, this table turned into a buffer table by replacing
-;;; values bigger than one by buffers and discarding all other hash table
-;;; entries.
+;;; In the first step, we build a hash table that assigns some strided
+;;; arrays the values :POTENTIALLY-SPECIAL or :SPECIAL.  In the second
+;;; step, this table turned into a buffer table by replacing :SPECIAL
+;;; values by buffers and discarding all other hash table entries.
 
 (defvar *buffer-table*)
+
+(defmacro node-value (node)
+  `(gethash ,node *buffer-table*))
 
 (defgeneric compute-buffer-table (strided-arrays backend))
 
 (defmethod compute-buffer-table ((graph-roots list) (backend backend))
-  (let ((refcount-table (make-hash-table :test #'eq)))
+  (let ((*buffer-table* (make-hash-table :test #'eq)))
     (loop for graph-root in graph-roots do
       ;; Rule 1
-      (traverse-special-node graph-root refcount-table))
-    (buffer-table-from-refcount-table refcount-table backend)))
+      (traverse-node graph-root t nil))
+    (finalize-buffer-table backend)))
 
-(defun buffer-table-from-refcount-table (hash-table backend)
-  (with-hash-table-iterator (next hash-table)
+(defun finalize-buffer-table (backend)
+  (with-hash-table-iterator (next *buffer-table*)
     (loop
-      (multiple-value-bind (more strided-array refcount) (next)
-        (cond ((not more)
-               (return))
-              ((< 1 refcount)
-               (setf (gethash strided-array hash-table)
+      (multiple-value-bind (more strided-array value) (next)
+        (cond ((not more) (return))
+              ((eq value :special)
+               (setf (node-value strided-array)
                      (if (typep strided-array 'range-immediate)
                          'range-immediate-placeholder
                          (make-buffer strided-array backend))))
-              (t
-               (remhash strided-array hash-table))))))
-  hash-table)
+              (t (remhash strided-array *buffer-table*))))))
+  *buffer-table*)
 
-(defun traverse-special-node (node hash-table)
-  (when (not (nth-value 1 (gethash node hash-table)))
-    (incf (gethash node hash-table 0) 2)
-    (traverse-node-inputs node hash-table)))
-
-(defun traverse-node (node hash-table)
-  (cond
-    ;; Rule 4
-    ((typep node 'reduction)
-     (traverse-special-node node hash-table))
-    ;; Rule 5
-    ((null (inputs node)) ; i.e., we have an immediate
-     (traverse-special-node node hash-table))
-    ;; Rule 2
-    ((> (refcount node) 1)
-     ;; Traverse inputs only on the first visit.
-     (when (= 1 (incf (gethash node hash-table 0)))
-       (traverse-node-inputs node hash-table)))
-    (t
-     (traverse-node-inputs node hash-table))))
-
-(defun traverse-node-inputs (node hash-table)
-  (if (and (typep node 'reference)
-           (not (invertible-transformation-p (transformation node))))
-      ;; Rule 3
-      (traverse-special-node (input node) hash-table)
+(defun traverse-node (node special-p reduction-axis)
+  (multiple-value-bind (traverse-inputs-p inputs-special-p reduction-axis)
+      (visit-node node reduction-axis)
+    (when special-p
+      (setf (node-value node) :special))
+    (when traverse-inputs-p
       (loop for input in (inputs node) do
-        (traverse-node input hash-table))))
+        (traverse-node input inputs-special-p reduction-axis)))))
 
+(defgeneric visit-node (node reduction-axis))
+
+(defmethod visit-node ((node strided-array) reduction-axis)
+  (case (refcount node)
+    ((0 1) (values t nil reduction-axis))
+    (otherwise
+     ;; Rule 2.
+     (multiple-value-bind (value present-p) (node-value node)
+       (cond ((not present-p)
+              (setf (node-value node) :potentially-special)
+              (values t nil reduction-axis))
+             ((eq value :potentially-special)
+              (setf (node-value node) :special)
+              (values nil nil nil))
+             ((eq value :special)
+              (values nil nil nil)))))))
+
+(defmethod visit-node ((reduction reduction) reduction-axis)
+  (multiple-value-bind (value present-p) (node-value reduction)
+    (cond ((not present-p)
+           (unless (eq value :special)
+             (setf (node-value reduction) :special))
+           (values t nil 0))
+          (t
+           (values nil nil nil)))))
+
+(defmethod visit-node ((immediate immediate) reduction-axis)
+  (setf (node-value immediate) :special)
+  (values nil nil nil))
+
+(defmethod visit-node ((reference reference) reduction-axis)
+  (multiple-value-bind (traverse-inputs-p inputs-special-p reduction-axis)
+      (call-next-method)
+    (if (not traverse-inputs-p)
+        (values nil nil nil)
+        (let ((transformation (transformation reference)))
+          (values
+           traverse-inputs-p
+           ;; Rule 3.
+           (or inputs-special-p (not (invertible-transformation-p transformation)))
+           ;; Adapt the reduction axis.
+           (if (null reduction-axis)
+               nil
+               (transform-axis reduction-axis transformation)))))))
+
+(defun breaking-fusion-p (fusion reduction-axis)
+  ;; TODO
+  t)
+
+(defmethod visit-node ((fusion fusion) reduction-axis)
+  (multiple-value-bind (traverse-inputs-p inputs-special-p reduction-axis)
+      (call-next-method)
+    (cond ((not traverse-inputs-p)
+           (values nil nil nil))
+          ;; Rule 6.
+          ((breaking-fusion-p fusion reduction-axis)
+           (setf (node-value fusion) :special)
+           (values t inputs-special-p nil))
+          (t
+           (values t inputs-special-p reduction-axis)))))

@@ -153,6 +153,9 @@
       (map-transformation-outputs #'push-output-expression transformation)
       (nreverse result))))
 
+(defmethod transform-axis ((axis integer) (hairy-transformation hairy-transformation))
+  (position axis (output-mask hairy-transformation)))
+
 (defmethod map-transformation-inputs
     ((function function)
      (transformation transformation)

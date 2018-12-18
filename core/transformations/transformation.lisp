@@ -64,6 +64,8 @@
 (defgeneric transform (object transformation)
   (:argument-precedence-order transformation object))
 
+(defgeneric transform-axis (axis transformation))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes
@@ -101,6 +103,9 @@
 
 (defmethod transform ((sequence sequence) (transformation transformation))
   (assert (= (length sequence) (input-rank transformation))))
+
+(defmethod transform-axis ((axis integer) (transformation transformation))
+  (assert (< -1 axis (input-rank transformation))))
 
 (defmethod print-object ((transformation transformation) stream)
   (let ((inputs '()))

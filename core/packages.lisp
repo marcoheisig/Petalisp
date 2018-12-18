@@ -45,6 +45,7 @@
    #:transformation
    #:transformationp
    #:transform
+   #:transform-axis
    #:identity-transformation-p
    #:input-rank
    #:output-rank

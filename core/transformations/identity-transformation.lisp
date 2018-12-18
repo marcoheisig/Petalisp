@@ -68,3 +68,6 @@
 
 (defmethod transform ((sequence sequence) (operator identity-transformation))
   sequence)
+
+(defmethod transform-axis ((axis integer) (transformation identity-transformation))
+  axis)
