@@ -24,6 +24,8 @@
 
 (defgeneric enlarge-shape (shape range))
 
+(defgeneric shrink-shape (shape))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes
@@ -161,6 +163,9 @@
 
 (defmethod enlarge-shape ((shape shape) (range range))
   (apply #'make-shape range (ranges shape)))
+
+(defmethod shrink-shape ((shape shape))
+  (apply #'make-shape (rest (ranges shape))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

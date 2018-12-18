@@ -39,6 +39,7 @@
    #:ranges
    #:shape-difference-list
    #:enlarge-shape
+   #:shrink-shape
 
    ;; Transformations
    #:transformation

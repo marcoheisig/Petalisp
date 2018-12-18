@@ -43,4 +43,5 @@
      (:file "api")
      (:file "sets")
      (:file "iterative-methods")
-     (:file "linear-algebra")))))
+     (:file "linear-algebra")
+     (:file "hall-of-shame")))))
