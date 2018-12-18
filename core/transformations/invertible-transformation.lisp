@@ -41,6 +41,5 @@
 
 (defmethod invert-transformation
     ((transformation transformation))
-  (error 'petalisp-user-error
-         "~:<The transformation ~W is not invertible.~:@>"
+  (error "~:<The transformation ~W is not invertible.~:@>"
          transformation))

@@ -97,7 +97,7 @@
       (let ((vector (make-sequence 'simple-vector output-rank :initial-element nil)))
         (loop for index below (min input-rank output-rank) do
           (setf (svref vector index) index))
-        (values vector t))
+        (values vector (= input-rank output-rank)))
       (let ((vector (coerce value 'simple-vector))
             (identity-p t))
         (assert (= (length vector) output-rank))

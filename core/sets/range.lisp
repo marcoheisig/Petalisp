@@ -350,8 +350,9 @@
                       (range-end ,it) ,end))))
 
 (defmethod print-object ((range range) stream)
-  (print-unreadable-object (range stream :type t)
-    (format stream "~D ~D ~D"
+  (print-unreadable-object (range stream)
+    (format stream "~S ~D ~D ~D"
+            'range
             (range-start range)
             (range-step range)
             (range-end range))))
