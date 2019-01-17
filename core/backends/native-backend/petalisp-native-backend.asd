@@ -4,7 +4,7 @@
 
   :depends-on
   ("petalisp-core"
-   "petalisp-ir")
+   "petalisp.ir")
 
   :serial t
   :components

@@ -26,18 +26,19 @@
      (transformation transformation))
   (let ((relevant-shape (transform shape transformation))
         (input-shape (shape strided-array)))
-    (demand (and (= (rank relevant-shape) (rank input-shape))
+    (assert (and (= (rank relevant-shape) (rank input-shape))
                  (set-subsetp relevant-shape input-shape))
-      "~@<The shape referenced by the current reference is ~S, ~
-          which is not a subspace of ~S, the shape of the input of ~
-          the current reference.~:@>"
+            ()
+            "~@<The shape referenced by the current reference is ~S, ~
+                which is not a subspace of ~S, the shape of the input of ~
+                the current reference.~:@>"
       relevant-shape
       input-shape))
-  (demand (= (rank shape) (input-rank transformation))
-    "~@<The rank of the index shape of a reference operation must ~
-        be equal to the input rank of its transformation.  The ~
-        index shape ~S has the rank ~R, but the input rank ~
-        of the transformation ~S is ~R.~:@>"
+  (assert (= (rank shape) (input-rank transformation)) ()
+          "~@<The rank of the index shape of a reference operation must ~
+              be equal to the input rank of its transformation.  The ~
+              index shape ~S has the rank ~R, but the input rank ~
+              of the transformation ~S is ~R.~:@>"
     shape
     (rank shape)
     transformation

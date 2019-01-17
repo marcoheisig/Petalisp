@@ -7,9 +7,9 @@
 ;;; Methods
 
 (defmethod transform :before ((shape shape) (transformation transformation))
-  (demand (= (rank shape) (input-rank transformation))
-    "~@<Cannot apply the transformation ~A with input rank ~R ~
-        to the index shape ~A with rank ~R.~:@>"
+  (assert (= (rank shape) (input-rank transformation)) ()
+          "~@<Cannot apply the transformation ~A with input rank ~R ~
+              to the index shape ~A with rank ~R.~:@>"
     transformation (input-rank transformation)
     shape (rank shape)))
 
@@ -19,10 +19,11 @@
           for constraint across input-mask
           for index from 0 do
             (unless (not constraint)
-              (demand (and (= constraint (range-start range))
+              (assert (and (= constraint (range-start range))
                            (= constraint (range-end range)))
-                "~@<The ~:R rank of the shape ~W violates ~
-                    the input constraint ~W of the transformation ~W.~:@>"
+                      ()
+                      "~@<The ~:R rank of the shape ~W violates ~
+                          the input constraint ~W of the transformation ~W.~:@>"
                 index shape constraint transformation)))))
 
 (defmethod transform ((shape shape) (operator identity-transformation))

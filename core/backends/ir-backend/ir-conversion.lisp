@@ -19,20 +19,20 @@
 (defclass ir-node ()
   ((%executedp :initarg :executedp :accessor executedp)))
 
-(defclass kernel (petalisp-ir:kernel ir-node)
+(defclass kernel (petalisp.ir:kernel ir-node)
   ())
 
-(defclass buffer (petalisp-ir:buffer ir-node)
+(defclass buffer (petalisp.ir:buffer ir-node)
   ((%storage :initarg :storage :reader storage)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; IR Conversion
 
-(defmethod petalisp-ir:make-kernel ((ir-backend ir-backend) &rest args)
+(defmethod petalisp.ir:make-kernel ((ir-backend ir-backend) &rest args)
   (apply #'make-instance 'kernel :executedp nil args))
 
-(defmethod petalisp-ir:make-buffer
+(defmethod petalisp.ir:make-buffer
     ((strided-array strided-array) (ir-backend ir-backend))
   (make-instance 'buffer
     :executedp nil
@@ -40,7 +40,7 @@
     :element-type (element-type strided-array)
     :storage (make-array (mapcar #'set-size (ranges (shape strided-array))))))
 
-(defmethod petalisp-ir:make-buffer
+(defmethod petalisp.ir:make-buffer
     ((array-immediate array-immediate) (ir-backend ir-backend))
   (make-instance 'buffer
     :executedp t
@@ -48,7 +48,7 @@
     :element-type (element-type array-immediate)
     :storage (storage array-immediate)))
 
-(defmethod petalisp-ir:make-buffer
+(defmethod petalisp.ir:make-buffer
     ((range-immediate range-immediate) (ir-backend ir-backend))
   (let* ((size (set-size (shape range-immediate)))
          (element-type (element-type range-immediate))
@@ -64,7 +64,7 @@
 (defmethod immediate-from-buffer ((buffer buffer))
   (make-instance 'array-immediate
     :element-type (element-type buffer)
-    :shape (petalisp-ir:buffer-shape buffer)
+    :shape (petalisp.ir:buffer-shape buffer)
     :storage (storage buffer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

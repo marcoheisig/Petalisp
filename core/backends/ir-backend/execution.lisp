@@ -13,15 +13,15 @@
     (call-next-method)))
 
 (defmethod execute :before ((kernel kernel))
-  (mapc (compose #'execute #'petalisp-ir:buffer)
-        (petalisp-ir:loads kernel)))
+  (mapc (compose #'execute #'petalisp.ir:buffer)
+        (petalisp.ir:loads kernel)))
 
 (defmethod execute :before ((buffer buffer))
   (mapc #'execute (inputs buffer)))
 
 (defmethod compute-immediates ((strided-arrays list) (ir-backend ir-backend))
-  (let ((root-buffers (petalisp-ir:ir-from-strided-arrays strided-arrays ir-backend)))
-    (petalisp-ir:normalize-ir root-buffers)
+  (let ((root-buffers (petalisp.ir:ir-from-strided-arrays strided-arrays ir-backend)))
+    (petalisp.ir:normalize-ir root-buffers)
     (mapc #'execute root-buffers)
     (mapcar #'immediate-from-buffer root-buffers)))
 
@@ -40,35 +40,35 @@
 ;;; by the special variable *INDEX*.
 (defgeneric instruction-values (instruction))
 
-(defmethod instruction-values ((call-instruction petalisp-ir:call-instruction))
+(defmethod instruction-values ((call-instruction petalisp.ir:call-instruction))
   (multiple-value-list
-   (apply (petalisp-ir:operator call-instruction)
+   (apply (petalisp.ir:operator call-instruction)
           (loop for (value-n . instruction)
-                  in (petalisp-ir:arguments call-instruction)
+                  in (petalisp.ir:arguments call-instruction)
                 collect (nth value-n (instruction-values instruction))))))
 
-(defmethod instruction-values ((load-instruction petalisp-ir:load-instruction))
+(defmethod instruction-values ((load-instruction petalisp.ir:load-instruction))
   (list
-   (bref (petalisp-ir:buffer load-instruction)
-         (transform *index* (petalisp-ir:transformation load-instruction)))))
+   (bref (petalisp.ir:buffer load-instruction)
+         (transform *index* (petalisp.ir:transformation load-instruction)))))
 
-(defmethod instruction-values ((store-instruction petalisp-ir:store-instruction))
-  (setf (bref (petalisp-ir:buffer store-instruction)
-              (transform *index* (petalisp-ir:transformation store-instruction)))
+(defmethod instruction-values ((store-instruction petalisp.ir:store-instruction))
+  (setf (bref (petalisp.ir:buffer store-instruction)
+              (transform *index* (petalisp.ir:transformation store-instruction)))
         (destructuring-bind (value-n . instruction)
-            (petalisp-ir:value store-instruction)
+            (petalisp.ir:value store-instruction)
           (nth value-n (instruction-values instruction))))
   (list))
 
-(defmethod instruction-values ((reduce-instruction petalisp-ir:reduce-instruction))
-  (let ((k (length (petalisp-ir:arguments reduce-instruction))))
+(defmethod instruction-values ((reduce-instruction petalisp.ir:reduce-instruction))
+  (let ((k (length (petalisp.ir:arguments reduce-instruction))))
     (labels ((divide-and-conquer (range)
                (if (size-one-range-p range)
                    (let ((*index* (cons (range-start range) *index*)))
                      ;; *index* is changed, so we also have to clear the cache.
                      (clear-instruction-values-cache)
                      (loop for (value-n . instruction)
-                             in (petalisp-ir:arguments reduce-instruction)
+                             in (petalisp.ir:arguments reduce-instruction)
                            collect (nth value-n (instruction-values instruction))))
                    (multiple-value-bind (left right)
                        (split-range range)
@@ -80,8 +80,8 @@
                       0 k)))))
       (divide-and-conquer (reduction-range *kernel*)))))
 
-(defmethod instruction-values ((iref-instruction petalisp-ir:iref-instruction))
-  (transform *index* (petalisp-ir:transformation iref-instruction)))
+(defmethod instruction-values ((iref-instruction petalisp.ir:iref-instruction))
+  (transform *index* (petalisp.ir:transformation iref-instruction)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -91,17 +91,17 @@
 (defvar *instruction-values-cache*)
 
 (defun instruction-values-cache (instruction)
-  (aref *instruction-values-cache* (petalisp-ir:instruction-number instruction)))
+  (aref *instruction-values-cache* (petalisp.ir:instruction-number instruction)))
 
 (defun (setf instruction-values-cache) (value instruction)
-  (setf (aref *instruction-values-cache* (petalisp-ir:instruction-number instruction))
+  (setf (aref *instruction-values-cache* (petalisp.ir:instruction-number instruction))
         value))
 
 (defun clear-instruction-values-cache ()
   (fill *instruction-values-cache* 0))
 
 (defmethod instruction-values :around
-    ((instruction petalisp-ir:instruction))
+    ((instruction petalisp.ir:instruction))
   (let ((cache (instruction-values-cache instruction)))
     (if (listp cache)
         cache
@@ -112,8 +112,8 @@
 ;;;
 ;;; Kernel Execution
 
-(defmethod execute ((kernel petalisp-ir:kernel))
-  (let* ((n-instructions (1+ (petalisp-ir:highest-instruction-number kernel)))
+(defmethod execute ((kernel petalisp.ir:kernel))
+  (let* ((n-instructions (1+ (petalisp.ir:highest-instruction-number kernel)))
          (*instruction-values-cache* (make-array n-instructions))
          (*kernel* kernel))
     (set-for-each
@@ -123,5 +123,5 @@
          (clear-instruction-values-cache)
          ;; Evaluate all instructions with side-effects (= store
          ;; instructions) and their dependencies.
-         (mapc #'instruction-values (petalisp-ir:stores kernel))))
-     (petalisp-ir:iteration-space kernel))))
+         (mapc #'instruction-values (petalisp.ir:stores kernel))))
+     (petalisp.ir:iteration-space kernel))))

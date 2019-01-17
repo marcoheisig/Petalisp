@@ -4,13 +4,13 @@
 
 (defmethod compute-immediates ((strided-arrays list)
                                (native-backend native-backend))
-  (let ((root-buffers (petalisp-ir:ir-from-strided-arrays strided-arrays native-backend)))
-    (petalisp-ir:normalize-ir root-buffers)
+  (let ((root-buffers (petalisp.ir:ir-from-strided-arrays strided-arrays native-backend)))
+    (petalisp.ir:normalize-ir root-buffers)
     (loop for root-buffer in root-buffers
           for strided-array in strided-arrays
           ;; We add a fictitious kernel to the outputs of each root buffer,
           ;; to avoid that their memory is reclaimed.
-          do (push (make-instance 'kernel) (petalisp-ir:outputs root-buffer))
+          do (push (make-instance 'kernel) (petalisp.ir:outputs root-buffer))
           collect
           (if (immediatep strided-array)
               strided-array
@@ -27,15 +27,15 @@
           (memory-pool-allocate
            (memory-pool native-backend)
            (element-type buffer)
-           (mapcar #'set-size (ranges (petalisp-ir:buffer-shape buffer)))))
+           (mapcar #'set-size (ranges (petalisp.ir:buffer-shape buffer)))))
     (loop for kernel in (inputs buffer) do
       (execute-kernel kernel native-backend))
     buffer))
 
 (defmethod execute-kernel :before
     ((kernel kernel) (native-backend native-backend))
-  (loop for load in (petalisp-ir:loads kernel) do
-    (compute-buffer (petalisp-ir:buffer load) native-backend)))
+  (loop for load in (petalisp.ir:loads kernel) do
+    (compute-buffer (petalisp.ir:buffer load) native-backend)))
 
 (defmethod execute-kernel
     ((kernel kernel) (native-backend native-backend))
@@ -44,10 +44,10 @@
     (setf (executedp kernel) t)
     ;; Free the memory of buffers that are no longer in use.
     (flet ((maybe-free (buffer)
-             (when (every #'executedp (petalisp-ir:outputs buffer))
+             (when (every #'executedp (petalisp.ir:outputs buffer))
                (free-storage buffer native-backend))))
-      (mapc (compose #'maybe-free #'petalisp-ir:buffer)
-            (petalisp-ir:stores kernel)))))
+      (mapc (compose #'maybe-free #'petalisp.ir:buffer)
+            (petalisp.ir:stores kernel)))))
 
 (defun compile-and-execute-kernel (kernel backend)
   (let ((ranges (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
@@ -55,7 +55,7 @@
         (arrays (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
         (functions (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
         (compiled-kernel
-          (let ((blueprint (petalisp-ir:blueprint kernel)))
+          (let ((blueprint (petalisp.ir:blueprint kernel)))
             (petalisp-memoization:with-hash-table-memoization (blueprint)
                 (compile-cache backend)
               (compile nil (lambda-expression-from-blueprint blueprint))))))
@@ -63,7 +63,7 @@
     (setf (fill-pointer arrays) 0)
     (setf (fill-pointer functions) 0)
     ;; Initialize the range arguments.
-    (loop for range in (ranges (petalisp-ir:iteration-space kernel))
+    (loop for range in (ranges (petalisp.ir:iteration-space kernel))
           for offset from 0 by 3 do
             (multiple-value-bind (start step end)
                 (range-start-step-end range)
@@ -79,13 +79,13 @@
           (setf (aref reduction-range 1) step)
           (setf (aref reduction-range 2) end))))
     ;; Initialize the array arguments.
-    (loop for buffer in (petalisp-ir:kernel-buffers kernel) do
+    (loop for buffer in (petalisp.ir:kernel-buffers kernel) do
       (vector-push-extend (the array (storage buffer)) arrays))
     ;; Initialize the function arguments.
-    (petalisp-ir:map-instructions
+    (petalisp.ir:map-instructions
      (lambda (instruction)
        (when (typep instruction
-                    '(or petalisp-ir:call-instruction petalisp-ir:reduce-instruction))
+                    '(or petalisp.ir:call-instruction petalisp.ir:reduce-instruction))
          (let ((operator (operator instruction)))
            (when (functionp operator)
              (vector-push-extend (operator instruction) functions)))))

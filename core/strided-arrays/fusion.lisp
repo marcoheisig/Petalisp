@@ -41,10 +41,10 @@
         (destructuring-bind (input-1 input-2) two-inputs
           (let ((shape-1 (shape input-1))
                 (shape-2 (shape input-2)))
-            (demand (not (set-intersectionp shape-1 shape-2))
-              "~@<The index shapes of the arguments to a fusion operation ~
-                must be disjoint, but shape ~S and shape ~S have the ~
-                common subshape ~S.~:@>"
+            (assert (not (set-intersectionp shape-1 shape-2)) ()
+                    "~@<The index shapes of the arguments to a fusion operation ~
+                        must be disjoint, but shape ~S and shape ~S have the ~
+                        common subshape ~S.~:@>"
               shape-1
               shape-2
               (set-intersection shape-1 shape-2)))))

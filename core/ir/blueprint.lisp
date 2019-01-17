@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-ir)
+(in-package #:petalisp.ir)
 
 ;;; A blueprint is an s-expression made of ucons cells.  It contains all
 ;;; the information necessary to compute an efficient evaluation function

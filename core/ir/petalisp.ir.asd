@@ -1,4 +1,4 @@
-(defsystem :petalisp-ir
+(defsystem "petalisp.ir"
   :author "Marco Heisig <marco.heisig@fau.de>"
   :license "AGPLv3"
 

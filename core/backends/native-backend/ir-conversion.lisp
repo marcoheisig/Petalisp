@@ -6,7 +6,7 @@
 ;;;
 ;;; Classes
 
-(defclass buffer (petalisp-ir:buffer)
+(defclass buffer (petalisp.ir:buffer)
   ())
 
 (defclass non-immediate-buffer (buffer)
@@ -18,7 +18,7 @@
 (defclass array-buffer (immediate-buffer)
   ((%storage :initarg :storage :reader storage)))
 
-(defclass kernel (petalisp-ir:kernel)
+(defclass kernel (petalisp.ir:kernel)
   ((%executedp :initarg :executedp :accessor executedp
                :initform nil)))
 
@@ -26,7 +26,7 @@
 ;;;
 ;;; Methods
 
-(defmethod petalisp-ir:make-buffer
+(defmethod petalisp.ir:make-buffer
     ((array-immediate array-immediate)
      (native-backend native-backend))
   (make-instance 'array-buffer
@@ -34,13 +34,13 @@
     :element-type (element-type array-immediate)
     :storage (storage array-immediate)))
 
-(defmethod petalisp-ir:make-buffer
+(defmethod petalisp.ir:make-buffer
     ((strided-array strided-array)
      (native-backend native-backend))
   (make-instance 'non-immediate-buffer
     :shape (shape strided-array)
     :element-type (element-type strided-array)))
 
-(defmethod petalisp-ir:make-kernel
+(defmethod petalisp.ir:make-kernel
     ((backend native-backend) &rest args)
   (apply #'make-instance 'kernel args))

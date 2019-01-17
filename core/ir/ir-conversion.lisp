@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-ir)
+(in-package #:petalisp.ir)
 
 ;;; The purpose of IR conversion is to turn a data flow graph, whose nodes
 ;;; are strided arrays, into an analogous graph, whose nodes are buffers

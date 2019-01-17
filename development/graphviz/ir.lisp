@@ -18,10 +18,10 @@
 
 (defclass output-edge (ir-edge) ())
 
-(defmethod graphviz-default-graph ((node petalisp-ir:kernel))
+(defmethod graphviz-default-graph ((node petalisp.ir:kernel))
   'ir-graph)
 
-(defmethod graphviz-default-graph ((node petalisp-ir:buffer))
+(defmethod graphviz-default-graph ((node petalisp.ir:buffer))
   'ir-graph)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -38,26 +38,26 @@
 (defmethod graphviz-incoming-edge-origins
     ((graph ir-graph)
      (edge input-edge)
-     (buffer petalisp-ir:buffer))
-  (petalisp-ir:inputs buffer))
+     (buffer petalisp.ir:buffer))
+  (petalisp.ir:inputs buffer))
 
 (defmethod graphviz-outgoing-edge-targets
     ((graph ir-graph)
      (edge output-edge)
-     (buffer petalisp-ir:buffer))
-  (petalisp-ir:outputs buffer))
+     (buffer petalisp.ir:buffer))
+  (petalisp.ir:outputs buffer))
 
 (defmethod graphviz-incoming-edge-origins
     ((graph ir-graph)
      (edge load-edge)
-     (kernel petalisp-ir:kernel))
-  (mapcar #'petalisp-ir:buffer (petalisp-ir:loads kernel)))
+     (kernel petalisp.ir:kernel))
+  (mapcar #'petalisp.ir:buffer (petalisp.ir:loads kernel)))
 
 (defmethod graphviz-outgoing-edge-targets
     ((graph ir-graph)
      (edge store-edge)
-     (kernel petalisp-ir:kernel))
-  (mapcar #'petalisp-ir:buffer (petalisp-ir:stores kernel)))
+     (kernel petalisp.ir:kernel))
+  (mapcar #'petalisp.ir:buffer (petalisp.ir:stores kernel)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -85,12 +85,12 @@
 
 (defmethod graphviz-node-attributes
     ((graph ir-graph)
-     (node petalisp-ir:kernel))
+     (node petalisp.ir:kernel))
   `(:fillcolor "gray"))
 
 (defmethod graphviz-node-attributes
     ((graph ir-graph)
-     (node petalisp-ir:buffer))
+     (node petalisp.ir:buffer))
   `(:fillcolor "indianred1"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -99,23 +99,23 @@
 
 (defmethod graphviz-node-properties append
     ((graph ir-graph)
-     (buffer petalisp-ir:buffer))
-  `(("shape" . ,(stringify (petalisp-ir:buffer-shape buffer)))))
+     (buffer petalisp.ir:buffer))
+  `(("shape" . ,(stringify (petalisp.ir:buffer-shape buffer)))))
 
 (defun hide-buffers (references)
-  (subst-if :buffer (lambda (x) (typep x 'petalisp-ir:buffer)) references))
+  (subst-if :buffer (lambda (x) (typep x 'petalisp.ir:buffer)) references))
 
 (defmethod graphviz-node-properties append
     ((graph ir-graph)
-     (kernel petalisp-ir:kernel))
-  `(("iteration-space" . ,(stringify (petalisp-ir:iteration-space kernel)))
-    ("reduction-range" . ,(stringify (petalisp-ir:reduction-range kernel)))
+     (kernel petalisp.ir:kernel))
+  `(("iteration-space" . ,(stringify (petalisp.ir:iteration-space kernel)))
+    ("reduction-range" . ,(stringify (petalisp.ir:reduction-range kernel)))
     ("body" . ,(with-output-to-string (stream)
                  (let ((instructions '()))
-                   (petalisp-ir:map-instructions
+                   (petalisp.ir:map-instructions
                     (lambda (instruction)
                       (push instruction instructions))
                     kernel)
                    (loop for instruction
-                           in (sort instructions #'< :key #'petalisp-ir:instruction-number)
+                           in (sort instructions #'< :key #'petalisp.ir:instruction-number)
                          do (print instruction stream)))))))

@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-ir)
+(in-package #:petalisp.ir)
 
 ;;; This file defines the function COMPUTE-ITERATION-SPACES that, when
 ;;; invoked on a node and in the context of a valid *BUFFER-TABLE*, will

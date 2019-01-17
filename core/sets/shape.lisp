@@ -120,10 +120,10 @@
   (empty-set))
 
 (defmethod shape-union :before ((shapes cons))
-  (demand (identical shapes :key #'rank)
-    "~@<Can only determine the union of index shapes with ~
-            equal rank. The index shapes ~
-            ~{~#[~;and ~S~;~S ~:;~S, ~]~} violate this requirement.~:@>"
+  (assert (identical shapes :key #'rank) ()
+          "~@<Can only determine the union of index shapes with ~
+              equal rank. The index shapes ~
+              ~{~#[~;and ~S~;~S ~:;~S, ~]~} violate this requirement.~:@>"
     shapes))
 
 (defmethod shape-union ((shapes cons))

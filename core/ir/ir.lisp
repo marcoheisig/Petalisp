@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-ir)
+(in-package #:petalisp.ir)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -291,7 +291,7 @@
   (map-buffers-and-kernels #'identity function root-buffers))
 
 (defun map-instructions (function kernel)
-  (loop for store in (petalisp-ir:stores kernel) do
+  (loop for store in (petalisp.ir:stores kernel) do
     (map-instruction-tree function store)))
 
 (defun map-instruction-tree (function root-instruction)
@@ -321,8 +321,8 @@
 ;;; the leaf instructions.  So we know that the highest instruction number
 ;;; must be somewhere at the root instructions.
 (defun highest-instruction-number (kernel)
-  (max (loop for store in (petalisp-ir:stores kernel)
-             maximize (petalisp-ir:instruction-number store))))
+  (max (loop for store in (petalisp.ir:stores kernel)
+             maximize (petalisp.ir:instruction-number store))))
 
 (defun update-instruction-numbers (kernel)
   ;; Step 1 - set all instruction numbers to NIL
