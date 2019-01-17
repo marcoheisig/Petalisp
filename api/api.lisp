@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-api)
+(in-package #:petalisp.api)
 
 (defvar *backend* (petalisp-native-backend:make-native-backend)
   "The backend on which Petalisp programs are executed.")

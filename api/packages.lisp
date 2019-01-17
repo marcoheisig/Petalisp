@@ -2,7 +2,7 @@
 
 (cl:in-package #:common-lisp-user)
 
-(cl:defpackage :petalisp-api
+(cl:defpackage #:petalisp.api
   (:nicknames :petalisp)
   (:use :common-lisp :petalisp-core)
   (:export

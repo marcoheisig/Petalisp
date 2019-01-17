@@ -1,4 +1,4 @@
-(defsystem :petalisp-api
+(defsystem "petalisp.api"
   :description "A Convenient API for Petalisp."
   :author "Marco Heisig <marco.heisig@fau.de>"
   :license "AGPLv3"
