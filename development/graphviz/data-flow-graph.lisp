@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-development)
+(in-package #:petalisp.graphviz)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -12,7 +12,7 @@
 (defclass data-flow-edge (petalisp-edge)
   ())
 
-(defmethod graphviz-default-graph ((node strided-array))
+(defmethod graphviz-default-graph ((node petalisp.strided-arrays:strided-array))
   'data-flow-graph)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27,7 +27,7 @@
 (defmethod graphviz-incoming-edge-origins
     ((graph data-flow-graph)
      (edge data-flow-edge)
-     (strided-array strided-array))
+     (strided-array petalisp.strided-arrays:strided-array))
   (inputs strided-array))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -36,22 +36,22 @@
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (immediate array-immediate))
+     (immediate petalisp.strided-arrays:array-immediate))
   `(:fillcolor "cadetblue1"))
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (immediate application))
+     (immediate petalisp.strided-arrays:application))
   `(:fillcolor "burlywood1"))
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (immediate reduction))
+     (immediate petalisp.strided-arrays:reduction))
   `(:fillcolor "beige"))
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (node fusion))
+     (node petalisp.strided-arrays.fusion))
   `(:fillcolor "cyan3"))
 
 (defmethod graphviz-node-attributes
@@ -65,12 +65,12 @@
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (strided-array strided-array))
+     (strided-array petalisp.strided-arrays:strided-array))
   `(("shape" . ,(stringify (shape strided-array)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (array-immediate array-immediate))
+     (array-immediate petalisp.strided-arrays:array-immediate))
   `(("storage" . ,(stringify (storage array-immediate)))))
 
 (defmethod graphviz-node-properties append
@@ -80,15 +80,15 @@
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (node application))
+     (node petalisp.strided-arrays:application))
   `(("operator" . ,(stringify (operator node)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (node reduction))
+     (node petalisp.strided-arrays:reduction))
   `(("operator" . ,(stringify (operator node)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (node reference))
+     (node petalisp.strided-arrays:reference))
   `(("transformation" . ,(stringify (transformation node)))))
