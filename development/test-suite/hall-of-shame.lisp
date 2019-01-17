@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-development)
+(in-package #:petalisp.test-suite)
 
 (test sum-of-pairs
   (let* ((size 10)

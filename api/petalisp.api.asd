@@ -14,7 +14,7 @@
    "petalisp-ir-backend"
    "petalisp-native-backend")
 
-  :in-order-to ((test-op (test-op :petalisp-development)))
+  :in-order-to ((test-op (test-op "petalisp.test-suite")))
 
   :serial t
   :components

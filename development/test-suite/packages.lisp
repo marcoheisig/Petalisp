@@ -2,9 +2,8 @@
 
 (cl:in-package #:common-lisp-user)
 
-(cl:defpackage #:petalisp-development
-  (:nicknames #:petalisp-dev)
-  (:shadowing-import-from :petalisp-core #:set-difference #:set-equal)
+(defpackage #:petalisp.test-suite
+  (:shadowing-import-from #:petalisp-core #:set-difference #:set-equal)
   (:use
    #:closer-common-lisp
    #:alexandria
@@ -17,5 +16,6 @@
    #:petalisp-examples-linear-algebra)
   (:export
    #:run-test-suite
-   #:make-testing-backend))
+   #:make-testing-backend
+   #:view))
 
