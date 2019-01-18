@@ -1,7 +1,7 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(cl:defpackage :ucons
-  (:use :cl :alexandria)
+(cl:defpackage #:petalisp.ucons
+  (:use #:common-lisp #:alexandria)
   (:export
    #:ucons
    #:uconsp
@@ -18,7 +18,7 @@
    #:*root-table*
    #:make-root-table))
 
-(in-package :ucons)
+(in-package #:petalisp.ucons)
 
 ;;; ucons - unique conses
 ;;;
@@ -265,7 +265,7 @@ have been converted to lists."
 
 (defmethod print-object ((ulist ucons) stream)
   (cond (*print-pretty*
-         (let ((list (ucons:list-from-ulist ulist)))
+         (let ((list (petalisp.ucons:list-from-ulist ulist)))
            (pprint-logical-block (stream list :prefix "[" :suffix "]")
              (pprint-linear stream list nil))))
         (t
