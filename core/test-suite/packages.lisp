@@ -12,8 +12,8 @@
    #:petalisp-reference-backend
    #:petalisp-ir-backend
    #:petalisp-native-backend
-   #:petalisp-examples-iterative-methods
-   #:petalisp-examples-linear-algebra)
+   #:petalisp.examples.iterative-methods
+   #:petalisp.examples.linear-algebra)
   (:export
    #:run-test-suite
    #:make-testing-backend

@@ -3,9 +3,11 @@
 
 (asdf:test-system :petalisp)
 
-(defpackage :petalisp-examples-getting-started
-  (:shadowing-import-from :petalisp :set-difference)
-  (:use :common-lisp :petalisp))
+(defpackage #:petalisp.examples.getting-started
+  (:shadowing-import-from #:petalisp #:set-difference)
+  (:use #:common-lisp #:petalisp))
+
+(in-package #:petalisp.examples.getting-started)
 
 (defun present (expression)
   ;; Uncomment the following line to also show the data flow graph
