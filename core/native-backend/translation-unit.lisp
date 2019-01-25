@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-native-backend)
+(in-package #:petalisp.native-backend)
 
 (defclass translation-unit ()
   ((%symbol-table :initarg :symbol-table :reader symbol-table)
@@ -45,7 +45,7 @@
 (defun index-symbol (n)
   (if (minusp n)
       'reduction-index
-      (alexandria:format-symbol :petalisp-native-backend "INDEX-~D" n)))
+      (alexandria:format-symbol '#:petalisp.native-backend "INDEX-~D" n)))
 
 (defun array-symbol (n)
   (pseudo-eval 0 `(aref arrays ,n) (elt (array-types *translation-unit*) n)))

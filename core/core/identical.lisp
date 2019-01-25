@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-core)
+(in-package #:petalisp.core)
 
 (defun identical (sequence &key (test #'eql) (key #'identity))
   "Check whether the KEYs of SEQUENCE are identical with respect to TEST."

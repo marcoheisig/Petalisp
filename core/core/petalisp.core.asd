@@ -1,4 +1,4 @@
-(defsystem :petalisp-core
+(defsystem "petalisp.core"
   :author "Marco Heisig <marco.heisig@fau.de>"
   :license "AGPLv3"
 
@@ -10,7 +10,7 @@
    "trivia"
    "trivial-arguments")
 
-  :in-order-to ((test-op (test-op :petalisp-development)))
+  :in-order-to ((test-op (test-op "petalisp.test-suite")))
 
   :serial t
   :components

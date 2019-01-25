@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-ir-backend)
+(in-package #:petalisp.ir-backend)
 
 (defgeneric execute (ir-node))
 

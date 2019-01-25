@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-core)
+(in-package #:petalisp.core)
 
 (defun function-lambda-list (function)
   "Return the lambda list of FUNCTION.  Signal an error if the

@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-core)
+(in-package #:petalisp.core)
 
 ;;; Reductions.  There is a whole zoo of possible reductions out there,
 ;;; like left folds, left folds with an initial value, left folds with an

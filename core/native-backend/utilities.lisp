@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-native-backend)
+(in-package #:petalisp.native-backend)
 
 ;;; We need this macro because our code generator can only handle forms
 ;;; that are flat and would thus destroy (SETF (AREF ...) ...) forms by

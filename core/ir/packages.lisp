@@ -1,8 +1,8 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
 (cl:defpackage :petalisp.ir
-  (:use :closer-common-lisp :alexandria :petalisp-core)
-  (:shadowing-import-from :petalisp-core #:set-difference #:set-equal)
+  (:use :closer-common-lisp :alexandria :petalisp.core)
+  (:shadowing-import-from :petalisp.core #:set-difference #:set-equal)
   (:export
 
    ;; Generic Functions

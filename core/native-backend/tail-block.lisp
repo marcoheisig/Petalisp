@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-native-backend)
+(in-package #:petalisp.native-backend)
 
 ;;; A tail block is a basic block that ends in a particular form, e.g.,
 ;;; (values X Y) and has no successors.

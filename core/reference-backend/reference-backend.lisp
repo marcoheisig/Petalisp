@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-reference-backend)
+(in-package #:petalisp.reference-backend)
 
 ;;; The purpose of the reference backend is to compute reference solutions
 ;;; for automated testing. It is totally acceptable that this
@@ -40,7 +40,7 @@
     (call-next-method)))
 
 (defmethod evaluate :around ((strided-array strided-array))
-  (petalisp-memoization:with-hash-table-memoization (strided-array)
+  (petalisp.memoization:with-hash-table-memoization (strided-array)
       *memoization-table*
     (call-next-method)))
 

@@ -12,7 +12,6 @@
 (defun present (expression)
   ;; Uncomment the following line to also show the data flow graph
   ;; representation of EXPRESSION.
-  #+(or) (petalisp-dev:view expression)
   (format t "~%=> ~A~%~%" (compute expression)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -151,10 +150,10 @@
 ;;; Finally, let's have a glimpse at the Petalisp intermediate
 ;;; representation of Jacobi's algorithm.
 
-(petalisp-dev:view
+(petalisp.graphviz:view
  (first
   (petalisp.ir:ir-from-strided-arrays
    (list
     (jacobi-2d
      (jacobi-2d domain)))
-   (petalisp-ir-backend:make-ir-backend))))
+   (petalisp.ir-backend:make-ir-backend))))

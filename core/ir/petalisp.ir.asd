@@ -3,7 +3,7 @@
   :license "AGPLv3"
 
   :depends-on
-  ("petalisp-core")
+  ("petalisp.core")
 
   :serial t
   :components

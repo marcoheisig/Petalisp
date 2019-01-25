@@ -39,7 +39,7 @@
   (let* ((input-rank
            (if input-mask-p
                (length input-mask)
-               (petalisp-core::function-arity function)))
+               (petalisp.core::function-arity function)))
          (input-mask
            (if (not input-mask-p)
                (make-array input-rank :initial-element nil)

@@ -3,15 +3,15 @@
 (cl:in-package #:common-lisp-user)
 
 (defpackage #:petalisp.test-suite
-  (:shadowing-import-from #:petalisp-core #:set-difference #:set-equal)
+  (:shadowing-import-from #:petalisp.core #:set-difference #:set-equal)
   (:use
    #:closer-common-lisp
    #:alexandria
-   #:petalisp-core
+   #:petalisp.core
    #:petalisp.api
-   #:petalisp-reference-backend
-   #:petalisp-ir-backend
-   #:petalisp-native-backend
+   #:petalisp.reference-backend
+   #:petalisp.ir-backend
+   #:petalisp.native-backend
    #:petalisp.examples.iterative-methods
    #:petalisp.examples.linear-algebra)
   (:export

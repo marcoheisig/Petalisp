@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-core)
+(in-package #:petalisp.core)
 
 (defclass identity-transformation (invertible-transformation)
   ((%rank :initarg :rank
@@ -9,7 +9,7 @@
           :type (integer 0 *))))
 
 (defun identity-transformation (rank)
-  (petalisp-memoization:with-vector-memoization (rank)
+  (petalisp.memoization:with-vector-memoization (rank)
     (make-instance 'identity-transformation
       :rank rank)))
 

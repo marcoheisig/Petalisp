@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-native-backend)
+(in-package #:petalisp.native-backend)
 
 (defclass loop-block (basic-block)
   ((%start :initarg :start :reader loop-start)

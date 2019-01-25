@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-native-backend)
+(in-package #:petalisp.native-backend)
 
 (defmethod compute-immediates ((strided-arrays list)
                                (native-backend native-backend))
@@ -56,7 +56,7 @@
         (functions (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
         (compiled-kernel
           (let ((blueprint (petalisp.ir:blueprint kernel)))
-            (petalisp-memoization:with-hash-table-memoization (blueprint)
+            (petalisp.memoization:with-hash-table-memoization (blueprint)
                 (compile-cache backend)
               (compile nil (lambda-expression-from-blueprint blueprint))))))
     (setf (fill-pointer ranges) 0)

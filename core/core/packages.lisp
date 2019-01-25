@@ -2,7 +2,7 @@
 
 (cl:in-package #:common-lisp-user)
 
-(cl:defpackage :petalisp-core
+(defpackage #:petalisp.core
   (:use :closer-common-lisp :alexandria)
   (:shadow cl:set-difference alexandria:set-equal)
   (:export

@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-core)
+(in-package #:petalisp.core)
 
 (defclass explicit-set (finite-set)
   ((%table :initarg :table :reader set-element-table)))

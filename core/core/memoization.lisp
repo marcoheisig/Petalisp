@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(cl:defpackage :petalisp-memoization
+(cl:defpackage #:petalisp.memoization
   (:use :cl :alexandria)
   (:export
    #:with-memoization
@@ -10,7 +10,7 @@
    #:with-vector-memoization
    #:with-multiple-value-vector-memoization))
 
-(in-package :petalisp-memoization)
+(in-package #:petalisp.memoization)
 
 ;;; Marco Heisig's Memoization Macros
 ;;;

@@ -1,9 +1,9 @@
-(defsystem :petalisp-reference-backend
+(defsystem "petalisp.reference-backend"
   :author "Marco Heisig <marco.heisig@fau.de>"
   :license "AGPLv3"
 
   :depends-on
-  ("petalisp-core")
+  ("petalisp.core")
 
   :serial t
   :components

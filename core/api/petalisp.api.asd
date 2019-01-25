@@ -9,10 +9,10 @@
    "closer-mop"
    "trivia"
    "split-sequence"
-   "petalisp-core"
-   "petalisp-reference-backend"
-   "petalisp-ir-backend"
-   "petalisp-native-backend")
+   "petalisp.core"
+   "petalisp.reference-backend"
+   "petalisp.ir-backend"
+   "petalisp.native-backend")
 
   :in-order-to ((test-op (test-op "petalisp.test-suite")))
 

@@ -4,7 +4,7 @@
 
 (cl:defpackage #:petalisp.api
   (:nicknames :petalisp)
-  (:use :common-lisp :petalisp-core)
+  (:use :common-lisp :petalisp.core)
   (:export
    ;; High-level API
    #:α
@@ -30,7 +30,7 @@
    #:make-ir-backend
    #:make-native-backend
 
-   ;; Re-exports from petalisp-core
+   ;; Re-exports from petalisp.core
 
    ;; Ranges
    #:range
@@ -92,7 +92,7 @@
    #:make-range-immediate
    #:lisp-datum-from-immediate)
 
-  (:shadowing-import-from :petalisp-core #:set-difference)
-  (:shadowing-import-from :petalisp-reference-backend #:make-reference-backend)
-  (:shadowing-import-from :petalisp-ir-backend #:make-ir-backend)
-  (:shadowing-import-from :petalisp-native-backend #:make-native-backend))
+  (:shadowing-import-from :petalisp.core #:set-difference)
+  (:shadowing-import-from :petalisp.reference-backend #:make-reference-backend)
+  (:shadowing-import-from :petalisp.ir-backend #:make-ir-backend)
+  (:shadowing-import-from :petalisp.native-backend #:make-native-backend))

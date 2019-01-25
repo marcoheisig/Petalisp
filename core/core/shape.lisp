@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-core)
+(in-package #:petalisp.core)
 
 ;;; A shape of rank D is the Cartesian product of D ranges.  That means
 ;;; each element of a shape is a D-tuple of integers, such that the first

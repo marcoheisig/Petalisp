@@ -1,6 +1,6 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package :petalisp-ir-backend)
+(in-package #:petalisp.ir-backend)
 
 ;;; The purpose of the IR backend is to check that the IR conversion
 ;;; preserves semantics.  It is similar to the reference backend, but

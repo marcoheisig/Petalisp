@@ -5,16 +5,16 @@
 (defclass testing-backend (backend)
   ((%reference-backend
     :reader reference-backend
-    :initform (petalisp-reference-backend:make-reference-backend))
+    :initform (petalisp.reference-backend:make-reference-backend))
    (%ir-backend
     :reader ir-backend
-    :initform (petalisp-ir-backend:make-ir-backend))
+    :initform (petalisp.ir-backend:make-ir-backend))
    (%native-backend
     :reader native-backend
     :initform
     #+nil
-    (petalisp-ir-backend:make-ir-backend)
-    (petalisp-native-backend:make-native-backend))))
+    (petalisp.ir-backend:make-ir-backend)
+    (petalisp.native-backend:make-native-backend))))
 
 (defun make-testing-backend ()
   (make-instance 'testing-backend))
