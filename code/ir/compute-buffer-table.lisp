@@ -108,9 +108,18 @@
                nil
                (transform-axis reduction-axis transformation)))))))
 
+;;; Determine whether a reduction along the given REDUCTION-AXIS would be
+;;; heterogeneous, meaning that different parts of the reduction would read
+;;; different inputs of the fusion.
 (defun breaking-fusion-p (fusion reduction-axis)
-  ;; TODO
-  t)
+  (flet ((reduction-range-of (strided-array)
+           (nth reduction-axis (ranges (shape strided-array)))))
+    (let ((fusion-range (reduction-range-of fusion)))
+      (loop for input in (inputs fusion)
+              thereis (not
+                       (set-equal
+                        fusion-range
+                        (reduction-range-of input)))))))
 
 (defmethod visit-node ((fusion fusion) reduction-axis)
   (multiple-value-bind (traverse-inputs-p inputs-special-p reduction-axis)
