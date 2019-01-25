@@ -112,14 +112,16 @@
 ;;; heterogeneous, meaning that different parts of the reduction would read
 ;;; different inputs of the fusion.
 (defun breaking-fusion-p (fusion reduction-axis)
-  (flet ((reduction-range-of (strided-array)
-           (nth reduction-axis (ranges (shape strided-array)))))
-    (let ((fusion-range (reduction-range-of fusion)))
-      (loop for input in (inputs fusion)
-              thereis (not
-                       (set-equal
-                        fusion-range
-                        (reduction-range-of input)))))))
+  (if (null reduction-axis)
+      nil
+      (flet ((reduction-range-of (strided-array)
+               (nth reduction-axis (ranges (shape strided-array)))))
+        (let ((fusion-range (reduction-range-of fusion)))
+          (loop for input in (inputs fusion)
+                  thereis (not
+                           (set-equal
+                            fusion-range
+                            (reduction-range-of input))))))))
 
 (defmethod visit-node ((fusion fusion) reduction-axis)
   (multiple-value-bind (traverse-inputs-p inputs-special-p reduction-axis)
