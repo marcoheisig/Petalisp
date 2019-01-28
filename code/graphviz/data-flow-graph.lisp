@@ -12,7 +12,7 @@
 (defclass data-flow-edge (petalisp-edge)
   ())
 
-(defmethod graphviz-default-graph ((node petalisp.strided-arrays:strided-array))
+(defmethod graphviz-default-graph ((node petalisp.core:strided-array))
   'data-flow-graph)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27,8 +27,8 @@
 (defmethod graphviz-incoming-edge-origins
     ((graph data-flow-graph)
      (edge data-flow-edge)
-     (strided-array petalisp.strided-arrays:strided-array))
-  (inputs strided-array))
+     (strided-array petalisp.core:strided-array))
+  (petalisp.core:inputs strided-array))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -36,27 +36,27 @@
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (immediate petalisp.strided-arrays:array-immediate))
+     (immediate petalisp.core:array-immediate))
   `(:fillcolor "cadetblue1"))
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (immediate petalisp.strided-arrays:application))
+     (immediate petalisp.core:application))
   `(:fillcolor "burlywood1"))
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (immediate petalisp.strided-arrays:reduction))
+     (immediate petalisp.core:reduction))
   `(:fillcolor "beige"))
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (node petalisp.strided-arrays.fusion))
+     (node petalisp.core:fusion))
   `(:fillcolor "cyan3"))
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (node reference))
+     (node petalisp.core:reference))
   `(:fillcolor "gray"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -65,30 +65,30 @@
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (strided-array petalisp.strided-arrays:strided-array))
-  `(("shape" . ,(stringify (shape strided-array)))))
+     (strided-array petalisp.core:strided-array))
+  `(("shape" . ,(stringify (petalisp.core:shape strided-array)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (array-immediate petalisp.strided-arrays:array-immediate))
-  `(("storage" . ,(stringify (storage array-immediate)))))
+     (array-immediate petalisp.core:array-immediate))
+  `(("storage" . ,(stringify (petalisp.core:storage array-immediate)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (range-immediate range-immediate))
+     (range-immediate petalisp.core:range-immediate))
   `())
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (node petalisp.strided-arrays:application))
-  `(("operator" . ,(stringify (operator node)))))
+     (node petalisp.core:application))
+  `(("operator" . ,(stringify (petalisp.core:operator node)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (node petalisp.strided-arrays:reduction))
-  `(("operator" . ,(stringify (operator node)))))
+     (node petalisp.core:reduction))
+  `(("operator" . ,(stringify (petalisp.core:operator node)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (node petalisp.strided-arrays:reference))
-  `(("transformation" . ,(stringify (transformation node)))))
+     (node petalisp.core:reference))
+  `(("transformation" . ,(stringify (petalisp.core:transformation node)))))

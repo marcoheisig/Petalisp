@@ -10,8 +10,7 @@
 (in-package #:petalisp.examples.getting-started)
 
 (defun present (expression)
-  ;; Uncomment the following line to also show the data flow graph
-  ;; representation of EXPRESSION.
+  (petalisp.graphviz:view expression)
   (format t "~%=> ~A~%~%" (compute expression)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -19,19 +18,19 @@
 ;;; Petalisp Basics
 
 (present
- (reshape 0 '())) ; the empty space
+ (reshape 0 (~))) ; the empty space
 
 (defun zeros (shape)
   (reshape 0 shape))
 
 (present
- (zeros 10)) ; ten zeros
+ (zeros (~ 10))) ; ten zeros
 
 (present
- (indices (zeros 10))) ; the numbers from 0 to 9 (inclusive)
+ (indices (zeros (~ 10)))) ; the numbers from 0 to 9 (inclusive)
 
 (present
- (reshape #2a((1 2 3 4) (5 6 7 8)) '((0 1) (1 2)))) ; selecting values
+ (reshape #2a((1 2 3 4) (5 6 7 8)) (~ 0 1 ~ 1 2))) ; selecting values
 
 (present
  (reshape #2a((1 2 3 4) (5 6 7 8))
@@ -39,22 +38,22 @@
 
 ;; arrays can be merged with fuse
 
-(present (fuse (reshape 5 3)
-               (reshape 1 '((3 5)))))
+(present (fuse (reshape 5 (~ 0 2))
+               (reshape 1 (~ 3 5))))
 
 ;; arrays can be overwritten with fuse*
 
 (present
- (fuse* (zeros '(10 10))
-        (reshape 1 '((2 7) (2 7)))))
+ (fuse* (zeros (~ 10 ~ 10))
+        (reshape 1 (~ 2 7 ~ 2 7))))
 
 ;; lazy arrays permit beautiful functional abstractions
 
 (defun chessboard (h w)
-  (fuse (reshape 0 `((0 2 ,h) (0 2 ,w)))
-        (reshape 0 `((1 2 ,h) (1 2 ,w)))
-        (reshape 1 `((0 2 ,h) (1 2 ,w)))
-        (reshape 1 `((1 2 ,h) (0 2 ,w)))))
+  (fuse (reshape 0 (~ 0 2 h ~ 0 2 w))
+        (reshape 0 (~ 1 2 h ~ 1 2 w))
+        (reshape 1 (~ 0 2 h ~ 1 2 w))
+        (reshape 1 (~ 1 2 h ~ 0 2 w))))
 
 (present
  (chessboard 8 8))
@@ -103,10 +102,10 @@
 (present (matmul MA MA))
 
 (present
- (matmul (reshape 3.0 '(10 8))
-         (reshape 2.0 '(8 10))))
+ (matmul (reshape 3.0 (~ 10 ~  8))
+         (reshape 2.0 (~  8 ~ 10))))
 
-(defparameter M (reshape #(1 2 3 4 5 6) '(6 6)))
+(defparameter M (reshape #(1 2 3 4 5 6) (~ 0 5 ~ 0 5)))
 
 (present M)
 
@@ -117,11 +116,12 @@
 ;;;
 ;;;  Jacobi's Method
 
-(defun interior (shape)
-  (loop for range in (ranges shape) do
-    (multiple-value-bind (start step end)
-        (range-start-step-end range)
-      (list (+ start step) step (- end step)))))
+(defun interior (array)
+  (flet ((range-interior (range)
+           (multiple-value-bind (start step end)
+               (range-start-step-end range)
+             (range (+ start step) step (- end step)))))
+    (apply #'make-shape (mapcar #'range-interior (ranges (shape array))))))
 
 (defun jacobi-2d (grid)
   (let ((interior (interior grid)))
@@ -135,8 +135,8 @@
            (reshape grid (τ (i j) (i (1- j))) interior))))))
 
 (defparameter domain
-  (fuse* (reshape 1.0 '((0 9) (0 9)))
-         (reshape 0.0 '((1 8) (1 8)))))
+  (fuse* (reshape 1.0 (~ 0 9 ~ 0 9))
+         (reshape 0.0 (~ 1 8 ~ 1 8))))
 
 (present domain)
 

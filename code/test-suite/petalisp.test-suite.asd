@@ -6,7 +6,8 @@
   :depends-on
   ("asdf"
    "petalisp"
-   "petalisp.examples")
+   "petalisp.examples"
+   "petalisp.graphviz")
 
   :perform
   (test-op (o c) (symbol-call '#:petalisp.test-suite '#:run-petalisp-test-suite))
