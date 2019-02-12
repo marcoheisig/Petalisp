@@ -24,7 +24,7 @@
   (reshape 0 shape))
 
 (present
- (zeros (~ 10))) ; ten zeros
+ (zeros (~ 0 9))) ; ten zeros
 
 (present
  (indices (zeros (~ 10)))) ; the numbers from 0 to 9 (inclusive)
@@ -44,7 +44,7 @@
 ;; arrays can be overwritten with fuse*
 
 (present
- (fuse* (zeros (~ 10 ~ 10))
+ (fuse* (zeros (~ 0 9 ~ 0 9))
         (reshape 1 (~ 2 7 ~ 2 7))))
 
 ;; lazy arrays permit beautiful functional abstractions

@@ -90,16 +90,40 @@
 (defun norm (x)
   (α #'sqrt (dot x x)))
 
+(defun flip (array i j)
+  (reshape array
+           (make-transformation
+            :output-mask
+            (loop for index below (rank array)
+                  collect
+                  (cond ((= index i) j)
+                        ((= index j) i)
+                        (t index))))))
+
+(defun β* (f z x &optional axis)
+  (cond ((empty-array-p x) z)
+        ((integerp axis)
+         (β f (flip x 0 axis)))
+        ((loop until (zerop (rank x))
+               do (setf x (β f x))
+               finally (return x)))))
+
+(defun sum (x &optional axis)
+  (β* #'+ 0 x axis))
+
+(defun product (x &optional axis)
+  (β* #'* 1 x axis))
+
 (defun asum (x)
   (coerce-to-scalar
    (β #'+ (α #'abs (coerce-to-matrix x)))))
 
-(defun argmax (x)
-  (β (lambda (li lv ri rv)
-       (if (>= (abs lv) (abs rv))
-           (values li lv)
-           (values ri rv)))
-     (indices x) x))
+(defun max* (x)
+  (β (lambda (lv li rv ri)
+       (if (> lv rv)
+           (values lv li)
+           (values rv ri)))
+     x (indices x)))
 
 (defun matmul (A B)
   (β #'+
@@ -112,8 +136,8 @@
   (trivia:ematch A
     ((square-matrix m)
      (assert (<= 1 d m))
-     (multiple-value-bind (p v)
-         (argmax (reshape A (make-shape (range d m) (range d))))
+     (multiple-value-bind (v p)
+         (max* (α #'abs (reshape A (make-shape (range d m) (range d)))))
        (let ((p (coerce-to-scalar p))
              (v (coerce-to-scalar v)))
          ;(schedule A p v)

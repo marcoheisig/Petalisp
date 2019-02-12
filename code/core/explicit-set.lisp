@@ -2,6 +2,11 @@
 
 (in-package #:petalisp.core)
 
+;;; The class explicit set provides a straightforward implementation of the
+;;; entire set protocol.  The class can serve both as a reference
+;;; implementation, and as a fallback solution for finite sets that do not
+;;; provide certain operations.
+
 (defclass explicit-set (finite-set)
   ((%table :initarg :table :reader set-element-table)))
 

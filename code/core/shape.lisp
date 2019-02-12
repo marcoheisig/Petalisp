@@ -6,9 +6,8 @@
 ;;; each element of a shape is a D-tuple of integers, such that the first
 ;;; integer is an element of the first range, the second integer is an
 ;;; element of the second range and so on.  Ranges are never empty, so
-;;; there can also be no empty shapes.  However, there is one shape, that
-;;; is the product of zero ranges, which has the empty tuple as its sole
-;;; element.
+;;; there can also be no empty shapes.  However, there is one shape - the
+;;; product of zero ranges - which has the empty tuple as its sole element.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
