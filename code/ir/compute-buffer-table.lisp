@@ -108,6 +108,18 @@
                nil
                (transform-axis reduction-axis transformation)))))))
 
+(defmethod visit-node ((fusion fusion) reduction-axis)
+  (multiple-value-bind (traverse-inputs-p inputs-special-p reduction-axis)
+      (call-next-method)
+    (cond ((not traverse-inputs-p)
+           (values nil nil nil))
+          ;; Rule 6.
+          ((breaking-fusion-p fusion reduction-axis)
+           (setf (node-value fusion) :special)
+           (values t inputs-special-p nil))
+          (t
+           (values t inputs-special-p reduction-axis)))))
+
 ;;; Determine whether a reduction along the given REDUCTION-AXIS would be
 ;;; heterogeneous, meaning that different parts of the reduction would read
 ;;; different inputs of the fusion.
@@ -122,15 +134,3 @@
                            (set-equal
                             fusion-range
                             (reduction-range-of input))))))))
-
-(defmethod visit-node ((fusion fusion) reduction-axis)
-  (multiple-value-bind (traverse-inputs-p inputs-special-p reduction-axis)
-      (call-next-method)
-    (cond ((not traverse-inputs-p)
-           (values nil nil nil))
-          ;; Rule 6.
-          ((breaking-fusion-p fusion reduction-axis)
-           (setf (node-value fusion) :special)
-           (values t inputs-special-p nil))
-          (t
-           (values t inputs-special-p reduction-axis)))))
