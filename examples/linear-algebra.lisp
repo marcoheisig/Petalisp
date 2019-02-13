@@ -12,7 +12,7 @@
    #:norm
    #:dot
    #:asum
-   #:argmax
+   #:max*
    #:matmul
    #:lu))
 
