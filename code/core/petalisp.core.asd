@@ -8,7 +8,8 @@
    "bordeaux-threads"
    "lparallel"
    "trivia"
-   "trivial-arguments")
+   "trivial-arguments"
+   "petalisp.utilities")
 
   :in-order-to ((test-op (test-op "petalisp.test-suite")))
 
@@ -17,12 +18,6 @@
   ((:file "packages")
 
    ;; Utilities
-   (:file "memoization")
-   (:file "extended-euclid")
-   (:file "identical")
-   (:file "miscellaneous")
-   (:file "symmetric-function")
-   (:file "optimizing-constructor")
    (:file "ucons")
 
    ;; Type inference

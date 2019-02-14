@@ -35,7 +35,7 @@
 ;;;
 ;;; Methods
 
-(define-class-predicate immediate)
+(petalisp.utilities:define-class-predicate immediate)
 
 (defmethod inputs ((immediate immediate))
   '())

@@ -36,18 +36,22 @@
   (declare (ignore set-1 set-2))
   t)
 
-(define-method-pair set-equal ((empty-set empty-set) (any-set any-set))
+(petalisp.utilities:define-method-pair set-equal
+    ((empty-set empty-set) (any-set any-set))
   (declare (ignore empty-set any-set))
   nil)
 
-(define-method-pair set-intersection ((empty-set empty-set) (any-set any-set))
+(petalisp.utilities:define-method-pair set-intersection
+    ((empty-set empty-set) (any-set any-set))
   (declare (ignore any-set))
   empty-set)
 
-(define-method-pair set-intersectionp ((empty-set empty-set) (any-set any-set))
+(petalisp.utilities:define-method-pair set-intersectionp
+    ((empty-set empty-set) (any-set any-set))
   (declare (ignore any-set empty-set))
   nil)
 
-(define-method-pair set-union ((empty-set empty-set) (any-set any-set))
+(petalisp.utilities:define-method-pair set-union
+    ((empty-set empty-set) (any-set any-set))
   (declare (ignore empty-set))
   any-set)

@@ -89,7 +89,7 @@
 ;;;
 ;;; Methods
 
-(define-class-predicate transformation)
+(petalisp.utilities:define-class-predicate transformation)
 
 (defmethod transformation-equal ((t1 transformation) (t2 transformation))
   (= (input-rank t1)

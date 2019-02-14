@@ -7,7 +7,7 @@
 ;;; Generic Functions
 
 (defgeneric make-application (value-n operator inputs)
-  (:method-combination optimizing-constructor))
+  (:method-combination petalisp.utilities:optimizing-constructor))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -24,7 +24,7 @@
 
 (defmethod make-application :check ((value-n integer) (function function) (inputs list))
   (assert (<= 0 value-n (1- multiple-values-limit)))
-  (assert (identical inputs :test #'set-equal :key #'shape)))
+  (assert (petalisp.utilities:identical inputs :test #'set-equal :key #'shape)))
 
 (defmethod make-application ((value-n integer) (function function) inputs)
   (multiple-value-bind (element-types more-p conditions function-name)

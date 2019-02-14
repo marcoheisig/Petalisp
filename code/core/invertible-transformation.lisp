@@ -18,7 +18,7 @@
 ;;;
 ;;; Methods
 
-(define-class-predicate invertible-transformation :hyphenate t)
+(petalisp.utilities:define-class-predicate invertible-transformation :hyphenate t)
 
 (defmethod invertible-transformation-p
     ((transformation invertible-transformation))

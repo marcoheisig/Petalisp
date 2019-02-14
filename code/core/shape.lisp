@@ -41,7 +41,7 @@
 ;;;
 ;;; Methods
 
-(define-class-predicate shape)
+(petalisp.utilities:define-class-predicate shape)
 
 (defmethod shape-difference-list ((shape-1 shape) (shape-2 shape))
   (let ((intersection (set-intersection shape-1 shape-2)))
@@ -119,7 +119,7 @@
   (empty-set))
 
 (defmethod shape-union :before ((shapes cons))
-  (assert (identical shapes :key #'rank) ()
+  (assert (petalisp.utilities:identical shapes :key #'rank) ()
           "~@<Can only determine the union of index shapes with ~
               equal rank. The index shapes ~
               ~{~#[~;and ~S~;~S ~:;~S, ~]~} violate this requirement.~:@>"

@@ -7,7 +7,7 @@
 ;;; Generic Functions
 
 (defgeneric make-reference (strided-array shape transformation)
-  (:method-combination optimizing-constructor))
+  (:method-combination petalisp.utilities:optimizing-constructor))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

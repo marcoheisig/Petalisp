@@ -47,9 +47,9 @@
 ;;;
 ;;; Methods
 
-(define-class-predicate range)
+(petalisp.utilities:define-class-predicate range)
 
-(define-class-predicate size-one-range :hyphenate t)
+(petalisp.utilities:define-class-predicate size-one-range :hyphenate t)
 
 (defmethod range-step ((range contiguous-range))
   1)
@@ -106,11 +106,13 @@
 (defmethod set-equal ((range-1 size-one-range) (range-2 size-one-range))
   (= (range-start range-1) (range-start range-2)))
 
-(define-method-pair set-equal ((range-1 size-one-range) (range-2 range))
+(petalisp.utilities:define-method-pair set-equal
+    ((range-1 size-one-range) (range-2 range))
   (declare (ignore range-1 range-2))
   nil)
 
-(define-method-pair set-equal ((range range) (explicit-set explicit-set))
+(petalisp.utilities:define-method-pair set-equal
+    ((range range) (explicit-set explicit-set))
   (let ((table (set-element-table explicit-set)))
     (and (= (hash-table-count table) (set-size range))
          (loop for integer from (range-start range) by (range-step range) to (range-end range)
@@ -278,7 +280,8 @@
     (let ((a (range-step range-1))
           (b (range-step range-2))
           (c (- (range-start range-2) (range-start range-1))))
-      (multiple-value-bind (s gcd) (extended-euclid a b)
+      (multiple-value-bind (s gcd)
+          (petalisp.utilities:extended-euclid a b)
         (when (integerp (/ c gcd))
           (let ((x (+ (* s (/ c gcd) a)
                       (range-start range-1)))

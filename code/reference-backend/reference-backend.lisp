@@ -40,7 +40,7 @@
     (call-next-method)))
 
 (defmethod evaluate :around ((strided-array strided-array))
-  (petalisp.memoization:with-hash-table-memoization (strided-array)
+  (petalisp.utilities:with-hash-table-memoization (strided-array)
       *memoization-table*
     (call-next-method)))
 

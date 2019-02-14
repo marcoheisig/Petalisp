@@ -30,16 +30,16 @@
 (defgeneric set-subsetp (set-1 set-2))
 
 (defgeneric set-equal (set-1 set-2)
-  (:generic-function-class symmetric-function))
+  (:generic-function-class petalisp.utilities:symmetric-function))
 
 (defgeneric set-intersection (set-1 set-2)
-  (:generic-function-class symmetric-function))
+  (:generic-function-class petalisp.utilities:symmetric-function))
 
 (defgeneric set-intersectionp (set-1 set-2)
-  (:generic-function-class symmetric-function))
+  (:generic-function-class petalisp.utilities:symmetric-function))
 
 (defgeneric set-union (set-1 set-2)
-  (:generic-function-class symmetric-function))
+  (:generic-function-class petalisp.utilities:symmetric-function))
 
 (defgeneric set-from-sequence (sequence))
 
@@ -93,6 +93,7 @@
 (defmethod set-intersectionp ((set-1 any-set) (set-2 any-set))
   (and (set-intersection set-1 set-2) t))
 
-(define-method-pair set-equal ((set-1 finite-set) (set-2 infinite-set))
+(petalisp.utilities:define-method-pair set-equal
+    ((set-1 finite-set) (set-2 infinite-set))
   (declare (ignore set-1 set-2))
   nil)

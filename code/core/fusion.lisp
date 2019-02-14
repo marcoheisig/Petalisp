@@ -7,7 +7,7 @@
 ;;; Generic Functions
 
 (defgeneric make-fusion (inputs)
-  (:method-combination optimizing-constructor))
+  (:method-combination petalisp.utilities:optimizing-constructor))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -30,7 +30,7 @@
     ((list _)
      (values))
     ((list* _ _ _)
-     (unless (identical inputs :key #'rank)
+     (unless (petalisp.utilities:identical inputs :key #'rank)
        (error
         "~@<The shapes of the arguments to a fusion operation must ~
             have the same rank, but the supplied arguments have the ~

@@ -32,7 +32,7 @@
 ;;;
 ;;; Methods
 
-(define-class-predicate strided-array :hyphenate t)
+(petalisp.utilities:define-class-predicate strided-array :hyphenate t)
 
 (defmethod coerce-to-strided-array ((strided-array strided-array))
   strided-array)

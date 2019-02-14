@@ -28,7 +28,7 @@
 ;;; Generic Functions
 
 (defgeneric make-reduction (operator inputs)
-  (:method-combination optimizing-constructor))
+  (:method-combination petalisp.utilities:optimizing-constructor))
 
 (defgeneric reduction-range (reduction))
 
@@ -47,7 +47,7 @@
 
 (defmethod make-reduction :check ((operator function) (inputs list))
   (declare (ignore operator))
-  (unless (identical inputs :test #'set-equal :key #'shape)
+  (unless (petalisp.utilities:identical inputs :test #'set-equal :key #'shape)
     (error "~@<Can only reduce data structures of equal shape.~:@>"))
   (unless (plusp (rank (shape (first inputs))))
     (error "~@<Can only reduce data structures with rank greater than zero.~:@>")))
