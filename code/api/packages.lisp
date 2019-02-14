@@ -71,6 +71,7 @@
    ;; Strided Arrays
    #:strided-array
    #:strided-array-p
+   #:empty-array-p
    #:coerce-to-strided-array
    #:element-type
    #:total-size

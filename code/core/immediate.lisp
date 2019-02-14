@@ -22,6 +22,10 @@
 (defclass range-immediate (immediate)
   ())
 
+(defclass empty-array (immediate)
+  ()
+  (:default-initargs :shape (empty-set) :element-type nil))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Constructors
@@ -31,20 +35,42 @@
     :element-type `(integer ,(range-start range) ,(range-end range))
     :shape (make-shape range)))
 
+(defun empty-array ()
+  (load-time-value
+   (make-instance 'empty-array)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Methods
 
 (petalisp.utilities:define-class-predicate immediate)
 
+(petalisp.utilities:define-class-predicate array-immediate :hyphenate t)
+
+(petalisp.utilities:define-class-predicate range-immediate :hyphenate t)
+
+(petalisp.utilities:define-class-predicate empty-array :hyphenate t)
+
 (defmethod inputs ((immediate immediate))
   '())
 
+(defmethod total-size ((empty-array empty-array))
+  0)
+
+(defmethod refcount ((empty-array empty-array))
+  1)
+
+(defmethod (setf refcount) (value (empty-array empty-array))
+  (declare (ignore value empty-array))
+  1)
+
 (defmethod coerce-to-strided-array ((array array))
-  (make-instance 'array-immediate
-    :element-type (array-element-type array)
-    :shape (shape array)
-    :storage array))
+  (if (zerop (array-total-size array))
+      (empty-array)
+      (make-instance 'array-immediate
+        :element-type (array-element-type array)
+        :shape (shape array)
+        :storage array)))
 
 (defmethod coerce-to-strided-array ((object t))
   (let ((element-type (type-of object)))

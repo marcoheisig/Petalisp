@@ -18,6 +18,8 @@
 
 (defgeneric refcount (strided-array))
 
+(defgeneric (setf refcount) (value strided-array))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes
