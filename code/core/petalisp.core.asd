@@ -9,6 +9,8 @@
    "lparallel"
    "trivia"
    "trivial-arguments"
+   "restricted-functions"
+   "ucons"
    "petalisp.utilities")
 
   :in-order-to ((test-op (test-op "petalisp.test-suite")))
@@ -16,9 +18,6 @@
   :serial t
   :components
   ((:file "packages")
-
-   ;; Utilities
-   (:file "ucons")
 
    ;; Type inference
    (:file "atomic-types")

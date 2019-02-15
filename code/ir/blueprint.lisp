@@ -20,10 +20,10 @@
 (defmethod blueprint ((null null)) null)
 
 (defmethod blueprint ((kernel kernel))
-  (petalisp.ucons:ulist
-   (petalisp.ucons:umapcar #'blueprint (ranges (iteration-space kernel)))
+  (ucons:ulist
+   (ucons:umapcar #'blueprint (ranges (iteration-space kernel)))
    (blueprint (reduction-range kernel))
-   (petalisp.ucons:umapcar #'blueprint *buffers*)
+   (ucons:umapcar #'blueprint *buffers*)
    ;; Now generate the blueprints for all instructions in the kernel
    (let* ((size (1+ (highest-instruction-number kernel)))
           (instruction-blueprints (make-array size))
@@ -36,13 +36,13 @@
       kernel)
      (loop for index from (1- size) downto 0 do
        (let ((instruction (aref instruction-blueprints index)))
-         (setf result (petalisp.ucons:ucons instruction result))))
+         (setf result (ucons:ucons instruction result))))
      result)))
 
 (defmethod blueprint ((buffer buffer))
-  (petalisp.ucons:ulist
+  (ucons:ulist
    'simple-array
-   (petalisp.ucons:utree-from-tree (element-type buffer))))
+   (ucons:utree-from-tree (element-type buffer))))
 
 ;;; Return an ulist with the following elements:
 ;;;
@@ -54,7 +54,7 @@
 (defmethod blueprint ((range range))
   (multiple-value-bind (start step end)
       (range-start-step-end range)
-    (petalisp.ucons:ulist
+    (ucons:ulist
      (integer-length (set-size range))
      (integer-length step)
      (if (and (typep start 'fixnum)
@@ -65,19 +65,19 @@
 ;;; Instruction Blueprints
 
 (defmethod blueprint ((call-instruction call-instruction))
-  (petalisp.ucons:ulist*
+  (ucons:ulist*
    :call
    (blueprint-from-operator (operator call-instruction))
-   (petalisp.ucons:umapcar #'blueprint-from-value (arguments call-instruction))))
+   (ucons:umapcar #'blueprint-from-value (arguments call-instruction))))
 
 (defmethod blueprint ((load-instruction load-instruction))
-  (petalisp.ucons:ulist*
+  (ucons:ulist*
    :load
    (buffer-number (buffer load-instruction))
    (blueprint (transformation load-instruction))))
 
 (defmethod blueprint ((store-instruction store-instruction))
-  (petalisp.ucons:ulist*
+  (ucons:ulist*
    :store
    (blueprint-from-value (value store-instruction))
    (buffer-number (buffer store-instruction))
@@ -88,14 +88,14 @@
     (map-transformation-outputs
      (lambda (output-index input-index scaling offset)
        (declare (ignore output-index))
-       (return (petalisp.ucons:ulist :iref input-index scaling offset)))
+       (return (ucons:ulist :iref input-index scaling offset)))
      (transformation iref-instruction))))
 
 (defmethod blueprint ((reduce-instruction reduce-instruction))
-  (petalisp.ucons:ulist*
+  (ucons:ulist*
    :reduce
    (blueprint-from-operator (operator reduce-instruction))
-   (petalisp.ucons:umapcar
+   (ucons:umapcar
     #'blueprint-from-value
     (arguments reduce-instruction))))
 
@@ -104,8 +104,8 @@
     (map-transformation-outputs
      (lambda (output-index input-index scaling offset)
        (declare (ignore output-index))
-       (setf result (petalisp.ucons:ucons
-                     (petalisp.ucons:ulist input-index scaling offset) result)))
+       (setf result (ucons:ucons
+                     (ucons:ulist input-index scaling offset) result)))
      transformation
      :from-end t)
     result))
@@ -117,7 +117,7 @@
 
 (defun blueprint-from-value (value)
   (destructuring-bind (value-n . instruction) value
-    (petalisp.ucons:ulist value-n (instruction-number instruction))))
+    (ucons:ulist value-n (instruction-number instruction))))
 
 (defun buffer-number (buffer)
   (position buffer *buffers*))
@@ -134,5 +134,5 @@
 
 (defun parse-blueprint (blueprint)
   (destructuring-bind (ranges reduction-range array-types instructions)
-      (petalisp.ucons:tree-from-utree blueprint)
+      (ucons:tree-from-utree blueprint)
     (values ranges reduction-range array-types instructions)))
