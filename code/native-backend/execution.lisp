@@ -2,19 +2,19 @@
 
 (in-package #:petalisp.native-backend)
 
-(defmethod compute-immediates ((strided-arrays list)
+(defmethod compute-immediates ((lazy-arrays list)
                                (native-backend native-backend))
-  (let ((root-buffers (petalisp.ir:ir-from-strided-arrays strided-arrays native-backend)))
+  (let ((root-buffers (petalisp.ir:ir-from-lazy-arrays lazy-arrays native-backend)))
     (petalisp.ir:normalize-ir root-buffers)
     (loop for root-buffer in root-buffers
-          for strided-array in strided-arrays
+          for lazy-array in lazy-arrays
           ;; We add a fictitious kernel to the outputs of each root buffer,
           ;; to avoid that their memory is reclaimed.
           do (push (make-instance 'kernel) (petalisp.ir:outputs root-buffer))
           collect
-          (if (immediatep strided-array)
-              strided-array
-              (coerce-to-strided-array
+          (if (immediatep lazy-array)
+              lazy-array
+              (coerce-to-lazy-array
                (storage
                 (compute-buffer root-buffer native-backend)))))))
 

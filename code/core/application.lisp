@@ -62,18 +62,18 @@
 (defmethod make-application :optimize ((value-n integer) (function function) (inputs list))
   (block nil
     (labels ((fail () (return))
-             (value-or-fail (strided-array)
-               (typecase strided-array
+             (value-or-fail (lazy-array)
+               (typecase lazy-array
                  (array-immediate
-                  (if (= 1 (total-size (shape strided-array)))
-                      (row-major-aref (storage strided-array) 0)
+                  (if (= 1 (total-size (shape lazy-array)))
+                      (row-major-aref (storage lazy-array) 0)
                       (fail)))
                  (reference
-                  (value-or-fail (input strided-array)))
+                  (value-or-fail (input lazy-array)))
                  (t (fail)))))
       (let ((value (nth-value value-n (apply function (mapcar #'value-or-fail inputs))))
             (shape (shape (first inputs))))
         (make-reference
-         (coerce-to-strided-array value)
+         (coerce-to-lazy-array value)
          shape
          (broadcasting-transformation shape))))))

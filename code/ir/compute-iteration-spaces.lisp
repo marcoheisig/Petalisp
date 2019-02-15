@@ -31,7 +31,7 @@
 
 (defgeneric compute-iteration-spaces-aux (node iteration-space transformation))
 
-(defmethod compute-iteration-spaces ((root strided-array))
+(defmethod compute-iteration-spaces ((root lazy-array))
   (let* ((*root* root)
          (iteration-spaces '())
          (*register-iteration-space*
@@ -62,7 +62,7 @@
         (list (cons (shape root) (reduction-range root))))))
 
 (defmethod compute-iteration-spaces-aux :around
-    ((node strided-array) (iteration-space shape) (transformation transformation))
+    ((node lazy-array) (iteration-space shape) (transformation transformation))
   (if (eq node *root*)
       (call-next-method)
       (if (nth-value 1 (gethash node *buffer-table*))

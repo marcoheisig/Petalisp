@@ -23,7 +23,7 @@
 ;;; Matrix Utilities
 
 (defun coerce-to-matrix (x)
-  (setf x (coerce-to-strided-array x))
+  (setf x (coerce-to-lazy-array x))
   (trivia:ematch (shape x)
     ;; Rank 0
     ((shape) (reshape x (τ () (1 1))))
@@ -37,7 +37,7 @@
     ((shape (range 0 _) (range 0 _)) (reshape x (τ (i j) ((1+ i) (1+ j)))))))
 
 (defun coerce-to-scalar (x)
-  (setf x (coerce-to-strided-array x))
+  (setf x (coerce-to-lazy-array x))
   (trivia:ematch (shape x)
     ((shape) x)
     ((shape (range i)) (reshape x (make-transformation
@@ -49,7 +49,7 @@
 
 (trivia:defpattern matrix (m n)
   (with-gensyms (it)
-    `(trivia:guard1 ,it (strided-array-p ,it)
+    `(trivia:guard1 ,it (lazy-array-p ,it)
                     (shape ,it) (shape (range 1 ,m) (range 1 ,n)))))
 
 (trivia:defpattern square-matrix (m)

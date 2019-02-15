@@ -32,7 +32,7 @@
 (defmacro node-value (node)
   `(gethash ,node *buffer-table*))
 
-(defgeneric compute-buffer-table (strided-arrays backend))
+(defgeneric compute-buffer-table (lazy-arrays backend))
 
 (defmethod compute-buffer-table ((graph-roots list) (backend backend))
   (let ((*buffer-table* (make-hash-table :test #'eq)))
@@ -44,14 +44,14 @@
 (defun finalize-buffer-table (backend)
   (with-hash-table-iterator (next *buffer-table*)
     (loop
-      (multiple-value-bind (more strided-array value) (next)
+      (multiple-value-bind (more lazy-array value) (next)
         (cond ((not more) (return))
               ((eq value :special)
-               (setf (node-value strided-array)
-                     (if (typep strided-array 'range-immediate)
+               (setf (node-value lazy-array)
+                     (if (typep lazy-array 'range-immediate)
                          'range-immediate-placeholder
-                         (make-buffer strided-array backend))))
-              (t (remhash strided-array *buffer-table*))))))
+                         (make-buffer lazy-array backend))))
+              (t (remhash lazy-array *buffer-table*))))))
   *buffer-table*)
 
 (defun traverse-node (node special-p reduction-axis)
@@ -65,7 +65,7 @@
 
 (defgeneric visit-node (node reduction-axis))
 
-(defmethod visit-node ((node strided-array) reduction-axis)
+(defmethod visit-node ((node lazy-array) reduction-axis)
   (case (refcount node)
     ((0 1) (values t nil reduction-axis))
     (otherwise
@@ -126,8 +126,8 @@
 (defun breaking-fusion-p (fusion reduction-axis)
   (if (null reduction-axis)
       nil
-      (flet ((reduction-range-of (strided-array)
-               (nth reduction-axis (ranges (shape strided-array)))))
+      (flet ((reduction-range-of (lazy-array)
+               (nth reduction-axis (ranges (shape lazy-array)))))
         (let ((fusion-range (reduction-range-of fusion)))
           (loop for input in (inputs fusion)
                   thereis (not

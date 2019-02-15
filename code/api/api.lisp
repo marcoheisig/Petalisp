@@ -29,38 +29,38 @@ the elements of DATA, or by broadcasting them.
 Examples:
  (reshape 0 '(10 10))          ; Create a 10x10 array of zeros
  (reshape #(1 2 3 4) '((1 2))) ; Select the two interior entries"
-  (labels ((reshape-with-shape (strided-array shape)
+  (labels ((reshape-with-shape (lazy-array shape)
              (make-reference
-              strided-array
+              lazy-array
               shape
-              (broadcasting-transformation shape (shape strided-array))))
-           (reshape-with-transformation (strided-array transformation)
+              (broadcasting-transformation shape (shape lazy-array))))
+           (reshape-with-transformation (lazy-array transformation)
              (make-reference
-              strided-array
-              (transform (shape strided-array) transformation)
+              lazy-array
+              (transform (shape lazy-array) transformation)
               (invert-transformation transformation)))
-           (reshape1 (strided-array modifier)
+           (reshape1 (lazy-array modifier)
              (if (shapep modifier)
-                 (reshape-with-shape strided-array modifier)
-                 (reshape-with-transformation strided-array modifier))))
-    (reduce #'reshape1 shapes-and-transformations :initial-value (coerce-to-strided-array array))))
+                 (reshape-with-shape lazy-array modifier)
+                 (reshape-with-transformation lazy-array modifier))))
+    (reduce #'reshape1 shapes-and-transformations :initial-value (coerce-to-lazy-array array))))
 
 (defun fuse (&rest arrays)
   "Combine ARRAYS into a single strided array.  It is an error if some of
 the supplied arrays overlap, or if there exists no suitable strided array
 to represent the fusion."
-  (make-fusion (mapcar #'coerce-to-strided-array arrays)))
+  (make-fusion (mapcar #'coerce-to-lazy-array arrays)))
 
 (defun fuse* (&rest arrays)
   "Combine ARRAYS into a single strided array.  When some of the supplied
 arguments overlap partially, the value of the rightmost object is used."
-  (let ((strided-arrays (mapcar #'coerce-to-strided-array arrays)))
+  (let ((lazy-arrays (mapcar #'coerce-to-lazy-array arrays)))
     (flet ((reference-origin (piece)
              (make-reference
-              (find piece strided-arrays :from-end t :key #'shape :test #'set-subsetp)
+              (find piece lazy-arrays :from-end t :key #'shape :test #'set-subsetp)
               piece
               (identity-transformation (rank piece)))))
-      (make-fusion (mapcar #'reference-origin (subdivision (mapcar #'shape strided-arrays)))))))
+      (make-fusion (mapcar #'reference-origin (subdivision (mapcar #'shape lazy-arrays)))))))
 
 ;;; Return a list of disjoint shapes. Each resulting object is a proper
 ;;; subspace of one or more of the arguments and their fusion covers all
@@ -114,11 +114,11 @@ arguments overlap partially, the value of the rightmost object is used."
             (push broadcast-range broadcast-ranges))))))
 
 (defun broadcast-arrays (&rest arrays)
-  (let* ((strided-arrays (mapcar #'coerce-to-strided-array arrays))
-         (shape (apply #'broadcast-shapes strided-arrays)))
-    (map-into strided-arrays
-              (lambda (strided-array) (reshape strided-array shape))
-              strided-arrays)))
+  (let* ((lazy-arrays (mapcar #'coerce-to-lazy-array arrays))
+         (shape (apply #'broadcast-shapes lazy-arrays)))
+    (map-into lazy-arrays
+              (lambda (lazy-array) (reshape lazy-array shape))
+              lazy-arrays)))
 
 
 (defun broadcasting-transformation (input-shape output-shape)
@@ -172,14 +172,14 @@ arguments overlap partially, the value of the rightmost object is used."
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
 for Petalisp data structures.  When the rank of some of the inputs
 mismatch, broadcast the smaller objects."
-  (multiple-value-bind (n-outputs function strided-arrays)
+  (multiple-value-bind (n-outputs function lazy-arrays)
       (if (integerp arg-1)
           (values arg-1 (coerce arg-2 'function) (apply #'broadcast-arrays more-args))
           (values 1 (coerce arg-1 'function) (apply #'broadcast-arrays arg-2 more-args)))
     (values-list
      (loop for value-n below n-outputs
            collect
-           (make-application value-n function strided-arrays)))))
+           (make-application value-n function lazy-arrays)))))
 
 (defun β (function array &rest more-arrays)
   (make-reduction function (apply #'broadcast-arrays array more-arrays)))
@@ -200,13 +200,13 @@ mismatch, broadcast the smaller objects."
 (defun compute (&rest arguments)
   "Return the computed values of all ARGUMENTS."
   (compute-on-backend
-   (mapcar #'coerce-to-strided-array arguments)
+   (mapcar #'coerce-to-lazy-array arguments)
    *backend*))
 
 (defun schedule (&rest arguments)
   "Instruct Petalisp to compute all given ARGUMENTS asynchronously."
   (schedule-on-backend
-   (mapcar #'coerce-to-strided-array arguments)
+   (mapcar #'coerce-to-lazy-array arguments)
    *backend*))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

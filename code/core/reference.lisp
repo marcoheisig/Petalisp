@@ -6,7 +6,7 @@
 ;;;
 ;;; Generic Functions
 
-(defgeneric make-reference (strided-array shape transformation)
+(defgeneric make-reference (lazy-array shape transformation)
   (:method-combination petalisp.utilities:optimizing-constructor))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -21,11 +21,11 @@
 ;;; Methods
 
 (defmethod make-reference :check
-    ((strided-array strided-array)
+    ((lazy-array lazy-array)
      (shape shape)
      (transformation transformation))
   (let ((relevant-shape (transform shape transformation))
-        (input-shape (shape strided-array)))
+        (input-shape (shape lazy-array)))
     (assert (and (= (rank relevant-shape) (rank input-shape))
                  (set-subsetp relevant-shape input-shape))
             ()
@@ -54,14 +54,14 @@
 
 ;;; Drop references with no effect.
 (defmethod make-reference :optimize
-    ((strided-array strided-array) (shape shape) (identity-transformation identity-transformation))
-  (when (set-equal (shape strided-array) shape)
-    strided-array))
+    ((lazy-array lazy-array) (shape shape) (identity-transformation identity-transformation))
+  (when (set-equal (shape lazy-array) shape)
+    lazy-array))
 
 (defmethod make-reference
-    ((strided-array strided-array) (shape shape) (transformation transformation))
+    ((lazy-array lazy-array) (shape shape) (transformation transformation))
   (make-instance 'reference
-    :element-type (element-type strided-array)
-    :inputs (list strided-array)
+    :element-type (element-type lazy-array)
+    :inputs (list lazy-array)
     :shape shape
     :transformation transformation))

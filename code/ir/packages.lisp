@@ -50,7 +50,7 @@
    #:parse-blueprint
 
    ;; IR Conversion
-   #:ir-from-strided-arrays
+   #:ir-from-lazy-arrays
    #:compute-buffer-table
    #:compute-kernels
    #:normalize-ir

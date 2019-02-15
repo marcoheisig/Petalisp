@@ -22,7 +22,7 @@
 
 (defmethod make-fusion :check ((inputs list))
   (loop for input in inputs do
-    (unless (strided-array-p input)
+    (unless (lazy-array-p input)
       (error "~@<Expected a strided array, but received ~S~:@>" input)))
   (trivia:match inputs
     ((list)

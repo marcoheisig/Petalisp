@@ -152,7 +152,7 @@
 
 (petalisp.graphviz:view
  (first
-  (petalisp.ir:ir-from-strided-arrays
+  (petalisp.ir:ir-from-lazy-arrays
    (list
     (jacobi-2d
      (jacobi-2d domain)))

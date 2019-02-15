@@ -12,7 +12,7 @@
 (defclass data-flow-edge (petalisp-edge)
   ())
 
-(defmethod graphviz-default-graph ((node petalisp.core:strided-array))
+(defmethod graphviz-default-graph ((node petalisp.core:lazy-array))
   'data-flow-graph)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27,8 +27,8 @@
 (defmethod graphviz-incoming-edge-origins
     ((graph data-flow-graph)
      (edge data-flow-edge)
-     (strided-array petalisp.core:strided-array))
-  (petalisp.core:inputs strided-array))
+     (lazy-array petalisp.core:lazy-array))
+  (petalisp.core:inputs lazy-array))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -65,8 +65,8 @@
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (strided-array petalisp.core:strided-array))
-  `(("shape" . ,(stringify (petalisp.core:shape strided-array)))))
+     (lazy-array petalisp.core:lazy-array))
+  `(("shape" . ,(stringify (petalisp.core:shape lazy-array)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)

@@ -22,8 +22,8 @@
 ;;; 3. All buffers are updated to contain a list of kernels that read to
 ;;;    them or write from them.
 
-(defun ir-from-strided-arrays (strided-arrays backend)
-  (let ((*buffer-table* (compute-buffer-table strided-arrays backend)))
+(defun ir-from-lazy-arrays (lazy-arrays backend)
+  (let ((*buffer-table* (compute-buffer-table lazy-arrays backend)))
     ;; Now create a list of kernels for each entry in the buffer table.
     (loop for root being each hash-key of *buffer-table* do
       (let ((kernels (compute-kernels root backend)))
@@ -35,11 +35,11 @@
           (loop for store in (stores kernel) do
             (pushnew kernel (inputs (buffer store)))))))
     ;; Finally, return the buffers corresponding to the root nodes.
-    (loop for strided-array in strided-arrays
+    (loop for lazy-array in lazy-arrays
           collect
-          (let ((entry (gethash strided-array *buffer-table*)))
+          (let ((entry (gethash lazy-array *buffer-table*)))
             (if (eq entry 'range-immediate-placeholder)
-                (make-buffer strided-array backend)
+                (make-buffer lazy-array backend)
                 entry)))))
 
 (defvar *kernel-root*)
@@ -92,7 +92,7 @@
 ;; corresponding entry in the buffer table and is not the root node.  If
 ;; so, return a reference to that buffer.
 (defmethod compute-value :around
-    ((node strided-array)
+    ((node lazy-array)
      (iteration-space shape)
      (transformation transformation))
   ;; The root node has an entry in the buffer table, yet we do not want to
@@ -164,7 +164,7 @@
      transformation)))
 
 (defmethod compute-value
-    ((strided-array strided-array)
+    ((lazy-array lazy-array)
      (iteration-space shape)
      (transformation transformation))
-  (error "Can't IR convert ~S" strided-array))
+  (error "Can't IR convert ~S" lazy-array))

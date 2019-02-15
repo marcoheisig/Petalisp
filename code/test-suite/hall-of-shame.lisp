@@ -4,7 +4,7 @@
 
 (test sum-of-pairs
   (let* ((size 10)
-         (a (coerce-to-strided-array (make-array size :initial-element 0))))
+         (a (coerce-to-lazy-array (make-array size :initial-element 0))))
     (compute
      (β #'+ (fuse (reshape a (~ 0 (- size 2))
                            (τ (i) (0 i)))

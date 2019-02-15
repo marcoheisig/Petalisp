@@ -60,10 +60,10 @@
    #:map-transformation-outputs
 
    ;; Strided Arrays
-   #:strided-array
-   #:strided-array-p
+   #:lazy-array
+   #:lazy-array-p
    #:empty-array-p
-   #:coerce-to-strided-array
+   #:coerce-to-lazy-array
    #:element-type
    #:total-size
    #:refcount

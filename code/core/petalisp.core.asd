@@ -42,7 +42,7 @@
    (:file "shape-transformations")
 
    ;; Strided arrays.
-   (:file "strided-array")
+   (:file "lazy-array")
    (:file "immediate")
    (:file "reference")
    (:file "application")

@@ -6,7 +6,7 @@
 ;;;
 ;;; Generic Functions
 
-(defgeneric make-buffer (strided-array backend))
+(defgeneric make-buffer (lazy-array backend))
 
 (defgeneric make-kernel (backend &key iteration-space loads stores reduction-range))
 
@@ -170,10 +170,10 @@
 ;;;
 ;;; Methods
 
-(defmethod make-buffer ((strided-array strided-array) (backend backend))
+(defmethod make-buffer ((lazy-array lazy-array) (backend backend))
   (make-instance 'buffer
-    :shape (shape strided-array)
-    :element-type (element-type strided-array)))
+    :shape (shape lazy-array)
+    :element-type (element-type lazy-array)))
 
 (defmethod make-kernel ((backend backend) &rest args)
   (apply #'make-instance 'kernel args))

@@ -46,6 +46,6 @@
            shape)
           array))))
 
-(defmethod overwrite-instance ((instance strided-array) (replacement simple-immediate))
+(defmethod overwrite-instance ((instance lazy-array) (replacement simple-immediate))
   (change-class instance 'simple-immediate
     :table (table replacement)))

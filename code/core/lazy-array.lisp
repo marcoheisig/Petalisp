@@ -6,25 +6,25 @@
 ;;;
 ;;; Generic Functions
 
-(defgeneric coerce-to-strided-array (array))
+(defgeneric coerce-to-lazy-array (array))
 
-(defgeneric total-size (strided-array))
+(defgeneric total-size (lazy-array))
 
-(defgeneric element-type (strided-array))
+(defgeneric element-type (lazy-array))
 
-(defgeneric shape (strided-array))
+(defgeneric shape (lazy-array))
 
-(defgeneric inputs (strided-array))
+(defgeneric inputs (lazy-array))
 
-(defgeneric refcount (strided-array))
+(defgeneric refcount (lazy-array))
 
-(defgeneric (setf refcount) (value strided-array))
+(defgeneric (setf refcount) (value lazy-array))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes
 
-(defclass strided-array ()
+(defclass lazy-array ()
   ((%element-type :initarg :element-type :reader element-type)
    (%shape :initarg :shape :reader shape :reader shape)
    (%refcount :initform 0 :accessor refcount))
@@ -34,34 +34,34 @@
 ;;;
 ;;; Methods
 
-(petalisp.utilities:define-class-predicate strided-array :hyphenate t)
+(petalisp.utilities:define-class-predicate lazy-array :hyphenate t)
 
-(defmethod coerce-to-strided-array ((strided-array strided-array))
-  strided-array)
+(defmethod coerce-to-lazy-array ((lazy-array lazy-array))
+  lazy-array)
 
-(defmethod total-size ((strided-array strided-array))
-  (set-size (shape strided-array)))
+(defmethod total-size ((lazy-array lazy-array))
+  (set-size (shape lazy-array)))
 
 (defmethod total-size ((finite-set finite-set))
   (set-size finite-set))
 
-(defmethod initialize-instance :after ((strided-array strided-array)
+(defmethod initialize-instance :after ((lazy-array lazy-array)
                                        &key &allow-other-keys)
   (mapc (lambda (input) (incf (refcount input)))
-        (inputs strided-array)))
+        (inputs lazy-array)))
 
 (defmethod shape ((shape shape))
   shape)
 
-(defmethod rank ((strided-array strided-array))
-  (rank (shape strided-array)))
+(defmethod rank ((lazy-array lazy-array))
+  (rank (shape lazy-array)))
 
 (defun input (object)
   (destructuring-bind (input) (inputs object) input))
 
-(defmethod print-object ((strided-array strided-array) stream)
-  (print-unreadable-object (strided-array stream :type t)
-    (format stream "~S ~S" (element-type strided-array) (shape strided-array))))
+(defmethod print-object ((lazy-array lazy-array) stream)
+  (print-unreadable-object (lazy-array stream :type t)
+    (format stream "~S ~S" (element-type lazy-array) (shape lazy-array))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -101,7 +101,7 @@
 ;;;
 ;;; Pattern Matching
 
-(trivia:defpattern strided-array (shape)
+(trivia:defpattern lazy-array (shape)
   (alexandria:with-gensyms (it)
-    `(trivia:guard1 ,it (strided-array-p ,it)
+    `(trivia:guard1 ,it (lazy-array-p ,it)
                     (shape ,it) ,shape)))

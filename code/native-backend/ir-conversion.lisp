@@ -35,11 +35,11 @@
     :storage (storage array-immediate)))
 
 (defmethod petalisp.ir:make-buffer
-    ((strided-array strided-array)
+    ((lazy-array lazy-array)
      (native-backend native-backend))
   (make-instance 'non-immediate-buffer
-    :shape (shape strided-array)
-    :element-type (element-type strided-array)))
+    :shape (shape lazy-array)
+    :element-type (element-type lazy-array)))
 
 (defmethod petalisp.ir:make-kernel
     ((backend native-backend) &rest args)

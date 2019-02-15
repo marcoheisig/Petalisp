@@ -19,7 +19,7 @@
            (loop repeat (funcall rank-generator)
                  collect (funcall range-generator)))))
 
-(defgenerator strided-array
+(defgenerator lazy-array
     (&key (element-type 'single-float)
           (element-generator (make-single-float-generator))
           (shape-generator (make-shape-generator)))
@@ -33,7 +33,7 @@
       (reshape array shape))))
 
 (defun ndarray (rank)
-  (generate-strided-array
+  (generate-lazy-array
    :shape-generator
    (make-shape-generator
     :rank-generator (constantly rank)
@@ -46,7 +46,7 @@
     (&key (element-type 'single-float)
           (element-generator (make-single-float-generator))
           (size-generator (make-integer-generator :min 1 :max 10)))
-  (make-strided-array-generator
+  (make-lazy-array-generator
    :element-type element-type
    :element-generator element-generator
    :shape-generator
@@ -59,10 +59,10 @@
      :size-generator size-generator))))
 
 (defun reshape-randomly (array)
-  (let* ((strided-array (coerce-to-strided-array array))
-         (rank (rank strided-array))
+  (let* ((lazy-array (coerce-to-lazy-array array))
+         (rank (rank lazy-array))
          (generator (make-integer-generator :min -20 :max 21)))
-    (reshape strided-array
+    (reshape lazy-array
              (make-transformation
               :input-rank rank
               :output-rank rank

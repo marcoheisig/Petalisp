@@ -19,8 +19,8 @@
 (defmethod execute :before ((buffer buffer))
   (mapc #'execute (inputs buffer)))
 
-(defmethod compute-immediates ((strided-arrays list) (ir-backend ir-backend))
-  (let ((root-buffers (petalisp.ir:ir-from-strided-arrays strided-arrays ir-backend)))
+(defmethod compute-immediates ((lazy-arrays list) (ir-backend ir-backend))
+  (let ((root-buffers (petalisp.ir:ir-from-lazy-arrays lazy-arrays ir-backend)))
     (petalisp.ir:normalize-ir root-buffers)
     (mapc #'execute root-buffers)
     (mapcar #'immediate-from-buffer root-buffers)))

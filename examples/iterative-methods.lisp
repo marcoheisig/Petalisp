@@ -59,14 +59,14 @@
 ;;; The Gauss-Seidel Method
 
 (defun red-black-coloring (array)
-  (let* ((strided-array (coerce-to-strided-array array))
-         (ranges (ranges (shape strided-array))))
+  (let* ((lazy-array (coerce-to-lazy-array array))
+         (ranges (ranges (shape lazy-array))))
     (labels ((prepend-1 (list)
                (cons 1 list))
              (prepend-2 (list)
                (cons 2 list))
              (offsets (red black depth)
-               (if (= depth (rank strided-array))
+               (if (= depth (rank lazy-array))
                    (values red black)
                    (offsets
                     (append (mapcar #'prepend-1 red)

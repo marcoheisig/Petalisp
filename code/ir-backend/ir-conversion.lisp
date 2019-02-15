@@ -33,12 +33,12 @@
   (apply #'make-instance 'kernel :executedp nil args))
 
 (defmethod petalisp.ir:make-buffer
-    ((strided-array strided-array) (ir-backend ir-backend))
+    ((lazy-array lazy-array) (ir-backend ir-backend))
   (make-instance 'buffer
     :executedp nil
-    :shape (shape strided-array)
-    :element-type (element-type strided-array)
-    :storage (make-array (mapcar #'set-size (ranges (shape strided-array))))))
+    :shape (shape lazy-array)
+    :element-type (element-type lazy-array)
+    :storage (make-array (mapcar #'set-size (ranges (shape lazy-array))))))
 
 (defmethod petalisp.ir:make-buffer
     ((array-immediate array-immediate) (ir-backend ir-backend))

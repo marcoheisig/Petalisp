@@ -10,13 +10,13 @@
 ;;;
 ;;; Generic Functions
 
-(defgeneric compute-on-backend (strided-arrays backend))
+(defgeneric compute-on-backend (lazy-arrays backend))
 
-(defgeneric schedule-on-backend (strided-arrays backend))
+(defgeneric schedule-on-backend (lazy-arrays backend))
 
-(defgeneric compute-immediates (strided-arrays backend))
+(defgeneric compute-immediates (lazy-arrays backend))
 
-(defgeneric lisp-datum-from-immediate (strided-array))
+(defgeneric lisp-datum-from-immediate (lazy-array))
 
 (defgeneric overwrite-instance (instance replacement))
 
@@ -50,25 +50,25 @@
            :name (format nil "~A scheduler thread" (class-name (class-of asynchronous-backend)))))))
 
 
-(defmethod compute-on-backend ((strided-arrays list) (backend backend))
+(defmethod compute-on-backend ((lazy-arrays list) (backend backend))
   (let* ((collapsing-transformations
            (mapcar (compose #'collapsing-transformation #'shape)
-                   strided-arrays))
+                   lazy-arrays))
          (immediates
            (compute-immediates
-            (mapcar #'transform strided-arrays collapsing-transformations)
+            (mapcar #'transform lazy-arrays collapsing-transformations)
             backend)))
-    (loop for strided-array in strided-arrays
+    (loop for lazy-array in lazy-arrays
           for collapsing-transformation in collapsing-transformations
           for immediate in immediates
           do (overwrite-instance
-              strided-array
-              (make-reference immediate (shape strided-array) collapsing-transformation)))
+              lazy-array
+              (make-reference immediate (shape lazy-array) collapsing-transformation)))
     (values-list
      (mapcar #'lisp-datum-from-immediate immediates))))
 
-(defmethod schedule-on-backend ((strided-arrays list) (backend backend))
-  (compute-on-backend strided-arrays backend))
+(defmethod schedule-on-backend ((lazy-arrays list) (backend backend))
+  (compute-on-backend lazy-arrays backend))
 
 (defmethod schedule-on-backend
     ((data-structures list)
@@ -110,14 +110,14 @@
     :transformation (transformation replacement)
     :inputs (inputs replacement)))
 
-(defmethod overwrite-instance ((instance strided-array) (replacement reference))
+(defmethod overwrite-instance ((instance lazy-array) (replacement reference))
   (change-class instance (class-of replacement)
     :transformation (transformation replacement)
     :inputs (inputs replacement)))
 
-(defmethod overwrite-instance ((instance strided-array) (replacement array-immediate))
+(defmethod overwrite-instance ((instance lazy-array) (replacement array-immediate))
   (change-class instance (class-of replacement)
     :storage (storage replacement)))
 
-(defmethod overwrite-instance ((instance strided-array) (replacement range-immediate))
+(defmethod overwrite-instance ((instance lazy-array) (replacement range-immediate))
   (change-class instance (class-of replacement)))

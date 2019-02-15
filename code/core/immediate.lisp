@@ -6,10 +6,10 @@
 ;;;
 ;;; Classes
 
-(defclass immediate (strided-array)
+(defclass immediate (lazy-array)
   ())
 
-(defclass non-immediate (strided-array)
+(defclass non-immediate (lazy-array)
   ((%inputs :initarg :inputs :reader inputs)))
 
 ;;; An array immediate is a strided array whose elements reside directly in
@@ -64,7 +64,7 @@
   (declare (ignore value empty-array))
   1)
 
-(defmethod coerce-to-strided-array ((array array))
+(defmethod coerce-to-lazy-array ((array array))
   (if (zerop (array-total-size array))
       (empty-array)
       (make-instance 'array-immediate
@@ -72,7 +72,7 @@
         :shape (shape array)
         :storage array)))
 
-(defmethod coerce-to-strided-array ((object t))
+(defmethod coerce-to-lazy-array ((object t))
   (let ((element-type (type-of object)))
     (make-instance 'array-immediate
       :element-type element-type
@@ -88,8 +88,8 @@
   (print-unreadable-object (range-immediate stream :type t :identity t)
     (format stream ":SHAPE ~A" (shape range-immediate))))
 
-(defmethod transform ((strided-array strided-array) (transformation transformation))
+(defmethod transform ((lazy-array lazy-array) (transformation transformation))
   (make-reference
-   strided-array
-   (transform (shape strided-array) transformation)
+   lazy-array
+   (transform (shape lazy-array) transformation)
    (invert-transformation transformation)))

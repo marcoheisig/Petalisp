@@ -11,7 +11,7 @@
 ;;;
 ;;; Generic Functions
 
-(defgeneric evaluate (strided-array))
+(defgeneric evaluate (lazy-array))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -27,20 +27,20 @@
 ;;;
 ;;; Methods
 
-(defmethod compute-immediates ((strided-arrays list) (backend reference-backend))
-  (mapcar #'evaluate strided-arrays))
+(defmethod compute-immediates ((lazy-arrays list) (backend reference-backend))
+  (mapcar #'evaluate lazy-arrays))
 
 ;;; Memoization
 
 (defvar *memoization-table*)
 
 (defmethod compute-immediates :around
-    ((strided-arrays list) (backend reference-backend))
+    ((lazy-arrays list) (backend reference-backend))
   (let ((*memoization-table* (make-hash-table :test #'eq)))
     (call-next-method)))
 
-(defmethod evaluate :around ((strided-array strided-array))
-  (petalisp.utilities:with-hash-table-memoization (strided-array)
+(defmethod evaluate :around ((lazy-array lazy-array))
+  (petalisp.utilities:with-hash-table-memoization (lazy-array)
       *memoization-table*
     (call-next-method)))
 
