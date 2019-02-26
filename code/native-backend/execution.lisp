@@ -71,7 +71,7 @@
               (vector-push-extend step ranges)
               (vector-push-extend end ranges)))
     ;; Initialize the reduction range.
-    (let ((range (reduction-range kernel)))
+    (let ((range (petalisp.ir:reduction-range kernel)))
       (unless (null range)
         (multiple-value-bind (start step end)
             (range-start-step-end range)

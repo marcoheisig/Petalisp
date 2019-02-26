@@ -78,7 +78,7 @@
                          (values-list (divide-and-conquer left))
                          (values-list (divide-and-conquer right))))
                       0 k)))))
-      (divide-and-conquer (reduction-range *kernel*)))))
+      (divide-and-conquer (petalisp.ir:reduction-range *kernel*)))))
 
 (defmethod instruction-values ((iref-instruction petalisp.ir:iref-instruction))
   (transform *index* (petalisp.ir:transformation iref-instruction)))

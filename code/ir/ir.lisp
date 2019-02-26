@@ -24,6 +24,8 @@
 (defgeneric rotate-instruction-output (instruction transformation)
   (:argument-precedence-order transformation instruction))
 
+(defgeneric reduction-range (reduction))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes
@@ -169,6 +171,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Methods
+
+(defmethod reduction-range ((reduction reduction))
+  (first (ranges (shape (first (inputs reduction))))))
 
 (defmethod make-buffer ((lazy-array lazy-array) (backend backend))
   (make-instance 'buffer

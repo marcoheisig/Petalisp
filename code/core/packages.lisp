@@ -32,6 +32,7 @@
    #:range-end
 
    ;; Shapes
+   #:~
    #:shape
    #:shapep
    #:make-shape
@@ -40,8 +41,10 @@
    #:shape-difference-list
    #:enlarge-shape
    #:shrink-shape
+   #:broadcast-shapes
 
    ;; Transformations
+   #:τ
    #:transformation
    #:transformationp
    #:transform
@@ -60,40 +63,52 @@
    #:map-transformation-outputs
 
    ;; Strided Arrays
-   #:lazy-array
    #:lazy-array-p
    #:empty-array-p
+   #:immediatep
    #:coerce-to-lazy-array
-   #:element-type
    #:total-size
-   #:refcount
+   #:element-type
    #:input
    #:inputs
-   #:application
    #:value-n
    #:operator
-   #:reduction
-   #:reduction-range
-   #:fusion
-   #:reference
-   #:immediate
-   #:immediatep
    #:storage
+   #:refcount
+   #:lazy-array
+   #:immediate
+   #:non-immediate
+   #:empty-array
+   #:non-empty-array
+   #:non-empty-immediate
+   #:non-empty-non-immediate
    #:array-immediate
    #:range-immediate
-   #:make-range-immediate
-   #:make-application
-   #:make-reduction
-   #:make-fusion
+   #:application
+   #:reduction
+   #:fusion
+   #:reference
    #:make-reference
-   #:lisp-datum-from-immediate
+   #:reshape
+   #:fuse
+   #:fuse*
+   #:empty-array
+   #:make-array-immediate
+   #:make-range-immediate
+   #:indices
+   #:broadcast-arrays
+   #:α
+   #:β
 
    ;; Backends
    #:*backend*
    #:compute-on-backend
    #:schedule-on-backend
    #:compute-immediates
+   #:lisp-datum-from-immediate
    #:backend
    #:asynchronous-backend
    #:overwrite-instance
-   #:delete-backend))
+   #:delete-backend
+   #:compute
+   #:schedule))

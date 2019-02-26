@@ -8,7 +8,7 @@
    "bordeaux-threads"
    "lparallel"
    "trivia"
-   "trivial-arguments"
+   "simplified-types"
    "restricted-functions"
    "ucons"
    "petalisp.utilities")
@@ -18,13 +18,6 @@
   :serial t
   :components
   ((:file "packages")
-
-   ;; Type inference
-   (:file "atomic-types")
-   (:file "function-lambda-lists")
-   (:file "inference")
-   (:file "numbers")
-   (:file "data-and-control-flow")
 
    ;; Sets
    (:file "set")
@@ -38,16 +31,14 @@
    (:file "identity-transformation")
    (:file "invertible-transformation")
    (:file "hairy-transformation")
-   (:file "make-transformation")
+   (:file "transformation-constructors")
    (:file "shape-transformations")
 
-   ;; Strided arrays.
+   ;; Lazy arrays
+   (:file "broadcasting")
    (:file "lazy-array")
-   (:file "immediate")
-   (:file "reference")
-   (:file "application")
-   (:file "reduction")
-   (:file "fusion")
+   (:file "lazy-array-constructors")
 
-   ;; Backend
-   (:file "backend")))
+   ;; The rest
+   (:file "backend")
+   (:file "documentation")))

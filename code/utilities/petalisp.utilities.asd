@@ -11,5 +11,5 @@
    (:file "memoization")
    (:file "extended-euclid")
    (:file "symmetric-function")
-   (:file "optimizing-constructor")
-   (:file "define-class-predicate")))
+   (:file "define-class-predicate")
+   (:file "defalias")))

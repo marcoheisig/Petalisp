@@ -16,4 +16,4 @@
    #:define-method-pair
    #:define-class-predicate
    #:extended-euclid
-   #:optimizing-constructor))
+   #:defalias))

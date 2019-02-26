@@ -168,6 +168,31 @@
     (values (apply #'make-shape (rest ranges))
             (first ranges))))
 
+;;; Return a list of disjoint shapes. Each resulting object is a proper
+;;; subspace of one or more of the arguments and their fusion covers all
+;;; arguments.
+(defun subdivision (shapes)
+  (labels ((subtract (shapes what)
+             (loop for shape in shapes
+                   append (shape-difference-list shape what)))
+           (shatter (dust object) ; dust is a list of disjoint shapes
+             (let* ((object-w/o-dust (list object))
+                    (new-dust '()))
+               (loop for particle in dust do
+                 (setf object-w/o-dust (subtract object-w/o-dust particle))
+                 (loop for shape in (shape-difference-list particle object) do
+                   (push shape new-dust))
+                 (let ((it (set-intersection particle object)))
+                   (unless (set-emptyp it)
+                     (push it new-dust))))
+               (append object-w/o-dust new-dust))))
+    (trivia:ematch shapes
+      ((list) '())
+      ((list _) shapes)
+      ((list* _ _ _)
+       (reduce #'shatter shapes :initial-value nil)))))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Convenient Notation for Shapes
@@ -183,3 +208,21 @@
 (defmethod print-object ((shape shape) stream)
   (print-unreadable-object (shape stream :type t)
     (format stream "~{~S~^ ~}" (ranges shape))))
+
+(defmacro ~ (&rest tilde-separated-range-designators)
+  (if (null tilde-separated-range-designators)
+      `(make-shape)
+      (let ((range-designators
+              (split-sequence:split-sequence '~ tilde-separated-range-designators)))
+        `(make-shape
+          ,@(loop for range-designator in range-designators
+                  collect `(range ,@range-designator))))))
+
+(trivia:defpattern ~ (&rest tilde-separated-range-designators)
+  (if (null tilde-separated-range-designators)
+      `(shape)
+      (let ((range-designators
+              (split-sequence:split-sequence '~ tilde-separated-range-designators)))
+        `(shape
+          ,@(loop for range-designator in range-designators
+                  collect `(range ,@range-designator))))))

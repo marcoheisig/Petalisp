@@ -49,7 +49,6 @@
                    (loop-finish))))
            :name (format nil "~A scheduler thread" (class-name (class-of asynchronous-backend)))))))
 
-
 (defmethod compute-on-backend ((lazy-arrays list) (backend backend))
   (let* ((collapsing-transformations
            (mapcar (compose #'collapsing-transformation #'shape)
@@ -121,3 +120,20 @@
 
 (defmethod overwrite-instance ((instance lazy-array) (replacement range-immediate))
   (change-class instance (class-of replacement)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; API
+
+(defun compute (&rest arguments)
+  "Return the computed values of all ARGUMENTS."
+  (compute-on-backend
+   (mapcar #'coerce-to-lazy-array arguments)
+   *backend*))
+
+(defun schedule (&rest arguments)
+  "Instruct Petalisp to compute all given ARGUMENTS asynchronously."
+  (schedule-on-backend
+   (mapcar #'coerce-to-lazy-array arguments)
+   *backend*))
+

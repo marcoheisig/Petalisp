@@ -79,7 +79,7 @@
 (defun transpose (x)
   (reshape
    (coerce-to-matrix x)
-   (τ (m n) (n m))))
+   (τ (m n) (n M))))
 
 (defun dot (x y)
   (coerce-to-scalar

@@ -19,6 +19,4 @@
   :serial t
   :components
   ((:file "packages")
-   (:file "transformations")
-   (:file "shapes")
    (:file "api")))

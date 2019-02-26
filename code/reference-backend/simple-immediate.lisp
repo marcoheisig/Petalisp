@@ -8,7 +8,7 @@
 
 ;;; A simple immediate is implemented as an EQUAL hash table that maps each
 ;;; index tuple to the corresponding value.
-(defclass simple-immediate (immediate)
+(defclass simple-immediate (non-empty-immediate)
   ((%table :initarg :table :reader table)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
