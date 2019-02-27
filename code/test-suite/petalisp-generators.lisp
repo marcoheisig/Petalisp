@@ -15,9 +15,9 @@
 (defgenerator shape (&key (rank-generator (make-integer-generator :min 0 :max 5))
                           (range-generator (make-range-generator)))
   (lambda ()
-    (apply #'make-shape
-           (loop repeat (funcall rank-generator)
-                 collect (funcall range-generator)))))
+    (make-shape
+     (loop repeat (funcall rank-generator)
+           collect (funcall range-generator)))))
 
 (defgenerator lazy-array
     (&key (element-type 'single-float)

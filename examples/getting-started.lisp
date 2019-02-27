@@ -121,7 +121,7 @@
            (multiple-value-bind (start step end)
                (range-start-step-end range)
              (range (+ start step) step (- end step)))))
-    (apply #'make-shape (mapcar #'range-interior (ranges (shape array))))))
+    (make-shape (mapcar #'range-interior (ranges (shape array))))))
 
 (defun jacobi-2d (grid)
   (let ((interior (interior grid)))

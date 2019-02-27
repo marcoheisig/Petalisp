@@ -149,7 +149,7 @@
 (defun make-range-immediate (range)
   (make-instance 'range-immediate
     :element-type `(integer ,(range-start range) ,(range-end range))
-    :shape (make-shape range)))
+    :shape (make-shape (list range))))
 
 (defun indices (array-or-shape &optional (axis 0))
   (let ((shape (if (shapep array-or-shape)
@@ -238,7 +238,7 @@ mismatch, broadcast the smaller objects."
       (values-list
        (if (set-emptyp input-shape)
            (make-list k :initial-element (empty-array))
-           (let* ((shape (apply #'make-shape (cdr (ranges input-shape))))
+           (let* ((shape (make-shape (cdr (ranges input-shape))))
                   (input-element-types (mapcar #'element-type inputs))
                   (restricted-function
                     (apply #'restricted-functions:restrict nil function

@@ -31,8 +31,8 @@
    (fuse (reshape (vector 4 5 6) (τ (i) ((+ i 3))))
          (vector 1 2 3)))
   (compute
-   (fuse* (reshape 0.0 (make-shape (range 2 4) (range 2 4)))
-          (reshape 1.0 (make-shape (range 3 3) (range 3 3))))))
+   (fuse* (reshape 0.0 (~ 2 4 ~ 2 4))
+          (reshape 1.0 (~ 3 ~ 3)))))
 
 (test reference-test
   (compute

@@ -12,7 +12,7 @@
            (multiple-value-bind (start step end)
                (range-start-step-end range)
              (range (+ start step) step (- end step)))))
-    (apply #'make-shape (mapcar #'range-interior (ranges (shape array))))))
+    (make-shape (mapcar #'range-interior (ranges (shape array))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -77,15 +77,15 @@
       (multiple-value-bind (red-offsets black-offsets)
           (offsets '((2)) '((1)) 1)
         (flet ((offset-space (offsets)
-                 (apply #'make-shape
-                        (loop for offset in offsets
-                              for range in ranges
-                              collect
-                              (multiple-value-bind (start step end)
-                                  (range-start-step-end range)
-                                (range (+ start (* step offset))
-                                       (* 2 step)
-                                       (- end step)))))))
+                 (make-shape
+                  (loop for offset in offsets
+                        for range in ranges
+                        collect
+                        (multiple-value-bind (start step end)
+                            (range-start-step-end range)
+                          (range (+ start (* step offset))
+                                 (* 2 step)
+                                 (- end step)))))))
           (values
            (mapcar #'offset-space red-offsets)
            (mapcar #'offset-space black-offsets)))))))

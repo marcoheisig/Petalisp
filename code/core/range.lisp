@@ -340,6 +340,23 @@
         (two-args-p (make-range start 1 step-or-end))
         (t (make-range start step-or-end end))))
 
+(define-compiler-macro range (&whole form &rest args)
+  (cond ((not (<= 1 (length args) 3))
+         (return-from range form))
+        ((every #'constantp args)
+         `(load-time-value
+           (locally (declare (notinline range))
+             (range ,@args))))
+        ((let ((bindings (mapcar (lambda (arg)
+                                   (let ((g (gensym)))
+                                     (list g arg)))
+                                 args)))
+           `(let ,bindings
+              ,(trivia:ematch (mapcar #'first bindings)
+                 ((list start) `(make-range ,start 1 ,start))
+                 ((list start end) `(make-range ,start 1 ,end))
+                 ((list start step end) `(make-range ,start ,step ,end))))))))
+
 (trivia:defpattern range (&rest start-step-end)
   (with-gensyms (it tmp)
     (multiple-value-bind (start step end)

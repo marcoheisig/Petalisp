@@ -33,7 +33,7 @@
   ((%rank :initarg :rank :reader rank :type array-rank)
    (%ranges :initarg :ranges :reader ranges :type list)))
 
-(defun make-shape (&rest ranges)
+(defun make-shape (ranges)
   (assert (every #'rangep ranges))
   (make-instance 'shape :ranges ranges :rank (length ranges)))
 
@@ -54,7 +54,7 @@
                 for i from 0
                 for head = (subseq intersection-ranges 0 i) do
                   (loop for difference in (range-difference-list range-1 range-2) do
-                    (push (apply #'make-shape (append head (cons difference tail)))
+                    (push (make-shape (append head (cons difference tail)))
                           result)))
           result))))
 
@@ -99,14 +99,14 @@
   (if (/= (rank shape-1) (rank shape-2))
       (empty-set)
       (block nil
-        (apply #'make-shape
-               (mapcar (lambda (range-1 range-2)
-                         (let ((intersection (set-intersection range-1 range-2)))
-                           (if (set-emptyp intersection)
-                               (return (empty-set))
-                               intersection)))
-                       (ranges shape-1)
-                       (ranges shape-2))))))
+        (make-shape
+         (mapcar (lambda (range-1 range-2)
+                   (let ((intersection (set-intersection range-1 range-2)))
+                     (if (set-emptyp intersection)
+                         (return (empty-set))
+                         intersection)))
+                 (ranges shape-1)
+                 (ranges shape-2))))))
 
 (defmethod set-intersectionp ((shape-1 shape) (shape-2 shape))
   (every #'set-intersectionp (ranges shape-1) (ranges shape-2)))
@@ -126,9 +126,9 @@
     shapes))
 
 (defmethod shape-union ((shapes cons))
-  (apply #'make-shape
-         (apply #'mapcar #'shape-union-range-oracle
-                (mapcar #'ranges shapes))))
+  (make-shape
+   (apply #'mapcar #'shape-union-range-oracle
+          (mapcar #'ranges shapes))))
 
 (defmethod shape-union :around ((shapes cons))
   (let ((union (call-next-method)))
@@ -161,11 +161,11 @@
                    (make-range global-start step-size global-end))))))
 
 (defmethod enlarge-shape ((shape shape) (range range))
-  (apply #'make-shape range (ranges shape)))
+  (make-shape (list* range (ranges shape))))
 
 (defmethod shrink-shape ((shape shape))
   (let ((ranges (ranges shape)))
-    (values (apply #'make-shape (rest ranges))
+    (values (make-shape (rest ranges))
             (first ranges))))
 
 ;;; Return a list of disjoint shapes. Each resulting object is a proper
@@ -197,26 +197,69 @@
 ;;;
 ;;; Convenient Notation for Shapes
 
+(defmethod print-object ((shape shape) stream)
+  (if *read-eval*
+      (format stream "#.(~~~{~^ ~{~D~^ ~}~^ ~~~})"
+              (mapcar
+               (lambda (range)
+                 (multiple-value-bind (start step end)
+                     (range-start-step-end range)
+                   (cond ((= start end) (list start))
+                         ((= step 1) (list start end))
+                         ((list start step end)))))
+               (ranges shape)))
+      (print-unreadable-object (shape stream :type t)
+        (format stream "~{~S~^ ~}" (ranges shape)))))
+
+(defconstant ~ '~)
+
+(defun ~ (&rest tilde-separated-range-designators)
+  (if (null tilde-separated-range-designators)
+      (make-shape '())
+      (let ((range-designators
+              (split-sequence:split-sequence '~ tilde-separated-range-designators)))
+        (make-shape
+         (loop for range-designator in range-designators
+               collect (apply #'range range-designator))))))
+
+(define-compiler-macro ~ (&whole form &rest tilde-separated-range-designators)
+  (if (null tilde-separated-range-designators)
+      `(make-shape '())
+      (let* ((bindings '())
+             (values
+               (reverse
+                (mapcar
+                 (lambda (form)
+                   (if (constantp form)
+                       form
+                       (let ((g (gensym)))
+                         (push (list g form) bindings)
+                         g)))
+                 (reverse tilde-separated-range-designators))))
+             (subsequences (split-sequence:split-sequence '~ values)))
+        (alexandria:with-gensyms (ranges)
+          `(let ((,ranges '()))
+             (let ,bindings
+               ,@(mapcar
+                  (trivia:lambda-match
+                    ((list start)
+                     `(push (range ,start) ,ranges))
+                    ((list start end)
+                     `(push (range ,start ,end) ,ranges))
+                    ((list start step end)
+                     `(if (eq ,step '~)
+                          (progn
+                            (push (range ,end) ,ranges)
+                            (push (range ,start) ,ranges))
+                          (push (range ,start ,step ,end) ,ranges)))
+                    (_ (return-from ~ form)))
+                  (reverse subsequences)))
+             (make-shape ,ranges))))))
+
 (trivia:defpattern shape (&rest ranges)
   (with-gensyms (it)
     `(trivia:guard1 ,it (shapep ,it)
                     (ranges ,it) (list ,@ranges))))
-
-(trivia:defpattern make-shape (&rest ranges)
-  `(shape ,@ranges))
-
-(defmethod print-object ((shape shape) stream)
-  (print-unreadable-object (shape stream :type t)
-    (format stream "~{~S~^ ~}" (ranges shape))))
-
-(defmacro ~ (&rest tilde-separated-range-designators)
-  (if (null tilde-separated-range-designators)
-      `(make-shape)
-      (let ((range-designators
-              (split-sequence:split-sequence '~ tilde-separated-range-designators)))
-        `(make-shape
-          ,@(loop for range-designator in range-designators
-                  collect `(range ,@range-designator))))))
 
 (trivia:defpattern ~ (&rest tilde-separated-range-designators)
   (if (null tilde-separated-range-designators)

@@ -22,7 +22,7 @@
                                 ~{~#[~;and ~S~;~S ~:;~S, ~]~}.~:@>"
                             (mapcar #'shape objects)))))))
         (if (null broadcast-range)
-            (return (apply #'make-shape (nreverse broadcast-ranges)))
+            (return (make-shape (nreverse broadcast-ranges)))
             (push broadcast-range broadcast-ranges))))))
 
 #+nil

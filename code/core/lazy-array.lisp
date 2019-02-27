@@ -163,13 +163,13 @@
   (element-type (input reference)))
 
 (defmethod shape ((object t))
-  (load-time-value (make-shape)))
+  (load-time-value (make-shape '())))
 
 (defmethod shape ((array array))
-  (apply #'make-shape
-         (loop for axis below (array-rank array)
-               collect
-               (range 0 1 (1- (array-dimension array axis))))))
+  (make-shape
+   (loop for axis below (array-rank array)
+         collect
+         (range 0 1 (1- (array-dimension array axis))))))
 
 (defmethod shape ((any-set any-set))
   any-set)

@@ -42,7 +42,7 @@
                           (* scaling (range-step input-range))
                           (+ offset (* scaling (range-end input-range)))))))))
       (map-transformation-outputs #'store-output-range transformation))
-    (apply #'make-shape output-ranges)))
+    (make-shape output-ranges)))
 
 (defun collapsing-transformation (shape)
   (invert-transformation
