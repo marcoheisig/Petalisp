@@ -238,23 +238,23 @@
                  (reverse tilde-separated-range-designators))))
              (subsequences (split-sequence:split-sequence '~ values)))
         (alexandria:with-gensyms (ranges)
-          `(let ((,ranges '()))
-             (let ,bindings
-               ,@(mapcar
-                  (trivia:lambda-match
-                    ((list start)
-                     `(push (range ,start) ,ranges))
-                    ((list start end)
-                     `(push (range ,start ,end) ,ranges))
-                    ((list start step end)
-                     `(if (eq ,step '~)
-                          (progn
-                            (push (range ,end) ,ranges)
-                            (push (range ,start) ,ranges))
-                          (push (range ,start ,step ,end) ,ranges)))
-                    (_ (return-from ~ form)))
-                  (reverse subsequences)))
-             (make-shape ,ranges))))))
+          `(,(if (null bindings) 'load-time-value 'progn)
+            (let (,@bindings (,ranges '()))
+              ,@(mapcar
+                 (trivia:lambda-match
+                   ((list start)
+                    `(push (range ,start) ,ranges))
+                   ((list start end)
+                    `(push (range ,start ,end) ,ranges))
+                   ((list start step end)
+                    `(if (eq ,step '~)
+                         (progn
+                           (push (range ,end) ,ranges)
+                           (push (range ,start) ,ranges))
+                         (push (range ,start ,step ,end) ,ranges)))
+                   (_ (return-from ~ form)))
+                 (reverse subsequences))
+              (make-shape ,ranges)))))))
 
 (trivia:defpattern shape (&rest ranges)
   (with-gensyms (it)

@@ -16,8 +16,6 @@
 
 (defgeneric range-difference-list (range-1 range-2))
 
-(defgeneric make-range (start step end))
-
 (defgeneric split-range (range))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -27,13 +25,13 @@
 (defclass range (finite-set)
   ())
 
+(defclass contiguous-range (range)
+  ())
+
 (defclass non-contiguous-range (range)
   ((%start :initarg :start :reader range-start)
    (%step :initarg :step :reader range-step)
    (%end :initarg :end :reader range-end)))
-
-(defclass contiguous-range (range)
-  ())
 
 (defclass size-one-range (contiguous-range)
   ((%element :initarg :start :reader range-start
@@ -42,6 +40,78 @@
 (defclass non-size-one-contiguous-range (contiguous-range)
   ((%start :initarg :start :reader range-start)
    (%end :initarg :end :reader range-end)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Constructors
+
+(defun make-range (start step end)
+  (declare (integer start step end))
+  (case step
+    (0 (make-range--step=0 start end))
+    ((1 -1) (make-range--step=1 start end))
+    (otherwise (make-range--step=N start step end))))
+
+(defun make-range--step=0 (start end)
+  (declare (integer start end))
+  (if (= start end)
+      (make-instance 'size-one-range :start start)
+      (error "Bad step size 0 for range with start ~d and end ~d" start end)))
+
+(defun make-range--step=1 (start end)
+  (declare (integer start end))
+  (let ((steps (- end start)))
+    (if (zerop steps)
+        (make-instance 'size-one-range :start start)
+        (make-instance 'non-size-one-contiguous-range
+          :start (min start end)
+          :end (max start end)))))
+
+;;; This function assumes (abs step) > 1.
+(defun make-range--step=N (start step end)
+  (declare (integer start step end))
+  (let ((steps (truncate (- end start) step)))
+    (if (zerop steps)
+        (make-instance 'size-one-range :start start)
+        (let ((congruent-end (+ start (* step steps))))
+          (make-instance 'non-contiguous-range
+            :start (min start congruent-end)
+            :step (abs step)
+            :end (max start congruent-end))))))
+
+(defun range (start &optional (step-or-end 1 two-args-p) (end start three-args-p))
+  (cond (three-args-p (make-range start step-or-end end))
+        (two-args-p (make-range start 1 step-or-end))
+        (t (make-range start step-or-end end))))
+
+(define-compiler-macro range (&whole form &rest args)
+  (cond ((not (<= 1 (length args) 3))
+         (return-from range form))
+        ((every #'constantp args)
+         `(load-time-value
+           (locally (declare (notinline range))
+             (range ,@args))))
+        ((let ((bindings (mapcar (lambda (arg)
+                                   (let ((g (gensym)))
+                                     (list g arg)))
+                                 args)))
+           `(let ,bindings
+              ,(trivia:ematch (mapcar #'first bindings)
+                 ((list start) `(make-range ,start 1 ,start))
+                 ((list start end) `(make-range ,start 1 ,end))
+                 ((list start step end) `(make-range ,start ,step ,end))))))))
+
+(trivia:defpattern range (&rest start-step-end)
+  (with-gensyms (it tmp)
+    (multiple-value-bind (start step end)
+        (trivia:ematch start-step-end
+          ((list start step end) (values start step end))
+          ((list start end) (values start 1 end))
+          ((list start) (values `(and ,start ,tmp) 1 `(= ,tmp))))
+      `(trivia:guard1 ,it (rangep ,it)
+                      (range-start ,it) ,start
+                      (range-step ,it) ,step
+                      (range-end ,it) ,end))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -294,22 +364,6 @@
 (defmethod set-intersectionp ((range-1 range) (range-2 range))
   (and (range-intersection-start-step-end range-1 range-2) t))
 
-(defmethod make-range ((start integer) (step integer) (end integer))
-  (if (zerop step)
-      (if (= start end)
-          (make-instance 'size-one-range :start start)
-          (error "Bad step size 0 for range with start ~d and end ~d" start end))
-      (let ((steps (truncate (- end start) step)))
-        (if (= steps 0)
-            (make-instance 'size-one-range :start start)
-            (let ((congruent-end (+ start (* step steps))))
-              (let ((step (abs step))
-                    (start (min start congruent-end))
-                    (end (max start congruent-end)))
-                (if (= 1 step)
-                    (make-instance 'non-size-one-contiguous-range :start start :end end)
-                    (make-instance 'non-contiguous-range :start start :step step :end end))))))))
-
 (defun range-fusion (ranges)
   ;; Assuming that all supplied RANGES are non-overlapping, the only
   ;; possible fusion is obtained by summing the number of elements,
@@ -331,43 +385,16 @@
                    (fail))
                  (return result))))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Convenient Notation for Ranges
+(defmethod make-load-form ((range size-one-range) &optional env)
+  (make-load-form-saving-slots range :slot-names '(%element) :environment env))
 
-(defun range (start &optional (step-or-end 1 two-args-p) (end start three-args-p))
-  (cond (three-args-p (make-range start step-or-end end))
-        (two-args-p (make-range start 1 step-or-end))
-        (t (make-range start step-or-end end))))
+(defmethod make-load-form ((range non-contiguous-range) &optional env)
+  (make-load-form-saving-slots range :slot-names '(%start %step %end)
+                                     :environment env))
 
-(define-compiler-macro range (&whole form &rest args)
-  (cond ((not (<= 1 (length args) 3))
-         (return-from range form))
-        ((every #'constantp args)
-         `(load-time-value
-           (locally (declare (notinline range))
-             (range ,@args))))
-        ((let ((bindings (mapcar (lambda (arg)
-                                   (let ((g (gensym)))
-                                     (list g arg)))
-                                 args)))
-           `(let ,bindings
-              ,(trivia:ematch (mapcar #'first bindings)
-                 ((list start) `(make-range ,start 1 ,start))
-                 ((list start end) `(make-range ,start 1 ,end))
-                 ((list start step end) `(make-range ,start ,step ,end))))))))
-
-(trivia:defpattern range (&rest start-step-end)
-  (with-gensyms (it tmp)
-    (multiple-value-bind (start step end)
-        (trivia:ematch start-step-end
-          ((list start step end) (values start step end))
-          ((list start end) (values start 1 end))
-          ((list start) (values `(and ,start ,tmp) 1 `(= ,tmp))))
-      `(trivia:guard1 ,it (rangep ,it)
-                      (range-start ,it) ,start
-                      (range-step ,it) ,step
-                      (range-end ,it) ,end))))
+(defmethod make-load-form ((range non-size-one-contiguous-range) &optional env)
+  (make-load-form-saving-slots range :slot-names '(%start %end)
+                                     :environment env))
 
 (defmethod print-object ((range range) stream)
   (print-unreadable-object (range stream)
@@ -376,3 +403,4 @@
             (range-start range)
             (range-step range)
             (range-end range))))
+
