@@ -4,12 +4,10 @@
   :license "AGPLv3"
 
   :depends-on
-  ("agnostic-lizard"
-   "alexandria"
-   "closer-mop"
+  ("alexandria"
    "trivia"
-   "split-sequence"
    "petalisp.core"
+   "petalisp.utilities"
    "petalisp.reference-backend"
    "petalisp.ir-backend"
    "petalisp.native-backend")

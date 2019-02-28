@@ -4,7 +4,7 @@
 
   :depends-on
   ("alexandria"
-   "closer-mop"
+   "split-sequence"
    "bordeaux-threads"
    "lparallel"
    "trivia"
