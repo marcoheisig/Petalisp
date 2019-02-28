@@ -29,17 +29,13 @@
 
 (defgeneric set-subsetp (set-1 set-2))
 
-(defgeneric set-equal (set-1 set-2)
-  (:generic-function-class petalisp.utilities:symmetric-function))
+(defgeneric set-equal (set-1 set-2))
 
-(defgeneric set-intersection (set-1 set-2)
-  (:generic-function-class petalisp.utilities:symmetric-function))
+(defgeneric set-intersection (set-1 set-2))
 
-(defgeneric set-intersectionp (set-1 set-2)
-  (:generic-function-class petalisp.utilities:symmetric-function))
+(defgeneric set-intersectionp (set-1 set-2))
 
-(defgeneric set-union (set-1 set-2)
-  (:generic-function-class petalisp.utilities:symmetric-function))
+(defgeneric set-union (set-1 set-2))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

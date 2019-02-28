@@ -5,6 +5,7 @@
 
   :depends-on
   ("asdf"
+   "closer-mop"
    "petalisp"
    "petalisp.examples"
    "petalisp.graphviz")

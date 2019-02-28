@@ -5,7 +5,7 @@
 (defpackage #:petalisp.test-suite
   (:shadowing-import-from #:petalisp.core #:set-difference #:set-equal)
   (:use
-   #:closer-common-lisp
+   #:common-lisp
    #:alexandria
    #:petalisp.core
    #:petalisp.api

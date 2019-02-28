@@ -50,7 +50,7 @@
       '()
       (let ((f (symbol-function symbol)))
         (if (typep f 'generic-function)
-            (generic-function-methods f)
+            (closer-common-lisp:generic-function-methods f)
             '()))))
 
 (defun print-package-statistics (package &optional (stream *standard-output*))

@@ -10,6 +10,6 @@
    (:file "identical")
    (:file "memoization")
    (:file "extended-euclid")
-   (:file "symmetric-function")
+   (:file "define-method-pair")
    (:file "define-class-predicate")
    (:file "defalias")))

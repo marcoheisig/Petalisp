@@ -3,7 +3,7 @@
 (cl:in-package #:common-lisp-user)
 
 (defpackage #:petalisp.native-backend
-  (:use :closer-common-lisp :alexandria :petalisp.core)
+  (:use :common-lisp :alexandria :petalisp.core)
   (:shadowing-import-from :petalisp.core #:set-difference #:set-equal)
   (:export
    #:make-native-backend))
