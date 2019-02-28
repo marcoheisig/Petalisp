@@ -2,6 +2,51 @@
 
 (in-package #:petalisp.test-suite)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Sets
+
+(test test-sets
+
+  )
+
+(test test-set-for-each
+  )
+
+(test test-set-difference
+  )
+
+(test test-set-elements
+  )
+
+(test test-set-emptyp
+  )
+
+(test test-set-equal
+  )
+
+(test test-set-contains
+  )
+
+(test test-set-intersection
+  )
+
+(test test-set-intersectionp
+  )
+
+(test test-set-subsetp
+  )
+
+(test test-set-size
+  )
+
+(test test-set-union
+  )
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Ranges
+
 (test application-test
   (compute
    (α #'+ 2 3))
@@ -51,3 +96,18 @@
   (let ((a (make-array '(2 3 4))))
     (compute (indices a 1))
     (compute (α #'+ (indices a 0) (indices a 1) (indices a 2)))))
+
+
+(test sum-of-pairs
+  (let* ((size 10)
+         (a (coerce-to-lazy-array (make-array size :initial-element 0))))
+    (compute
+     (β #'+ (fuse (reshape a (~ 0 (- size 2))
+                           (τ (i) (0 i)))
+                  (reshape a (~ 1 (- size 1))
+                           (τ (i) (1 (1- i)))))))))
+
+(test reduction-of-fusions
+  (compute
+   (β #'+ (fuse #(1 2 3)
+                (reshape #(4 5 6) (τ (i) ((+ i 3))))))))

@@ -41,8 +41,6 @@
 (defgeneric set-union (set-1 set-2)
   (:generic-function-class petalisp.utilities:symmetric-function))
 
-(defgeneric set-from-sequence (sequence))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes

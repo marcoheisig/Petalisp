@@ -10,8 +10,8 @@
 (defclass explicit-set (finite-set)
   ((%table :initarg :table :reader set-element-table)))
 
-(defmethod set-from-sequence ((sequence sequence))
-  (if (emptyp sequence)
+(defun make-explicit-set (sequence)
+  (if (alexandria:emptyp sequence)
       (empty-set)
       (let ((table (make-hash-table :test #'equal)))
         (flet ((insert (element)
@@ -75,9 +75,9 @@
 ;;; Methods Producing Explicit Sets
 
 (defmethod set-difference ((set-1 finite-set) (set-2 finite-set))
-  (set-from-sequence
+  (make-explicit-set
    (cl:set-difference (set-elements set-1) (set-elements set-2) :test #'equal)))
 
 (defmethod set-intersection ((set-1 finite-set) (set-2 finite-set))
-  (set-from-sequence
+  (make-explicit-set
    (intersection (set-elements set-1) (set-elements set-2) :test #'equal)))

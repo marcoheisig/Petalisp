@@ -87,7 +87,7 @@
     ((list) (empty-set))
     ((list shape) shape)
     ((list* shapes)
-     (set-from-sequence
+     (make-explicit-set
       (apply #'append (mapcar #'set-elements shapes))))))
 
 (defmethod set-equal ((shape-1 shape) (shape-2 shape))

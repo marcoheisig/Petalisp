@@ -21,6 +21,5 @@
    (:file "defgenerator")
    (:file "generators")
    (:file "run-petalisp-test-suite")
-   (:file "api-tests")
-   (:file "example-tests")
-   (:file "hall-of-shame")))
+   (:file "petalisp.core")
+   (:file "petalisp.examples")))

@@ -3,11 +3,12 @@
 (cl:in-package #:common-lisp-user)
 
 (defpackage #:petalisp.core
-  (:use :closer-common-lisp :alexandria)
+  (:use :common-lisp :alexandria)
   (:shadow cl:set-difference alexandria:set-equal)
   (:export
 
    ;; Sets
+   #:make-explicit-set
    #:set-for-each
    #:set-difference
    #:set-elements
