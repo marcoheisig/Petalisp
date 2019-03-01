@@ -66,7 +66,8 @@
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
      (lazy-array petalisp.core:lazy-array))
-  `(("shape" . ,(stringify (petalisp.core:shape lazy-array)))))
+  `(("shape" . ,(stringify (petalisp.core:shape lazy-array)))
+    ("element-type" . ,(stringify (petalisp.core:element-type lazy-array)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
