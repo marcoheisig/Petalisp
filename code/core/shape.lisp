@@ -198,18 +198,23 @@
 ;;; Convenient Notation for Shapes
 
 (defmethod print-object ((shape shape) stream)
-  (if *read-eval*
-      (format stream "#.(~~~{~^ ~{~D~^ ~}~^ ~~~})"
-              (mapcar
-               (lambda (range)
-                 (multiple-value-bind (start step end)
-                     (range-start-step-end range)
-                   (cond ((= start end) (list start))
-                         ((= step 1) (list start end))
-                         ((list start step end)))))
-               (ranges shape)))
-      (print-unreadable-object (shape stream :type t)
-        (format stream "~{~S~^ ~}" (ranges shape)))))
+  (flet ((listify-shape (shape)
+           (mapcar
+            (lambda (range)
+              (multiple-value-bind (start step end)
+                  (range-start-step-end range)
+                (cond ((= start end) (list start))
+                      ((= step 1) (list start end))
+                      ((list start step end)))))
+            (ranges shape))))
+    (cond ((and *print-readably* *read-eval*)
+           (format stream "#.(~~~{~^ ~{~D~^ ~}~^ ~~~})"
+                   (listify-shape shape)))
+          ((not *print-readably*)
+           (format stream "(~~~{~^ ~{~D~^ ~}~^ ~~~})"
+                   (listify-shape shape)))
+          (t (print-unreadable-object (shape stream :type t)
+               (format stream "~{~S~^ ~}" (ranges shape)))))))
 
 (defconstant ~ '~)
 
