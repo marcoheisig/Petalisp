@@ -46,22 +46,30 @@
 
 ;;; Evaluation
 
+(defmethod evaluate :before ((lazy-array lazy-array))
+  (assert (every #'lazy-array-p (inputs lazy-array))))
+
 (defmethod evaluate ((simple-immediate simple-immediate))
   simple-immediate)
 
 (defmethod evaluate ((array-immediate array-immediate))
   (make-simple-immediate
    (shape array-immediate)
+   (element-type array-immediate)
    (lambda (index)
      (apply #'aref (storage array-immediate) index))))
 
 (defmethod evaluate ((range-immediate range-immediate))
-  (make-simple-immediate (shape range-immediate) #'first))
+  (make-simple-immediate
+   (shape range-immediate)
+   (element-type range-immediate)
+   #'first))
 
 (defmethod evaluate ((application application))
   (let ((inputs (mapcar #'evaluate (inputs application))))
     (make-simple-immediate
      (shape application)
+     (element-type application)
      (lambda (index)
        (nth-value
         (value-n application)
@@ -73,6 +81,7 @@
          (k (length inputs)))
     (make-simple-immediate
      (shape reduction)
+     (element-type reduction)
      (lambda (index)
        (labels ((divide-and-conquer (range)
                   (if (size-one-range-p range)
@@ -97,13 +106,16 @@
   (let ((inputs (mapcar #'evaluate (inputs fusion))))
     (make-simple-immediate
      (shape fusion)
+     (element-type fusion)
      (lambda (index)
-       (iref (find-if (lambda (input) (set-contains (shape input) index)) inputs)
-             index)))))
+       (let ((input (find-if (lambda (input) (set-contains (shape input) index)) inputs)))
+         (assert input)
+         (iref input index))))))
 
 (defmethod evaluate ((reference reference))
   (let ((input (evaluate (input reference))))
     (make-simple-immediate
      (shape reference)
+     (element-type reference)
      (lambda (index)
        (iref input (transform index (transformation reference)))))))

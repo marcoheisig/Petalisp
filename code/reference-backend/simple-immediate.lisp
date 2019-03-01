@@ -15,12 +15,13 @@
 ;;;
 ;;; Functions
 
-(defun make-simple-immediate (shape value-fn)
+(defun make-simple-immediate (shape element-type value-fn)
   (let ((table (make-hash-table :test #'equal)))
     (set-for-each
      (lambda (index)
-       (setf (gethash index table)
-             (funcall value-fn index)))
+       (let ((value (funcall value-fn index)))
+         (assert (typep value element-type))
+         (setf (gethash index table) value)))
      shape)
     (make-instance 'simple-immediate
       :shape shape
