@@ -170,15 +170,6 @@
 ;;;
 ;;; Applications and Reductions
 
-(defun broadcast-arrays (&rest arrays)
-  (let* ((lazy-arrays (mapcar #'coerce-to-lazy-array arrays))
-         (shape (apply #'broadcast-shapes lazy-arrays)))
-    (values
-     (map-into lazy-arrays
-               (lambda (lazy-array) (reshape lazy-array shape))
-               lazy-arrays)
-     shape)))
-
 (declaim (inline α) (notinline α-aux))
 (defun α (arg-1 arg-2 &rest more-args)
   "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
@@ -234,7 +225,8 @@ mismatch, broadcast the smaller objects."
 (defun β (function array &rest more-arrays)
   (alexandria:coercef function 'function)
   (let ((k (1+ (length more-arrays))))
-    (multiple-value-bind (inputs input-shape) (apply #'broadcast-arrays array more-arrays)
+    (multiple-value-bind (inputs input-shape)
+        (apply #'broadcast-arrays array more-arrays)
       (values-list
        (if (set-emptyp input-shape)
            (make-list k :initial-element (empty-array))

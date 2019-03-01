@@ -36,8 +36,8 @@
    (:file "shape-transformations")
 
    ;; Lazy arrays
-   (:file "broadcasting")
    (:file "lazy-array")
+   (:file "broadcasting")
    (:file "lazy-array-constructors")
 
    ;; The rest

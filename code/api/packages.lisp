@@ -13,7 +13,6 @@
    #:b
    #:~
    #:broadcast-arrays
-   #:broadcast-shapes
    #:reshape
    #:transform
    #:τ

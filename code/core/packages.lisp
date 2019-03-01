@@ -42,7 +42,6 @@
    #:shape-difference-list
    #:enlarge-shape
    #:shrink-shape
-   #:broadcast-shapes
 
    ;; Transformations
    #:τ
