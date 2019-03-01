@@ -51,6 +51,7 @@
   "Define a test function and add it to *TESTS*."
   `(prog1 ',name
      (defun ,name ()
+       (declare (optimize (debug 3)))
        (with-test-harness
          (enter-test ',name)
          ,@body))
