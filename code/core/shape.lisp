@@ -115,17 +115,20 @@
      (shape-hash shape-2)))
 
 (defmethod set-intersection ((shape-1 shape) (shape-2 shape))
-  (if (/= (rank shape-1) (rank shape-2))
-      (empty-set)
-      (block nil
-        (make-shape
-         (mapcar (lambda (range-1 range-2)
-                   (let ((intersection (set-intersection range-1 range-2)))
-                     (if (set-emptyp intersection)
-                         (return (empty-set))
-                         intersection)))
-                 (ranges shape-1)
-                 (ranges shape-2))))))
+  (cond ((/= (rank shape-1) (rank shape-2))
+         (empty-set))
+        ((= (shape-hash shape-1)
+            (shape-hash shape-2))
+         shape-1)
+        ((block nil
+           (make-shape
+            (mapcar (lambda (range-1 range-2)
+                      (let ((intersection (set-intersection range-1 range-2)))
+                        (if (set-emptyp intersection)
+                            (return (empty-set))
+                            intersection)))
+                    (ranges shape-1)
+                    (ranges shape-2)))))))
 
 (defmethod set-intersectionp ((shape-1 shape) (shape-2 shape))
   (every #'set-intersectionp (ranges shape-1) (ranges shape-2)))
