@@ -168,7 +168,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Applications and Reductions
+;;; Applications
 
 (declaim (inline α) (notinline α-aux))
 (defun α (arg-1 arg-2 &rest more-args)
@@ -185,7 +185,8 @@ mismatch, broadcast the smaller objects."
   (flet ((return-outputs (list-of-outputs)
            (return-from α-aux
              (values-list list-of-outputs))))
-    (multiple-value-bind (inputs shape) (apply #'broadcast-arrays arguments)
+    (let* ((inputs (broadcast-list-of-arrays arguments))
+           (shape (shape (first inputs))))
       ;; Check whether the inputs are empty.
       (when (set-emptyp shape)
         (return-outputs
@@ -222,23 +223,27 @@ mismatch, broadcast the smaller objects."
                  :inputs inputs
                  :shape shape)))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Reductions
+
 (defun β (function array &rest more-arrays)
   (alexandria:coercef function 'function)
-  (let ((k (1+ (length more-arrays))))
-    (multiple-value-bind (inputs input-shape)
-        (apply #'broadcast-arrays array more-arrays)
-      (values-list
-       (if (set-emptyp input-shape)
-           (make-list k :initial-element (empty-array))
-           (let* ((shape (make-shape (cdr (ranges input-shape))))
-                  (input-element-types (mapcar #'element-type inputs))
-                  (restricted-function
-                    (apply #'restricted-functions:restrict nil function
-                           (append input-element-types input-element-types))))
-             (loop for value-n below k
-                   collect
-                   (make-instance 'reduction
-                     :operator restricted-function
-                     :value-n value-n
-                     :inputs inputs
-                     :shape shape))))))))
+  (let* ((inputs (broadcast-list-of-arrays (list* array more-arrays)))
+         (k (1+ (length inputs)))
+         (input-shape (shape (first inputs))))
+    (values-list
+     (if (set-emptyp input-shape)
+         (make-list k :initial-element (empty-array))
+         (let* ((shape (make-shape (cdr (ranges input-shape))))
+                (input-element-types (mapcar #'element-type inputs))
+                (restricted-function
+                  (apply #'restricted-functions:restrict nil function
+                         (append input-element-types input-element-types))))
+           (loop for value-n below k
+                 collect
+                 (make-instance 'reduction
+                   :operator restricted-function
+                   :value-n value-n
+                   :inputs inputs
+                   :shape shape)))))))

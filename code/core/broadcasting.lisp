@@ -2,43 +2,95 @@
 
 (in-package #:petalisp.core)
 
-(defun broadcast-arrays (array &rest more-arrays)
-  (let ((n (1+ (length more-arrays))))
+(defun broadcast-ranges (range-1 range-2)
+  (if (size-one-range-p range-2)
+      range-1
+      (if (or (size-one-range-p range-1)
+              (set-equal range-1 range-2))
+          range-2
+          (error "~@<Cannot broadcast the ranges ~S and ~S.~:@>"
+                 range-1 range-2))))
+
+(define-modify-macro broadcast-ranges-f (range-2)
+  broadcast-ranges)
+
+(defun broadcast-arrays (&rest arrays)
+  (let ((n (length arrays)))
     (case n
-      (1 (let ((lazy-array (coerce-to-lazy-array array)))
-           (values (list lazy-array) (shape lazy-array))))
+      (0 (values))
+      (1 (values (coerce-to-lazy-array (first arrays))))
       (otherwise
-       (let* ((arrays (list* array more-arrays))
-              (lazy-arrays (mapcar #'coerce-to-lazy-array arrays))
-              (shapes (mapcar #'shape lazy-arrays))
-              (rank (loop for shape in shapes maximize (rank shape)))
-              (modifiedp (loop for shape in shapes collect (/= rank (rank shape))))
-              (broadcast-ranges '()))
-         (loop for axis from (1- rank) downto 0 do
-           (let ((broadcast-range nil))
-             (loop for shape in shapes for modifiedp-cell on modifiedp do
-               (let ((other-range (nth-broadcast-range shape rank axis)))
-                 (if (null broadcast-range)
-                     (setf broadcast-range other-range)
-                     (setf broadcast-range
-                           (broadcast-ranges broadcast-range other-range modifiedp-cell)))))
-             (loop for shape in shapes for modifiedp-cell on modifiedp do
-               (when (and (not (car modifiedp-cell))
-                          (size-one-range-p (nth-broadcast-range shape rank axis))
-                          (not (size-one-range-p broadcast-range)))
-                 (setf (car modifiedp-cell) t)))
-             (push broadcast-range broadcast-ranges)))
-         (if (loop for elt in modifiedp never modifiedp)
-             (values lazy-arrays (shape (first lazy-arrays)))
-             (let ((broadcast-shape (make-shape broadcast-ranges)))
-               (values
-                (loop for lazy-array in lazy-arrays
-                      for modified in modifiedp
-                      collect
-                      (if (not modified)
-                          lazy-array
-                          (reshape lazy-array broadcast-shape)))
-                broadcast-shape))))))))
+       (values-list
+        (broadcast-list-of-arrays arrays))))))
+
+#+nil
+(defmacro define-array-broadcast-function (name arity)
+  (labels ((prefixer (symbol)
+             (lambda (index)
+               (intern (concatenate 'string (string symbol) "-" (format nil "~d" index))
+                       #.*package*)))
+           (mksym (symbol index)
+             (funcall (prefixer symbol) index)))
+    (let* ((arrays (mapcar (prefixer 'array) (iota arity)))
+           (lazy-array-bindings
+             (loop for array in arrays
+                   and index from 1 collect
+                   `(,(mksym 'lazy-array index) (coerce-to-lazy-array ,array))))
+           (shape-bindings
+             (loop for (lazy-array nil) in lazy-array-bindings
+                   and index from 1 collect
+                   `(,(mksym 'shape index) (shape ,lazy-array))))
+           (rank-bindings
+             (loop for (shape nil) in shape-bindings
+                   and index from 1 collect
+                   `(,(mksym 'rank index) (rank ,shape)))))
+      `(defun ,name (,@arrays)
+         (let ,lazy-array-bindings
+           (let ,shape-bindings
+             (let ,rank-bindings
+               (let ((rank (max ,@(mapcar #'first rank-bindings)))
+                     (broadcast-ranges '()))
+                 (loop for axis from (1- rank) downto 0 do
+                   (let ((broadcast-range
+                           (nth-broadcast-range ,(caar shape-bindings) rank axis)))
+                     ,@(loop for (shape nil) in (rest shape-bindings)
+                             collect
+                             `(broadcast-ranges-f
+                               broadcast-range
+                               (nth-broadcast-range ,shape rank axis)))
+                     (push broadcast-range broadcast-ranges)))
+                 (let ((broadcast-shape nil))
+                   (values
+                    ,@(loop for (lazy-array nil) in lazy-array-bindings
+                            for (shape nil) in shape-bindings
+                            collect
+                            `(if (set-equal ,shape broadcast-shape)
+                                 ,lazy-array
+                                 (reshape ,lazy-array broadcast-shape)))))))))))))
+
+#+nil
+(define-array-broadcast-function broadcast-two-arrays 2)
+
+(defun broadcast-list-of-arrays (list-of-arrays)
+  (let* ((lazy-arrays (mapcar #'coerce-to-lazy-array list-of-arrays))
+         (shapes (mapcar #'shape lazy-arrays))
+         (rank (loop for shape in shapes maximize (rank shape)))
+         (broadcast-ranges '()))
+    (loop for axis from (1- rank) downto 0 do
+      (let ((broadcast-range nil))
+        (loop for shape in shapes do
+          (let ((other-range (nth-broadcast-range shape rank axis)))
+            (if (null broadcast-range)
+                (setf broadcast-range other-range)
+                (broadcast-ranges-f broadcast-range other-range))))
+        (push broadcast-range broadcast-ranges)))
+    (let ((broadcast-shape (make-shape broadcast-ranges)))
+      (loop for lazy-array in lazy-arrays
+            for shape in shapes
+            collect
+            (if (set-equal shape broadcast-shape)
+                lazy-array
+                (reshape lazy-array broadcast-shape))))))
 
 ;;; Pad SHAPE with leading one element ranges until it reaches
 ;;; BROADCAST-RANK.  Then, access the range corresponding to AXIS of the
@@ -50,21 +102,6 @@
       (if (minusp n)
           (range 0)
           (nth n ranges)))))
-
-(defun broadcast-ranges (range-1 range-2 shape-2-modifiedp-cell)
-  (declare (cons shape-2-modifiedp-cell))
-  (symbol-macrolet ((shape-2-modifiedp (car shape-2-modifiedp-cell)))
-    (if (size-one-range-p range-2)
-        (prog1 range-1
-          (when (and (not shape-2-modifiedp)
-                     (not (set-equal range-1 range-2)))
-            (setf shape-2-modifiedp t)))
-        (if (or (size-one-range-p range-1)
-                (set-equal range-1 range-2))
-            range-2
-            (error "~@<Cannot broadcast the ranges ~S and ~S.~:@>"
-                   range-1 range-2)))))
-
 
 (defun broadcasting-transformation (input-shape output-shape)
   (let* ((input-ranges (ranges input-shape))
