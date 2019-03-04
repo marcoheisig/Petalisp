@@ -109,7 +109,9 @@
                  (ranges shape-2))))))
 
 (defmethod set-intersectionp ((shape-1 shape) (shape-2 shape))
-  (every #'set-intersectionp (ranges shape-1) (ranges shape-2)))
+  (and (= (rank shape-1)
+          (rank shape-2))
+       (every #'set-intersectionp (ranges shape-1) (ranges shape-2))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
