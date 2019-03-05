@@ -12,5 +12,4 @@
    (:file "extended-euclid")
    (:file "define-method-pair")
    (:file "define-class-predicate")
-   (:file "defalias")
-   (:file "defclassoid")))
+   (:file "defalias")))
