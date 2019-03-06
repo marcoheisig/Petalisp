@@ -2,7 +2,7 @@
   :author "Marco Heisig <marco.heisig@fau.de>"
   :license "AGPLv3"
 
-  :depends-on ("alexandria")
+  :depends-on ("alexandria" "trivia")
 
   :serial t
   :components
