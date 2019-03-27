@@ -9,4 +9,5 @@
   :serial t
   :components
   ((:file "iterative-methods")
-   (:file "linear-algebra")))
+   (:file "linear-algebra")
+   (:file "image-processing")))
