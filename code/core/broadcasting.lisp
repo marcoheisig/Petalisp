@@ -3,13 +3,14 @@
 (in-package #:petalisp.core)
 
 (defun broadcast-ranges (range-1 range-2)
-  (if (size-one-range-p range-2)
-      range-1
-      (if (or (size-one-range-p range-1)
-              (set-equal range-1 range-2))
-          range-2
-          (error "~@<Cannot broadcast the ranges ~S and ~S.~:@>"
-                 range-1 range-2))))
+  (if (size-one-range-p range-1)
+      range-2
+      (if (size-one-range-p range-2)
+          range-1
+          (if (set-equal range-1 range-2)
+              range-2
+              (error "~@<Cannot broadcast the ranges ~S and ~S.~:@>"
+                     range-1 range-2)))))
 
 (define-modify-macro broadcast-ranges-f (range-2)
   broadcast-ranges)
@@ -23,7 +24,7 @@
        (values-list
         (broadcast-list-of-arrays arrays))))))
 
-#+nil
+#+(or)
 (defmacro define-array-broadcast-function (name arity)
   (labels ((prefixer (symbol)
              (lambda (index)
@@ -68,7 +69,7 @@
                                  ,lazy-array
                                  (reshape ,lazy-array broadcast-shape)))))))))))))
 
-#+nil
+#+(or)
 (define-array-broadcast-function broadcast-two-arrays 2)
 
 (defun broadcast-list-of-arrays (list-of-arrays)
@@ -77,12 +78,10 @@
          (rank (loop for shape in shapes maximize (rank shape)))
          (broadcast-ranges '()))
     (loop for axis from (1- rank) downto 0 do
-      (let ((broadcast-range nil))
+      (let ((broadcast-range (range 0)))
         (loop for shape in shapes do
           (let ((other-range (nth-broadcast-range shape rank axis)))
-            (if (null broadcast-range)
-                (setf broadcast-range other-range)
-                (broadcast-ranges-f broadcast-range other-range))))
+            (broadcast-ranges-f broadcast-range other-range)))
         (push broadcast-range broadcast-ranges)))
     (let ((broadcast-shape (make-shape broadcast-ranges)))
       (loop for lazy-array in lazy-arrays
