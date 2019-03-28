@@ -51,6 +51,7 @@ Example 3: the numerical Jacobi scheme in two dimensions
 Coming soon!
 
 ** Frequently Asked Questions
+
 *** Is Petalisp similar to NumPy?
 NumPy is a widely used Python library for scientific computing on arrays.
 It provides powerful N-dimensional arrays and a variety of functions for
@@ -63,12 +64,14 @@ element-wise function application, reduction, reshaping and array fusion.
 So Petalisp is not a substitute for NumPy.  However, it could be used to
 write a library that behaves like NumPy, but that is much faster and fully
 parallelized.  In fact, writing such a library is one of my future goals.
+
 *** Do I have to program Lisp to use Petalisp?
 Not necessarily.  Not everyone has the time to learn Common Lisp.  That is
-why I am also working on some [[https://github.com/marcoheisig/cl4py][convenient Python bindings]] for Petalisp.
+why I am also working on some [[https://github.com/marcoheisig/petalisp-for-python][convenient Python bindings]] for Petalisp.
 
 But: If you ever have time to learn Lisp, do it!  It is an enlightening
 experience.
+
 *** Why the Greek letters?
 There are several reasons:
 1. It underlines the beautiful, mathematical nature of this programming model.
@@ -102,3 +105,21 @@ I couldn't wish for a better tool for the job. Common Lisp is extremely
 rich in features, standardized, fast, safe and mature. The Lisp community
 is amazing and there are excellent libraries for almost every imaginable
 task.
+
+To illustrate why Lisp is particularly well suited for a project like
+Petalisp, consider the following implementation of a JIT-compiler for
+mapping a function over a vector of a certain element type:
+
+#+BEGIN_SRC lisp
+(defun vector-mapper (element-type)
+  (compile nil `(lambda (fn vec)
+                  (declare (function fn)
+                           (type (simple-array ,element-type (*)) vec)
+                           (optimize (speed 3) (safety 0)))
+                  (loop for index below (length vec) do
+                    (symbol-macrolet ((elt (aref vec index)))
+                      (setf elt (funcall fn elt)))))))
+#+END_SRC
+
+Not only is this JIT-compiler just 8 lines of code, it is also 20 times
+faster than invoking GCC or Clang on a roughly equivalent piece of C code.
