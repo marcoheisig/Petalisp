@@ -230,7 +230,7 @@ mismatch, broadcast the smaller objects."
 (defun β (function array &rest more-arrays)
   (alexandria:coercef function 'function)
   (let* ((inputs (broadcast-list-of-arrays (list* array more-arrays)))
-         (k (1+ (length inputs)))
+         (k (length inputs))
          (input-shape (shape (first inputs))))
     (values-list
      (if (set-emptyp input-shape)
