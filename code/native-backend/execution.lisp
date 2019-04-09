@@ -27,7 +27,7 @@
           (memory-pool-allocate
            (memory-pool native-backend)
            (element-type buffer)
-           (mapcar #'set-size (ranges (petalisp.ir:buffer-shape buffer)))))
+           (mapcar #'range-size (ranges (petalisp.ir:buffer-shape buffer)))))
     (loop for kernel in (inputs buffer) do
       (execute-kernel kernel native-backend))
     buffer))

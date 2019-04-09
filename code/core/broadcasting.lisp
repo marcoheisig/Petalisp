@@ -7,7 +7,7 @@
       range-2
       (if (size-one-range-p range-2)
           range-1
-          (if (set-equal range-1 range-2)
+          (if (range-equal range-1 range-2)
               range-2
               (error "~@<Cannot broadcast the ranges ~S and ~S.~:@>"
                      range-1 range-2)))))
@@ -118,8 +118,8 @@
     (loop for index below (min input-rank output-rank)
           for input-range in input-ranges
           for output-range in output-ranges do
-            (let ((output-size (set-size output-range))
-                  (input-size (set-size input-range)))
+            (let ((output-size (range-size output-range))
+                  (input-size (range-size input-range)))
               (cond ( ;; Select
                      (> output-size input-size)
                      (setf (svref offsets index) 0)

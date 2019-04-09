@@ -38,7 +38,7 @@
     :executedp nil
     :shape (shape lazy-array)
     :element-type (element-type lazy-array)
-    :storage (make-array (mapcar #'set-size (ranges (shape lazy-array))))))
+    :storage (make-array (mapcar #'range-size (ranges (shape lazy-array))))))
 
 (defmethod petalisp.ir:make-buffer
     ((array-immediate array-immediate) (ir-backend ir-backend))

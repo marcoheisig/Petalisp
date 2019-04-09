@@ -13,7 +13,6 @@
    #:set-difference
    #:set-elements
    #:set-emptyp
-   #:set-equal
    #:set-contains
    #:set-intersection
    #:set-intersectionp
@@ -24,13 +23,20 @@
    ;; Ranges
    #:range
    #:rangep
+   #:make-range
    #:size-one-range-p
    #:split-range
-   #:make-range
+   #:map-range
+   #:range-equal
+   #:range-contains
+   #:range-intersection
+   #:range-intersectionp
+   #:range-difference-list
    #:range-start-step-end
    #:range-start
    #:range-step
    #:range-end
+   #:range-size
 
    ;; Shapes
    #:~

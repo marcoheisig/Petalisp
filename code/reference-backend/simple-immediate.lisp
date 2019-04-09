@@ -39,7 +39,7 @@
   (with-accessors ((shape shape) (table table)) simple-immediate
     (if (zerop (rank shape))
         (gethash '() table)
-        (let ((array (make-array (mapcar #'set-size (ranges shape)))))
+        (let ((array (make-array (mapcar #'range-size (ranges shape)))))
           (set-for-each
            (lambda (index)
              (setf (apply #'aref array index)

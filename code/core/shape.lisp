@@ -66,7 +66,7 @@
   (labels ((rec (ranges indices function)
              (if (null ranges)
                  (funcall function indices)
-                 (set-for-each
+                 (map-range
                   (lambda (index)
                     (rec (rest ranges)
                          (cons index indices)
@@ -75,12 +75,12 @@
     (rec (reverse (ranges shape)) '() function)))
 
 (defmethod set-size ((shape shape))
-  (reduce #'* (ranges shape) :key #'set-size))
+  (reduce #'* (ranges shape) :key #'range-size))
 
 (defmethod set-contains ((shape shape) (tuple list))
   (loop for integer in tuple
         for range in (ranges shape)
-        always (set-contains range integer)))
+        always (range-contains range integer)))
 
 (defmethod set-difference ((shape-1 shape) (shape-2 shape))
   (trivia:match (shape-difference-list shape-1 shape-2)
@@ -93,7 +93,7 @@
 (defmethod set-equal ((shape-1 shape) (shape-2 shape))
   (and (= (rank shape-1)
           (rank shape-2))
-       (every #'set-equal (ranges shape-1) (ranges shape-2))))
+       (every #'range-equal (ranges shape-1) (ranges shape-2))))
 
 (defmethod set-intersection ((shape-1 shape) (shape-2 shape))
   (if (/= (rank shape-1) (rank shape-2))
@@ -101,8 +101,8 @@
       (block nil
         (make-shape
          (mapcar (lambda (range-1 range-2)
-                   (let ((intersection (set-intersection range-1 range-2)))
-                     (if (set-emptyp intersection)
+                   (let ((intersection (range-intersection range-1 range-2)))
+                     (if (null intersection)
                          (return (empty-set))
                          intersection)))
                  (ranges shape-1)
@@ -111,7 +111,7 @@
 (defmethod set-intersectionp ((shape-1 shape) (shape-2 shape))
   (and (= (rank shape-1)
           (rank shape-2))
-       (every #'set-intersectionp (ranges shape-1) (ranges shape-2))))
+       (every #'range-intersectionp (ranges shape-1) (ranges shape-2))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

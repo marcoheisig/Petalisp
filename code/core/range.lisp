@@ -2,82 +2,52 @@
 
 (in-package #:petalisp.core)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Generic Functions
+(defstruct (range (:constructor %make-range (start step size))
+                  (:predicate rangep)
+                  (:copier nil))
+  (start 0 :type integer :read-only t)
+  (step 1 :type (integer 1 *) :read-only t)
+  (size 1 :type (integer 1 *) :read-only t))
 
-(defgeneric range-start-step-end (range))
+(declaim (inline range-end))
+(defun range-end (range)
+  (declare (range range))
+  (+ (range-start range)
+     (* (1- (range-size range))
+        (range-step range))))
 
-(defgeneric range-start (range))
+(defmethod print-object ((range range) stream)
+  (print-unreadable-object (range stream)
+    (format stream "~S ~D ~D ~D"
+            'range
+            (range-start range)
+            (range-step range)
+            (range-end range))))
 
-(defgeneric range-step (range))
+(declaim (inline range-start-step-end))
+(defun range-start-step-end (range)
+  (declare (range range))
+  (values
+   (range-start range)
+   (range-step range)
+   (range-end range)))
 
-(defgeneric range-end (range))
-
-(defgeneric range-difference-list (range-1 range-2))
-
-(defgeneric split-range (range))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Classes
-
-(defclass range (finite-set)
-  ())
-
-(defclass contiguous-range (range)
-  ())
-
-(defclass non-contiguous-range (range)
-  ((%start :initarg :start :reader range-start)
-   (%step :initarg :step :reader range-step)
-   (%end :initarg :end :reader range-end)))
-
-(defclass size-one-range (contiguous-range)
-  ((%element :initarg :start :reader range-start
-             :initarg :end :reader range-end)))
-
-(defclass non-size-one-contiguous-range (contiguous-range)
-  ((%start :initarg :start :reader range-start)
-   (%end :initarg :end :reader range-end)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Constructors
+(defun split-range (range)
+  (declare (range range))
+  (multiple-value-bind (start step end)
+      (range-start-step-end range)
+    (let ((middle (floor (+ start end) 2)))
+      (values (make-range start step middle)
+              (make-range end step (+ middle step))))))
 
 (defun make-range (start step end)
   (declare (integer start step end))
-  (case step
-    (0 (make-range--step=0 start end))
-    ((1 -1) (make-range--step=1 start end))
-    (otherwise (make-range--step=N start step end))))
-
-(defun make-range--step=0 (start end)
-  (declare (integer start end))
-  (if (= start end)
-      (make-instance 'size-one-range :start start)
-      (error "Bad step size 0 for range with start ~d and end ~d" start end)))
-
-(defun make-range--step=1 (start end)
-  (declare (integer start end))
-  (let ((steps (- end start)))
-    (if (zerop steps)
-        (make-instance 'size-one-range :start start)
-        (make-instance 'non-size-one-contiguous-range
-          :start (min start end)
-          :end (max start end)))))
-
-;;; This function assumes (abs step) > 1.
-(defun make-range--step=N (start step end)
-  (declare (integer start step end))
-  (let ((steps (truncate (- end start) step)))
-    (if (zerop steps)
-        (make-instance 'size-one-range :start start)
-        (let ((congruent-end (+ start (* step steps))))
-          (make-instance 'non-contiguous-range
-            :start (min start congruent-end)
-            :step (abs step)
-            :end (max start congruent-end))))))
+  (let ((step (abs step)))
+    (if (zerop step)
+        (if (= start end)
+            (%make-range start 1 1)
+            (error "Bad step size 0 for range with start ~d and end ~d" start end))
+        (%make-range (min start end) step (1+ (truncate (abs (- end start)) step))))))
 
 (defun range (start &optional (step-or-end 1 two-args-p) (end start three-args-p))
   (cond (three-args-p (make-range start step-or-end end))
@@ -113,144 +83,80 @@
                       (range-step ,it) ,step
                       (range-end ,it) ,end))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Methods
+(declaim (inline size-one-range-p))
+(defun size-one-range-p (range)
+  (declare (range range))
+  (= 1 (range-size range)))
 
-(petalisp.utilities:define-class-predicate range)
-
-(petalisp.utilities:define-class-predicate size-one-range :hyphenate t)
-
-(defmethod range-step ((range contiguous-range))
-  1)
-
-(defmethod range-start-step-end ((range range))
-  (values (range-start range)
-          (range-step range)
-          (range-end range)))
-
-(defmethod range-start-step-end ((range contiguous-range))
-  (values (range-start range)
-          1
-          (range-end range)))
-
-(defmethod range-start-step-end ((range size-one-range))
-  (let ((element (range-start range)))
-    (values element 1 element)))
-
-(defmethod set-for-each ((function function) (range range))
+(defun map-range (function range)
+  (declare (function function)
+           (range range))
   (multiple-value-bind (start step end)
       (range-start-step-end range)
     (loop for element from start by step to end do
       (funcall function element))))
 
-(defmethod set-size ((range range))
-  (1+ (/ (- (range-end range) (range-start range))
-         (range-step range))))
-
-(defmethod set-size ((range contiguous-range))
-  (1+ (- (range-end range) (range-start range))))
-
-(defmethod set-size ((range size-one-range))
-  1)
-
-(defmethod set-contains ((range range) (integer integer))
+(defun range-contains (range integer)
+  (declare (range range)
+           (integer integer))
   (and (<= (range-start range) integer (range-end range))
        (zerop (rem (- integer (range-start range))
                    (range-step range)))))
 
-(defmethod set-contains ((range contiguous-range) (integer integer))
-  (<= (range-start range) integer (range-end range)))
-
-(defmethod set-contains ((range size-one-range) (integer integer))
-  (= integer (range-start range)))
-
-(defmethod set-equal ((range-1 range) (range-2 range))
+(defun range-equal (range-1 range-2)
+  (declare (range range-1 range-2))
   (and (= (range-start range-1)
           (range-start range-2))
        (= (range-step range-1)
           (range-step range-2))
-       (= (range-end range-1)
-          (range-end range-2))))
-
-(defmethod set-equal ((range-1 size-one-range) (range-2 size-one-range))
-  (= (range-start range-1) (range-start range-2)))
-
-(petalisp.utilities:define-method-pair set-equal
-    ((range-1 size-one-range) (range-2 range))
-  (declare (ignore range-1 range-2))
-  nil)
-
-(petalisp.utilities:define-method-pair set-equal
-    ((range range) (explicit-set explicit-set))
-  (let ((table (set-element-table explicit-set)))
-    (and (= (hash-table-count table) (set-size range))
-         (loop for integer from (range-start range) by (range-step range) to (range-end range)
-               always (gethash integer table)))))
-
-(defmethod split-range ((range range))
-  (multiple-value-bind (start step end)
-      (range-start-step-end range)
-    (let ((middle (floor (+ start end) 2)))
-      (values (make-range start step middle)
-              (make-range end step (+ middle step))))))
+       (= (range-size range-1)
+          (range-size range-2))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Difference of Ranges
 
-(defmethod range-difference-list ((range-1 range) (range-2 range))
-  ;; We only care about the part of range-2 that intersects with range-1.
-  (let ((range-2 (set-intersection range-1 range-2)))
-    (if (set-emptyp range-2)
-        (list range-1)
-        (multiple-value-bind (start-1 step-1 end-1) (range-start-step-end range-1)
-          (multiple-value-bind (start-2 step-2 end-2) (range-start-step-end range-2)
-            (declare (integer start-1 end-1 start-2 end-2)
-                     (positive-integer step-1 step-2))
-            ;; The new range-2 is now a proper sub-range of range-1, i.e. we
-            ;; have (<= start-1 start-2 end-2 end-1).  Furthermore, step-2 is
-            ;; now either a multiple of step-1, or one, if range-2 has only a
-            ;; single element.
-            (cond
-              (;; If range-2 does not intersect range-1, we are done.
-               (set-emptyp range-2) (list range-1))
-              ;; Now we pick off the five special cases where range-2 has only
-              ;; a single element.
-              ((= start-2 end-2)
-               (range-difference-list--single start-1 step-1 end-1 start-2))
-              ;; At this point, we know that step-2 is a multiple of step-1.
-              ;; Using a coordinate transformation, we simplify this case such
-              ;; that range-1 is contiguous.
-              (t
-               (range-difference-list--contiguous
-                0
-                (/ (- end-1 start-1) step-1)
-                (/ (- start-2 start-1) step-1)
-                (/ step-2 step-1)
-                (/ (- end-2 start-1) step-1)
-                (lambda (start step end)
-                  (make-range
-                   (+ (* start step-1) start-1)
-                   (* step step-1)
-                   (+ (* end step-1) start-1)))))))))))
-
-(defmethod range-difference-list ((range-1 size-one-range) (range-2 size-one-range))
-  (if (= (range-start range-1) (range-start range-2))
-      (list)
-      (list range-1)))
-
-(defmethod range-difference-list ((range-1 range) (range-2 size-one-range))
-  (multiple-value-call #'range-difference-list--single
-    (range-start-step-end range-1)
-    (range-start range-2)))
-
-(defmethod range-difference-list ((range-1 contiguous-range) (range-2 range))
-  (multiple-value-call #'range-difference-list--contiguous
-    (values (range-start range-1))
-    (values (range-end range-1))
-    (range-start-step-end range-2)
-    #'make-range))
+(defun range-difference-list (range-1 range-2)
+  (declare (range range-1 range-2))
+  (if (= 1 (range-step range-1))
+      (range-difference-list--contiguous
+       (range-start range-1)
+       (range-end range-1)
+       (range-start range-2)
+       (range-step range-2)
+       (range-end range-2)
+       #'make-range)
+      ;; For the remaining code, we only care about the part of range-2
+      ;; that intersects with range-1.
+      (let ((range-2 (range-intersection range-1 range-2)))
+        (if (not range-2)
+            (list range-1)
+            (multiple-value-bind (start-1 step-1 end-1) (range-start-step-end range-1)
+              (multiple-value-bind (start-2 step-2 end-2) (range-start-step-end range-2)
+                ;; The new range-2 is now a proper sub-range of range-1, i.e. we
+                ;; have (<= start-1 start-2 end-2 end-1).  Furthermore, step-2 is
+                ;; now either a multiple of step-1, or one, if range-2 has only a
+                ;; single element.
+                (cond
+                  ((= start-2 end-2)
+                   ;; First, we pick off the special case where range-2 has
+                   ;; only a single element.
+                   (range-difference-list--single start-1 step-1 end-1 start-2))
+                  (t
+                   ;; At this point, we know that step-2 is a multiple of
+                   ;; step-1.  Using a coordinate transformation, we
+                   ;; simplify this case such that range-1 is contiguous.
+                   (range-difference-list--contiguous
+                    0
+                    (1- (range-size range-1))
+                    (/ (- start-2 start-1) step-1)
+                    (/ step-2 step-1)
+                    (/ (- end-2 start-1) step-1)
+                    (lambda (start step end)
+                      (make-range
+                       (+ (* start step-1) start-1)
+                       (* step step-1)
+                       (+ (* end step-1) start-1))))))))))))
 
 (defun range-difference-list--contiguous
     (start-1 end-1 start-2 step-2 end-2 make-range-fn)
@@ -265,18 +171,18 @@
          (strategy-1-ub (+ end-2 step-2))
          (strategy-1-lb-p (>= strategy-1-lb start-1))
          (strategy-1-ub-p (<= strategy-1-ub end-1))
-         (strategy-1 (+ (1- step-2)
-                        (if strategy-1-lb-p 1 0)
-                        (if strategy-1-ub-p 1 0)))
+         (strategy-1 (- step-2
+                        (if strategy-1-lb-p 0 1)
+                        (if strategy-1-ub-p 0 1)))
          (strategy-2-lb-p (/= start-2 start-1))
          (strategy-2-ub-p (/= end-2 end-1))
          (strategy-2 (+ (/ (- end-2 start-2) step-2)
                         (if strategy-2-lb-p 1 0)
                         (if strategy-2-ub-p 1 0))))
-    ;; We pick the strategy that produces fewer ranges.
     (let ((ranges '()))
       (flet ((push-range (start step end)
                (push (funcall make-range-fn start step end) ranges)))
+        ;; We pick the strategy that produces fewer ranges.
         (if (< strategy-1 strategy-2)
             ;; Strategy 1
             (loop for offset from 1 below step-2
@@ -328,23 +234,16 @@
 ;;;
 ;;; Intersection of Ranges
 
-(defmethod set-intersection ((range-1 range) (range-2 range))
+(defun range-intersection (range-1 range-2)
+  (declare (range range-1 range-2))
   (multiple-value-bind (start step end)
       (range-intersection-start-step-end range-1 range-2)
-    (if (null start)
-        (empty-set)
+    (if (not start)
+        nil
         (make-range start step end))))
 
-(defmethod set-intersection ((range-1 contiguous-range) (range-2 contiguous-range))
-  (let ((start (max (range-start range-1)
-                    (range-start range-2)))
-        (end (min (range-end range-1)
-                  (range-end range-2))))
-    (if (<= start end)
-        (make-range start 1 end)
-        (empty-set))))
-
 (defun range-intersection-start-step-end (range-1 range-2)
+  (declare (range range-1 range-2))
   (let ((lb (max (range-start range-1) (range-start range-2)))
         (ub (min (range-end   range-1) (range-end   range-2))))
     (let ((a (range-step range-1))
@@ -352,17 +251,25 @@
           (c (- (range-start range-2) (range-start range-1))))
       (multiple-value-bind (s gcd)
           (petalisp.utilities:extended-euclid a b)
-        (when (integerp (/ c gcd))
-          (let ((x (+ (* s (/ c gcd) a)
-                      (range-start range-1)))
-                (lcm (/ (* a b) gcd)))
-            (let ((start (+ x (* lcm (ceiling (- lb x) lcm))))
-                  (end   (+ x (* lcm (floor   (- ub x) lcm)))))
-              (when (<= lb start end ub)
-                (values start lcm end)))))))))
+        (let ((c/gcd (/ c gcd)))
+          (if (not (integerp c/gcd))
+              (values nil nil nil)
+              (let ((x (+ (* s c/gcd a)
+                          (range-start range-1)))
+                    (lcm (/ (* a b) gcd)))
+                (let ((start (+ x (* lcm (ceiling (- lb x) lcm))))
+                      (end   (+ x (* lcm (floor   (- ub x) lcm)))))
+                  (if (<= lb start end ub)
+                      (values start lcm end)
+                      (values nil nil nil))))))))))
 
-(defmethod set-intersectionp ((range-1 range) (range-2 range))
+(defun range-intersectionp (range-1 range-2)
+  (declare (range range-1 range-2))
   (and (range-intersection-start-step-end range-1 range-2) t))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Fusion of Ranges
 
 (defun range-fusion (ranges)
   ;; Assuming that all supplied RANGES are non-overlapping, the only
@@ -370,37 +277,21 @@
   ;; determining the smallest and largest element of all sequences and
   ;; choosing a step size to yield the correct number of elements.
   (loop for range in ranges
-        summing (set-size range) into number-of-elements
+        summing (range-size range) into size
         minimizing (range-start range) into start
         maximizing (range-end range) into end
         finally
            (flet ((fail ()
                     (simple-program-error
                      "Unable to fuse ranges:~%~{~A~%~}" ranges)))
-             (let ((step (if (= number-of-elements 1) 1
-                             (/ (- end start) (1- number-of-elements)))))
-               (unless (integerp step) (fail))
-               (let ((result (make-range start step end)))
-                 (when (notevery (lambda (range) (set-intersectionp range result)) ranges)
+             (let ((step (if (= size 1)
+                             1
+                             (/ (- end start)
+                                (1- size)))))
+               (unless (integerp step)
+                 (fail))
+               (let ((result (%make-range start step size)))
+                 (when (notevery (lambda (range) (range-intersectionp range result)) ranges)
                    (fail))
                  (return result))))))
-
-(defmethod make-load-form ((range size-one-range) &optional env)
-  (make-load-form-saving-slots range :slot-names '(%element) :environment env))
-
-(defmethod make-load-form ((range non-contiguous-range) &optional env)
-  (make-load-form-saving-slots range :slot-names '(%start %step %end)
-                                     :environment env))
-
-(defmethod make-load-form ((range non-size-one-contiguous-range) &optional env)
-  (make-load-form-saving-slots range :slot-names '(%start %end)
-                                     :environment env))
-
-(defmethod print-object ((range range) stream)
-  (print-unreadable-object (range stream)
-    (format stream "~S ~D ~D ~D"
-            'range
-            (range-start range)
-            (range-step range)
-            (range-end range))))
 

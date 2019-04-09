@@ -4,48 +4,54 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Sets
+;;; Ranges
 
-(test test-sets
-
-  )
-
-(test test-set-for-each
-  )
-
-(test test-set-difference
-  )
-
-(test test-set-elements
-  )
-
-(test test-set-emptyp
-  )
-
-(test test-set-equal
-  )
-
-(test test-set-contains
-  )
-
-(test test-set-intersection
-  )
-
-(test test-set-intersectionp
-  )
-
-(test test-set-subsetp
-  )
-
-(test test-set-size
-  )
-
-(test test-set-union
-  )
+(test range-test
+  ;; Range constructors
+  (is (rangep (make-range 1 0 1)))
+  (is (rangep (apply #'range (list 1 2 3))))
+  (signals error (make-range 1 0 99))
+  ;; Range operations
+  (labels ((test-range (range)
+             (is (rangep range))
+             (is (range-equal range range))
+             (is (range-equal range (multiple-value-call #'make-range (range-start-step-end range))))
+             (if (size-one-range-p range)
+                 (is (= (range-start range)
+                        (range-end range)))
+                 (is (/= (range-start range)
+                         (range-end range))))
+             (map-range
+              (lambda (index)
+                (is (range-contains range index)))
+              range)
+             (is (not (range-contains range (1- (range-start range)))))
+             (is (not (range-contains range (1+ (range-end range))))))
+           (test-range-pair (range-1 range-2)
+             (test-range range-1)
+             (test-range range-2)
+             (cond ((range-intersectionp range-1 range-2)
+                    (let ((intersection-1 (range-intersection range-1 range-2))
+                          (intersection-2 (range-intersection range-1 range-2))
+                          (differences-1 (range-difference-list range-1 range-2))
+                          (differences-2 (range-difference-list range-2 range-1)))
+                      (is (range-equal intersection-1 intersection-2))
+                      (is (= (reduce #'+ differences-1 :key #'range-size)
+                             (- (range-size range-1)
+                                (range-size intersection-1))))
+                      (is (= (reduce #'+ differences-2 :key #'range-size)
+                             (- (range-size range-2)
+                                (range-size intersection-2))))))
+                   (t (null (range-intersection range-1 range-2))))))
+    (test-range-pair (range 0) (range 0))
+    (test-range-pair (range 0) (range 1))
+    (test-range-pair (range 0 2) (range 1))
+    (test-range-pair (range 0 99) (range 1 100))
+    (test-range-pair (range 0 3 99) (range 1 5 100))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Ranges
+;;; Full Programs
 
 (test application-test
   (compute

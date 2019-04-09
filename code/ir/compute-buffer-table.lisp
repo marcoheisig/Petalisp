@@ -131,6 +131,6 @@
         (let ((fusion-range (reduction-range-of fusion)))
           (loop for input in (inputs fusion)
                   thereis (not
-                           (set-equal
+                           (range-equal
                             fusion-range
                             (reduction-range-of input))))))))
