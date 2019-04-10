@@ -20,7 +20,9 @@
          :output '(:string :stripped t)
          :ignore-error-status t)
       (declare (ignore error-output))
-      (when (= 0 exit-code) output))))
+      (if (zerop exit-code)
+          output
+          nil))))
 
 (defun print-system-statistics (system &optional (stream *standard-output*))
   (loop

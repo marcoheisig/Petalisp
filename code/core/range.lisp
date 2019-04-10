@@ -118,45 +118,37 @@
 
 (defun range-difference-list (range-1 range-2)
   (declare (range range-1 range-2))
-  (if (= 1 (range-step range-1))
-      (range-difference-list--contiguous
-       (range-start range-1)
-       (range-end range-1)
-       (range-start range-2)
-       (range-step range-2)
-       (range-end range-2)
-       #'make-range)
-      ;; For the remaining code, we only care about the part of range-2
-      ;; that intersects with range-1.
-      (let ((range-2 (range-intersection range-1 range-2)))
-        (if (not range-2)
-            (list range-1)
-            (multiple-value-bind (start-1 step-1 end-1) (range-start-step-end range-1)
-              (multiple-value-bind (start-2 step-2 end-2) (range-start-step-end range-2)
-                ;; The new range-2 is now a proper sub-range of range-1, i.e. we
-                ;; have (<= start-1 start-2 end-2 end-1).  Furthermore, step-2 is
-                ;; now either a multiple of step-1, or one, if range-2 has only a
-                ;; single element.
-                (cond
-                  ((= start-2 end-2)
-                   ;; First, we pick off the special case where range-2 has
-                   ;; only a single element.
-                   (range-difference-list--single start-1 step-1 end-1 start-2))
-                  (t
-                   ;; At this point, we know that step-2 is a multiple of
-                   ;; step-1.  Using a coordinate transformation, we
-                   ;; simplify this case such that range-1 is contiguous.
-                   (range-difference-list--contiguous
-                    0
-                    (1- (range-size range-1))
-                    (/ (- start-2 start-1) step-1)
-                    (/ step-2 step-1)
-                    (/ (- end-2 start-1) step-1)
-                    (lambda (start step end)
-                      (make-range
-                       (+ (* start step-1) start-1)
-                       (* step step-1)
-                       (+ (* end step-1) start-1))))))))))))
+  ;; For the remaining code, we only care about the part of range-2
+  ;; that intersects with range-1.
+  (let ((range-2 (range-intersection range-1 range-2)))
+    (if (not range-2)
+        (list range-1)
+        (multiple-value-bind (start-1 step-1 end-1) (range-start-step-end range-1)
+          (multiple-value-bind (start-2 step-2 end-2) (range-start-step-end range-2)
+            ;; The new range-2 is now a proper sub-range of range-1, i.e. we
+            ;; have (<= start-1 start-2 end-2 end-1).  Furthermore, step-2 is
+            ;; now either a multiple of step-1, or one, if range-2 has only a
+            ;; single element.
+            (cond
+              ((= start-2 end-2)
+               ;; First, we pick off the special case where range-2 has
+               ;; only a single element.
+               (range-difference-list--single start-1 step-1 end-1 start-2))
+              (t
+               ;; At this point, we know that step-2 is a multiple of
+               ;; step-1.  Using a coordinate transformation, we
+               ;; simplify this case such that range-1 is contiguous.
+               (range-difference-list--contiguous
+                0
+                (1- (range-size range-1))
+                (/ (- start-2 start-1) step-1)
+                (/ step-2 step-1)
+                (/ (- end-2 start-1) step-1)
+                (lambda (start step end)
+                  (make-range
+                   (+ (* start step-1) start-1)
+                   (* step step-1)
+                   (+ (* end step-1) start-1)))))))))))
 
 (defun range-difference-list--contiguous
     (start-1 end-1 start-2 step-2 end-2 make-range-fn)
