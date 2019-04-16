@@ -12,7 +12,8 @@
    "simplified-types"
    "restricted-functions"
    "ucons"
-   "petalisp.utilities")
+   "petalisp.utilities"
+   "petalisp.type-codes")
 
   :in-order-to ((test-op (test-op "petalisp.test-suite")))
 

@@ -13,9 +13,6 @@
    #:type-code-from-type-specifier
    #:type-specifier-from-type-code
    #:type-code-of
-
-   #:type-code-complement
-   #:type-code-intersection
    #:type-code-union
 
    #:define-type-code-cache

@@ -4,6 +4,8 @@
 
   :depends-on ("alexandria" "trivia")
 
+  :in-order-to ((test-op (test-op "petalisp.test-suite")))
+
   :serial t
   :components
   ((:file "packages")

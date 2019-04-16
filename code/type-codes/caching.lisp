@@ -20,25 +20,32 @@
 (deftype type-cache (n)
   `(simple-array t ,(loop repeat n collect type-code-id-limit)))
 
-(defconstant +type-code-ids+
-  (if (boundp '+type-code-ids+)
-      +type-code-ids+
-      (let ((type-specifiers (all-type-code-type-specifiers)))
-        (map '(simple-array (unsigned-byte 8) (*))
-             (lambda (type-code)
-               (position (uncached-type-specifier-from-type-code type-code)
-                         type-specifiers
-                         :test #'subtypep))
-             (all-type-codes)))))
+(alexandria:define-constant +type-code-ids+
+    (let ((type-specifiers (all-type-code-type-specifiers)))
+      (map '(simple-array (unsigned-byte 8) (*))
+           (lambda (type-code)
+             (position (uncached-type-specifier-from-type-code type-code)
+                       type-specifiers
+                       :test #'equal
+                       :from-end t))
+           (all-type-codes)))
+  :test #'equalp)
 
-(declaim (inline type-code-id))
-(defun type-code-id (type-code)
+(alexandria:define-constant +id-type-codes+
+    (map '(simple-array (unsigned-byte 8) (*))
+         (lambda (id)
+           (position id +type-code-ids+ :from-end t))
+         (alexandria:iota type-code-id-limit))
+  :test #'equalp)
+
+(declaim (inline type-code-id-from-type-code))
+(defun type-code-id-from-type-code (type-code)
   (declare (type-code type-code))
   (the type-code-id (aref +type-code-ids+ type-code)))
 
 (defun type-code-from-type-code-id (type-code-id)
   (declare (type-code-id type-code-id))
-  (position type-code-id +type-code-ids+))
+  (the type-code (aref +id-type-codes+ type-code-id)))
 
 (defmacro define-type-code-cache (name lambda-list &body body)
   (let ((n (length lambda-list)))
@@ -65,6 +72,6 @@
                          (optimize (speed 3) (safety 0)))
          (aref ,cache
                ,@(mapcar
-                  (lambda (type-code) `(type-code-id ,type-code))
+                  (lambda (type-code) `(type-code-id-from-type-code ,type-code))
                   type-codes))))))
 
