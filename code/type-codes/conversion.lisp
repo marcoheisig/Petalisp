@@ -6,11 +6,9 @@
 ;;;
 ;;; Conversion of Type Codes to Type Specifiers
 
-(define-type-code-cache *type-specifier-from-type-code-cache* (type-code)
-  (uncached-type-specifier-from-type-code type-code))
-
 (defun type-specifier-from-type-code (type-code)
-  (access-type-code-cache *type-specifier-from-type-code-cache* type-code))
+  (with-type-code-caching (type-code)
+    (uncached-type-specifier-from-type-code type-code)))
 
 (define-compiler-macro type-specifier-from-type-code (&whole form type-code)
   (cond ((integerp type-code)
@@ -161,20 +159,18 @@
              (make-type-code :signedp nil :bits bits)))
           ((and (type-code-signedp type-code-1)
                 (type-code-unsignedp type-code-2))
-           (let ((bits (max (1+ (type-code-bits type-code-1))
-                            (type-code-bits type-code-2))))
+           (let ((bits (1+ (max (type-code-bits type-code-1)
+                                (type-code-bits type-code-2)))))
              (make-type-code :signedp t :bits bits)))
           ((and (type-code-unsignedp type-code-1)
                 (type-code-signedp type-code-2))
-           (let ((bits (max (type-code-bits type-code-1)
-                            (1+ (type-code-bits type-code-2)))))
+           (let ((bits (1+ (max (type-code-bits type-code-1)
+                                (type-code-bits type-code-2)))))
              (make-type-code :signedp t :bits bits)))
           (t
            (error "Bug while computing the type code union of ~B and ~B."
                   type-code-1 type-code-2)))))
 
-(define-type-code-cache *type-code-union-cache* (type-code-1 type-code-2)
-  (uncached-type-code-union type-code-1 type-code-2))
-
 (defun type-code-union (type-code-1 type-code-2)
-  (access-type-code-cache *type-code-union-cache* type-code-1 type-code-2))
+  (with-type-code-caching (type-code-1 type-code-2)
+    (uncached-type-code-union type-code-1 type-code-2)))

@@ -11,15 +11,6 @@
 ;;; the corresponding type - and then using the id as the key of the lookup
 ;;; table.
 
-(defconstant type-code-id-limit
-  (length (all-type-code-type-specifiers)))
-
-(deftype type-code-id ()
-  `(integer 0 (,type-code-id-limit)))
-
-(deftype type-cache (n)
-  `(simple-array t ,(loop repeat n collect type-code-id-limit)))
-
 (alexandria:define-constant +type-code-ids+
     (let ((type-specifiers (all-type-code-type-specifiers)))
       (map '(simple-array (unsigned-byte 8) (*))
@@ -31,12 +22,21 @@
            (all-type-codes)))
   :test #'equalp)
 
+(alexandria:define-constant +type-code-id-limit+
+    (1+ (loop for id across +type-code-ids+ maximize id)))
+
 (alexandria:define-constant +id-type-codes+
     (map '(simple-array (unsigned-byte 8) (*))
          (lambda (id)
            (position id +type-code-ids+ :from-end t))
-         (alexandria:iota type-code-id-limit))
+         (alexandria:iota +type-code-id-limit+))
   :test #'equalp)
+
+(deftype type-code-id ()
+  `(integer 0 (,+type-code-id-limit+)))
+
+(deftype type-cache (n)
+  `(simple-array t ,(loop repeat n collect +type-code-id-limit+)))
 
 (declaim (inline type-code-id-from-type-code))
 (defun type-code-id-from-type-code (type-code)
@@ -47,31 +47,30 @@
   (declare (type-code-id type-code-id))
   (the type-code (aref +id-type-codes+ type-code-id)))
 
-(defmacro define-type-code-cache (name lambda-list &body body)
-  (let ((n (length lambda-list)))
-    `(progn
-       (declaim (type (type-cache ,n) ,name))
-       (defparameter ,name
-         (flet ((fn ,lambda-list ,@body))
-           (let ((cache (make-array ',(loop repeat n collect type-code-id-limit))))
-             (labels ((rec (n ids)
-                        (if (= n 0)
-                            (setf (apply #'aref cache ids)
-                                  (apply #'fn (mapcar #'type-code-from-type-code-id ids)))
-                            (loop for id below type-code-id-limit do
-                              (rec (1- n) (cons id ids))))))
-               (rec ,n '()))
-             cache))))))
+(defun make-type-code-cache (dimension fn)
+  (let ((cache (make-array (loop repeat dimension collect +type-code-id-limit+))))
+    (labels ((rec (n ids)
+               (if (= n 0)
+                   (setf (apply #'aref cache ids)
+                         (apply fn (mapcar #'type-code-from-type-code-id ids)))
+                   (loop for id below +type-code-id-limit+ do
+                     (rec (1- n) (cons id ids))))))
+      (rec dimension '()))
+    cache))
 
-(defmacro access-type-code-cache (cache &rest type-codes)
+(defmacro with-type-code-caching (type-codes &body body)
   (assert (every #'symbolp type-codes))
-  (let ((n (length type-codes)))
-    (alexandria:once-only (cache)
-      `(locally (declare (type-code ,@type-codes)
-                         (type (type-cache ,n) ,cache)
-                         (optimize (speed 3) (safety 0)))
-         (aref ,cache
+  (assert (null (intersection type-codes lambda-list-keywords)))
+  (let ((n (length type-codes))
+        (cache (gensym "CACHE")))
+    `(let ((,cache (load-time-value
+                    (make-type-code-cache
+                     ,n
+                     (lambda ,type-codes ,@body)))))
+       (declare (type-code ,@type-codes)
+                (type (type-cache ,n) ,cache)
+                (optimize (speed 3) (safety 0)))
+       (aref ,cache
                ,@(mapcar
                   (lambda (type-code) `(type-code-id-from-type-code ,type-code))
-                  type-codes))))))
-
+                  type-codes)))))

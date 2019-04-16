@@ -9,11 +9,8 @@
    #:type-code-signedp
    #:type-code-unsignedp
    #:type-code-bits
-
+   #:with-type-code-caching
    #:type-code-from-type-specifier
    #:type-specifier-from-type-code
    #:type-code-of
-   #:type-code-union
-
-   #:define-type-code-cache
-   #:access-type-code-cache))
+   #:type-code-union))
