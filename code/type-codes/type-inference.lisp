@@ -40,7 +40,9 @@ should return zero or more type codes, describing what values the function
 will return if called with arguments of the prescribed types.
 
 If a type inference function can determine that the call can never be
-successful, it should return +empty-type-code+.
+successful, it should return +empty-type-code+.  Each type inference rule
+will automatically return +empty-type-code+ when the number of supplied
+argument type codes does not match LAMBDA-LIST.
 
 Examples:
 
