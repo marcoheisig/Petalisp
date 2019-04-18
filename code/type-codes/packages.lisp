@@ -4,13 +4,16 @@
   (:use :common-lisp)
   (:export
    #:type-code
-   #:type-code-complexp
-   #:type-code-floatp
-   #:type-code-signedp
-   #:type-code-unsignedp
-   #:type-code-bits
-   #:with-type-code-caching
-   #:type-code-from-type-specifier
+   #:type-code-limit
    #:type-specifier-from-type-code
+   #:type-code-from-type-specifier
    #:type-code-of
-   #:type-code-union))
+   #:with-type-code-caching
+   #:type-code-union
+   #:type-code-intersection
+   #:type-code-numberp
+   #:type-code-floatp
+   #:type-code-complex-float-p
+   #:type-code-integerp
+   #:type-code-characterp
+   #:define-type-inference-rule))

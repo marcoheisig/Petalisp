@@ -2,115 +2,181 @@
 
 (in-package #:petalisp.type-codes)
 
-;;; Type codes are an efficient encoding for a certain set of Common Lisp
-;;; types, namely, all number types for which modern Lisp implementations
-;;; have a specialized representation.
+(alexandria:define-constant +types+
+    (sort
+     (remove-duplicates
+      (map 'vector #'upgraded-array-element-type
+           `(nil
+             t
+             character
+             short-float
+             single-float
+             double-float
+             long-float
+             (complex short-float)
+             (complex single-float)
+             (complex double-float)
+             (complex long-float)
+             ,@(loop for bits in '(1 2 4 8 16 32 64)
+                     collect `(signed-byte ,bits)
+                     collect `(unsigned-byte ,bits))))
+      :test #'equal)
+     #'subtypep)
+  :test #'equalp)
 
-(deftype type-code () '(unsigned-byte 7))
+(defconstant type-code-limit (length +types+))
 
-;;; Bit 1 stores whether we are dealing with a complex type.
+(deftype type-code ()
+  `(integer 0 (,(length +types+))))
 
-(declaim (inline type-code-complexp))
-(defun type-code-complexp (type-code)
-  (declare (type-code type-code))
-  (not (zerop (logand type-code #b0000001))))
+(deftype type-cache (n)
+  `(simple-array t ,(loop repeat n collect type-code-limit)))
 
-;;; Bit 2 stores whether we are dealing with a floating point type.
+(macrolet ((type-code (type)
+             `(or (position (upgraded-array-element-type ',type)
+                            +types+
+                            :test #'alexandria:type=)
+                  (error "Not a relevant array element type: ~S" ',type))))
+  (defconstant +empty-type-code+ (type-code nil))
+  (defconstant +universal-type-code+ (type-code t))
+  (defconstant +character-type-code+ (type-code character))
+  (defconstant +short-float-type-code+ (type-code short-float))
+  (defconstant +single-float-type-code+ (type-code single-float))
+  (defconstant +double-float-type-code+ (type-code double-float))
+  (defconstant +long-float-type-code+ (type-code long-float))
+  (defconstant +complex-short-float-type-code+ (type-code (complex short-float)))
+  (defconstant +complex-single-float-type-code+ (type-code (complex single-float)))
+  (defconstant +complex-double-float-type-code+ (type-code (complex double-float)))
+  (defconstant +complex-long-float-type-code+ (type-code (complex long-float)))
+  (defconstant +signed-byte-1-type-code+ (type-code (signed-byte 1)))
+  (defconstant +signed-byte-2-type-code+ (type-code (signed-byte 2)))
+  (defconstant +signed-byte-4-type-code+ (type-code (signed-byte 4)))
+  (defconstant +signed-byte-8-type-code+ (type-code (signed-byte 8)))
+  (defconstant +signed-byte-16-type-code+ (type-code (signed-byte 16)))
+  (defconstant +signed-byte-32-type-code+ (type-code (signed-byte 32)))
+  (defconstant +signed-byte-64-type-code+ (type-code (signed-byte 64)))
+  (defconstant +unsigned-byte-1-type-code+ (type-code (unsigned-byte 1)))
+  (defconstant +unsigned-byte-2-type-code+ (type-code (unsigned-byte 2)))
+  (defconstant +unsigned-byte-4-type-code+ (type-code (unsigned-byte 4)))
+  (defconstant +unsigned-byte-8-type-code+ (type-code (unsigned-byte 8)))
+  (defconstant +unsigned-byte-16-type-code+ (type-code (unsigned-byte 16)))
+  (defconstant +unsigned-byte-32-type-code+ (type-code (unsigned-byte 32)))
+  (defconstant +unsigned-byte-64-type-code+ (type-code (unsigned-byte 64))))
 
-(declaim (inline type-code-floatp))
-(defun type-code-floatp (type-code)
-  (declare (type-code type-code))
-  (not (zerop (logand type-code #b0000010))))
+(declaim (inline type-specifier-from-type-code))
+(defun type-specifier-from-type-code (type-code)
+  (aref +types+ type-code))
 
-;;; Bit 3 stores whether we are dealing with a signed integer type.
+(defun signed-integer-type (bits)
+  (declare (type (integer 1 *) bits))
+  (if (<= bits 64)
+      (case (integer-length (1- bits))
+        (0 +signed-byte-1-type-code+)
+        (1 +signed-byte-2-type-code+)
+        (2 +signed-byte-4-type-code+)
+        (3 +signed-byte-8-type-code+)
+        (4 +signed-byte-16-type-code+)
+        (5 +signed-byte-32-type-code+)
+        (6 +signed-byte-64-type-code+))
+      +universal-type-code+))
 
-(declaim (inline type-code-unsignedp))
-(defun type-code-unsignedp (type-code)
-  (declare (type-code type-code))
-  (zerop (logand type-code #b0000100)))
+(defun unsigned-integer-type (bits)
+  (declare (type (integer 1 *) bits))
+  (if (<= bits 64)
+      (case (integer-length (1- bits))
+        (0 +unsigned-byte-1-type-code+)
+        (1 +unsigned-byte-2-type-code+)
+        (2 +unsigned-byte-4-type-code+)
+        (3 +unsigned-byte-8-type-code+)
+        (4 +unsigned-byte-16-type-code+)
+        (5 +unsigned-byte-32-type-code+)
+        (6 +unsigned-byte-64-type-code+))
+      +universal-type-code+))
 
-(declaim (inline type-code-signedp))
-(defun type-code-signedp (type-code)
-  (declare (type-code type-code))
-  (not (type-code-unsignedp type-code)))
+(defun type-code-of (object)
+  (cond ((floatp object)
+         (typecase object
+           (short-float +short-float-type-code+)
+           (single-float +single-float-type-code+)
+           (double-float +double-float-type-code+)
+           (long-float +long-float-type-code+)
+           (t +universal-type-code+)))
+        ((complexp object)
+         (typecase object
+           ((complex short-float) +complex-short-float-type-code+)
+           ((complex single-float) +complex-single-float-type-code+)
+           ((complex double-float) +complex-double-float-type-code+)
+           ((complex long-float) +complex-long-float-type-code+)
+           (t +universal-type-code+)))
+        ((integerp object)
+         (cond ((minusp object)
+                (signed-integer-type (1+ (integer-length (abs object)))))
+               ((plusp object)
+                (unsigned-integer-type (integer-length object)))
+               ((zerop object)
+                +unsigned-byte-1-type-code+)))
+        ((characterp object) +character-type-code+)
+        (t +universal-type-code+)))
 
-;;; Bits 4-7 encode the binary logarithm of the size of the type - with two
-;;; exceptions: A value of zero represents the empty type and a value of 15
-;;; represents the universal type.
+(defun make-type-code-cache (dimension fn)
+  (let ((cache (make-array (loop repeat dimension collect type-code-limit))))
+    (labels ((rec (n type-codes)
+               (if (= n 0)
+                   (setf (apply #'aref cache type-codes)
+                         (apply fn type-codes))
+                   (loop for type-code below type-code-limit do
+                           (rec (1- n) (cons type-code type-codes))))))
+      (rec dimension '()))
+    cache))
 
-(deftype type-code-bits ()
-  '(unsigned-byte 16))
+(defmacro with-type-code-caching (type-codes &body body)
+  (assert (every #'symbolp type-codes))
+  (assert (null (intersection type-codes lambda-list-keywords)))
+  (let ((n (length type-codes))
+        (cache (gensym "CACHE")))
+    `(let ((,cache (load-time-value
+                    (make-type-code-cache ,n (lambda ,type-codes ,@body)))))
+       (declare (type-code ,@type-codes)
+                (type (type-cache ,n) ,cache)
+                (optimize (speed 3) (safety 0)))
+       (aref ,cache ,@type-codes))))
 
-(declaim (inline type-code-bits))
-(defun type-code-bits (type-code)
-  (declare (type-code type-code))
-  (ash 1 (1- (ash type-code -3))))
+(defun type-code-from-type-specifier (type-specifier)
+  (position type-specifier +types+ :test #'subtypep))
 
-(defconstant +empty-type-code+ #b0000000)
+(defun type-code-union (type-code-1 type-code-2)
+  (with-type-code-caching (type-code-1 type-code-2)
+    (type-code-from-type-specifier
+     `(or ,(type-specifier-from-type-code type-code-1)
+          ,(type-specifier-from-type-code type-code-2)))))
 
-(declaim (inline empty-type-code-p))
-(defun empty-type-code-p (type-code)
-  (declare (type-code type-code))
-  (= (type-code-bits type-code) 0))
+(defun type-code-intersection (type-code-1 type-code-2)
+  (with-type-code-caching (type-code-1 type-code-2)
+    (type-code-from-type-specifier
+     `(and ,(type-specifier-from-type-code type-code-1)
+           ,(type-specifier-from-type-code type-code-2)))))
 
-(defconstant +universal-type-code+ #b1111000)
+(defmacro define-type-code-predicate (name type)
+  (flet ((matching (type)
+           (lambda (x) (subtypep x type))))
+    (let ((matching (remove-if-not (matching type) +types+))
+          (not-matching (remove-if (matching type) +types+)))
+      `(progn (declaim (inline ,name))
+              ,(if (< (length matching)
+                      (length not-matching))
+                   `(defun ,name (type-code)
+                      (case type-code
+                        ,@(loop for type across matching
+                                collect `(,(type-code-from-type-specifier type) t))
+                        (otherwise nil)))
+                   `(defun ,name (type-code)
+                      (case type-code
+                        ,@(loop for type across not-matching
+                                collect `(,(type-code-from-type-specifier type) nil))
+                        (otherwise t))))))))
 
-(declaim (inline universal-type-code-p))
-(defun universal-type-code-p (type-code)
-  (declare (type-code type-code))
-  (= (type-code-bits type-code) (expt 2 15)))
-
-;;; The low-level type code constructor.
-
-(declaim (inline make-type-code))
-(defun make-type-code (&key (bits 0) (complexp nil) (floatp nil) (signedp nil))
-  (declare (type-code-bits bits))
-  (cond ((= bits 0) +empty-type-code+)
-        ((= bits (expt 2 15)) +universal-type-code+)
-        ((plusp bits)
-         (let ((n (ash (1+ (integer-length (1- bits))) 3))
-               (complex-mask (if complexp #b0000001 #b0000000))
-               (float-mask (if floatp #b0000010 #b0000000))
-               (signed-mask (if signedp #b0000100 #b0000000)))
-           (logior n complex-mask float-mask signed-mask)))))
-
-;;; The conversion from type codes to type specifiers is straightforward.
-
-(defun uncached-type-specifier-from-type-code (type-code)
-  ;; Our heuristic is that we assume an implementation has special support
-  ;; for a particular type if and only if this type is an upgraded array
-  ;; element type.
-  (upgraded-array-element-type
-   (cond ((empty-type-code-p type-code) nil)
-         ((universal-type-code-p type-code) t)
-         ;; Complex types.
-         ((type-code-complexp type-code)
-          (let ((component-type
-                  (uncached-type-specifier-from-type-code
-                   ;; We clear the complex bit and cut the number
-                   ;; of bits by half.
-                   (- (logand type-code #b1111110) #b0001000))))
-            (if (eq component-type t)
-                t
-                `(complex ,component-type))))
-         ;; Float types.
-         ((type-code-floatp type-code)
-          (float-type-specifier-from-bits (type-code-bits type-code)))
-         ;; Signed Integer types.
-         ((type-code-signedp type-code)
-          `(signed-byte ,(type-code-bits type-code)))
-         ((type-code-unsignedp type-code)
-          `(unsigned-byte ,(type-code-bits type-code)))
-         (t (error "Not a valid type code: ~D" type-code)))))
-
-;;; Every integer from 0 to 127 is a valid type code.
-
-(defun all-type-codes ()
-  (load-time-value
-   (loop for i below 128 collect i)))
-
-(defun all-type-code-type-specifiers ()
-  (load-time-value
-   (remove-duplicates
-    (map 'list #'uncached-type-specifier-from-type-code (all-type-codes))
-    :test #'equal)))
+(define-type-code-predicate type-code-numberp number)
+(define-type-code-predicate type-code-floatp float)
+(define-type-code-predicate type-code-complex-float-p (complex float))
+(define-type-code-predicate type-code-integerp integer)
+(define-type-code-predicate type-code-characterp character)

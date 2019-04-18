@@ -56,8 +56,8 @@
                      (petalisp.type-codes:type-code-from-type-specifier type-specifier)))))))
 
 (test type-code-reasoning-test
-  (loop for type-code-1 below 128 do
-    (loop for type-code-2 below 128 do
+  (loop for type-code-1 below petalisp.type-codes:type-code-limit do
+    (loop for type-code-2 below petalisp.type-codes:type-code-limit do
       (let ((type-specifier-1
               (petalisp.type-codes:type-specifier-from-type-code type-code-1))
             (type-specifier-2
