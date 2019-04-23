@@ -16,4 +16,6 @@
    #:type-code-complex-float-p
    #:type-code-integerp
    #:type-code-characterp
-   #:define-type-inference-rule))
+   #:define-type-inference-rule
+   #:check-type-code
+   #:values-type-codes))

@@ -73,3 +73,35 @@
                  (explicit-union (cl:union set-1 set-2)))
             (is (subsetp explicit-union type-code-union :test #'equal))))))))
 
+(test type-inference-test
+  (flet ((test (function &rest args)
+           (let ((predicted
+                   (mapcar #'petalisp.type-codes:type-specifier-from-type-code
+                           (multiple-value-list
+                            (apply #'petalisp.type-codes:values-type-codes
+                                   function
+                                   (mapcar #'petalisp.type-codes:type-code-of args))))))
+             (if (some #'null predicted)
+                 (signals error (locally (declare (optimize (safety 3)))
+                                   (apply function args)))
+                 (loop for value in (multiple-value-list (apply function args))
+                       for type in predicted do
+                         (is (typep value type)))))))
+    (test #'apply #'apply)
+    (test #'apply #'+ 5 '(7 8))
+    (test #'fdefinition '+)
+    (test #'fdefinition 25)
+    (test #'fboundp '+)
+    (test #'fboundp 42)
+    (test #'funcall #'+)
+    (test #'funcall #'+ 2 3)
+    (test #'function-lambda-expression #'+)
+    (test #'not)
+    (test #'not 1)
+    (test #'not 1 2)
+    (test #'eq 1 2)
+    (test #'some #'integerp '(1 2 3))
+    (test #'some #'integerp)
+    (test #'values 1 2 3 4.0)
+    (test #'values-list '(1 2 3))
+    (test #'values-list 42)))
