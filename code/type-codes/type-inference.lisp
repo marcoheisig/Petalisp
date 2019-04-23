@@ -3,15 +3,19 @@
 (in-package #:petalisp.type-codes)
 
 (defmacro with-type-inference-barrier (&body body)
-  "Wrap BODY in a catch tag, such that any calls to GIVE-UP-TYPE-INFERENCE
-or ABORT-TYPE-INFERENCE will return from this tag."
+  "Wrap BODY in a catch tag, such that any calls to RETURN-TYPE-CODE, or
+derived functions such as GIVE-UP-TYPE-INFERENCE or ABORT-TYPE-INFERENCE
+will return from here."
   `(catch '.type-inference. ,@body))
 
+(defun return-type-code (type-code)
+  (throw '.type-inference. type-code))
+
 (defun give-up-type-inference ()
-  (throw '.type-inference. +universal-type-code+))
+  (return-type-code +universal-type-code+))
 
 (defun abort-type-inference ()
-  (throw '.type-inference. +empty-type-code+))
+  (return-type-code +empty-type-code+))
 
 (defmacro check-type-code (type-code type)
   `(when (funcall (type-code-matcher (not ,type)) ,type-code)
@@ -86,3 +90,10 @@ Examples:
   `(register-type-inference-function
     (function ,name)
     (lambda ,lambda-list ,@body)))
+
+(defun infer-type (function &rest arguments)
+  (values-list
+   (mapcar #'type-specifier-from-type-code
+           (multiple-value-list
+            (apply #'values-type-codes function
+                   (mapcar #'type-code-of arguments))))))

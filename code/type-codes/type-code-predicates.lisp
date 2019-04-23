@@ -31,5 +31,6 @@ whether all objects of this type code will also satisfy TYPE."
 (define-type-code-predicate type-code-floatp float)
 (define-type-code-predicate type-code-complex-float-p (complex float))
 (define-type-code-predicate type-code-integerp integer)
+(define-type-code-predicate type-code-rationalp rational)
 (define-type-code-predicate type-code-characterp character)
 

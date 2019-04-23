@@ -9,22 +9,25 @@
 (alexandria:define-constant +types+
     (stable-sort
      (remove-duplicates
-      (map 'vector #'upgraded-array-element-type
-           `(nil
-             t
-             character
-             short-float
-             single-float
-             double-float
-             long-float
-             (complex short-float)
-             (complex single-float)
-             (complex double-float)
-             (complex long-float)
-             ,@(loop for bits in '(1 2 4 8 16 32 64)
-                     collect `(signed-byte ,bits)
-                     collect `(unsigned-byte ,bits))))
-      :test #'equal)
+      (coerce
+       `(nil
+         t
+         character
+         short-float
+         single-float
+         long-float
+         double-float
+         (complex short-float)
+         (complex single-float)
+         (complex long-float)
+         (complex double-float)
+         ,@(loop for bits in '(8 16 32 64)
+                 collect `(signed-byte ,bits))
+         bit
+         ,@(loop for bits in '(2 4 8 16 32 64)
+                 collect `(unsigned-byte ,bits)))
+       'simple-vector)
+      :test #'alexandria:type=)
      #'subtypep)
   :test #'equalp)
 
@@ -37,9 +40,7 @@
   `(simple-array t ,(loop repeat n collect type-code-limit)))
 
 (macrolet ((type-code (type)
-             `(or (position (upgraded-array-element-type ',type)
-                            +types+
-                            :test #'alexandria:type=)
+             `(or (position ',type +types+ :test #'alexandria:type=)
                   (error "Not a relevant array element type: ~S" ',type))))
   (defconstant +empty-type-code+ (type-code nil))
   (defconstant +universal-type-code+ (type-code t))
@@ -52,9 +53,9 @@
   (defconstant +complex-single-float-type-code+ (type-code (complex single-float)))
   (defconstant +complex-double-float-type-code+ (type-code (complex double-float)))
   (defconstant +complex-long-float-type-code+ (type-code (complex long-float)))
-  (defconstant +signed-byte-1-type-code+ (type-code (signed-byte 1)))
-  (defconstant +signed-byte-2-type-code+ (type-code (signed-byte 2)))
-  (defconstant +signed-byte-4-type-code+ (type-code (signed-byte 4)))
+  (defconstant +signed-byte-1-type-code+ (type-code (signed-byte 8)))
+  (defconstant +signed-byte-2-type-code+ (type-code (signed-byte 8)))
+  (defconstant +signed-byte-4-type-code+ (type-code (signed-byte 8)))
   (defconstant +signed-byte-8-type-code+ (type-code (signed-byte 8)))
   (defconstant +signed-byte-16-type-code+ (type-code (signed-byte 16)))
   (defconstant +signed-byte-32-type-code+ (type-code (signed-byte 32)))
