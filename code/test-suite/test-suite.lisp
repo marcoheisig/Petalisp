@@ -7,7 +7,7 @@
 ;;; A Test Framework, Inspired by 1am
 
 ;; A list of the names of all tests defined with the TEST macro.
-(defvar *tests* '())
+(defparameter *tests* '())
 
 ;; The value of *RANDOM-STATE* when the test suite encountered the most
 ;; recent error, or NIL, if there have been no recent errors.
@@ -18,6 +18,9 @@
 
 ;; The number of successful checks that have been performed so far.
 (defvar *pass-count*)
+
+;; The number of checks that have been performed in the current test.
+(defvar *check-count* 0)
 
 (defun call-with-random-state (thunk)
   (let ((*random-state*
@@ -59,12 +62,14 @@
 
 (defun enter-test (test-name)
   (incf *test-count*)
+  (setf *check-count* 0)
   (format t "~&~S" test-name)
   (finish-output))
 
 (defun pass ()
   (incf *pass-count*)
-  (write-char #\.)
+  (when (zerop (logand *check-count* (incf *check-count*)))
+    (write-char #\.))
   (values))
 
 (defmacro is (test-form)
