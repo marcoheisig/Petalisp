@@ -144,6 +144,11 @@
 (defun type-code-from-type-specifier (type-specifier)
   (position type-specifier +types+ :test #'subtypep))
 
+(define-compiler-macro type-code-from-type-specifier (&whole form type-specifier)
+  (if (constantp type-specifier)
+      (type-code-from-type-specifier (eval type-specifier))
+      form))
+
 (defun type-code-union (type-code-1 type-code-2)
   (with-type-code-caching (type-code-1 type-code-2)
     (type-code-from-type-specifier

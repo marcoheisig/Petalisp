@@ -2,23 +2,43 @@
 
 (in-package #:petalisp.type-codes)
 
+(define-condition type-inference-error (error)
+  ((%type-code :initarg :type-code :reader type-inference-error-type-code)
+   (%expected-type :initarg :expected-type :reader type-inference-error-expected-type)))
+
+(defmethod print-object ((condition type-inference-error) stream)
+  (format stream "The type code ~S (~S) is provably not of type ~S."
+          (type-inference-error-type-code condition)
+          (type-specifier-from-type-code (type-inference-error-type-code condition))
+          (type-inference-error-expected-type condition)))
+
+(defun type-inference-error (&key type-code expected-type)
+  (signal (make-instance 'type-inference-error
+            :type-code type-code
+            :expected-type expected-type)))
+
+(defmacro check-type-code (type-code type)
+  `(when (funcall (type-code-matcher (not ,type)) ,type-code)
+     (type-inference-error
+      :type-code ',type-code
+      :expected-type ',type)))
+
 (defvar *type-inference-functions* (make-hash-table :test #'eq))
 
-(defun meta-funcall (function &rest argument-type-codes)
+(defun values-type-codes (function &rest argument-type-codes)
   "Returns one or more type codes that describe what values will be
 returned by FUNCTION when called with arguments that match the supplied
 ARGUMENT-TYPE-CODES."
-  (multiple-value-bind (values-type-codes rest-values-p cost)
-      (let* ((fn (coerce function 'function))
-             (inference-function (gethash fn *type-inference-functions*)))
-        (if inference-function
-            (apply inference-function argument-type-codes)
-            (multiple-value-bind (mandatory max)
-                (function-arity fn)
-              (if (<= mandatory (length argument-type-codes) max)
-                  +universal-type-code+
-                  +empty-type-code+))))
-    (values values-type-codes rest-values-p cost)))
+  (let* ((fn (coerce function 'function))
+         (inference-function (gethash fn *type-inference-functions*)))
+    (if inference-function
+        (handler-case (apply inference-function argument-type-codes)
+          (type-inference-error () +empty-type-code+))
+        (multiple-value-bind (mandatory max)
+            (function-arity fn)
+          (if (<= mandatory (length argument-type-codes) max)
+              (values)
+              +empty-type-code+)))))
 
 (defun register-type-inference-function (fn inference-fn)
   (multiple-value-bind (mandatory max)
