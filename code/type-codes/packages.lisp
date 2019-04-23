@@ -8,6 +8,8 @@
    #:type-specifier-from-type-code
    #:type-code-from-type-specifier
    #:type-code-of
+
+   ;; Manipulation of type codes.
    #:with-type-code-caching
    #:type-code-union
    #:type-code-intersection
@@ -16,6 +18,11 @@
    #:type-code-complex-float-p
    #:type-code-integerp
    #:type-code-characterp
+
+   ;; Type inference.
    #:define-type-inference-rule
+   #:with-type-inference-barrier
+   #:give-up-type-inference
+   #:abort-type-inference
    #:check-type-code
    #:values-type-codes))

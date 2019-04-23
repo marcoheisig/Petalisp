@@ -2,6 +2,12 @@
 
 (in-package #:petalisp.type-codes)
 
+(defun numeric-contagion (type-code-1 type-code-2)
+  (declare (type-code type-code-1 type-code-2))
+  (check-type-code type-code-1 number)
+  (check-type-code type-code-2 number)
+  (max type-code-1 type-code-2))
+
 (defun binary-type-code+ (type-code-1 type-code-2)
   (with-type-code-caching (type-code-1 type-code-2)
     +universal-type-code+))

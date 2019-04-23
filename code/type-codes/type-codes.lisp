@@ -2,8 +2,12 @@
 
 (in-package #:petalisp.type-codes)
 
+;;; The constant vector +TYPES+ is the fundamental building block of this
+;;; library.  It contains one entry for each performance-relevant Common
+;;; Lisp type specifier.  The specifiers are sorted in most-specific-first
+;;; order, and such that less precise floating-point types occur first.
 (alexandria:define-constant +types+
-    (sort
+    (stable-sort
      (remove-duplicates
       (map 'vector #'upgraded-array-element-type
            `(nil

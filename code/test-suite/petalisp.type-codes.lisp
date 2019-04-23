@@ -84,10 +84,13 @@
              (if (some #'null predicted)
                  (signals error (locally (declare (optimize (safety 3)))
                                    (apply function args)))
-                 (loop for value in (multiple-value-list (apply function args))
-                       for type in predicted do
-                         (is (typep value type)))))))
-    (test #'apply #'apply)
+                 (let ((values (multiple-value-list (apply function args))))
+                   (is (<= (length predicted) (length values)))
+                   (loop for value in values
+                         for type in predicted do
+                           (is (typep value type))))))))
+    (test 'apply '+ '(7 8))
+    (test #'apply)
     (test #'apply #'+ 5 '(7 8))
     (test #'fdefinition '+)
     (test #'fdefinition 25)

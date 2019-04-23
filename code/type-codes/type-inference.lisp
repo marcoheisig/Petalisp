@@ -2,26 +2,20 @@
 
 (in-package #:petalisp.type-codes)
 
-(define-condition type-inference-error (error)
-  ((%type-code :initarg :type-code :reader type-inference-error-type-code)
-   (%expected-type :initarg :expected-type :reader type-inference-error-expected-type)))
+(defmacro with-type-inference-barrier (&body body)
+  "Wrap BODY in a catch tag, such that any calls to GIVE-UP-TYPE-INFERENCE
+or ABORT-TYPE-INFERENCE will return from this tag."
+  `(catch '.type-inference. ,@body))
 
-(defmethod print-object ((condition type-inference-error) stream)
-  (format stream "The type code ~S (~S) is provably not of type ~S."
-          (type-inference-error-type-code condition)
-          (type-specifier-from-type-code (type-inference-error-type-code condition))
-          (type-inference-error-expected-type condition)))
+(defun give-up-type-inference ()
+  (throw '.type-inference. +universal-type-code+))
 
-(defun type-inference-error (&key type-code expected-type)
-  (signal (make-instance 'type-inference-error
-            :type-code type-code
-            :expected-type expected-type)))
+(defun abort-type-inference ()
+  (throw '.type-inference. +empty-type-code+))
 
 (defmacro check-type-code (type-code type)
   `(when (funcall (type-code-matcher (not ,type)) ,type-code)
-     (type-inference-error
-      :type-code ',type-code
-      :expected-type ',type)))
+     (abort-type-inference)))
 
 (defvar *type-inference-functions* (make-hash-table :test #'eq))
 
@@ -32,8 +26,8 @@ ARGUMENT-TYPE-CODES."
   (let* ((fn (coerce function 'function))
          (inference-function (gethash fn *type-inference-functions*)))
     (if inference-function
-        (handler-case (apply inference-function argument-type-codes)
-          (type-inference-error () +empty-type-code+))
+        (with-type-inference-barrier
+          (apply inference-function argument-type-codes))
         (multiple-value-bind (mandatory max)
             (function-arity fn)
           (if (<= mandatory (length argument-type-codes) max)
