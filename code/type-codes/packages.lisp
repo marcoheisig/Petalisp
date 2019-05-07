@@ -12,20 +12,10 @@
    ;; Manipulation of type codes.
    #:with-type-code-caching
    #:type-code-union
-   #:type-code-matcher
-   #:type-code-intersection
-   #:type-code-numberp
-   #:type-code-floatp
-   #:type-code-complex-float-p
-   #:type-code-integerp
-   #:type-code-rationalp
-   #:type-code-characterp
+   #:type-code-subtypecase
 
    ;; Type inference.
    #:define-type-inference-rule
-   #:with-type-inference-barrier
    #:give-up-type-inference
    #:abort-type-inference
-   #:return-type-code
-   #:check-type-code
    #:values-type-codes))

@@ -11,7 +11,6 @@
   :components
   ((:file "packages")
    (:file "type-codes")
-   (:file "type-code-predicates")
    (:file "function-lambda-lists")
    (:file "type-inference")
    (:module "type-inference-rules"

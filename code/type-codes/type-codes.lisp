@@ -5,133 +5,94 @@
 ;;; The constant vector +TYPES+ is the fundamental building block of this
 ;;; library.  It contains one entry for each performance-relevant Common
 ;;; Lisp type specifier.  The specifiers are sorted in most-specific-first
-;;; order, and such that less precise floating-point types occur first.
+;;; order, so that a linear search with subtypep automatically yields the
+;;; most specific entry.
 (alexandria:define-constant +types+
-    (stable-sort
-     (remove-duplicates
-      (coerce
-       `(nil
-         t
-         character
-         short-float
-         single-float
-         long-float
-         double-float
-         (complex short-float)
-         (complex single-float)
-         (complex long-float)
-         (complex double-float)
-         ,@(loop for bits in '(8 16 32 64)
-                 collect `(signed-byte ,bits))
-         bit
-         ,@(loop for bits in '(2 4 8 16 32 64)
-                 collect `(unsigned-byte ,bits)))
-       'simple-vector)
-      :test #'alexandria:type=)
-     #'subtypep)
+    ;; We remove duplicate types here, mostly to get rid of superfluous
+    ;; floating-point and complex types.
+    (remove-duplicates
+     #(nil
+       character
+       function
+       short-float
+       single-float
+       long-float
+       double-float
+       float
+       bit
+       (unsigned-byte 2)
+       (unsigned-byte 4)
+       (unsigned-byte 8)
+       (unsigned-byte 16)
+       (unsigned-byte 32)
+       (unsigned-byte 64)
+       (signed-byte 8)
+       (signed-byte 16)
+       (signed-byte 32)
+       (signed-byte 64)
+       integer
+       rational
+       real
+       (complex short-float)
+       (complex single-float)
+       (complex long-float)
+       (complex double-float)
+       complex
+       number
+       t)
+     :test #'alexandria:type=)
   :test #'equalp)
 
 (defconstant type-code-limit (length +types+))
 
 (deftype type-code ()
-  `(integer 0 (,(length +types+))))
+  `(integer 0 (#. type-code-limit)))
 
-(deftype type-cache (n)
-  `(simple-array t ,(loop repeat n collect type-code-limit)))
+(defun type-code-from-type-specifier (type-specifier)
+  (the type-code (position type-specifier +types+ :test #'subtypep)))
 
-(macrolet ((type-code (type)
-             `(or (position ',type +types+ :test #'alexandria:type=)
-                  (error "Not a relevant array element type: ~S" ',type))))
-  (defconstant +empty-type-code+ (type-code nil))
-  (defconstant +universal-type-code+ (type-code t))
-  (defconstant +character-type-code+ (type-code character))
-  (defconstant +short-float-type-code+ (type-code short-float))
-  (defconstant +single-float-type-code+ (type-code single-float))
-  (defconstant +double-float-type-code+ (type-code double-float))
-  (defconstant +long-float-type-code+ (type-code long-float))
-  (defconstant +complex-short-float-type-code+ (type-code (complex short-float)))
-  (defconstant +complex-single-float-type-code+ (type-code (complex single-float)))
-  (defconstant +complex-double-float-type-code+ (type-code (complex double-float)))
-  (defconstant +complex-long-float-type-code+ (type-code (complex long-float)))
-  (defconstant +signed-byte-1-type-code+ (type-code (signed-byte 8)))
-  (defconstant +signed-byte-2-type-code+ (type-code (signed-byte 8)))
-  (defconstant +signed-byte-4-type-code+ (type-code (signed-byte 8)))
-  (defconstant +signed-byte-8-type-code+ (type-code (signed-byte 8)))
-  (defconstant +signed-byte-16-type-code+ (type-code (signed-byte 16)))
-  (defconstant +signed-byte-32-type-code+ (type-code (signed-byte 32)))
-  (defconstant +signed-byte-64-type-code+ (type-code (signed-byte 64)))
-  (defconstant +unsigned-byte-1-type-code+ (type-code (unsigned-byte 1)))
-  (defconstant +unsigned-byte-2-type-code+ (type-code (unsigned-byte 2)))
-  (defconstant +unsigned-byte-4-type-code+ (type-code (unsigned-byte 4)))
-  (defconstant +unsigned-byte-8-type-code+ (type-code (unsigned-byte 8)))
-  (defconstant +unsigned-byte-16-type-code+ (type-code (unsigned-byte 16)))
-  (defconstant +unsigned-byte-32-type-code+ (type-code (unsigned-byte 32)))
-  (defconstant +unsigned-byte-64-type-code+ (type-code (unsigned-byte 64))))
+(define-compiler-macro type-code-from-type-specifier (&whole form type-specifier)
+  (if (constantp type-specifier)
+      (locally (declare (notinline type-code-from-type-specifier))
+        (type-code-from-type-specifier (eval type-specifier)))
+      form))
 
 (declaim (inline type-specifier-from-type-code))
 (defun type-specifier-from-type-code (type-code)
-  (aref +types+ type-code))
-
-(defun signed-integer-type (bits)
-  (declare (type (integer 1 *) bits))
-  (if (<= bits 64)
-      (case (integer-length (1- bits))
-        (0 +signed-byte-1-type-code+)
-        (1 +signed-byte-2-type-code+)
-        (2 +signed-byte-4-type-code+)
-        (3 +signed-byte-8-type-code+)
-        (4 +signed-byte-16-type-code+)
-        (5 +signed-byte-32-type-code+)
-        (6 +signed-byte-64-type-code+))
-      +universal-type-code+))
-
-(defun unsigned-integer-type (bits)
-  (declare (type (integer 1 *) bits))
-  (if (<= bits 64)
-      (case (integer-length (1- bits))
-        (0 +unsigned-byte-1-type-code+)
-        (1 +unsigned-byte-2-type-code+)
-        (2 +unsigned-byte-4-type-code+)
-        (3 +unsigned-byte-8-type-code+)
-        (4 +unsigned-byte-16-type-code+)
-        (5 +unsigned-byte-32-type-code+)
-        (6 +unsigned-byte-64-type-code+))
-      +universal-type-code+))
+  (declare (type-code type-code))
+  (svref +types+ type-code))
 
 (defun type-code-of (object)
-  (cond ((floatp object)
-         (typecase object
-           (short-float +short-float-type-code+)
-           (single-float +single-float-type-code+)
-           (double-float +double-float-type-code+)
-           (long-float +long-float-type-code+)
-           (t +universal-type-code+)))
-        ((complexp object)
-         (typecase object
-           ((complex short-float) +complex-short-float-type-code+)
-           ((complex single-float) +complex-single-float-type-code+)
-           ((complex double-float) +complex-double-float-type-code+)
-           ((complex long-float) +complex-long-float-type-code+)
-           (t +universal-type-code+)))
-        ((integerp object)
-         (cond ((minusp object)
-                (signed-integer-type (1+ (integer-length (abs object)))))
-               ((plusp object)
-                (unsigned-integer-type (integer-length object)))
-               ((zerop object)
-                +unsigned-byte-1-type-code+)))
-        ((characterp object) +character-type-code+)
-        (t +universal-type-code+)))
+  (macrolet ((type-code-of-dispatcher ()
+               `(typecase object
+                  ,@(loop for type across +types+
+                          for type-code from 0
+                          collect `(,type ,type-code)))))
+    (type-code-of-dispatcher)))
 
-(defun make-type-code-cache (dimension fn)
-  (let ((cache (make-array (loop repeat dimension collect type-code-limit))))
+(define-compiler-macro type-code-of (&whole form object)
+  (if (constantp object)
+      (locally (declare (notinline type-code-of))
+        (type-code-of (eval object)))
+      form))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Type Code Caching
+
+(deftype type-cache (rank)
+  `(simple-array type-code ,(loop repeat rank collect type-code-limit)))
+
+(defun make-type-code-cache (rank fn)
+  (let ((cache (make-array (loop repeat rank collect type-code-limit)
+                           :element-type 'type-code)))
     (labels ((rec (n type-codes)
                (if (= n 0)
                    (setf (apply #'aref cache type-codes)
                          (apply fn type-codes))
                    (loop for type-code below type-code-limit do
                            (rec (1- n) (cons type-code type-codes))))))
-      (rec dimension '()))
+      (rec rank '()))
     cache))
 
 (defmacro with-type-code-caching (type-codes &body body)
@@ -146,22 +107,25 @@
                 (optimize (speed 3) (safety 0)))
        (aref ,cache ,@type-codes))))
 
-(defun type-code-from-type-specifier (type-specifier)
-  (position type-specifier +types+ :test #'subtypep))
-
-(define-compiler-macro type-code-from-type-specifier (&whole form type-specifier)
-  (if (constantp type-specifier)
-      (type-code-from-type-specifier (eval type-specifier))
-      form))
-
 (defun type-code-union (type-code-1 type-code-2)
   (with-type-code-caching (type-code-1 type-code-2)
     (type-code-from-type-specifier
      `(or ,(type-specifier-from-type-code type-code-1)
           ,(type-specifier-from-type-code type-code-2)))))
 
-(defun type-code-intersection (type-code-1 type-code-2)
-  (with-type-code-caching (type-code-1 type-code-2)
-    (type-code-from-type-specifier
-     `(and ,(type-specifier-from-type-code type-code-1)
-           ,(type-specifier-from-type-code type-code-2)))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Type Code Reasoning
+
+(defun subtypep-mask (type-specifier &optional env)
+  (loop for type across +types+
+        for bit = (ash 1 type-code-limit) then (ash bit -1)
+        sum (if (subtypep type type-specifier env) bit 0)))
+
+(defmacro type-code-subtypecase (type-code &body clauses &environment env)
+  (alexandria:with-gensyms (type-mask)
+    `(let ((,type-mask (ash 1 (- type-code-limit ,type-code))))
+       (cond
+         ,@(loop for (type-specifier . body) in clauses
+                 collect `((plusp (logand ,type-mask ,(subtypep-mask type-specifier env)))
+                           ,@body))))))
