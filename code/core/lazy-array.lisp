@@ -52,7 +52,7 @@
 
 (defclass non-empty-array (lazy-array)
   ((%shape :initarg :shape :reader shape :reader shape)
-   (%type-code :initarg :type-code :reader type-code)))
+   (%type-code :initarg :type-code :reader type-code :type petalisp.type-codes:type-code)))
 
 (defclass non-empty-immediate (non-empty-array immediate)
   ())

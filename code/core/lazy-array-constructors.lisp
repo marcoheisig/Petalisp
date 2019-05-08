@@ -197,7 +197,8 @@
              :function function
              :argument-types
              (mapcar #'petalisp.type-codes:type-specifier-from-type-code
-                     type-codes)))))
+                     type-codes)))
+    type-codes))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
