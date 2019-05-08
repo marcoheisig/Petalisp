@@ -10,7 +10,6 @@
    "lparallel"
    "trivia"
    "simplified-types"
-   "restricted-functions"
    "ucons"
    "petalisp.utilities"
    "petalisp.type-codes")

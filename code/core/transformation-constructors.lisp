@@ -169,7 +169,7 @@
   (let* ((input-rank
            (if input-mask-p
                (length input-mask)
-               (restricted-functions::function-arity function)))
+               (petalisp.type-codes::function-arity function)))
          (input-mask
            (if (not input-mask-p)
                (make-array input-rank :initial-element nil)

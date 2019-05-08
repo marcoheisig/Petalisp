@@ -37,7 +37,7 @@
   (make-instance 'buffer
     :executedp nil
     :shape (shape lazy-array)
-    :element-type (element-type lazy-array)
+    :type-code (type-code lazy-array)
     :storage (make-array (mapcar #'range-size (ranges (shape lazy-array))))))
 
 (defmethod petalisp.ir:make-buffer
@@ -45,7 +45,7 @@
   (make-instance 'buffer
     :executedp t
     :shape (shape array-immediate)
-    :element-type (element-type array-immediate)
+    :type-code (type-code array-immediate)
     :storage (storage array-immediate)))
 
 (defmethod petalisp.ir:make-buffer
@@ -58,12 +58,12 @@
     (make-instance 'buffer
       :executedp t
       :shape (shape range-immediate)
-      :element-type (element-type range-immediate)
+      :type-code (type-code range-immediate)
       :storage array)))
 
 (defmethod immediate-from-buffer ((buffer buffer))
   (make-instance 'array-immediate
-    :element-type (element-type buffer)
+    :type-code (type-code buffer)
     :shape (petalisp.ir:buffer-shape buffer)
     :storage (storage buffer)))
 

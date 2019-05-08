@@ -75,6 +75,7 @@
    #:coerce-to-lazy-array
    #:total-size
    #:element-type
+   #:type-code
    #:input
    #:inputs
    #:value-n

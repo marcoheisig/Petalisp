@@ -8,6 +8,8 @@
    #:type-specifier-from-type-code
    #:type-code-from-type-specifier
    #:type-code-of
+   #:array-element-type-code
+   #:empty-type-code-p
 
    ;; Manipulation of type codes.
    #:with-type-code-caching

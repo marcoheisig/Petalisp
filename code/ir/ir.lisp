@@ -36,7 +36,7 @@
 ;;; more kernels.
 (defclass buffer ()
   ((%shape :initarg :shape :accessor buffer-shape)
-   (%element-type :initarg :element-type :reader element-type)
+   (%type-code :initarg :type-code :reader type-code)
    ;; The list of kernels that store into this buffer.
    (%inputs :initarg :inputs :accessor inputs :initform nil)
    ;; The list of kernels that load from this buffer.
@@ -178,7 +178,7 @@
 (defmethod make-buffer ((lazy-array lazy-array) (backend backend))
   (make-instance 'buffer
     :shape (shape lazy-array)
-    :element-type (element-type lazy-array)))
+    :type-code (type-code lazy-array)))
 
 (defmethod make-kernel ((backend backend) &rest args)
   (apply #'make-instance 'kernel args))

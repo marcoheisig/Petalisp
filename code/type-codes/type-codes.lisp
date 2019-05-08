@@ -76,6 +76,20 @@
         (type-code-of (eval object)))
       form))
 
+(defun array-element-type-code (array)
+  (macrolet ((array-element-type-code-expander ()
+               (let* ((uaets (map 'vector #'upgraded-array-element-type +types+)))
+                 `(typecase array
+                    ,@(loop for type across (remove-duplicates uaets :test #'alexandria:type=)
+                            for type-code from 0
+                            collect `((array ,type) (type-code-from-type-specifier ',type)))
+                    (t (type-code-from-type-specifier 't))))))
+    (array-element-type-code-expander)))
+
+(defun empty-type-code-p (type-code)
+  (declare (type-code type-code))
+  (= type-code (type-code-from-type-specifier 'nil)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Type Code Caching

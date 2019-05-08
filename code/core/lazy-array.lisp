@@ -16,6 +16,8 @@
 
 (defgeneric total-size (array))
 
+(defgeneric type-code (array))
+
 (defgeneric element-type (array))
 
 (defgeneric shape (array))
@@ -49,7 +51,8 @@
   ())
 
 (defclass non-empty-array (lazy-array)
-  ((%shape :initarg :shape :reader shape :reader shape)))
+  ((%shape :initarg :shape :reader shape :reader shape)
+   (%type-code :initarg :type-code :reader type-code)))
 
 (defclass non-empty-immediate (non-empty-array immediate)
   ())
@@ -58,11 +61,10 @@
   ((%refcount :initform 0 :accessor refcount)))
 
 (defclass array-immediate (non-empty-immediate)
-  ((%element-type :initarg :element-type :reader element-type)
-   (%storage :initarg :storage :reader storage)))
+  ((%storage :initarg :storage :reader storage)))
 
 (defclass range-immediate (non-empty-immediate)
-  ((%element-type :initarg :element-type :reader element-type)))
+  ())
 
 (defclass application (non-empty-non-immediate)
   ((%operator :initarg :operator :reader operator)
@@ -73,7 +75,7 @@
    (%value-n :initarg :value-n :reader value-n :type (integer 0 #.multiple-values-limit))))
 
 (defclass fusion (non-empty-non-immediate)
-  ((%element-type :initarg :element-type :reader element-type)))
+  ())
 
 (defclass reference (non-empty-non-immediate)
   ((%transformation :initarg :transformation :reader transformation)))
@@ -120,9 +122,12 @@
   (make-array-immediate array))
 
 (defmethod coerce-to-lazy-array ((object t))
-  (make-array-immediate
-   (make-array '() :initial-element object
-                   :element-type (type-of object))))
+  (let* ((type-code (petalisp.type-codes:type-code-of object))
+         (element-type (petalisp.type-codes:type-specifier-from-type-code type-code)))
+    (make-instance 'array-immediate
+      :shape (~)
+      :type-code type-code
+      :storage (make-array '() :initial-element object :element-type element-type))))
 
 (defmethod total-size ((object t))
   1)
@@ -140,27 +145,17 @@
   (set-size finite-set))
 
 (defmethod element-type ((object t))
-  (simplified-types:simplified-type-of object))
+  (petalisp.type-codes:type-specifier-from-type-code
+   (type-code object)))
 
-(defmethod element-type ((array array))
-  (simplified-types:simplify-type
-   (array-element-type array)))
+(defmethod type-code ((object t))
+  (petalisp.type-codes:type-code-of object))
 
-(defmethod element-type (empty-array)
-  nil)
+(defmethod type-code ((array array))
+  (petalisp.type-codes:array-element-type-code array))
 
-(defmethod element-type ((application application))
-  (restricted-functions:nth-value-type
-   (value-n application)
-   (operator application)))
-
-(defmethod element-type ((reduction reduction))
-  (restricted-functions:nth-value-type
-   (value-n reduction)
-   (operator reduction)))
-
-(defmethod element-type ((reference reference))
-  (element-type (input reference)))
+(defmethod type-code ((empty-array empty-array))
+  (petalisp.type-codes:type-code-from-type-specifier 'nil))
 
 (defmethod shape ((object t))
   (load-time-value (make-shape '())))

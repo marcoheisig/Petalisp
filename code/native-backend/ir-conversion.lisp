@@ -31,7 +31,7 @@
      (native-backend native-backend))
   (make-instance 'array-buffer
     :shape (shape array-immediate)
-    :element-type (element-type array-immediate)
+    :type-code (type-code array-immediate)
     :storage (storage array-immediate)))
 
 (defmethod petalisp.ir:make-buffer
@@ -39,7 +39,7 @@
      (native-backend native-backend))
   (make-instance 'non-immediate-buffer
     :shape (shape lazy-array)
-    :element-type (element-type lazy-array)))
+    :type-code (type-code lazy-array)))
 
 (defmethod petalisp.ir:make-kernel
     ((backend native-backend) &rest args)

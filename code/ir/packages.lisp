@@ -27,6 +27,7 @@
    ;; Accessors
    #:buffer-shape
    #:element-type
+   #:type-code
    #:inputs
    #:outputs
    #:iteration-space

@@ -33,7 +33,7 @@
 (defmethod make-reference
     ((lazy-array lazy-array) (shape shape) (transformation transformation))
   (make-instance 'reference
-    :element-type (element-type lazy-array)
+    :type-code (type-code lazy-array)
     :inputs (list lazy-array)
     :shape shape
     :transformation transformation))
@@ -120,8 +120,9 @@
       ((list) (empty-array))
       ((list x) x)
       (_ (make-instance 'fusion
-           :element-type (simplified-types:simplify-type
-                          `(or ,@(mapcar #'element-type inputs)))
+           :type-code (reduce #'petalisp.type-codes:type-code-union
+                              inputs
+                              :key #'type-code)
            :inputs inputs
            :shape shape)))))
 
@@ -138,18 +139,18 @@
                  '(not (cons lazy-array t))))
   (if (zerop (array-total-size array))
       (empty-array)
-      (let ((element-type
-              (simplified-types:simplify-type
-               (array-element-type array))))
-        (make-instance 'array-immediate
-          :shape (shape array)
-          :storage array
-          :element-type element-type))))
+      (make-instance 'array-immediate
+        :shape (shape array)
+        :storage array
+        :type-code (petalisp.type-codes:array-element-type-code array))))
 
 (defun make-range-immediate (range)
   (make-instance 'range-immediate
-    :element-type `(integer ,(range-start range) ,(range-end range))
-    :shape (make-shape (list range))))
+    :shape (make-shape (list range))
+    :type-code
+    (petalisp.type-codes:type-code-union
+     (petalisp.type-codes:type-code-of (range-start range))
+     (petalisp.type-codes:type-code-of (range-end range)))))
 
 (defun indices (array-or-shape &optional (axis 0))
   (let ((shape (if (shapep array-or-shape)
@@ -168,6 +169,38 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; Type Inference
+
+(define-condition invalid-call (error)
+  ((%function :initarg :function :reader invalid-call-function)
+   (%argument-types :initarg :argument-types :reader invalid-call-argument-types)))
+
+(defmethod print-object ((invalid-call invalid-call) stream)
+  (format stream
+          "Invalid call to ~S with ~
+           ~{~#[no arguments~;~
+                one argument of type ~S~;~
+                arguments of types ~a and ~a~:;~
+                arguments of types ~@{~a~#[~;, and ~:;, ~]~}~
+                ~]~:}."
+          (invalid-call-function invalid-call)
+          (invalid-call-argument-types invalid-call)))
+
+(defun infer-type-codes (function argument-type-codes)
+  (let ((type-codes (multiple-value-list
+                     (apply #'petalisp.type-codes:values-type-codes
+                            function
+                            argument-type-codes))))
+    (unless (loop for type-code in type-codes
+                  never (petalisp.type-codes:empty-type-code-p type-code))
+      (error 'invalid-call
+             :function function
+             :argument-types
+             (mapcar #'petalisp.type-codes:type-specifier-from-type-code
+                     type-codes)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; Applications
 
 (declaim (inline α) (notinline α-aux))
@@ -182,68 +215,51 @@ mismatch, broadcast the smaller objects."
 (defun α-aux (n-outputs function &rest arguments)
   (declare (type (integer 0 (#.multiple-values-limit)) n-outputs)
            (type function function))
-  (flet ((return-outputs (list-of-outputs)
-           (return-from α-aux
-             (values-list list-of-outputs))))
-    (let* ((inputs (broadcast-list-of-arrays arguments))
-           (shape (shape (first inputs))))
-      ;; Check whether the inputs are empty.
-      (when (set-emptyp shape)
-        (return-outputs
-         (make-list n-outputs :initial-element (empty-array))))
-      ;; Attempt constant folding.
-      #+nil
-      (block constant-folding
-        (labels ((array-value (array)
-                   (if (= 1 (array-total-size array))
-                       (row-major-aref array 0)
-                       (return-from constant-folding)))
-                 (lazy-array-value (lazy-array)
-                   (typecase lazy-array
-                     (array-immediate
-                      (array-value (storage lazy-array)))
-                     (reference
-                      (lazy-array-value (input lazy-array)))
-                     (t (return-from constant-folding)))))
-          (let* ((inputs (mapcar #'lazy-array-value inputs))
-                 (values (multiple-value-list (apply function inputs))))
-            (return-outputs
-             (loop for value-n below n-outputs
-                   collect (reshape (pop values) shape))))))
-      ;; Otherwise, create a new application.
-      (let ((restricted-function
-              (apply #'restricted-functions:restrict nil function
-                     (mapcar #'element-type inputs))))
-        (return-outputs
-         (loop for value-n below n-outputs
-               collect
-               (make-instance 'application
-                 :operator restricted-function
-                 :value-n value-n
-                 :inputs inputs
-                 :shape shape)))))))
+  (let* ((inputs (broadcast-list-of-arrays arguments))
+         (shape (shape (first inputs))))
+    (cond ((set-emptyp shape)
+           (values-list
+            (make-list n-outputs :initial-element (empty-array))))
+          (t
+           (let* ((function (coerce function 'function))
+                  (type-codes (infer-type-codes function (mapcar #'type-code inputs))))
+             (values-list
+              (loop for value-n below n-outputs
+                    collect
+                    (make-instance 'application
+                      :operator function
+                      :value-n value-n
+                      :inputs inputs
+                      :shape shape
+                      :type-code
+                      (if (null type-codes)
+                          (petalisp.type-codes:type-code-from-type-specifier 't)
+                          (pop type-codes))))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Reductions
 
 (defun β (function array &rest more-arrays)
-  (alexandria:coercef function 'function)
   (let* ((inputs (broadcast-list-of-arrays (list* array more-arrays)))
          (k (length inputs))
          (input-shape (shape (first inputs))))
-    (values-list
-     (if (set-emptyp input-shape)
-         (make-list k :initial-element (empty-array))
-         (let* ((shape (make-shape (cdr (ranges input-shape))))
-                (input-element-types (mapcar #'element-type inputs))
-                (restricted-function
-                  (apply #'restricted-functions:restrict nil function
-                         (append input-element-types input-element-types))))
+    (if (set-emptyp input-shape)
+        (values-list (make-list k :initial-element (empty-array)))
+        (let* ((function (coerce function 'function))
+               (shape (make-shape (cdr (ranges input-shape))))
+               (argument-type-codes (mapcar #'type-code inputs))
+               (type-codes
+                 (infer-type-codes function (append argument-type-codes argument-type-codes))))
+          (values-list
            (loop for value-n below k
                  collect
                  (make-instance 'reduction
-                   :operator restricted-function
+                   :operator function
                    :value-n value-n
                    :inputs inputs
-                   :shape shape)))))))
+                   :shape shape
+                   :type-code
+                   (if (null type-codes)
+                       (petalisp.type-codes:type-code-from-type-specifier 't)
+                       (pop type-codes)))))))))
