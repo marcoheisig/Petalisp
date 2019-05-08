@@ -2,8 +2,11 @@
 
 (in-package #:petalisp.type-codes)
 
-(defun numeric-contagion (&rest type-codes)
-  (assert (not (null type-codes)))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Numeric Contagion
+
+(defun slow-numeric-contagion (&rest type-codes)
   (labels ((initial-state ()
              (type-code-subtypecase (pop type-codes)
                ((not number) (abort-type-inference))
@@ -268,14 +271,181 @@
                    (t (number-state))))))
     (initial-state)))
 
+(defun numeric-contagion (type-code-1 type-code-2)
+  (with-type-code-caching (type-code-1 type-code-2)
+    (with-type-inference-barrier
+      (slow-numeric-contagion type-code-1 type-code-2))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; The Numbers Dictionary (CLHS 12.2)
+
+(flet ((inference (numbers)
+         (dolist (number numbers)
+           (check-type-code number number))
+         (type-code-from-type-specifier 't)))
+  (define-type-inference-rule = (&rest numbers) (inference numbers))
+  (define-type-inference-rule /= (&rest numbers) (inference numbers))
+  (define-type-inference-rule < (&rest numbers) (inference numbers))
+  (define-type-inference-rule > (&rest numbers) (inference numbers))
+  (define-type-inference-rule <= (&rest numbers) (inference numbers))
+  (define-type-inference-rule >= (&rest numbers) (inference numbers)))
+
+(define-type-inference-rule max (&rest reals)
+  (dolist (real reals)
+    (check-type-code real real))
+  (reduce #'type-code-union reals))
+
+(define-type-inference-rule min (&rest reals)
+  (dolist (real reals)
+    (check-type-code real real))
+  (reduce #'type-code-union reals))
+
+(define-type-inference-rule minusp (real)
+  (check-type-code real real)
+  (type-code-from-type-specifier 't))
+
+(define-type-inference-rule plusp (real)
+  (check-type-code real real)
+  (type-code-from-type-specifier 't))
+
+(define-type-inference-rule zerop (number)
+  (check-type-code number number)
+  (type-code-from-type-specifier 't))
+
+(flet ((inference (number divisor)
+         (check-type-code number real)
+         (check-type-code divisor real)
+         (values (type-code-from-type-specifier 'integer) number)))
+  (define-type-inference-rule floor (number &optional (divisor (type-code-of 1)))
+    (inference number divisor))
+  (define-type-inference-rule ceiling (number &optional (divisor (type-code-of 1)))
+    (inference number divisor))
+  (define-type-inference-rule truncate (number &optional (divisor (type-code-of 1)))
+    (inference number divisor))
+  (define-type-inference-rule round (number &optional (divisor (type-code-of 1)))
+    (inference number divisor)))
+
+(flet ((inference (number divisor)
+         (type-code-subtypecase number
+           ((not real) (abort-type-inference))
+           (float
+            (type-code-subtypecase divisor
+              ((not real) (abort-type-inference))
+              (float (numeric-contagion number divisor))
+              (t number)))
+           (t (numeric-contagion number divisor)))))
+  (define-type-inference-rule ffloor (number &optional (divisor (type-code-of 1)))
+    (inference number divisor))
+  (define-type-inference-rule fceiling (number &optional (divisor (type-code-of 1)))
+    (inference number divisor))
+  (define-type-inference-rule ftruncate (number &optional (divisor (type-code-of 1)))
+    (inference number divisor))
+  (define-type-inference-rule fround (number &optional (divisor (type-code-of 1)))
+    (inference number divisor)))
+
+(flet ((inference (number)
+         (type-code-subtypecase number
+           ((not number) (abort-type-inference))
+           ((or float (complex float)) number)
+           (rational (type-code-from-type-specifier '(or single-float rational)))
+           ((or rational (complex rational)) (type-code-from-type-specifier '(or single-float rational (complex rational))))
+           (t (type-code-from-type-specifier 'number)))))
+  (define-type-inference-rule sin (radians) (inference radians))
+  (define-type-inference-rule cos (radians) (inference radians))
+  (define-type-inference-rule tan (radians) (inference radians)))
+
+;; TODO asin, acos, atan
+
+;; TODO sinh, cosh, tanh, asinh, acosh, atanh
+
+(define-type-inference-rule * (&rest type-codes)
+  (if (null type-codes)
+      (type-code-of 1)
+      (reduce #'numeric-contagion type-codes)))
+
 (define-type-inference-rule + (&rest type-codes)
   (if (null type-codes)
       (type-code-of 0)
       (reduce #'numeric-contagion type-codes)))
 
- (define-type-inference-rule cl:float-sign (type-code-1 &optional (type-code-2 type-code-1))
-   (type-code-subtypecase type-code-1
-     ((not float) (abort-type-inference))
-     (t (type-code-subtypecase type-code-2
-          ((not float) (abort-type-inference))
-          (t type-code-2)))))
+(define-type-inference-rule - (&rest type-codes)
+  (reduce #'numeric-contagion type-codes))
+
+(define-type-inference-rule / (numerator &rest denominators)
+  (let ((initial-type
+          (type-code-subtypecase numerator
+            ((not number) (abort-type-inference))
+            (rational (type-code-from-type-specifier 'rational))
+            ((or float (complex float)) numerator)
+            (t (type-code-from-type-specifier 'number)))))
+    (reduce #'numeric-contagion denominators :initial-value initial-type)))
+
+(define-type-inference-rule 1+ (number)
+  (values-type-codes #'+ number (type-code-of 1)))
+
+(define-type-inference-rule 1- (number)
+  (values-type-codes #'- number (type-code-of 1)))
+
+(define-type-inference-rule abs (number)
+  (type-code-subtypecase number
+    ((not number) (abort-type-inference))
+    (real number)
+    ((complex short-float) (type-code-from-type-specifier 'short-float))
+    ((complex single-float) (type-code-from-type-specifier 'single-float))
+    ((complex double-float) (type-code-from-type-specifier 'double-float))
+    ((complex long-float) (type-code-from-type-specifier 'long-float))
+    (t (type-code-from-type-specifier 'real))))
+
+(define-type-inference-rule evenp (integer)
+  (check-type-code integer integer)
+  (type-code-from-type-specifier 't))
+
+(define-type-inference-rule oddp (integer)
+  (check-type-code integer integer)
+  (type-code-from-type-specifier 't))
+
+;; TODO exp, expt
+
+;; TODO gcd
+
+;; TODO lcm
+
+;; TODO log
+
+;; TODO mod, rem
+
+;; TODO signum
+
+;; TODO sqrt, isqrt
+
+;; TODO make-random-state, random, random-state-p
+
+;; TODO numberp, realp, rationalp, integerp, floatp
+
+;; TODO cis
+
+;; TODO complex, complexp, conjugate, phase, realpart, imagpart, upgraded-complex-part-type
+
+;; TODO numerator, denominator
+
+;; TODO rational, rationalize
+
+;; TODO ash, integer-length, parse-integer
+
+;; TODO boole
+
+;; TODO logand, logandc1, logandc2, logeqv, logior, lognand, lognor, lognot, logorc1, logorc2, logxor
+
+;; TODO logbitp, logcount, logtest
+
+;; TODO byte, byte-size, byte-position
+
+;; TODO deposit-field, dpb, ldb, ldb-test, mask-field
+
+;; TODO decode-float, scale-float, float-radix, float-sign, float-digits, float-precision, integer-decode-float, float
+
+(define-type-inference-rule float-sign (type-code-1 &optional (type-code-2 type-code-1))
+  (check-type-code type-code-1 float)
+  (check-type-code type-code-2 float)
+  type-code-2)

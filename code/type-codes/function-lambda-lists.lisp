@@ -20,7 +20,7 @@
         (upper-bound-p t)
         (mandatory-increment 1)
         (max-increment 1))
-    (declare (type (integer 0 #.call-arguments-limit)
+    (declare (type (integer 0 (#.call-arguments-limit))
                    mandatory-arguments max-arguments
                    mandatory-increment max-increment)
              (type boolean upper-bound-p))
@@ -44,7 +44,7 @@
          (incf max-arguments max-increment))))
     (if upper-bound-p
         (values mandatory-arguments max-arguments)
-        (values mandatory-arguments call-arguments-limit))))
+        (values mandatory-arguments (1- call-arguments-limit)))))
 
 (defun function-arity (function)
   (lambda-list-arity

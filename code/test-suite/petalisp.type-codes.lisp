@@ -82,13 +82,20 @@
                                    function
                                    (mapcar #'petalisp.type-codes:type-code-of args))))))
              (if (some #'null predicted)
+                 ;; If type inference says the function will never return a
+                 ;; value, we expect an error.
                  (signals error (locally (declare (optimize (safety 3)))
                                    (apply function args)))
-                 (let ((values (multiple-value-list (apply function args))))
-                   (is (<= (length predicted) (length values)))
-                   (loop for value in values
-                         for type in predicted do
-                           (is (typep value type))))))))
+                 ;; Otherwise, we either expect an error, or values that
+                 ;; match the prediction.
+                 (ignore-errors
+                  (let ((values (multiple-value-list
+                                 (locally (declare (optimize (safety 3)))
+                                   (apply function args)))))
+                    (is (<= (length predicted) (length values)))
+                    (loop for value in values
+                          for type in predicted do
+                            (is (typep value type)))))))))
     (test 'apply '+ '(7 8))
     (test #'apply)
     (test #'apply #'+ 5 '(7 8))
@@ -107,4 +114,15 @@
     (test #'some #'integerp)
     (test #'values 1 2 3 4.0)
     (test #'values-list '(1 2 3))
-    (test #'values-list 42)))
+    (test #'values-list 42)
+    ;; Now for the big number test.
+    (loop for number-1 in *test-numbers* do
+      (test #'* number-1)
+      (test #'+ number-1)
+      (test #'- number-1)
+      (test #'/ number-1)
+      (loop for number-2 in *test-numbers* do
+        (test #'* number-1 number-2)
+        (test #'+ number-1 number-2)
+        (test #'- number-1 number-2)
+        (test #'/ number-1 number-2)))))

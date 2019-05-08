@@ -4,6 +4,9 @@
 
 (defvar *type-inference-functions* (make-hash-table :test #'eq))
 
+(defmacro with-type-inference-barrier (&body body)
+  `(catch '.type-inference. ,@body))
+
 (defun give-up-type-inference ()
   (throw '.type-inference.
     (values)))
@@ -22,7 +25,7 @@ returned by FUNCTION when called with arguments that match the supplied
 ARGUMENT-TYPE-CODES."
   (let* ((fn (coerce function 'function))
          (inference-function (gethash fn *type-inference-functions*)))
-    (catch '.type-inference.
+    (with-type-inference-barrier
       (if inference-function
           (apply inference-function argument-type-codes)
           (multiple-value-bind (mandatory max)
@@ -32,8 +35,8 @@ ARGUMENT-TYPE-CODES."
                 (type-code-from-type-specifier 'nil)))))))
 
 (defun register-type-inference-function (fn inference-fn)
-  (multiple-value-bind (mandatory max)
-      (function-arity fn)
+  (multiple-value-bind (mandatory max) (function-arity fn)
+    (declare (type (integer 0 (#.call-arguments-limit)) mandatory max))
     (setf (gethash fn *type-inference-functions*)
           (lambda (&rest type-codes)
             (if (<= mandatory (length type-codes) max)
@@ -71,12 +74,10 @@ Examples:
  (define-type-inference-rule cl:constantly (type-code)
    (type-code-from-type-specifier 'function))
 
- (define-type-inference-rule cl:float-sign (type-code-1 &optional (type-code-2 type-code-1))
-    (type-code-subtypecase type-code-1
-      ((not float) (abort-type-inference))
-      (t (type-code-subtypecase type-code-2
-           ((not float) (abort-type-inference))
-           (t type-code-2)))))
+ (define-type-inference-rule float-sign (type-code-1 &optional (type-code-2 type-code-1))
+   (check-type-code type-code-1 float)
+   (check-type-code type-code-2 float)
+   type-code-2)
 "
   (dolist (keyword (intersection lambda-list lambda-list-keywords))
     (unless (member keyword '(&optional &rest))

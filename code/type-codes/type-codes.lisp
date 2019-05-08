@@ -124,7 +124,7 @@
 
 (defmacro type-code-subtypecase (type-code &body clauses &environment env)
   (alexandria:with-gensyms (type-mask)
-    `(let ((,type-mask (ash 1 (- type-code-limit ,type-code))))
+    `(let ((,type-mask (ash 1 (- type-code-limit (the type-code ,type-code)))))
        (cond
          ,@(loop for (type-specifier . body) in clauses
                  collect `((plusp (logand ,type-mask ,(subtypep-mask type-specifier env)))
