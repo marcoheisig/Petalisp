@@ -18,6 +18,8 @@
 
    ;; Type inference.
    #:define-type-inference-rule
+   #:define-predicate-type-inference-rule
+   #:with-type-inference-barrier
    #:give-up-type-inference
    #:abort-type-inference
    #:values-type-codes))
