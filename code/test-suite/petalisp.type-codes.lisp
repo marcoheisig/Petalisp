@@ -31,6 +31,9 @@
           (push (scale-float (coerce base fp-type) exponent) floats))))
     (remove-duplicates floats)))
 
+(defparameter *test-reals*
+  (append *test-integers* *test-floats*))
+
 (defparameter *test-complex-numbers*
   (let ((complex-numbers '()))
     (loop for float in *test-floats* do
@@ -88,14 +91,16 @@
                                    (apply function args)))
                  ;; Otherwise, we either expect an error, or values that
                  ;; match the prediction.
-                 (ignore-errors
-                  (let ((values (multiple-value-list
-                                 (locally (declare (optimize (safety 3)))
-                                   (apply function args)))))
-                    (is (<= (length predicted) (length values)))
-                    (loop for value in values
-                          for type in predicted do
-                            (is (typep value type)))))))))
+                 (handler-case
+                     (let ((values
+                             (multiple-value-list
+                              (locally (declare (optimize (safety 3)))
+                                (apply function args)))))
+                       (is (<= (length predicted) (length values)))
+                       (loop for value in values
+                             for type in predicted do
+                               (is (typep value type))))
+                   (arithmetic-error ()))))))
     (test 'apply '+ '(7 8))
     (test #'apply)
     (test #'apply #'+ 5 '(7 8))
@@ -115,14 +120,20 @@
     (test #'values 1 2 3 4.0)
     (test #'values-list '(1 2 3))
     (test #'values-list 42)
-    ;; Now for the big number test.
-    (loop for number-1 in *test-numbers* do
-      (test #'* number-1)
-      (test #'+ number-1)
-      (test #'- number-1)
-      (test #'/ number-1)
-      (loop for number-2 in *test-numbers* do
-        (test #'* number-1 number-2)
-        (test #'+ number-1 number-2)
-        (test #'- number-1 number-2)
-        (test #'/ number-1 number-2)))))
+    ;; N-valued functions.
+    (loop for fn in '(= /= < > <= >= min max + - * /) do
+      (loop for number-1 in *test-numbers* do
+        (test fn number-1)
+        (loop for number-2 in *test-numbers* do
+          (test fn number-1 number-2)
+          (test fn number-1 number-2 number-1))))
+    ;; Rounding.
+    (loop for fn in '(floor ceiling truncate round ffloor fceiling ftruncate fround) do
+      (loop for number-1 in *test-numbers* do
+        (test fn number-1)
+        (loop for number-2 in *test-numbers* do
+          (test fn number-1 number-2))))
+    ;; Trigonometric functions.
+    (loop for fn in '(sin cos tan asin acos atan log exp expt sqrt cis) do
+      (loop for number-1 in *test-numbers* do
+        (test fn number-1)))))

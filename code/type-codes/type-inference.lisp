@@ -85,3 +85,18 @@ Examples:
   `(register-type-inference-function
     (function ,name)
     (lambda ,lambda-list ,@body)))
+
+(defmacro define-predicate-type-inference-rule (name type)
+  "Define an inference rule for the function named NAME that is a predicate
+that returns - as a generalized boolean - whether its argument is of TYPE.
+
+Examples:
+
+ (define-predicate-type-inference-rule numberp number)
+
+ (define-predicate-type-inference-rule random-state-p random-state)
+"
+  `(define-type-inference-rule ,name (object)
+     (type-code-subtypecase object
+       ((not ,type) (type-code-from-type-specifier 'null))
+       (t (type-code-from-type-specifier 't)))))
