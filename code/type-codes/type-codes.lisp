@@ -133,13 +133,13 @@
 
 (defun subtypep-mask (type-specifier &optional env)
   (loop for type across +types+
-        for bit = (ash 1 type-code-limit) then (ash bit -1)
+        for bit = 1 then (ash bit 1)
         sum (if (subtypep type type-specifier env) bit 0)))
 
 (defmacro type-code-subtypecase (type-code &body clauses &environment env)
-  (alexandria:with-gensyms (type-mask)
-    `(let ((,type-mask (ash 1 (- type-code-limit (the type-code ,type-code)))))
+  (alexandria:with-gensyms (tc)
+    `(let ((,tc (the type-code ,type-code)))
        (cond
          ,@(loop for (type-specifier . body) in clauses
-                 collect `((plusp (logand ,type-mask ,(subtypep-mask type-specifier env)))
+                 collect `((logbitp ,tc ,(subtypep-mask type-specifier env))
                            ,@body))))))
