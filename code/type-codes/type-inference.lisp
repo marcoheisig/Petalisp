@@ -22,7 +22,12 @@
 (defun values-type-codes (function &rest argument-type-codes)
   "Returns one or more type codes that describe what values will be
 returned by FUNCTION when called with arguments that match the supplied
-ARGUMENT-TYPE-CODES."
+ARGUMENT-TYPE-CODES.
+
+Returns a single value that is the empty type code, if and only if it can
+be determined that FUNCTION will never return for the specified argument
+types.
+"
   (let* ((fn (coerce function 'function))
          (inference-function (gethash fn *type-inference-functions*)))
     (with-type-inference-barrier

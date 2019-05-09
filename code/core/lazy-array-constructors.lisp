@@ -191,8 +191,8 @@
                      (apply #'petalisp.type-codes:values-type-codes
                             function
                             argument-type-codes))))
-    (unless (loop for type-code in type-codes
-                  never (petalisp.type-codes:empty-type-code-p type-code))
+    (unless (or (null type-codes)
+                (not (petalisp.type-codes:empty-type-code-p (first type-codes))))
       (error 'invalid-call
              :function function
              :argument-types
@@ -217,13 +217,14 @@ mismatch, broadcast the smaller objects."
   (declare (type (integer 0 (#.multiple-values-limit)) n-outputs)
            (type function function))
   (let* ((inputs (broadcast-list-of-arrays arguments))
-         (shape (shape (first inputs))))
+         (shape (if (null inputs)
+                    (empty-set)
+                    (shape (first inputs)))))
     (cond ((set-emptyp shape)
            (values-list
             (make-list n-outputs :initial-element (empty-array))))
           (t
-           (let* ((function (coerce function 'function))
-                  (type-codes (infer-type-codes function (mapcar #'type-code inputs))))
+           (let ((type-codes (infer-type-codes function (mapcar #'type-code inputs))))
              (values-list
               (loop for value-n below n-outputs
                     collect
@@ -244,7 +245,9 @@ mismatch, broadcast the smaller objects."
 (defun β (function array &rest more-arrays)
   (let* ((inputs (broadcast-list-of-arrays (list* array more-arrays)))
          (k (length inputs))
-         (input-shape (shape (first inputs))))
+         (input-shape (if (zerop k)
+                          (empty-set)
+                          (shape (first inputs)))))
     (if (set-emptyp input-shape)
         (values-list (make-list k :initial-element (empty-array)))
         (let* ((function (coerce function 'function))
