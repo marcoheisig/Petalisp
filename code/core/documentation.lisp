@@ -17,8 +17,23 @@
 ;;; Docstrings
 
 (document-function indices
-  "Return an array of integers, where the value of each entry (i_0 ... i_N)
-is i_AXIS.  If axis is not supplied, it defaults to zero.")
+  "Returns a lazy array of integers of the shape indicated by the first
+argument ARRAY-OR-SHAPE , where each array element at index (i_0 ... i_N)
+has the value i_AXIS.  If AXIS is not supplied, it defaults to zero.
+
+Examples:
+ (compute (indices #2a((1 2) (3 4))))
+  => #2a((0 0) (1 1))
+
+ (compute (indices #2a((1 2) (3 4)) 1))
+  => #2a((0 1) (0 1))
+
+ (compute (indices (reshape #2a((1 2) (3 4)) (τ (i j) (i (1+ j)))) 1))
+  => #2a((1 2) (1 2))
+
+ (compute (indices \"abc\"))
+  => #(0 1 2)
+")
 
 (document-function α
   ;; TODO

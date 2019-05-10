@@ -161,10 +161,12 @@
   (load-time-value (make-shape '())))
 
 (defmethod shape ((array array))
-  (make-shape
-   (loop for axis below (array-rank array)
-         collect
-         (range 0 1 (1- (array-dimension array axis))))))
+  (if (zerop (array-total-size array))
+      (empty-set)
+      (make-shape
+       (loop for axis below (array-rank array)
+             collect
+             (range 0 1 (1- (array-dimension array axis)))))))
 
 (defmethod shape ((any-set any-set))
   any-set)

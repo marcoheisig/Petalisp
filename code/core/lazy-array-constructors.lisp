@@ -134,9 +134,7 @@
   (load-time-value (make-instance 'empty-array)))
 
 (defun make-array-immediate (array)
-  (assert (arrayp array))
-  (assert (typep (row-major-aref array 0)
-                 '(not (cons lazy-array t))))
+  (check-type array array)
   (if (zerop (array-total-size array))
       (empty-array)
       (make-instance 'array-immediate
@@ -159,7 +157,8 @@
     (if (set-emptyp shape)
         (empty-array)
         (let ((rank (rank shape)))
-          (assert (<= 0 axis (1- rank)))
+          (unless (<= 0 axis (1- rank))
+            (error "Invalid axis ~A for a shape with rank ~D." axis rank))
           (make-reference
            (make-range-immediate (nth axis (ranges shape)))
            shape
