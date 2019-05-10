@@ -618,13 +618,103 @@
   (define-type-inference-rule logorc2 (i1 i2) (inference i1 i2))
   (define-type-inference-rule logxor (&rest integers) (apply #'inference integers)))
 
-;; TODO logbitp, logcount, logtest
+(define-type-inference-rule logbitp (index integer)
+  (check-type-code index (integer 0 *))
+  (check-type-code integer integer)
+  (type-code-from-type-specifier 't))
 
-;; TODO byte, byte-size, byte-position
+(define-type-inference-rule logcount (integer)
+  (check-type-code integer integer)
+  (type-code-from-type-specifier '(integer 0 *)))
 
-;; TODO deposit-field, dpb, ldb, ldb-test, mask-field
+(define-type-inference-rule logtest (integer-1 integer-2)
+  (check-type-code integer-1 integer)
+  (check-type-code integer-2 integer)
+  (type-code-from-type-specifier 't))
 
-;; TODO decode-float, scale-float, float-radix, float-sign, float-digits, float-precision, integer-decode-float
+;; The representation of byte specifiers is implementation-dependent.
+;; However, under the assumption that each implementation consistently uses
+;; a uniform representation, we still might be able to infer something.
+(deftype byte-specifier ()
+  `(or ,(type-of (byte 0 0))
+       ,(type-of (byte 16 253))))
+
+(define-type-inference-rule byte (size position)
+  (check-type-code size (integer 0 *))
+  (check-type-code position (integer 0 *))
+  (type-code-from-type-specifier 'byte-specifier))
+
+(define-type-inference-rule byte-size (bytespec)
+  (check-type-code bytespec byte-specifier)
+  (type-code-from-type-specifier '(integer 0 *)))
+
+(define-type-inference-rule byte-position (bytespec)
+  (check-type-code bytespec byte-specifier)
+  (type-code-from-type-specifier '(integer 0 *)))
+
+(define-type-inference-rule dbp (newbyte bytespec integer)
+  (check-type-code newbyte integer)
+  (check-type-code bytespec byte-specifier)
+  (check-type-code integer integer)
+  (type-code-from-type-specifier 'integer))
+
+(define-type-inference-rule ldb (bytespec integer)
+  (check-type-code bytespec byte-specifier)
+  (check-type-code integer integer)
+  (type-code-from-type-specifier '(integer 0 *)))
+
+(define-type-inference-rule deposit-field (newbyte bytespec integer)
+  (check-type-code newbyte integer)
+  (check-type-code bytespec byte-specifier)
+  (check-type-code integer integer)
+  (type-code-from-type-specifier 'integer))
+
+(define-type-inference-rule mask-field (bytespec integer)
+  (check-type-code bytespec byte-specifier)
+  (check-type-code integer integer)
+  (type-code-from-type-specifier '(integer 0 *)))
+
+(define-type-inference-rule decode-float (float)
+  (type-code-subtypecase float
+    ((not float) (abort-type-inference))
+    (float (values
+            float
+            (type-code-from-type-specifier 'integer)
+            float))
+    (t (values
+        (type-code-from-type-specifier 'float)
+        (type-code-from-type-specifier 'integer)
+        (type-code-from-type-specifier 'float)))))
+
+(define-type-inference-rule scale-float (float integer)
+  (type-code-subtypecase float
+    ((not float) (abort-type-inference))
+    (float float)
+    (t (type-code-from-type-specifier 'float))))
+
+(define-type-inference-rule float-radix (float)
+  (type-code-from-type-specifier 'integer))
+
+(define-type-inference-rule float-sign (float-1 &optional (float-2 float-1))
+  (check-type-code float-1 float)
+  (type-code-subtypecase float-2
+    ((not float) (abort-type-inference))
+    (float float)
+    (t (type-code-from-type-specifier 'float))))
+
+(define-type-inference-rule float-digits (float)
+  (check-type-code float float)
+  (type-code-from-type-specifier '(integer 0 *)))
+
+(define-type-inference-rule float-precision (float)
+  (check-type-code float float)
+  (type-code-from-type-specifier '(integer 0 *)))
+
+(define-type-inference-rule integer-decode-float (float)
+  (check-type-code float float)
+  (values (type-code-from-type-specifier 'integer)
+          (type-code-from-type-specifier 'integer)
+          (type-code-from-type-specifier 'integer)))
 
 (define-type-inference-rule float
     (number &optional (prototype nil prototype-supplied-p))
