@@ -645,7 +645,7 @@
   (check-type-code bytespec byte-specifier)
   (type-code-from-type-specifier '(integer 0 *)))
 
-(define-type-inference-rule dbp (newbyte bytespec integer)
+(define-type-inference-rule dpb (newbyte bytespec integer)
   (check-type-code newbyte integer)
   (check-type-code bytespec byte-specifier)
   (check-type-code integer integer)
@@ -680,19 +680,21 @@
         (type-code-from-type-specifier 'float)))))
 
 (define-type-inference-rule scale-float (float integer)
+  (check-type-code integer integer)
   (type-code-subtypecase float
     ((not float) (abort-type-inference))
     (float float)
     (t (type-code-from-type-specifier 'float))))
 
 (define-type-inference-rule float-radix (float)
+  (check-type-code float float)
   (type-code-from-type-specifier 'integer))
 
 (define-type-inference-rule float-sign (float-1 &optional (float-2 float-1))
   (check-type-code float-1 float)
   (type-code-subtypecase float-2
     ((not float) (abort-type-inference))
-    (float float)
+    (float float-2)
     (t (type-code-from-type-specifier 'float))))
 
 (define-type-inference-rule float-digits (float)
