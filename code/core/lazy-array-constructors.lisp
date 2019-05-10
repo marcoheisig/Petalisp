@@ -177,12 +177,12 @@
 
 (defmethod print-object ((invalid-call invalid-call) stream)
   (format stream
-          "Invalid call to ~S with ~
+          "~@<Invalid call to ~S with ~
            ~{~#[no arguments~;~
                 one argument of type ~S~;~
                 arguments of types ~a and ~a~:;~
                 arguments of types ~@{~a~#[~;, and ~:;, ~]~}~
-                ~]~:}."
+                ~]~:}.~:@>"
           (invalid-call-function invalid-call)
           (invalid-call-argument-types invalid-call)))
 
@@ -197,7 +197,7 @@
              :function function
              :argument-types
              (mapcar #'petalisp.type-codes:type-specifier-from-type-code
-                     type-codes)))
+                     argument-type-codes)))
     type-codes))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
