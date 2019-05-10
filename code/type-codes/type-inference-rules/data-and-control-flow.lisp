@@ -2,13 +2,6 @@
 
 (in-package #:petalisp.type-codes)
 
-(deftype function-name ()
-  '(or symbol
-    (cons (eql setf) (cons symbol nil))))
-
-(deftype function-designator ()
-  '(or symbol function))
-
 (define-type-inference-rule apply (function &rest args)
   (check-type-code function function-designator)
   (if (null args)

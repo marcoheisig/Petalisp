@@ -2,18 +2,6 @@
 
 (in-package #:petalisp.type-codes)
 
-(deftype character-designator ()
-  '(or (vector character 1) character))
-
-(deftype string-designator ()
-  '(or character symbol string))
-
-(deftype radix ()
-  '(integer 2 36))
-
-(deftype character-code ()
-  '(integer 0 (#.char-code-limit)))
-
 (flet ((inference (characters)
          (dolist (character characters)
            (check-type-code character character))

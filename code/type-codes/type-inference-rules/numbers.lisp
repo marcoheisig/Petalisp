@@ -632,13 +632,6 @@
   (check-type-code integer-2 integer)
   (type-code-from-type-specifier 't))
 
-;; The representation of byte specifiers is implementation-dependent.
-;; However, under the assumption that each implementation consistently uses
-;; a uniform representation, we still might be able to infer something.
-(deftype byte-specifier ()
-  `(or ,(type-of (byte 0 0))
-       ,(type-of (byte 16 253))))
-
 (define-type-inference-rule byte (size position)
   (check-type-code size (integer 0 *))
   (check-type-code position (integer 0 *))

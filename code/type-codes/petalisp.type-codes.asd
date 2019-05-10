@@ -15,6 +15,8 @@
    (:file "type-inference")
    (:module "type-inference-rules"
     :components
-    ((:file "data-and-control-flow")
+    ((:file "characters")
+     (:file "data-and-control-flow")
      (:file "numbers")
-     (:file "characters")))))
+     (:file "objects")
+     (:file "symbols")))))

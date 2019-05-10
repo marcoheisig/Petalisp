@@ -105,3 +105,36 @@ Examples:
      (type-code-subtypecase object
        ((not ,type) (type-code-from-type-specifier 'null))
        (t (type-code-from-type-specifier 't)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Auxiliary Type Definitions
+
+(deftype function-name ()
+  '(or symbol
+    (cons (eql setf) (cons symbol nil))))
+
+(deftype function-designator ()
+  '(or symbol function))
+
+(deftype character-designator ()
+  '(or (vector character 1) character))
+
+(deftype string-designator ()
+  '(or character symbol string))
+
+(deftype package-designator ()
+  '(or package string-designator))
+
+(deftype radix ()
+  '(integer 2 36))
+
+(deftype character-code ()
+  '(integer 0 (#.char-code-limit)))
+
+;; The representation of byte specifiers is implementation-dependent.
+;; However, under the assumption that each implementation consistently uses
+;; a uniform representation, we still might be able to infer something.
+(deftype byte-specifier ()
+  `(or ,(type-of (byte 0 0))
+       ,(type-of (byte 16 253))))
