@@ -71,10 +71,11 @@
      (shape application)
      (element-type application)
      (lambda (index)
-       (nth-value
+       (nth
         (value-n application)
-        (apply (operator application)
-               (mapcar (lambda (input) (iref input index)) inputs)))))))
+        (multiple-value-list
+         (apply (operator application)
+                (mapcar (lambda (input) (iref input index)) inputs))))))))
 
 (defmethod evaluate ((reduction reduction))
   (let* ((inputs (mapcar #'evaluate (inputs reduction)))
@@ -98,9 +99,10 @@
                              (divide-and-conquer left)
                              (divide-and-conquer right)))
                           0 k))))))
-         (nth-value
+         (nth
           (value-n reduction)
-          (divide-and-conquer (first (ranges (shape (first inputs)))))))))))
+          (multiple-value-list
+           (divide-and-conquer (first (ranges (shape (first inputs))))))))))))
 
 (defmethod evaluate ((fusion fusion))
   (let ((inputs (mapcar #'evaluate (inputs fusion))))
