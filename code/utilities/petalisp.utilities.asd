@@ -7,6 +7,7 @@
   :serial t
   :components
   ((:file "packages")
+   (:file "documentation")
    (:file "identical")
    (:file "memoization")
    (:file "extended-euclid")

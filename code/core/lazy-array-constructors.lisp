@@ -4,7 +4,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; References to Other Lazy Arrays
+;;; References
 
 (defgeneric make-reference (input shape transformation)
   (:argument-precedence-order transformation shape input))
@@ -87,7 +87,7 @@
 (defun fuse (&rest inputs)
   (let ((lazy-arrays (sanitize-fusion-inputs inputs)))
     ;; When given more than one input, check for disjointnes.
-    (when (cddr lazy-arrays)
+    (when (cdr lazy-arrays)
       (map-combinations
        (lambda (two-inputs)
          (destructuring-bind (input-1 input-2) two-inputs
@@ -205,9 +205,6 @@
 
 (declaim (inline α) (notinline α-aux))
 (defun α (arg-1 arg-2 &rest more-args)
-  "Apply FUNCTION element-wise to OBJECT and MORE-OBJECTS, like a CL:MAPCAR
-for Petalisp data structures.  When the rank of some of the inputs
-mismatch, broadcast the smaller objects."
   (if (integerp arg-1)
       (apply #'α-aux arg-1 (coerce arg-2 'function) more-args)
       (apply #'α-aux 1 (coerce arg-1 'function) arg-2 more-args)))
