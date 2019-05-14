@@ -2,6 +2,38 @@
 
 (in-package #:petalisp.core)
 
+(document-function broadcast-arrays
+  "Returns as many lazy arrays as there are supplied arrays, but broadcast
+such that all resulting arrays have the same shape.  If there is no
+suitable broadcast shape for all supplied arrays, an error is signaled.
+
+Examples:
+
+ (broadcast-arrays #(1 2 3) 5)
+  => #<array-immediate #(1 2 3)>
+  => #<reference (unsigned-byte 4) (~ 0 2)>
+
+ (broadcast-arrays #(2 3 4) #2a((1 2 3) (4 5 6)))
+  => #<reference t (~ 0 1 ~ 0 2)>
+  => #<array-immediate #2A((1 2 3) (4 5 6))>
+
+")
+
+(document-function broadcast-list-of-arrays
+  "Returns a list of lazy arrays of the same length as the list of supplied
+arrays, but where each element is broadcast such that all resulting arrays
+have the same shape.  If there is no suitable broadcast shape for all
+supplied arrays, an error is signaled.
+
+Examples:
+
+ (petalisp.core::broadcast-list-of-arrays (list #(1 2 3) 5))
+  => (#<array-immediate #(1 2 3)> #<reference (unsigned-byte 4) (~ 0 2)>)
+
+ (broadcast-list-of-arrays (list #(2 3 4) #2a((1 2 3) (4 5 6))))
+  => (#<reference t (~ 0 1 ~ 0 2)> #<array-immediate #2A((1 2 3) (4 5 6))>)
+")
+
 (document-function indices
   "Returns a lazy array of integers of the shape indicated by the first
 argument ARRAY-OR-SHAPE , where each array element at index (i_0 ... i_N)

@@ -105,6 +105,7 @@
    #:make-range-immediate
    #:indices
    #:broadcast-arrays
+   #:broadcast-list-of-arrays
    #:α
    #:β
 
