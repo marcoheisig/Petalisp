@@ -14,4 +14,5 @@
    (:file "compute-buffer-table")
    (:file "compute-iteration-spaces")
    (:file "ir-conversion")
-   (:file "blueprint")))
+   (:file "blueprint")
+   (:file "documentation")))
