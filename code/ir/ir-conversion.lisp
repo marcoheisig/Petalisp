@@ -22,24 +22,17 @@
 ;;; 3. All buffers are updated to contain a list of kernels that read to
 ;;;    them or write from them.
 
-(defun ir-from-lazy-arrays (lazy-arrays backend)
-  (let ((*buffer-table* (compute-buffer-table lazy-arrays backend)))
+(defun ir-from-lazy-arrays (lazy-arrays)
+  (let ((*buffer-table* (compute-buffer-table lazy-arrays)))
     ;; Now create a list of kernels for each entry in the buffer table.
     (loop for root being each hash-key of *buffer-table* do
-      (let ((kernels (compute-kernels root backend)))
-        ;; Update the inputs and outputs of all buffers to match the inputs
-        ;; and outputs of the corresponding kernels.
-        (loop for kernel in kernels do
-          (loop for load in (loads kernel) do
-            (pushnew kernel (outputs (buffer load))))
-          (loop for store in (stores kernel) do
-            (pushnew kernel (inputs (buffer store)))))))
+      (create-kernels root))
     ;; Finally, return the buffers corresponding to the root nodes.
     (loop for lazy-array in lazy-arrays
           collect
           (let ((entry (gethash lazy-array *buffer-table*)))
-            (if (eq entry 'range-immediate-placeholder)
-                (make-buffer lazy-array backend)
+            (if (eq entry '.range-immediate.)
+                (make-buffer lazy-array)
                 entry)))))
 
 (defvar *kernel-root*)
@@ -49,28 +42,35 @@
 ;;; shape of the root, but such that each iteration space selects only a
 ;;; single input of each encountered fusion node. Each such iteration space
 ;;; is used to create one kernel.
-(defun compute-kernels (root backend)
+(defun create-kernels (root)
   (unless (immediatep root)
     (let ((*kernel-root* root))
-      (loop for (iteration-space . reduction-range) in (compute-iteration-spaces root)
-            collect
-            (compute-kernel root iteration-space reduction-range backend)))))
+      (loop for (iteration-space . reduction-range) in (compute-iteration-spaces root) do
+        (let ((kernel (compute-kernel root iteration-space reduction-range)))
+          (assign-instruction-numbers kernel)
+          ;; Update the inputs and outputs of all buffers to match the
+          ;; inputs and outputs of the corresponding kernels.
+          (map-kernel-inputs
+           (lambda (buffer)
+             (pushnew kernel (buffer-outputs buffer)))
+           kernel)
+          (map-kernel-outputs
+           (lambda (buffer)
+             (pushnew kernel (buffer-inputs buffer)))
+           kernel))))))
 
-(defun compute-kernel (root iteration-space reduction-range backend)
+(defun compute-kernel (root iteration-space reduction-range)
   (let* ((root-rank (rank root))
          (transformation (identity-transformation root-rank)))
-    (with-instruction-numbering
-      (multiple-value-bind (value loads)
-          (compute-kernel-body root iteration-space transformation)
-        (make-kernel
-         backend
-         :iteration-space iteration-space
-         :reduction-range reduction-range
-         :loads loads
-         :stores (list (make-instance 'store-instruction
-                         :value value
-                         :buffer (gethash root *buffer-table*)
-                         :transformation transformation)))))))
+    (multiple-value-bind (value load-instructions)
+        (compute-kernel-body root iteration-space transformation)
+      (make-kernel
+       :iteration-space iteration-space
+       :reduction-range reduction-range
+       :load-instructions load-instructions
+       :store-instructions
+       (list
+        (make-store-instruction value (gethash root *buffer-table*) transformation))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -95,20 +95,17 @@
     ((node lazy-array)
      (iteration-space shape)
      (transformation transformation))
-  ;; The root node has an entry in the buffer table, yet we do not want to
-  ;; treat it as a leaf node.
+  ;; The root node always has an entry in the buffer table, yet we do not
+  ;; want to treat it as a leaf node.
   (if (eq node *kernel-root*)
       (call-next-method)
       (multiple-value-bind (buffer buffer-p)
           (gethash node *buffer-table*)
         (if (not buffer-p)
             (call-next-method)
-            (if (eq buffer 'range-immediate-placeholder)
-                (cons 0 (make-instance 'iref-instruction
-                          :transformation transformation))
-                (let ((load (make-instance 'load-instruction
-                              :transformation transformation
-                              :buffer buffer)))
+            (if (eq buffer '.range-immediate.)
+                (cons 0 (make-iref-instruction transformation))
+                (let ((load (make-load-instruction buffer transformation)))
                   (push load *loads*)
                   (cons 0 load)))))))
 
@@ -117,12 +114,11 @@
      (iteration-space shape)
      (transformation transformation))
   (cons (value-n application)
-        (make-instance 'call-instruction
-          :operator (operator application)
-          :arguments
-          (loop for input in (inputs application)
-                collect
-                (compute-value input iteration-space transformation)))))
+        (make-call-instruction
+         (operator application)
+         (loop for input in (inputs application)
+               collect
+               (compute-value input iteration-space transformation)))))
 
 (defmethod compute-value
     ((reduction reduction)
@@ -130,15 +126,14 @@
      (transformation transformation))
   (let* ((shape (shape (first (inputs reduction)))))
     (cons (value-n reduction)
-          (make-instance 'reduce-instruction
-            :operator (operator reduction)
-            :arguments
-            (loop for input in (inputs reduction)
-                  collect
-                  (compute-value
-                   input
-                   shape
-                   (enlarge-transformation transformation 1 0)))))))
+          (make-reduce-instruction
+           (operator reduction)
+           (loop for input in (inputs reduction)
+                 collect
+                 (compute-value
+                  input
+                  shape
+                  (enlarge-transformation transformation 1 0)))))))
 
 (defmethod compute-value
     ((reference reference)

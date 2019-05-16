@@ -18,5 +18,4 @@
    (:file "blueprint-compiler")
    (:file "memory-pool")
    (:file "native-backend")
-   (:file "ir-conversion")
    (:file "execution")))

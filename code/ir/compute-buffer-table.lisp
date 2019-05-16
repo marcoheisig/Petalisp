@@ -32,16 +32,16 @@
 (defmacro node-value (node)
   `(gethash ,node *buffer-table*))
 
-(defgeneric compute-buffer-table (lazy-arrays backend))
-
-(defmethod compute-buffer-table ((graph-roots list) (backend backend))
+(defun compute-buffer-table (graph-roots)
   (let ((*buffer-table* (make-hash-table :test #'eq)))
     (loop for graph-root in graph-roots do
       ;; Rule 1
       (traverse-node graph-root t nil))
-    (finalize-buffer-table backend)))
+    ;; Finalize the buffer table.
+    (finalize-buffer-table)
+    *buffer-table*))
 
-(defun finalize-buffer-table (backend)
+(defun finalize-buffer-table ()
   (with-hash-table-iterator (next *buffer-table*)
     (loop
       (multiple-value-bind (more lazy-array value) (next)
@@ -49,10 +49,9 @@
               ((eq value :special)
                (setf (node-value lazy-array)
                      (if (typep lazy-array 'range-immediate)
-                         'range-immediate-placeholder
-                         (make-buffer lazy-array backend))))
-              (t (remhash lazy-array *buffer-table*))))))
-  *buffer-table*)
+                         '.range-immediate.
+                         (make-buffer lazy-array))))
+              (t (remhash lazy-array *buffer-table*)))))))
 
 (defun traverse-node (node special-p reduction-axis)
   (multiple-value-bind (traverse-inputs-p inputs-special-p reduction-axis)

@@ -9,6 +9,4 @@
   :serial t
   :components
   ((:file "packages")
-   (:file "ir-backend")
-   (:file "ir-conversion")
-   (:file "execution")))
+   (:file "ir-backend")))

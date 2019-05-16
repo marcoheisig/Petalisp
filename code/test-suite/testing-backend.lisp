@@ -29,7 +29,9 @@
         (loop for immediate in (compute-immediates data-structures backend)
               for expected-immediate in reference-solutions
               for index from 0 do
-                (is (approximately-equal immediate expected-immediate))))
+                (is (approximately-equal
+                     (lisp-datum-from-immediate immediate)
+                     (lisp-datum-from-immediate expected-immediate)))))
       reference-solutions)))
 
 (defmethod delete-backend ((testing-backend testing-backend))
@@ -54,11 +56,6 @@
 
 (defmethod approximately-equal ((a t) (b t))
   (eql a b))
-
-(defmethod approximately-equal ((a immediate) (b immediate))
-  (approximately-equal
-   (lisp-datum-from-immediate a)
-   (lisp-datum-from-immediate b)))
 
 (defmethod approximately-equal ((array-1 array) (array-2 array))
   (and (equal (array-dimensions array-1)

@@ -5,14 +5,13 @@
   (:shadowing-import-from :petalisp.core #:set-difference #:set-equal)
   (:export
 
-   ;; Generic Functions
-   #:make-buffer
-   #:make-kernel
-   #:rotate-buffer
-   #:rotate-kernel
-   #:map-instruction-inputs
+   ;; IR Conversion
+   #:ir-from-lazy-arrays
 
-   ;; Classes
+   ;; IR Normalization
+   #:normalize-ir
+
+   ;; Structs
    #:instruction
    #:buffer
    #:kernel
@@ -24,35 +23,56 @@
    #:iref-instruction
    #:reduce-instruction
 
+   ;; Predicates
+   #:bufferp
+   #:kernelp
+   #:reduction-kernel-p
+   #:instructionp
+   #:call-instruction-p
+   #:iterating-instruction-p
+   #:iref-instruction-p
+   #:load-instruction-p
+   #:store-instruction-p
+   #:reduce-instruction-p
+
+   ;; Constructors
+   #:make-kernel
+   #:make-buffer
+
+   ;; Mapping
+   #:map-buffer-inputs
+   #:map-buffer-outputs
+   #:map-kernel-store-instructions
+   #:map-kernel-load-instructions
+   #:map-kernel-inputs
+   #:map-kernel-outputs
+   #:map-instruction-inputs
+   #:map-instructions
+
    ;; Accessors
    #:buffer-shape
-   #:element-type
-   #:type-code
-   #:inputs
-   #:outputs
-   #:iteration-space
-   #:loads
-   #:stores
+   #:buffer-type-code
+   #:buffer-inputs
+   #:buffer-outputs
+   #:buffer-executedp
+   #:buffer-storage
+   #:kernel-iteration-space
+   #:kernel-reduction-range
+   #:kernel-loads
+   #:kernel-stores
+   #:kernel-executedp
    #:instruction-number
-   #:transformation
-   #:operator
-   #:arguments
-   #:value
-   #:reduction-range
+   #:instruction-inputs
+   #:instruction-transformation
+   #:call-instruction-operator
+   #:store-instruction-buffer
+   #:load-instruction-buffer
+   #:reduce-instruction-operator
 
    ;; Utilities
-   #:reduction-kernel-p
-   #:map-instructions
-   #:map-buffers
+   #:rotate-buffer
    #:highest-instruction-number
-   #:update-instruction-numbers
+   #:assign-instruction-numbers
    #:kernel-buffers
-   #:kernel-reduce-instructions
    #:parse-blueprint
-
-   ;; IR Conversion
-   #:ir-from-lazy-arrays
-   #:compute-buffer-table
-   #:compute-kernels
-   #:normalize-ir
    #:blueprint))

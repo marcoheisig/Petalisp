@@ -5,13 +5,13 @@
 (defclass translation-unit ()
   ((%symbol-table :initarg :symbol-table :reader symbol-table)
    (%initial-basic-block :initarg :initial-basic-block :reader initial-basic-block)
-   (%array-types :initarg :array-types :reader array-types)))
+   (%array-type-codes :initarg :array-type-codes :reader array-type-codes)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Translation Unit Creation
 
-(defun make-translation-unit (array-types)
+(defun make-translation-unit (array-type-codes)
   (let* ((lambda-list '(ranges reduction-range arrays functions))
          (initial-basic-block (make-lambda-block :lambda-list lambda-list))
          (symbol-table (make-hash-table :test #'eq)))
@@ -20,7 +20,7 @@
     (make-instance 'translation-unit
       :symbol-table symbol-table
       :initial-basic-block initial-basic-block
-      :array-types array-types)))
+      :array-type-codes array-type-codes)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -48,7 +48,12 @@
       (alexandria:format-symbol '#:petalisp.native-backend "INDEX-~D" n)))
 
 (defun array-symbol (n)
-  (pseudo-eval 0 `(aref arrays ,n) (elt (array-types *translation-unit*) n)))
+  (pseudo-eval
+   0
+   `(aref arrays ,n)
+   `(simple-array
+     ,(petalisp.type-codes:type-specifier-from-type-code
+       (elt (array-type-codes *translation-unit*) n)))))
 
 (defun function-symbol (n)
   (pseudo-eval 0 `(aref functions ,n)))

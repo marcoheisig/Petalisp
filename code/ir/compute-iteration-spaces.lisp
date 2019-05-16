@@ -45,6 +45,9 @@
     (or iteration-spaces
         (list (cons (shape root) nil)))))
 
+(defun reduction-range (reduction)
+  (first (ranges (shape (first (inputs reduction))))))
+
 (defmethod compute-iteration-spaces ((root reduction))
   (let* ((*root* root)
          (iteration-spaces '())

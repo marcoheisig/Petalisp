@@ -36,6 +36,9 @@
 
 (defmethod memory-pool-free ((memory-pool memory-pool)
                              (array array))
+  ;; TODO We don't currently reuse memory.  This will be fixed once we have
+  ;; the right metadata attached to each buffer.
+  #+nil
   (push array (gethash (cons (array-element-type array)
                              (array-dimensions array))
                        (array-table memory-pool)))

@@ -141,9 +141,6 @@
 (defmethod total-size ((non-empty-array non-empty-array))
   (set-size (shape non-empty-array)))
 
-(defmethod total-size ((finite-set finite-set))
-  (set-size finite-set))
-
 (defmethod element-type ((object t))
   (petalisp.type-codes:type-specifier-from-type-code
    (type-code object)))
@@ -172,7 +169,7 @@
   any-set)
 
 (defmethod shape ((empty-array empty-array))
-  (empty-set))
+  (error "The empty array has no shape."))
 
 (defmethod rank ((object t))
   0)
@@ -204,11 +201,11 @@
     (format stream "~S ~S" (element-type lazy-array) (shape lazy-array))))
 
 (defmethod print-object ((array-immediate array-immediate) stream)
-  (print-unreadable-object (array-immediate stream :type t :identity t)
+  (print-unreadable-object (array-immediate stream :type t)
     (princ (storage array-immediate) stream)))
 
 (defmethod print-object ((range-immediate range-immediate) stream)
-  (print-unreadable-object (range-immediate stream :type t :identity t)
+  (print-unreadable-object (range-immediate stream :type t)
     (format stream ":SHAPE ~A" (shape range-immediate))))
 
 ;; TODO remove this function?

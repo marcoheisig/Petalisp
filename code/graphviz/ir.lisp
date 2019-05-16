@@ -39,25 +39,33 @@
     ((graph ir-graph)
      (edge input-edge)
      (buffer petalisp.ir:buffer))
-  (petalisp.ir:inputs buffer))
+  (petalisp.ir:buffer-inputs buffer))
 
 (defmethod graphviz-outgoing-edge-targets
     ((graph ir-graph)
      (edge output-edge)
      (buffer petalisp.ir:buffer))
-  (petalisp.ir:outputs buffer))
+  (petalisp.ir:buffer-outputs buffer))
 
 (defmethod graphviz-incoming-edge-origins
     ((graph ir-graph)
      (edge load-edge)
      (kernel petalisp.ir:kernel))
-  (mapcar #'petalisp.ir:buffer (petalisp.ir:loads kernel)))
+  (let ((buffers '()))
+    (petalisp.ir:map-kernel-inputs
+     (lambda (buffer) (push buffer buffers))
+     kernel)
+    buffers))
 
 (defmethod graphviz-outgoing-edge-targets
     ((graph ir-graph)
      (edge store-edge)
      (kernel petalisp.ir:kernel))
-  (mapcar #'petalisp.ir:buffer (petalisp.ir:stores kernel)))
+  (let ((buffers '()))
+    (petalisp.ir:map-kernel-outputs
+     (lambda (buffer) (push buffer buffers))
+     kernel)
+    buffers))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -103,13 +111,13 @@
   `(("shape" . ,(stringify (petalisp.ir:buffer-shape buffer)))))
 
 (defun hide-buffers (references)
-  (subst-if :buffer (lambda (x) (typep x 'petalisp.ir:buffer)) references))
+  (subst-if :buffer #'petalisp.ir:bufferp references))
 
 (defmethod graphviz-node-properties append
     ((graph ir-graph)
      (kernel petalisp.ir:kernel))
-  `(("iteration-space" . ,(stringify (petalisp.ir:iteration-space kernel)))
-    ("reduction-range" . ,(stringify (petalisp.ir:reduction-range kernel)))
+  `(("iteration-space" . ,(stringify (petalisp.ir:kernel-iteration-space kernel)))
+    ("reduction-range" . ,(stringify (petalisp.ir:kernel-reduction-range kernel)))
     ("body" . ,(with-output-to-string (stream)
                  (let ((instructions '()))
                    (petalisp.ir:map-instructions
