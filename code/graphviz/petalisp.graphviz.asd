@@ -4,7 +4,11 @@
   :license "AGPLv3"
 
   :depends-on
-  ("uiop"
+  ("alexandria"
+   "uiop"
+   "petalisp.utilities"
+   "petalisp.core"
+   "petalisp.ir"
    "petalisp"
    "cl-dot")
 

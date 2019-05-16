@@ -9,7 +9,6 @@
    "bordeaux-threads"
    "lparallel"
    "trivia"
-   "simplified-types"
    "ucons"
    "petalisp.utilities"
    "petalisp.type-codes")

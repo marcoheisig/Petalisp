@@ -2,8 +2,9 @@
   :author "Marco Heisig <marco.heisig@fau.de>"
   :license "AGPLv3"
 
-  :depends-on ("alexandria"
-               "trivial-arguments")
+  :depends-on
+  ("alexandria"
+   "trivial-arguments")
 
   :in-order-to ((test-op (test-op "petalisp.test-suite")))
 

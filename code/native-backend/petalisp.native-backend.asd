@@ -3,7 +3,11 @@
   :license "AGPLv3"
 
   :depends-on
-  ("petalisp.core"
+  ("alexandria"
+   "bordeaux-threads"
+   "lparallel"
+   "trivia"
+   "petalisp.core"
    "petalisp.ir")
 
   :serial t

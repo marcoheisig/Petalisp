@@ -6,8 +6,8 @@
   :depends-on
   ("alexandria"
    "trivia"
-   "petalisp.core"
    "petalisp.utilities"
+   "petalisp.core"
    "petalisp.reference-backend"
    "petalisp.ir-backend"
    "petalisp.native-backend")
