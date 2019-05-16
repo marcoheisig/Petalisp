@@ -20,6 +20,10 @@
                (buffer-storage
                 (compute-buffer root-buffer native-backend)))))))
 
+(defmethod compute-immediates :after ((lazy-arrays list) (native-backend native-backend))
+  (memory-pool-reset
+   (memory-pool native-backend)))
+
 (defmethod compute-buffer ((buffer buffer) (native-backend native-backend))
   (when (null (buffer-storage buffer))
     (setf (buffer-storage buffer)
