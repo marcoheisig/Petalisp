@@ -9,7 +9,7 @@
 
 (defun lambda-expression-from-blueprint (blueprint)
   (multiple-value-bind (ranges reduction-range array-types instructions)
-      (parse-blueprint blueprint)
+      (parse-kernel-blueprint blueprint)
     (let ((*instructions* (coerce instructions 'simple-vector))
           (*translation-unit* (make-translation-unit array-types))
           (*gensym-counter* 0)

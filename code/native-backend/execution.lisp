@@ -58,7 +58,7 @@
         (arrays (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
         (functions (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
         (compiled-kernel
-          (let ((blueprint (blueprint kernel)))
+          (let ((blueprint (kernel-blueprint kernel)))
             (petalisp.utilities:with-hash-table-memoization (blueprint)
                 (compile-cache backend)
               (compile nil (lambda-expression-from-blueprint blueprint))))))

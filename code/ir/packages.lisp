@@ -65,6 +65,8 @@
    #:kernel-loads
    #:kernel-stores
    #:kernel-executedp
+   #:kernel-blueprint
+   #:kernel-buffers
    #:instruction-number
    #:instruction-inputs
    #:instruction-transformation
@@ -76,6 +78,4 @@
    ;; Miscellaneous
    #:highest-instruction-number
    #:assign-instruction-numbers
-   #:kernel-buffers
-   #:parse-blueprint
-   #:blueprint))
+   #:parse-kernel-blueprint))

@@ -7,50 +7,44 @@
 ;;; for this kernel.  The idea is that blueprints can be used to cache
 ;;; compiled evaluation functions.
 
-(defgeneric blueprint (kernel))
-
 (defvar *buffers*)
+
 (defvar *function-counter*)
 
-(defmethod blueprint :around ((kernel kernel))
+(defun kernel-blueprint (kernel)
   (let ((*buffers* (kernel-buffers kernel))
         (*function-counter* -1))
     (assign-instruction-numbers kernel)
-    (call-next-method)))
+    (ucons:ulist
+     (ucons:umapcar #'range-blueprint (ranges (kernel-iteration-space kernel)))
+     (if (kernel-reduction-range kernel)
+         (range-blueprint (kernel-reduction-range kernel))
+         nil)
+     (ucons:umapcar #'buffer-blueprint *buffers*)
+     ;; Now generate the blueprints for all instructions in the kernel
+     (let* ((size (1+ (highest-instruction-number kernel)))
+            (instruction-blueprints (make-array size))
+            (result '()))
+       (map-instructions
+        (lambda (instruction)
+          (let ((index (instruction-number instruction)))
+            (setf (aref instruction-blueprints index)
+                  (instruction-blueprint instruction))))
+        kernel)
+       (loop for index from (1- size) downto 0 do
+         (let ((instruction (aref instruction-blueprints index)))
+           (setf result (ucons:ucons instruction result))))
+       result))))
 
-(defmethod blueprint ((null null)) null)
-
-(defmethod blueprint ((kernel kernel))
-  (ucons:ulist
-   (ucons:umapcar #'blueprint (ranges (kernel-iteration-space kernel)))
-   (blueprint (kernel-reduction-range kernel))
-   (ucons:umapcar #'blueprint *buffers*)
-   ;; Now generate the blueprints for all instructions in the kernel
-   (let* ((size (1+ (highest-instruction-number kernel)))
-          (instruction-blueprints (make-array size))
-          (result '()))
-     (map-instructions
-      (lambda (instruction)
-        (let ((index (instruction-number instruction)))
-          (setf (aref instruction-blueprints index)
-                (blueprint instruction))))
-      kernel)
-     (loop for index from (1- size) downto 0 do
-       (let ((instruction (aref instruction-blueprints index)))
-         (setf result (ucons:ucons instruction result))))
-     result)))
-
-(defmethod blueprint ((buffer buffer))
-  (buffer-type-code buffer))
-
-;;; Return an ulist with the following elements:
+;;; Returns an ulist with the following elements:
 ;;;
 ;;; 1. The number of bits necessary to describe the range size.
 ;;;
 ;;; 2. The number of bits necessary to describe the range step.
 ;;;
 ;;; 3. The type of the iteration variable, either integer or fixnum.
-(defmethod blueprint ((range range))
+(defun range-blueprint (range)
+  (declare (range range))
   (multiple-value-bind (start step end)
       (range-start-step-end range)
     (ucons:ulist
@@ -61,44 +55,10 @@
          'fixnum
          'integer))))
 
-;;; Instruction Blueprints
+(defun buffer-blueprint (buffer)
+  (buffer-type-code buffer))
 
-(defmethod blueprint ((call-instruction call-instruction))
-  (ucons:ulist*
-   :call
-   (blueprint-from-operator (call-instruction-operator call-instruction))
-   (ucons:umapcar #'blueprint-from-value (instruction-inputs call-instruction))))
-
-(defmethod blueprint ((load-instruction load-instruction))
-  (ucons:ulist*
-   :load
-   (buffer-number (load-instruction-buffer load-instruction))
-   (blueprint (instruction-transformation load-instruction))))
-
-(defmethod blueprint ((store-instruction store-instruction))
-  (ucons:ulist*
-   :store
-   (blueprint-from-value (first (instruction-inputs store-instruction)))
-   (buffer-number (store-instruction-buffer store-instruction))
-   (blueprint (instruction-transformation store-instruction))))
-
-(defmethod blueprint ((iref-instruction iref-instruction))
-  (block nil
-    (map-transformation-outputs
-     (lambda (output-index input-index scaling offset)
-       (declare (ignore output-index))
-       (return (ucons:ulist :iref input-index scaling offset)))
-     (instruction-transformation iref-instruction))))
-
-(defmethod blueprint ((reduce-instruction reduce-instruction))
-  (ucons:ulist*
-   :reduce
-   (blueprint-from-operator (reduce-instruction-operator reduce-instruction))
-   (ucons:umapcar
-    #'blueprint-from-value
-    (instruction-inputs reduce-instruction))))
-
-(defmethod blueprint ((transformation transformation))
+(defun transformation-blueprint (transformation)
   (let ((result '()))
     (map-transformation-outputs
      (lambda (output-index input-index scaling offset)
@@ -109,17 +69,56 @@
      :from-end t)
     result))
 
-(defun blueprint-from-operator (operator)
+(defun operator-blueprint (operator)
   (etypecase operator
     (function (incf *function-counter*))
     (symbol operator)))
 
-(defun blueprint-from-value (value)
+(defun value-blueprint (value)
   (destructuring-bind (value-n . instruction) value
     (ucons:ulist value-n (instruction-number instruction))))
 
 (defun buffer-number (buffer)
   (position buffer *buffers*))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Instruction Blueprints
+
+(defgeneric instruction-blueprint (instruction))
+
+(defmethod instruction-blueprint ((call-instruction call-instruction))
+  (ucons:ulist*
+   :call
+   (operator-blueprint (call-instruction-operator call-instruction))
+   (ucons:umapcar #'value-blueprint (instruction-inputs call-instruction))))
+
+(defmethod instruction-blueprint ((load-instruction load-instruction))
+  (ucons:ulist*
+   :load
+   (buffer-number (load-instruction-buffer load-instruction))
+   (transformation-blueprint (instruction-transformation load-instruction))))
+
+(defmethod instruction-blueprint ((store-instruction store-instruction))
+  (ucons:ulist*
+   :store
+   (value-blueprint (first (instruction-inputs store-instruction)))
+   (buffer-number (store-instruction-buffer store-instruction))
+   (transformation-blueprint (instruction-transformation store-instruction))))
+
+(defmethod instruction-blueprint ((iref-instruction iref-instruction))
+  (block nil
+    (map-transformation-outputs
+     (lambda (output-index input-index scaling offset)
+       (declare (ignore output-index))
+       (return (ucons:ulist :iref input-index scaling offset)))
+     (instruction-transformation iref-instruction))))
+
+(defmethod instruction-blueprint ((reduce-instruction reduce-instruction))
+  (ucons:ulist*
+   :reduce
+   (operator-blueprint (reduce-instruction-operator reduce-instruction))
+   (ucons:umapcar #'value-blueprint (instruction-inputs reduce-instruction))))
 
 ;;; Return as multiple values
 ;;;
@@ -131,7 +130,7 @@
 ;;;
 ;;; 4. A list of instructions.
 
-(defun parse-blueprint (blueprint)
+(defun parse-kernel-blueprint (blueprint)
   (destructuring-bind (ranges reduction-range array-types instructions)
       (ucons:tree-from-utree blueprint)
     (values ranges reduction-range array-types instructions)))
