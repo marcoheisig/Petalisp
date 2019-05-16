@@ -16,8 +16,8 @@
        function
        short-float
        single-float
-       long-float
        double-float
+       long-float
        float
        bit
        (unsigned-byte 2)

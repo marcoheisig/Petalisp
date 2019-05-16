@@ -13,6 +13,7 @@
 (define-type-inference-rule copy-symbol
     (symbol &optional (copy-properties (type-code-from-type-specifier 'null)))
   (check-type-code symbol symbol)
+  (check-type-code copy-properties t)
   (type-code-from-type-specifier 'symbol))
 
 (define-type-inference-rule gensym
