@@ -109,13 +109,21 @@
                   (push load *loads*)
                   (cons 0 load)))))))
 
+;; TODO This is just a quick hack.  A proper solution is needed eventually.
+(defun simplify-operator (operator)
+  (cond ((eq operator #'+) '+)
+        ((eq operator #'-) '-)
+        ((eq operator #'*) '*)
+        ((eq operator #'/) '/)
+        (t operator)))
+
 (defmethod compute-value
     ((application application)
      (iteration-space shape)
      (transformation transformation))
   (cons (value-n application)
         (make-call-instruction
-         (operator application)
+         (simplify-operator (operator application))
          (loop for input in (inputs application)
                collect
                (compute-value input iteration-space transformation)))))

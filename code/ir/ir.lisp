@@ -77,7 +77,7 @@
             (:include instruction)
             (:predicate call-instruction-p)
             (:constructor make-call-instruction (operator inputs)))
-  (operator nil :type function))
+  (operator nil :type (or function symbol)))
 
 ;;; We call an instruction an iterating instruction, if its behavior
 ;;; directly depends on the current element of the iteration space.
