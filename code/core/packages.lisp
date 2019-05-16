@@ -73,6 +73,7 @@
    #:lazy-array-p
    #:empty-array-p
    #:immediatep
+   #:reusablep
    #:coerce-to-lazy-array
    #:total-size
    #:element-type

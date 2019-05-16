@@ -12,6 +12,8 @@
 
 (defgeneric immediatep (object))
 
+(defgeneric reusablep (object))
+
 (defgeneric coerce-to-lazy-array (array))
 
 (defgeneric total-size (array))
@@ -61,7 +63,8 @@
   ((%refcount :initform 0 :accessor refcount)))
 
 (defclass array-immediate (non-empty-immediate)
-  ((%storage :initarg :storage :reader storage)))
+  ((%reusablep :initarg :reusablep :reader reusablep)
+   (%storage :initarg :storage :reader storage)))
 
 (defclass range-immediate (non-empty-immediate)
   ())
@@ -127,6 +130,7 @@
     (make-instance 'array-immediate
       :shape (~)
       :type-code type-code
+      :reusablep nil
       :storage (make-array '() :initial-element object :element-type element-type))))
 
 (defmethod total-size ((object t))

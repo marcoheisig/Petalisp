@@ -109,4 +109,5 @@
         (storage (buffer-storage buffer)))
     (unless (null storage)
       (setf (buffer-storage buffer) nil)
-      (memory-pool-free memory-pool storage))))
+      (when (buffer-reusablep buffer)
+        (memory-pool-free memory-pool storage)))))

@@ -59,6 +59,7 @@
    #:buffer-inputs
    #:buffer-outputs
    #:buffer-executedp
+   #:buffer-reusablep
    #:buffer-storage
    #:kernel-iteration-space
    #:kernel-reduction-range

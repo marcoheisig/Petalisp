@@ -133,13 +133,14 @@
 (defun empty-array ()
   (load-time-value (make-instance 'empty-array)))
 
-(defun make-array-immediate (array)
+(defun make-array-immediate (array &optional reusablep)
   (check-type array array)
   (if (zerop (array-total-size array))
       (empty-array)
       (make-instance 'array-immediate
         :shape (shape array)
         :storage array
+        :reusablep reusablep
         :type-code (petalisp.type-codes:array-element-type-code array))))
 
 (defun make-range-immediate (range)

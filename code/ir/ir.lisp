@@ -18,6 +18,7 @@
   ;; The list of kernels that load from this buffer.
   (outputs '() :type list)
   (executedp nil :type boolean)
+  (reusablep nil :type boolean)
   (storage nil))
 
 (defun make-buffer (array)
@@ -27,10 +28,12 @@
       :shape (shape array)
       :type-code (type-code array)
       :storage (storage array)
+      :reusablep (reusablep array)
       :executedp t))
     (lazy-array
      (%make-buffer
       :shape (shape array)
+      :reusablep t
       :type-code (type-code array)))))
 
 ;;; A kernel represents a computation that, for each element in its
