@@ -13,8 +13,15 @@
 
 (defun make-translation-unit (array-type-codes)
   (let* ((lambda-list '(ranges reduction-range arrays functions))
-         (initial-basic-block (make-lambda-block :lambda-list lambda-list))
-         (symbol-table (make-hash-table :test #'eq)))
+         (symbol-table (make-hash-table :test #'eq))
+         (initial-basic-block
+           (make-lambda-block
+            :lambda-list lambda-list
+            :declarations `((ignorable ,@lambda-list)
+                            (type (and (vector t) (not simple-vector)) ranges)
+                            (type (simple-array t (3)) reduction-range)
+                            (type (and (vector t) (not simple-vector)) arrays)
+                            (type (and (vector t) (not simple-vector)) functions)))))
     (loop for symbol in lambda-list
           do (setf (gethash symbol symbol-table) initial-basic-block))
     (make-instance 'translation-unit

@@ -3,15 +3,18 @@
 (in-package #:petalisp.native-backend)
 
 (defclass lambda-block (basic-block)
-  ((%lambda-list :initarg :lambda-list :reader lambda-list)))
+  ((%lambda-list :initarg :lambda-list :reader lambda-list)
+   (%declarations :initarg :declarations :reader declarations)))
 
-(defun make-lambda-block (&key lambda-list immediate-dominator)
+(defun make-lambda-block (&key lambda-list immediate-dominator declarations)
   (make-instance 'lambda-block
     :lambda-list lambda-list
-    :immediate-dominator immediate-dominator))
+    :immediate-dominator immediate-dominator
+    :declarations declarations))
 
 (defmethod form :around ((lambda-block lambda-block))
   (let ((symbols (lambda-list lambda-block)))
     `(lambda ,symbols
-       (declare (ignorable ,@symbols))
-       ,(call-next-method))))
+       (declare ,@(declarations lambda-block))
+       (with-unsafe-optimizations
+         ,(call-next-method)))))
