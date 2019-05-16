@@ -73,8 +73,7 @@
    #:load-instruction-buffer
    #:reduce-instruction-operator
 
-   ;; Utilities
-   #:rotate-buffer
+   ;; Miscellaneous
    #:highest-instruction-number
    #:assign-instruction-numbers
    #:kernel-buffers

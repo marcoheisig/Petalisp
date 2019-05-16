@@ -280,8 +280,8 @@
 ;;;
 ;;; Rotating
 
-(declaim (inline rotate-instruction-input))
-(defun rotate-instruction-input (instruction transformation)
+(declaim (inline transform-instruction-input))
+(defun transform-instruction-input (instruction transformation)
   (declare (instruction instruction)
            (transformation transformation))
   (when (iterating-instruction-p instruction)
@@ -291,8 +291,8 @@
            transformation)))
   instruction)
 
-(declaim (inline rotate-instruction-output))
-(defun rotate-instruction-output (instruction transformation)
+(declaim (inline transform-instruction-output))
+(defun transform-instruction-output (instruction transformation)
   (declare (instruction instruction)
            (transformation transformation))
   (when (iterating-instruction-p instruction)
@@ -303,7 +303,7 @@
   instruction)
 
 
-(defun rotate-buffer (buffer transformation)
+(defun transform-buffer (buffer transformation)
   (declare (buffer buffer)
            (transformation transformation))
   (setf (buffer-shape buffer)
@@ -315,7 +315,7 @@
      (map-kernel-store-instructions
       (lambda (store-instruction)
         (when (eq (store-instruction-buffer store-instruction) buffer)
-          (rotate-instruction-output store-instruction transformation)))
+          (transform-instruction-output store-instruction transformation)))
       kernel))
    buffer)
   (map-buffer-outputs
@@ -323,12 +323,12 @@
      (map-kernel-load-instructions
       (lambda (load-instruction)
         (when (eq (load-instruction-buffer load-instruction) buffer)
-          (rotate-instruction-output load-instruction transformation)))
+          (transform-instruction-output load-instruction transformation)))
       kernel))
    buffer)
   buffer)
 
-(defun rotate-kernel (kernel transformation)
+(defun transform-kernel (kernel transformation)
   (declare (kernel kernel)
            (transformation transformation))
   (unless (identity-transformation-p transformation)
@@ -337,7 +337,7 @@
     (let ((inverse (invert-transformation transformation)))
       (map-instructions
        (lambda (instruction)
-         (rotate-instruction-input instruction inverse))
+         (transform-instruction-input instruction inverse))
        kernel))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -410,7 +410,7 @@
   (map-buffers #'normalize-buffer root-buffers))
 
 (defun normalize-buffer (buffer)
-  (rotate-buffer buffer (collapsing-transformation (buffer-shape buffer))))
+  (transform-buffer buffer (collapsing-transformation (buffer-shape buffer))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -438,4 +438,4 @@
   (map-kernels #'optimize-kernel-locality root-buffers))
 
 (defun optimize-kernel-locality (kernel)
-  (rotate-kernel kernel (identity-transformation (rank (kernel-iteration-space kernel)))))
+  (transform-kernel kernel (identity-transformation (rank (kernel-iteration-space kernel)))))
