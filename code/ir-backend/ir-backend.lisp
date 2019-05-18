@@ -57,7 +57,7 @@
 (defvar *index*)
 
 (defun make-instruction-values-cache (kernel)
-  (make-array (1+ (highest-instruction-number kernel))
+  (make-array (1+ (kernel-highest-instruction-number kernel))
               :initial-element 0))
 
 (defun instruction-values-cache (instruction)

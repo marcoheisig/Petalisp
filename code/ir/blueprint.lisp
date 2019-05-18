@@ -22,7 +22,7 @@
          nil)
      (ucons:umapcar #'buffer-blueprint *buffers*)
      ;; Now generate the blueprints for all instructions in the kernel
-     (let* ((size (1+ (highest-instruction-number kernel)))
+     (let* ((size (1+ (kernel-highest-instruction-number kernel)))
             (instruction-blueprints (make-array size))
             (result '()))
        (map-instructions

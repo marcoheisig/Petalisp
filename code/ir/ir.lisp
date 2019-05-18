@@ -347,6 +347,40 @@
 ;;;
 ;;; Miscellaneous
 
+(defun kernel-number-of-loads (kernel)
+  (declare (kernel kernel))
+  (let ((counter 0))
+    (declare (fixnum counter))
+    (map-kernel-load-instructions
+     (lambda (_) (declare (ignore _))
+       (incf counter))
+     kernel)
+    counter))
+
+(defun kernel-number-of-stores (kernel)
+  (declare (kernel kernel))
+  (let ((counter 0))
+    (declare (fixnum counter))
+    (map-kernel-store-instructions
+     (lambda (_) (declare (ignore _))
+       (incf counter))
+     kernel)
+    counter))
+
+(defun kernel-highest-instruction-number (kernel)
+  (declare (kernel kernel))
+  (let ((max 0))
+    ;; This function exploits that the numbers are handed out in
+    ;; depth-first order, starting from the leaf instructions.  So we know
+    ;; that the highest instruction number must be somewhere among the
+    ;; store instructions.
+    (map-kernel-store-instructions
+     (lambda (store-instruction)
+       (maxf max (instruction-number store-instruction)))
+     kernel)
+    max))
+
+
 ;; TODO: This function is only used to allocate a vector of buffers during
 ;; scheduling, so there is some opportunity to avoid consing.
 (defun kernel-buffers (kernel)
@@ -365,24 +399,13 @@
 ;;;
 ;;; Assigning Instruction Numbers
 
-;;; This function exploits that the numbers are handed out in depth-first
-;;; order, starting from the leaf instructions.  So we know that the
-;;; highest instruction number must be somewhere at the root instructions.
-(defun highest-instruction-number (kernel)
-  (let ((max 0))
-    (map-kernel-store-instructions
-     (lambda (store-instruction)
-       (maxf max (instruction-number store-instruction)))
-     kernel)
-    max))
-
 (defun assign-instruction-numbers (kernel)
   ;; Step 1 - set all instruction numbers to -1.
   (labels ((clear-instruction-numbers (instruction)
              (unless (= -1 (instruction-number instruction))
                (map-instruction-inputs #'clear-instruction-numbers instruction)
                (setf (instruction-number instruction) -1))))
-    (mapc #'clear-instruction-numbers (kernel-store-instructions kernel)))
+    (map-kernel-store-instructions #'clear-instruction-numbers kernel))
   ;; Step 2 - assign new instruction numbers.
   (let ((n -1))
     (labels ((assign-instruction-numbers (instruction)
