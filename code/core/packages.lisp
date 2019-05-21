@@ -3,7 +3,9 @@
 (cl:in-package #:common-lisp-user)
 
 (defpackage #:petalisp.core
-  (:use #:common-lisp #:alexandria)
+  (:use
+   #:common-lisp
+   #:alexandria)
   (:shadow cl:set-difference alexandria:set-equal)
   (:import-from #:petalisp.utilities #:document-variable #:document-function)
   (:export

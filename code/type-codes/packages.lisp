@@ -1,7 +1,10 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(cl:defpackage :petalisp.type-codes
-  (:use :common-lisp)
+(cl:in-package #:common-lisp-user)
+
+(defpackage #:petalisp.type-codes
+  (:use
+   #:common-lisp)
   (:export
    #:type-code
    #:type-code-limit

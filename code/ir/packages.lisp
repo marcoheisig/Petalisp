@@ -1,6 +1,8 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(cl:defpackage :petalisp.ir
+(cl:in-package #:common-lisp-user)
+
+(defpackage #:petalisp.ir
   (:use
    #:common-lisp
    #:alexandria

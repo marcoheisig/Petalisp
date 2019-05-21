@@ -3,7 +3,9 @@
 (cl:in-package #:common-lisp-user)
 
 (defpackage #:petalisp.utilities
-  (:use #:common-lisp #:alexandria)
+  (:use
+   #:common-lisp
+   #:alexandria)
   (:export
    #:with-memoization
    #:with-multiple-value-memoization
