@@ -52,19 +52,21 @@
        (not (null (kernel-reduction-range object)))))
 
 ;;; The behavior of a kernel is described by its iteration space and its
-;;; instructions.  The instructions form a DAG, whose leaves are
-;;; load-instructions or references to iteration variables, and whose roots
-;;; are store instructions.
+;;; instructions.  The instructions form a DAG, whose leaves are load
+;;; instructions or references to iteration variables, and whose roots are
+;;; store instructions.
 ;;;
 ;;; The instruction number of an instruction is an integer that is unique
 ;;; among all instructions of the current kernel.  Instruction numbers are
 ;;; handed out in depth first order of instruction dependencies, such that
 ;;; the roots (store instructions) have the highest numbers and that the
-;;; leaf nodes (load and iref instructions) have the lowest numbers.
+;;; leaf nodes (load and iref instructions) have the lowest numbers.  After
+;;; modifications to the instruction graph, the numbers have to be
+;;; recomputed.
 ;;;
-;;; Each input is represented as a cons cell, whose cdr is another
+;;; Each instruction input is a cons cell, whose cdr is another
 ;;; instruction, and whose car is an integer describing which of the
-;;; multiple values of the cdr is to be used.
+;;; multiple values of the cdr is referenced.
 (defstruct (instruction
             (:predicate instructionp)
             (:constructor nil))

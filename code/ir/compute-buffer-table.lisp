@@ -42,16 +42,16 @@
     *buffer-table*))
 
 (defun finalize-buffer-table ()
-  (with-hash-table-iterator (next *buffer-table*)
-    (loop
-      (multiple-value-bind (more lazy-array value) (next)
-        (cond ((not more) (return))
-              ((eq value :special)
-               (setf (node-value lazy-array)
-                     (if (typep lazy-array 'range-immediate)
-                         '.range-immediate.
-                         (make-buffer lazy-array))))
-              (t (remhash lazy-array *buffer-table*)))))))
+  (let ((buffer-table (the hash-table *buffer-table*)))
+    (maphash
+     (lambda (lazy-array value)
+       (if (eq value :special)
+           (setf (node-value lazy-array)
+                 (if (typep lazy-array 'range-immediate)
+                     '.range-immediate.
+                     (make-buffer lazy-array)))
+           (remhash lazy-array buffer-table)))
+     buffer-table)))
 
 (defun traverse-node (node special-p reduction-axis)
   (multiple-value-bind (traverse-inputs-p inputs-special-p reduction-axis)
