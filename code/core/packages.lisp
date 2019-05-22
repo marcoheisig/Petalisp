@@ -107,6 +107,7 @@
    #:make-array-immediate
    #:make-range-immediate
    #:indices
+   #:broadcast
    #:broadcast-arrays
    #:broadcast-list-of-arrays
    #:α

@@ -50,7 +50,7 @@
               (canonicalize-offsets offsets offsets-supplied-p output-rank)
             (declare (simple-vector offsets)
                      (boolean identity-offsets-p))
-            (unless (or identity-scalings-p identity-input-mask-p)
+            (unless identity-input-mask-p
               (loop for input-index across output-mask
                     for scaling across scalings
                     do (assert (or (zerop scaling) input-index))))

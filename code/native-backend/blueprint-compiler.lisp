@@ -183,9 +183,13 @@
 (defun translate-row-major-index (array-number irefs &optional reductionp)
   (let* ((quads (sort (loop for (index scale offset) in irefs
                             for axis from 0
-                            unless (null index)
-                              collect
-                              (list axis (if reductionp (1- index) index) scale offset))
+                            collect
+                            (cond ((null index)
+                                   (list axis -42 scale offset))
+                                  (reductionp
+                                   (list axis (1- index) scale offset))
+                                  (t
+                                   (list axis index scale offset))))
                       #'< :key #'second))
          (array-rank (length irefs)))
     (reduce
@@ -193,7 +197,7 @@
        (destructuring-bind (axis index scale offset) quad
          (let ((stride (translate-stride array-number array-rank axis)))
            (i+ (i+ expression (i* stride offset))
-               (i* (index-symbol index)
+               (i* (if (= index -42) 0 (index-symbol index))
                    (i* stride scale))))))
      quads
      :initial-value '0)))

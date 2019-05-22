@@ -14,7 +14,9 @@
    #:a
    #:b
    #:~
+   #:broadcast
    #:broadcast-arrays
+   #:broadcast-list-of-arrays
    #:reshape
    #:transform
    #:τ

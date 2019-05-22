@@ -47,8 +47,8 @@
 (defmethod execute-kernel
     ((kernel kernel) (native-backend native-backend))
   (unless (kernel-executedp kernel)
-    (compile-and-execute-kernel kernel native-backend)
     (setf (kernel-executedp kernel) t)
+    (compile-and-execute-kernel kernel native-backend)
     ;; Free the memory of buffers that are no longer in use.
     (map-kernel-inputs
      (lambda (buffer)

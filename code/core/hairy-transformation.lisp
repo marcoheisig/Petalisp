@@ -51,7 +51,8 @@
       (map-transformation-outputs
        (lambda (output-index input-index a b)
          (if (null input-index)
-             (setf (svref scalings output-index) b)
+             (setf (svref scalings output-index) 0
+                   (svref offsets output-index) b)
              (progn
                (setf (svref output-mask output-index)
                      (svref f-output-mask input-index))
