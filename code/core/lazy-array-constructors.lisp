@@ -45,10 +45,8 @@
         (input-shape (shape lazy-array)))
     (unless (and (= (rank relevant-shape) (rank input-shape))
                  (set-subsetp relevant-shape input-shape))
-      (error "~@<The shape referenced by the current reference is ~S, ~
-                 which is not a subspace of ~S, the shape of the input of ~
-                 the current reference.~:@>"
-             relevant-shape input-shape))))
+      (error "~@<Invalid reference to ~S with shape ~S and transformation ~S.~:@>"
+             lazy-array shape transformation))))
 
 (defun reshape (array &rest shapes-and-transformations)
   (labels ((reshape-with-shape (lazy-array shape)
