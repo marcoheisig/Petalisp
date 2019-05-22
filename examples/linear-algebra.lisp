@@ -164,7 +164,7 @@
      (labels
          ((rec (d P L U)
             (if (= d m)
-                (compute (transpose P) L U)
+                (values (transpose P) L U)
                 (multiple-value-bind (pivot value)
                     (pivot-and-value U d)
                   (assert (not (zerop value)))

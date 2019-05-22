@@ -33,8 +33,8 @@
   (compute (dot #(1 2 3) #(4 5 6)))
   (compute (norm #(1 2 3)))
   (compute (max* #(2 4 1 2 1)))
-      (compute (nth-value 1 (max* #(2 4 1 2 1))))
-      (multiple-value-call #'compute (max* #(2 4 1 2 1)))
+  (compute (nth-value 1 (max* #(2 4 1 2 1))))
+  (multiple-value-call #'compute (max* #(2 4 1 2 1)))
   (loop repeat 10 do
     (let* ((a (generate-matrix))
            (b (compute (transpose a))))
