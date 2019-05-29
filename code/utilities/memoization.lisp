@@ -114,10 +114,10 @@ necessary."
 (defconstant +empty+ '+empty+)
 
 (defmacro with-vector-memoization
-    ((key &key (size 7) (growth 2.0)) &body body)
+    ((key &key (size 7) (growth 2.0f0)) &body body)
   "Memoize the value of BODY for KEY being a relatively small integer."
   (check-type size (integer 2 (#.array-total-size-limit)))
-  (check-type growth (single-float (1.0) #.most-positive-single-float))
+  (check-type growth (single-float (1.0f0) #.most-positive-single-float))
   (with-gensyms (value pool)
     (once-only (key)
       `(let* ((,pool
