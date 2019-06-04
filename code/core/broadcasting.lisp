@@ -67,16 +67,11 @@
             (broadcast-ranges-f broadcast-range other-range)))
         (push broadcast-range broadcast-ranges)))
     (let ((broadcast-shape (make-shape broadcast-ranges)))
-      (loop for lazy-array in lazy-arrays
-            for shape in shapes
-            collect
-            (if (set-equal shape broadcast-shape)
-                lazy-array
-                ;; TODO reshaping here is not consistent with the
-                ;; broadcasting rules
-                ;;
-                ;; Example: (compute (a #'+ 2 #(1 2 3 4) #2a((3) (4))))
-                (broadcast lazy-array broadcast-shape))))))
+      (values
+       (loop for lazy-array in lazy-arrays
+             for shape in shapes
+             collect (broadcast lazy-array broadcast-shape))
+       broadcast-shape))))
 
 ;;; Pad SHAPE with leading one element ranges until it reaches
 ;;; BROADCAST-RANK.  Then, access the range corresponding to AXIS of the

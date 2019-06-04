@@ -166,9 +166,11 @@
   (make-shape (list* range (ranges shape))))
 
 (defmethod shrink-shape ((shape shape))
-  (let ((ranges (ranges shape)))
-    (values (make-shape (rest ranges))
-            (first ranges))))
+  (if (set-emptyp shape)
+      (empty-set)
+      (let ((ranges (ranges shape)))
+        (values (make-shape (rest ranges))
+                (first ranges)))))
 
 ;;; Return a list of disjoint shapes. Each resulting object is a proper
 ;;; subspace of one or more of the arguments and their fusion covers all

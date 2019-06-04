@@ -11,7 +11,8 @@
    "trivia"
    "ucons"
    "petalisp.utilities"
-   "petalisp.type-codes")
+   "petalisp.type-codes"
+   "petalisp.specialization")
 
   :in-order-to ((test-op (test-op "petalisp.test-suite")))
 

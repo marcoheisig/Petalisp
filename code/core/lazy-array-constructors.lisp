@@ -4,6 +4,21 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; Empty Arrays
+
+(defun empty-array ()
+  (load-time-value
+   (make-instance 'empty-array)))
+
+(defun empty-arrays (n)
+  (case n
+    (0 (values))
+    (1 (values (empty-array)))
+    (2 (values (empty-array) (empty-array)))
+    (otherwise (values-list (make-list n :initial-element (empty-array))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; References
 
 (defgeneric make-reference (input shape transformation)
@@ -128,9 +143,6 @@
 ;;;
 ;;; Immediates
 
-(defun empty-array ()
-  (load-time-value (make-instance 'empty-array)))
-
 (defun make-array-immediate (array &optional reusablep)
   (check-type array array)
   (if (zerop (array-total-size array))
@@ -184,6 +196,7 @@
           (invalid-call-function invalid-call)
           (invalid-call-argument-types invalid-call)))
 
+
 (defun infer-type-codes (function argument-type-codes)
   (let ((type-codes (multiple-value-list
                      (apply #'petalisp.type-codes:values-type-codes
@@ -202,63 +215,80 @@
 ;;;
 ;;; Applications
 
-(declaim (inline α) (notinline α-aux))
-(defun α (arg-1 arg-2 &rest more-args)
-  (if (integerp arg-1)
-      (apply #'α-aux arg-1 (coerce arg-2 'function) more-args)
-      (apply #'α-aux 1 (coerce arg-1 'function) arg-2 more-args)))
+(declaim (inline α))
+(defun α (function &rest arrays)
+  (declare (dynamic-extent arrays))
+  (multiple-value-bind (inputs shape)
+      (broadcast-list-of-arrays arrays)
+    (α-aux 1 shape (coerce function 'function) inputs)))
 
-(defun α-aux (n-outputs function &rest arguments)
-  (declare (type (integer 0 (#.multiple-values-limit)) n-outputs)
-           (type function function))
-  (let* ((inputs (broadcast-list-of-arrays arguments))
-         (shape (if (null inputs)
-                    (empty-set)
-                    (shape (first inputs)))))
-    (cond ((set-emptyp shape)
-           (values-list
-            (make-list n-outputs :initial-element (empty-array))))
-          (t
-           (let ((type-codes (infer-type-codes function (mapcar #'type-code inputs))))
+(deftype multiple-value-count ()
+  `(integer 0 ,multiple-values-limit))
+
+(declaim (inline α*))
+(defun α* (n-values function &rest arrays)
+  (declare (multiple-value-count n-values)
+           (dynamic-extent arrays))
+  (multiple-value-bind (inputs shape)
+      (broadcast-list-of-arrays arrays)
+    (α-aux n-values shape (coerce function 'function) inputs)))
+
+(declaim (notinline α-aux))
+(defun α-aux (n-outputs shape function inputs)
+  (if (set-emptyp shape)
+      (empty-arrays n-outputs)
+      (let* ((argument-type-codes (mapcar #'type-code inputs))
+             (type-codes (infer-type-codes function argument-type-codes))
+             (operator (petalisp.specialization:specialize function argument-type-codes type-codes)))
+        (labels ((next-type-code ()
+                   (if (null type-codes)
+                       (petalisp.type-codes:type-code-from-type-specifier 't)
+                       (pop type-codes)))
+                 (make-application (value-n)
+                   (make-instance 'application
+                     :operator operator
+                     :value-n value-n
+                     :inputs inputs
+                     :shape shape
+                     :type-code (next-type-code))))
+          (case n-outputs
+            (0 (values))
+            (1 (values (make-application 0)))
+            (otherwise
              (values-list
               (loop for value-n below n-outputs
-                    collect
-                    (make-instance 'application
-                      :operator function
-                      :value-n value-n
-                      :inputs inputs
-                      :shape shape
-                      :type-code
-                      (if (null type-codes)
-                          (petalisp.type-codes:type-code-from-type-specifier 't)
-                          (pop type-codes))))))))))
+                    collect (make-application value-n)))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Reductions
 
-(defun β (function array &rest more-arrays)
-  (let* ((inputs (broadcast-list-of-arrays (list* array more-arrays)))
-         (k (length inputs))
-         (input-shape (if (zerop k)
-                          (empty-set)
-                          (shape (first inputs)))))
-    (if (set-emptyp input-shape)
-        (values-list (make-list k :initial-element (empty-array)))
-        (let* ((function (coerce function 'function))
-               (shape (make-shape (cdr (ranges input-shape))))
-               (argument-type-codes (mapcar #'type-code inputs))
-               (type-codes
-                 (infer-type-codes function (append argument-type-codes argument-type-codes))))
-          (values-list
-           (loop for value-n below k
-                 collect
-                 (make-instance 'reduction
-                   :operator function
-                   :value-n value-n
-                   :inputs inputs
-                   :shape shape
-                   :type-code
-                   (if (null type-codes)
-                       (petalisp.type-codes:type-code-from-type-specifier 't)
-                       (pop type-codes)))))))))
+(defun β (function &rest arrays)
+  (multiple-value-bind (inputs input-shape)
+      (broadcast-list-of-arrays arrays)
+    (let ((n-outputs (length inputs))
+          (shape (shrink-shape input-shape)))
+      (if (set-emptyp shape)
+          (empty-arrays n-outputs)
+          (let* ((argument-type-codes (mapcar #'type-code inputs))
+                 (reduction-type-codes (append argument-type-codes argument-type-codes))
+                 (type-codes (infer-type-codes function reduction-type-codes))
+                 (operator (petalisp.specialization:specialize function reduction-type-codes type-codes)))
+            (labels ((next-type-code ()
+                       (if (null type-codes)
+                           (petalisp.type-codes:type-code-from-type-specifier 't)
+                           (pop type-codes)))
+                     (make-reduction (value-n)
+                       (make-instance 'reduction
+                         :operator operator
+                         :value-n value-n
+                         :inputs inputs
+                         :shape shape
+                         :type-code (next-type-code))))
+              (case n-outputs
+                (0 (values))
+                (1 (values (make-reduction 0)))
+                (otherwise
+                 (values-list
+                  (loop for value-n below n-outputs
+                        collect (make-reduction value-n)))))))))))
