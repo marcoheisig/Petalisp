@@ -7,7 +7,11 @@
                     collect (list var (gensym "TYPE-CODE") (gensym "VALUE"))))
          (block-name (gensym "REWRITE-LAMBDA"))
          (arguments (loop for (var type-code value) in env
-                          collect type-code collect value)))
+                          collect type-code collect value))
+         (type-codes (loop for (var type-code value) in env
+                           collect type-code))
+         (values (loop for (var type-code value) in env
+                       collect value)))
     `(lambda ,arguments
        (block ,block-name
          (macrolet ((rewrite-as (form)
@@ -15,9 +19,9 @@
                          ,(expand-rewrite-as-form ',env form)))
                     (rewrite-default (name type-codes)
                       `(return-from ,',block-name
-                         (process-call ',type-codes ',name ,@',arguments))))
+                         (process-call ',type-codes ',name ,@',values))))
            (let ,(loop for var in lambda-list
-                       for type-code in arguments by #'cddr
+                       for type-code in type-codes
                        collect `(,var ,type-code))
              (declare (ignorable ,@lambda-list))
              ,@body))))))

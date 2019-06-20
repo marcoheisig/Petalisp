@@ -14,6 +14,10 @@
      #(nil
        character
        function
+       null
+       symbol
+       cons
+       list
        short-float
        single-float
        double-float

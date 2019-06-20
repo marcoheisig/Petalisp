@@ -301,6 +301,7 @@
 
 (defop (+ binary-+) (number) (number number) (a b)
   (type-code-subtypecase (numeric-contagion a b)
+    ((not number) (abort-specialization))
     (integer
      (rewrite-as
       (integer-+
