@@ -11,10 +11,14 @@
 (defvar *process-constant*)
 (defvar *process-call*)
 
+(declaim (inline %process-argument))
+(defun %process-argument (argument)
+  (funcall *process-argument* argument))
+
 (declaim (inline process-argument))
 (defun process-argument (argument)
   (multiple-value-bind (type-code value)
-      (funcall *process-argument* argument)
+      (%process-argument argument)
     (values (type-codes type-code) value)))
 
 (declaim (inline process-constant))
@@ -66,8 +70,7 @@ PROCESS-CALL.
   (let ((*process-argument* process-argument)
         (*process-constant* process-constant)
         (*process-call* process-call))
-    (with-specialization-error-frame (list* function arguments)
-      (invoke-external-rewrite-rule function arguments))))
+    (invoke-external-rewrite-rule function arguments)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -101,7 +104,8 @@ PROCESS-CALL.
        (multiple-value-bind (min-arity max-arity)
            (function-arity function)
          (unless (<= min-arity (length arguments) max-arity)
-           (abort-specialization))
+           (with-specialization-error-frame (list* function arguments)
+             (abort-specialization)))
          (values '() nil)))
       ;; Case 2 - An external rewrite rule exists - use it.
       (present-p

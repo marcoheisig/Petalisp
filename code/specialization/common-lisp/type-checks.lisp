@@ -12,7 +12,7 @@
          object)
        (define-rewrite-rules ,name (,type) (object)
          (type-code-subtypecase object
-           ((not ,type) (error "Wrong type!"))
+           ((not ,type) (abort-specialization))
            (,type (rewrite-as (identity object))))))))
 
 (define-type-check number)

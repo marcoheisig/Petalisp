@@ -128,8 +128,13 @@
                :arity ',min-arguments
                :fn
                (rewrite-lambda ,lambda-list
-                 ,@body
-                 (rewrite-default ,name ,type-codes))))))))
+                 (with-specialization-error-frame
+                     (list
+                      ',name
+                      ,@(loop for argument in lambda-list
+                              collect `(type-specifier-from-type-code ,argument)))
+                   ,@body
+                   (rewrite-default ,name ,type-codes)))))))))
 
 (defmacro define-rewrite-rules (name types lambda-list &body body)
   (multiple-value-bind (min-arguments max-arguments)
@@ -145,7 +150,10 @@
 
 (defmacro check-type-code (form type)
   `(type-code-subtypecase ,form
-     ((not ,type) (error "Invalid type!"))))
+     ((not ,type) (abort-specialization))))
+
+(defmacro check-argument (argument type)
+  `(check-type-code (%process-argument ,argument) ,type))
 
 (defmacro defop ((base-name name) output-types input-types
                  &optional (arguments () arguments-supplied-p) &body body)
