@@ -2,80 +2,125 @@
 
 (in-package #:petalisp.specialization)
 
-;;; The purpose of this file is to turn function calls with known argument
-;;; type codes into a specialized compound form, if possible.  A
-;;; specialized compound form is an s-expression whose first element is the
-;;; name of a specialized function, and whose remaining elements are either
-;;; non-negative integers - denoting a reference to the nth argument of the
-;;; original function - or specialized compound forms.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; The non-negative integers at the leaves are essentially de Bruijn
-;;; indices for the arguments of the function denoted by the outermost
-;;; specialized compound form.
-;;;
-;;; Examples:
-;;;
-;;;  (defvar f32 (type-code-from-type-specifier 'single-float))
-;;;  (defvar u16 (type-code-from-type-specifier '(unsigned-byte 16)))
-;;;
-;;;  (specialize #'+ (list f32 f32) (list f32))
-;;;   => (f32.+ 0 1)
-;;;
-;;;  (specialize #'+ (list f32 f32 u16) (list f32))
-;;;   => (f32.+ 0 (f32.+ 1 (f32-from-u16 2)))
+;;; Parameterization
 
-(defvar *strength-reduction-functions* (make-hash-table :test #'eq))
+(declaim (function *process-argument* *process-constant* *process-call*))
+(defvar *process-argument*)
+(defvar *process-constant*)
+(defvar *process-call*)
 
-(defun register-strength-reduction-function (fn strength-reduction-fn)
-  (setf (gethash fn *strength-reduction-functions*)
-        (lambda (&rest type-codes)
-          (apply inference-fn type-codes))))
+(declaim (inline process-argument))
+(defun process-argument (argument)
+  (multiple-value-bind (type-code value)
+      (funcall *process-argument* argument)
+    (values (type-codes type-code) value)))
 
-(defmacro define-strength-reduction-rule (name lambda-list &body body)
-  "Define a strength reduction rule for the function with the supplied
-NAME.  The supplied LAMBDA-LIST must accept as many arguments as the
-corresponding function, while consisting only of mandatory, optional and
-rest arguments.
+(declaim (inline process-constant))
+(defun process-constant (constant)
+  (multiple-value-bind (type-code value)
+      (funcall *process-constant* constant)
+    (values (type-codes type-code) value)))
 
-During strength reduction, each statement in BODY will be evaluated in an
-environment where each lambda list argument is bound to a type code.  It
-should either return a specializer compound form, or abort the strength
-reduction by calling GIVE-UP-STRENGTH-REDUCTION."
-  (dolist (keyword (intersection lambda-list lambda-list-keywords))
-    (unless (member keyword '(&optional &rest))
-      (error "Invalid strength reduction rule keyword: ~S" keyword)))
-  `(register-strength-reduction-function
-    (function ,name)
-    (lambda ,lambda-list ,@body)))
+(declaim (inline process-call))
+(defun process-call (type-codes function-name &rest arguments)
+  (values
+   type-codes
+   (funcall *process-call* function-name arguments)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Strength Reduction
+;;; Entry Function
 
-#+(or)
-(defvar *simplifiction-functions* '())
+(defun specialize (function arguments
+                   &key
+                     (process-argument #'type-code-of)
+                     (process-constant #'type-code-of)
+                     (process-call #'values))
+  "Returns a list of type codes describing the set of values returned by
+FUNCTION when applied to ARGUMENTS.  Returns a second value that is
+obtained by processing the functions, constants and arguments of the most
+specialized call in a user-defined manner.
 
-#+(or)
-(defmacro define-simplifier (name lambda-list)
-  `())
+Arguments:
 
-#+(or)
-(define-simplifier + (inputs)
-  (trivia:ematch inputs
-    ((list)
-     (load-time-value (coerce-to-lazy-array 0)))
-    ((list number)
-     (convert-to 'number number))
-    ((list* a more-numbers)
-     (let* ((b (simplify #'+ more-numbers))
-            (type-code (petalisp.type-codes:values-type-codes #'+ a b)))
-       (make-instance 'application
-         :operator operator
-         :value-n 0
-         :inputs (list (convert-to type-code a)
-                       (convert-to type-code b))
-         :shape shape
-         :type-code type-code)))))
+FUNCTION - A function.
 
-(defun specialize (function input-type-codes output-type-codes)
-  function)
+ARGUMENTS - A list of objects.  Each such object must be a suitable argument
+for the function PROCESS-ARGUMENT.
+
+PROCESS-ARGUMENT - A function that is invoked once for each argument in ARGUMENTS.  It
+must return a type code, and, optionally, an arbitrary object for further
+processing.
+
+PROCESS-CONSTANT - A function that is invoked on each constant that appears
+in a rewrite rule.  It must return a type code, and, optionally, an
+arbitrary object for further processing.
+
+PROCESS-CALL - A function that is invoked with a first argument that is a
+function name, and zero or more objects that have previously been returned
+as second argument of calls to PROCESS-ARGUMENT, PROCESS-CONSTANT or
+PROCESS-CALL.
+"
+  (let ((*process-argument* process-argument)
+        (*process-constant* process-constant)
+        (*process-call* process-call))
+    (with-specialization-error-frame (list* function arguments)
+      (invoke-external-rewrite-rule function arguments))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Rewrite Rules
+
+(defvar *external-rewrite-rules* (make-hash-table :test #'eq))
+
+(defvar *internal-rewrite-rules* (make-hash-table :test #'eq))
+
+(defstruct (external-rewrite-rule
+            (:predicate external-rewrite-rule-p))
+  (name nil :type symbol)
+  (type-codes nil :type list)
+  (min-arguments nil :type arity)
+  (max-arguments nil :type arity)
+  (fn nil :type function))
+
+(defstruct (internal-rewrite-rule
+            (:predicate internal-rewrite-rule))
+  (name nil :type symbol)
+  (type-codes nil :type list)
+  (arity nil :type arity)
+  (fn nil :type (or function null)))
+
+(defun invoke-external-rewrite-rule (function arguments)
+  (multiple-value-bind (external-rewrite-rule present-p)
+      (gethash function *external-rewrite-rules*)
+    (cond
+      ;; Case 1 - No external rewrite rule exists.
+      ((not present-p)
+       (multiple-value-bind (min-arity max-arity)
+           (function-arity function)
+         (unless (<= min-arity (length arguments) max-arity)
+           (abort-specialization))
+         (values '() nil)))
+      ;; Case 2 - An external rewrite rule exists - use it.
+      (present-p
+       (with-accessors ((name external-rewrite-rule-name)
+                        (type-codes external-rewrite-rule-type-codes)
+                        (min-arguments external-rewrite-rule-min-arguments)
+                        (max-arguments external-rewrite-rule-max-arguments)
+                        (fn external-rewrite-rule-fn))
+           external-rewrite-rule
+         (with-specialization-error-frame (list* name arguments)
+           (unless (<= min-arguments (length arguments) max-arguments)
+             (abort-specialization))
+           (apply fn arguments)))))))
+
+(defun find-internal-rewrite-rule (name arity)
+  (multiple-value-bind (internal-rewrite-rule present-p)
+      (gethash name *internal-rewrite-rules*)
+    (unless present-p
+      (error "There is no internal rewrite rule with name ~S." name))
+    (unless (= arity (internal-rewrite-rule-arity internal-rewrite-rule))
+      (error "Reference to rewrite rule ~S with wrong arity ~D." name arity))
+    internal-rewrite-rule))

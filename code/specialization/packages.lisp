@@ -6,19 +6,24 @@
   (:use
    #:common-lisp)
   (:export
-   #:specialize
-   #:f32
-   #:f64
-   #:c64
-   #:c128
-   #:u1
-   #:u2
-   #:u4
-   #:u8
-   #:u16
-   #:u32
-   #:u64
-   #:s8
-   #:s16
-   #:s32
-   #:s64))
+   #:type-code
+   #:type-code-limit
+   #:type-specifier-from-type-code
+   #:type-code-from-type-specifier
+   #:type-code-of
+   #:array-element-type-code
+   #:empty-type-code-p
+
+   ;; Manipulation of type codes.
+   #:with-type-code-caching
+   #:type-code-union
+   #:subtypep-mask
+   #:type-code-subtypecase
+   #:type-code-subtypep
+
+   ;; Specialization
+   #:function-type-codes
+   #:define-external-rewrite-rule
+   #:define-internal-rewrite-rule
+   #:give-up-specialization
+   #:abort-specialization))
