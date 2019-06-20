@@ -353,7 +353,7 @@
        (coerce-to-complex-long-float a)
        (coerce-to-complex-long-float b))))))
 
-(define-external-rewrite-rule + (number) (&rest numbers)
+(define-external-rewrite-rule + (&rest numbers)
   (if (null numbers)
       (rewrite-let () 0)
       (labels ((rewrite-+ (number more-numbers)
@@ -365,3 +365,71 @@
                        (rewrite-as (binary-+ a b))))))
         (rewrite-+ (first numbers) (rest numbers)))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Multiplication
+
+(defop (* integer-*) (integer) (integer integer))
+(defop (* rational-*) (rational) (rational rational))
+(defop (* short-float-*) (short-float) (short-float short-float))
+(defop (* single-float-*) (single-float) (single-float single-float))
+(defop (* double-float-*) (double-float) (double-float double-float))
+(defop (* long-float-*) (long-float) (long-float long-float))
+(defop (* complex-short-float-*) (complex-short-float) (complex-short-float complex-short-float))
+(defop (* complex-single-float-*) (complex-single-float) (complex-single-float complex-single-float))
+(defop (* complex-double-float-*) (complex-double-float) (complex-double-float complex-double-float))
+(defop (* complex-long-float-*) (complex-long-float) (complex-long-float complex-long-float))
+
+(defop (* binary-*) (number) (number number) (a b)
+  (type-code-subtypecase (numeric-contagion a b)
+    ((not number) (abort-specialization))
+    (integer
+     (rewrite-as
+      (integer-*
+       (the-integer a)
+       (the-integer b))))
+    (rational
+     (rewrite-as
+      (rational-*
+       (the-rational a)
+       (the-rational b))))
+    (short-float
+     (rewrite-as
+      (short-float-*
+       (coerce-to-short-float a)
+       (coerce-to-short-float b))))
+    (single-float
+     (rewrite-as
+      (single-float-*
+       (coerce-to-single-float a)
+       (coerce-to-single-float b))))
+    (double-float
+     (rewrite-as
+      (double-float-*
+       (coerce-to-double-float a)
+       (coerce-to-double-float b))))
+    (long-float
+     (rewrite-as
+      (long-float-*
+       (coerce-to-long-float a)
+       (coerce-to-long-float b))))
+    ((complex short-float)
+     (rewrite-as
+      (complex-short-float-*
+       (coerce-to-complex-short-float a)
+       (coerce-to-complex-short-float b))))
+    ((complex single-float)
+     (rewrite-as
+      (complex-single-float-*
+       (coerce-to-complex-single-float a)
+       (coerce-to-complex-single-float b))))
+    ((complex double-float)
+     (rewrite-as
+      (complex-double-float-*
+       (coerce-to-complex-double-float a)
+       (coerce-to-complex-double-float b))))
+    ((complex long-float)
+     (rewrite-as
+      (complex-long-float-*
+       (coerce-to-complex-long-float a)
+       (coerce-to-complex-long-float b))))))

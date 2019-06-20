@@ -18,6 +18,7 @@
        symbol
        cons
        list
+       array
        short-float
        single-float
        double-float

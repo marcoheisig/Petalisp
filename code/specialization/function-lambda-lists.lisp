@@ -11,10 +11,6 @@
             '(&rest anything))
         arglist)))
 
-(declaim (ftype (function (list) (values arity arity))
-                lambda-list-arity
-                function-arity))
-
 (defun lambda-list-arity (lambda-list)
   "Return two values:
    1. the number of mandatory arguments

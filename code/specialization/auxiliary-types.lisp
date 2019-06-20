@@ -45,3 +45,6 @@
 
 (deftype complex-long-float ()
   '(complex long-float))
+
+(deftype generalized-boolean ()
+  't)

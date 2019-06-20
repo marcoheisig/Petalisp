@@ -32,7 +32,8 @@
                (push (list type-codes value form) bindings)
                (values type-codes value))
              (expand (form)
-               (if (symbolp form)
+               (if (and (symbolp form)
+                        (not (constantp form)))
                    (destructuring-bind (name type-code value)
                        (or (find form env :key #'first :test #'eq :from-end t)
                            (error "Undefined variable ~S." form))
@@ -96,10 +97,8 @@
     (rewrite-lambda ,(mapcar #'first bindings) ,@body)
     ,@(mapcar #'second bindings)))
 
-(defmacro define-external-rewrite-rule (name types lambda-list &body body)
-  (let ((type-codes
-          (mapcar #'type-code-from-type-specifier types))
-        (rewrite-rule-name
+(defmacro define-external-rewrite-rule (name lambda-list &body body)
+  (let ((rewrite-rule-name
           (intern (format nil "~:@(external-rewrite-rule/~S~)" name) #.*package*)))
     (multiple-value-bind (min-arguments max-arguments)
         (lambda-list-arity lambda-list)
@@ -108,7 +107,6 @@
            (defun ,rewrite-rule-name ,lambda-list ,@body)
            (let ((,rule (make-external-rewrite-rule
                          :name ',name
-                         :type-codes ',type-codes
                          :min-arguments ',min-arguments
                          :max-arguments ',max-arguments
                          :fn #',rewrite-rule-name)))
@@ -146,7 +144,7 @@
     (assert (= min-arguments max-arguments))
     `(progn
        (define-internal-rewrite-rule ,name ,types ,lambda-list ,@body)
-       (define-external-rewrite-rule ,name ,types ,lambda-list
+       (define-external-rewrite-rule ,name ,lambda-list
          (rewrite-funcall
           (rewrite-lambda ,lambda-list (rewrite-as (,name ,@lambda-list)))
           ,@(loop for argument in lambda-list

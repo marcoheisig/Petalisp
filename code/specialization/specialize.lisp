@@ -44,7 +44,6 @@
 (defstruct (external-rewrite-rule
             (:predicate external-rewrite-rule-p))
   (name nil :type symbol)
-  (type-codes nil :type list)
   (min-arguments nil :type arity)
   (max-arguments nil :type arity)
   (fn nil :type function))
@@ -56,9 +55,13 @@
   (arity nil :type arity)
   (fn nil :type (or function null)))
 
+(defun argument-type-code (argument)
+  (values
+   (%process-argument argument)))
+
 (defun argument-type (argument)
   (type-specifier-from-type-code
-   (%process-argument argument)))
+   (argument-type-code argument)))
 
 (defun invoke-external-rewrite-rule (function arguments)
   (multiple-value-bind (external-rewrite-rule present-p)
@@ -76,7 +79,6 @@
       ;; Case 2 - An external rewrite rule exists - use it.
       (present-p
        (with-accessors ((name external-rewrite-rule-name)
-                        (type-codes external-rewrite-rule-type-codes)
                         (min-arguments external-rewrite-rule-min-arguments)
                         (max-arguments external-rewrite-rule-max-arguments)
                         (fn external-rewrite-rule-fn))
