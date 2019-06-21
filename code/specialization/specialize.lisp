@@ -72,9 +72,9 @@
        (multiple-value-bind (min-arity max-arity)
            (function-arity function)
          (unless (<= min-arity (length arguments) max-arity)
-           (with-specialization-error-frame
-               (list* function (mapcar #'argument-type arguments))
-             (abort-specialization)))
+           (error 'wrong-number-of-arguments
+                  :thunk (lambda ()
+                           (list* function (mapcar #'argument-type arguments)))))
          (values '() nil)))
       ;; Case 2 - An external rewrite rule exists - use it.
       (present-p
@@ -83,11 +83,13 @@
                         (max-arguments external-rewrite-rule-max-arguments)
                         (fn external-rewrite-rule-fn))
            external-rewrite-rule
-         (with-specialization-error-frame
-             (list* name (mapcar #'argument-type arguments))
-           (unless (<= min-arguments (length arguments) max-arguments)
-             (abort-specialization))
-           (apply fn arguments)))))))
+         (flet ((error-thunk ()
+                  (list* name (mapcar #'argument-type arguments))))
+           (declare (dynamic-extent #'error-thunk))
+           (let ((*specialization-error-thunk* #'error-thunk))
+             (unless (<= min-arguments (length arguments) max-arguments)
+               (error 'wrong-number-of-arguments :thunk *specialization-error-thunk*))
+             (apply fn arguments))))))))
 
 (defun find-internal-rewrite-rule (name arity)
   (multiple-value-bind (internal-rewrite-rule present-p)

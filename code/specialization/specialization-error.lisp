@@ -2,20 +2,37 @@
 
 (in-package #:petalisp.specialization)
 
+;;; A thunk that computes a list whose first argument is a function name
+;;; and whose remaining elements are type specifiers.
+(defvar *specialization-error-thunk*)
+
 (define-condition specialization-error (error)
-  ((%stack :initform '() :accessor specialization-error-stack))
-  (:report (lambda (condition stream)
-             (format stream
-                     "Specialization with the wrong number of arguments, ~
-                      or with arguments of the wrong type.~
-                      ~%~%Specialization trace:~%~{~S~%~}"
-                     (specialization-error-stack condition)))))
+  ((%thunk :initarg :thunk :reader specialization-error-thunk)))
+
+(define-condition wrong-number-of-arguments (specialization-error)
+  ()
+  (:report
+   (lambda (condition stream)
+     (let ((form (funcall (specialization-error-thunk condition))))
+       (format stream
+               "~@<Cannot call ~S with ~R arguments.~:@>"
+               (first form)
+               (length (rest form)))))))
+
+(define-condition invalid-arguments (specialization-error)
+  ()
+  (:report
+   (lambda (condition stream)
+     (let ((form (funcall (specialization-error-thunk condition)))
+           (*print-circle* nil))
+       (format stream
+               "~@<Invalid call to ~S with ~
+              ~{~#[no arguments~;~
+                  one argument of type ~S~;~
+                  arguments of types ~S and ~S~:;~
+                  arguments of types ~@{~S~#[~;, and ~:;, ~]~}~]~:}.~:@>"
+               (first form)
+               (rest form))))))
 
 (defun abort-specialization ()
-  (error 'specialization-error))
-
-(defmacro with-specialization-error-frame (entry &body body)
-  `(handler-case (progn ,@body)
-     (specialization-error (specialization-error)
-       (push ,entry (specialization-error-stack specialization-error))
-       (error specialization-error))))
+  (error 'invalid-arguments :thunk *specialization-error-thunk*))

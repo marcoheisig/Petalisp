@@ -52,8 +52,9 @@
                             type-codes value
                             `(funcall
                               (load-time-value
-                               (internal-rewrite-rule-fn
-                                (find-internal-rewrite-rule ',(first form) ',(length (rest form)))))
+                               (the function
+                                    (internal-rewrite-rule-fn
+                                     (find-internal-rewrite-rule ',(first form) ',(length (rest form))))))
                               ,@arguments)))
                          (add-binding type-codes value `(process-constant ',form))))))
              (wrap (bindings body)
@@ -130,13 +131,8 @@
                :arity ',min-arguments
                :fn
                (rewrite-lambda ,lambda-list
-                 (with-specialization-error-frame
-                     (list
-                      ',name
-                      ,@(loop for argument in lambda-list
-                              collect `(type-specifier-from-type-code ,argument)))
-                   ,@body
-                   (rewrite-default ,name ,type-codes)))))))))
+                 ,@body
+                 (rewrite-default ,name ,type-codes))))))))
 
 (defmacro define-rewrite-rules (name types lambda-list &body body)
   (multiple-value-bind (min-arguments max-arguments)
