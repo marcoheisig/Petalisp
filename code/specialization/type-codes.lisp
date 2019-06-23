@@ -15,6 +15,7 @@
        character
        function
        null
+       (and symbol (not null))
        symbol
        cons
        list
