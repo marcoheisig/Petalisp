@@ -90,6 +90,9 @@
     (complex-double-float (rewrite-as (neg.complex-double-float x)))
     (complex-long-float (rewrite-as (neg.complex-long-float x)))))
 
+(define-rewrite-rules 1- (number) (number)
+  (rewrite-as (sub number 1)))
+
 (define-external-rewrite-rule - (&rest numbers)
   (if (null numbers)
       (abort-specialization)

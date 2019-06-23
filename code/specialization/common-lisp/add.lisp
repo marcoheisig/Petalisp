@@ -66,6 +66,9 @@
        (coerce-to-complex-long-float a)
        (coerce-to-complex-long-float b))))))
 
+(define-rewrite-rules 1+ (number) (number)
+  (rewrite-as (add number 1)))
+
 (define-external-rewrite-rule + (&rest numbers)
   (if (null numbers)
       (rewrite-let () (rewrite-as 0))
