@@ -68,7 +68,7 @@
 
 (define-external-rewrite-rule + (&rest numbers)
   (if (null numbers)
-      (rewrite-let () 0)
+      (rewrite-let () (rewrite-as 0))
       (multiple-value-bind (type-codes value)
           (rewrite-let ((number (process-argument (pop numbers))))
             (rewrite-as (the-number number)))

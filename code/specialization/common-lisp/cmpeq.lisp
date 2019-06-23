@@ -68,7 +68,7 @@
 
 (define-external-rewrite-rule = (number &rest more-numbers)
   (if (null more-numbers)
-      (rewrite-let () t)
+      (rewrite-let () (rewrite-as t))
       (multiple-value-bind (a-type-codes a-value)
           (process-argument number)
         (multiple-value-bind (result-type-codes result-value)

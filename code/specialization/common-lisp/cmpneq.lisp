@@ -65,3 +65,24 @@
       (cmpneq.complex-long-float
        (coerce-to-complex-long-float a)
        (coerce-to-complex-long-float b))))))
+
+(defun map-unique-pairs (fn list)
+  (loop for sublist on list
+        for a = (first sublist) do
+          (loop for b in (rest sublist) do
+                (funcall fn a b))))
+
+(define-external-rewrite-rule /= (number &rest more-numbers)
+  (multiple-value-bind (result-type-codes result-value)
+      (rewrite-let () (rewrite-as t))
+    ;; This code produces (N^2-N)/2 comparisons for N supplied numbers.
+    ;; But whoever calls /= with more than two arguments deserves it.
+    (map-unique-pairs
+     (lambda (a b)
+       (multiple-value-setq (result-type-codes result-value)
+         (rewrite-let ((a (process-argument a))
+                       (b (process-argument b))
+                       (c (values result-type-codes result-value)))
+           (rewrite-as (and-fn c (cmpneq a b))))))
+     (list* number more-numbers))
+    (values result-type-codes result-value)))

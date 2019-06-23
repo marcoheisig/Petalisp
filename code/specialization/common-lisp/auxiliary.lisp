@@ -296,3 +296,8 @@
   (type-code-subtypecase a
     ((not null) (rewrite-as a))
     (null (rewrite-as b))))
+
+(define-rewrite-rules not (boolean) (x)
+  (type-code-subtypecase x
+    (null (rewrite-as t))
+    ((not null) (rewrite-as nil))))
