@@ -138,3 +138,35 @@ PROCESS-CALL.
         (*process-constant* process-constant)
         (*process-call* process-call))
     (invoke-external-rewrite-rule function arguments)))
+
+(defun specialize-verbosely (function arguments
+                             &key
+                               (process-argument
+                                (lambda (x)
+                                  (values (type-code-of x) x)))
+                               (process-constant
+                                (lambda (x)
+                                  (values (type-code-of x) x)))
+                               (process-call #'list))
+  (specialize
+   function arguments
+   :process-argument
+   (lambda (argument)
+     (multiple-value-bind (type-code value)
+         (funcall process-argument argument)
+       (format *trace-output* "~&Process argument: ~S => ~S, ~S~%"
+               argument type-code value)
+       (values type-code value)))
+   :process-constant
+   (lambda (constant)
+     (multiple-value-bind (type-code value)
+         (funcall process-constant constant)
+       (format *trace-output* "~&Process constant: ~S => ~S, ~S~%"
+               constant type-code value)
+       (values type-code value)))
+   :process-call
+   (lambda (function &rest values)
+     (let ((value (apply process-call function values)))
+       (format *trace-output* "~&Process call: ~S~{~% - ~S~}~% => ~S~%"
+               function values value)
+       value))))
