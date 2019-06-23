@@ -105,6 +105,11 @@
         (lambda-list-arity lambda-list)
       (let ((rule (gensym "RULE")))
         `(progn
+           (multiple-value-bind (min max) (function-arity #',name)
+             (unless (and (<= ,min-arguments min)
+                          (>= ,max-arguments max))
+               (error "The lambda list of the external rewrite rule ~S ~@
+                  is not compatible with the function ~S." ',name ',name)))
            (defun ,rewrite-rule-name ,lambda-list ,@body)
            (let ((,rule (make-external-rewrite-rule
                          :name ',name

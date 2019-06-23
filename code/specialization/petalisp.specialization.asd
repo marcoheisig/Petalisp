@@ -21,7 +21,14 @@
    (:file "macros")
    (:module "common-lisp"
     :components
-    ((:file "data-and-control-flow")
+    ((:file "auxiliary")
+     (:file "data-and-control-flow")
      (:file "type-checks")
      (:file "casts")
-     (:file "numbers")))))
+     (:file "add")
+     (:file "sub")
+     (:file "mul")
+     (:file "div")
+     (:file "cmpeq")
+     (:file "cmpneq")
+     (:file "cmpx")))))

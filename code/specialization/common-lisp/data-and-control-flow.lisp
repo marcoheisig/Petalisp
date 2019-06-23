@@ -2,9 +2,9 @@
 
 (in-package #:petalisp.specialization)
 
-(define-external-rewrite-rule apply (function &rest args)
+(define-external-rewrite-rule apply (function arg &rest more-args)
   (check-argument function function)
-  (check-argument (car (last args)) list)
+  (check-argument (car (last (cons arg more-args))) list)
   (type-codes))
 
 (define-rewrite-rules fdefinition (t) (name)
@@ -53,7 +53,8 @@
 
 (define-rewrite-rules constantly (function) (value))
 
-(define-external-rewrite-rule every (predicate &rest sequences)
+#+(or)
+(define-external-rewrite-rule every (predicate first-seq &rest more-sequences)
   (check-type-code predicate function-designator)
   (dolist (sequence sequences)
     (check-type-code sequence sequence))
