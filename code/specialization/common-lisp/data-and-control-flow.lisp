@@ -62,7 +62,18 @@
    (type-code-from-type-specifier 'generalized-boolean)))
 
 (define-external-rewrite-rule values (&rest objects)
-  (mapcar #'argument-type-code objects))
+  (let ((type-codes '())
+        (values '()))
+    (loop for object in objects do
+      (multiple-value-bind (type-code value)
+          (%process-argument object)
+        (push type-code type-codes)
+        (push value values)))
+    (apply
+     #'process-call
+     (nreverse type-codes)
+     'values
+     (nreverse values))))
 
 (define-rewrite-rules values-list () (list)
   (check-type-code list list))

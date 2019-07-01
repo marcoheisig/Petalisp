@@ -22,8 +22,9 @@
    #:type-code-subtypep
 
    ;; Specialization
-   #:function-type-codes
    #:define-external-rewrite-rule
-   #:define-internal-rewrite-rule
-   #:give-up-specialization
-   #:abort-specialization))
+   #:define-rewrite-rules
+   #:abort-specialization
+   #:defop
+   #:specialize
+   #:specialize-verbosely))

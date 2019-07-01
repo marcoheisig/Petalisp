@@ -301,3 +301,18 @@
   (type-code-subtypecase x
     (null (rewrite-as t))
     ((not null) (rewrite-as nil))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Primitive Control Flow.
+
+(defun prog2-fn (a b)
+  b)
+
+(define-external-rewrite-rule prog2-fn (a b)
+  (multiple-value-bind (a-type-codes a-value)
+      (process-argument a)
+    (declare (ignore a-type-codes))
+    (multiple-value-bind (b-type-codes b-value)
+        (process-argument b)
+      (process-call b-type-codes 'prog2-fn a-value b-value))))
