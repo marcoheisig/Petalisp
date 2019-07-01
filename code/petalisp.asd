@@ -1,4 +1,4 @@
-(defsystem :petalisp
+(asdf:defsystem :petalisp
   :description "Elegant High Performance Computing"
   :author "Marco Heisig <marco.heisig@fau.de>"
   :license "AGPLv3"
