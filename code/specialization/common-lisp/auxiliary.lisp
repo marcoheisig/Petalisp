@@ -306,7 +306,9 @@
 ;;;
 ;;; Primitive Control Flow.
 
+(declaim (inline prog2-fn))
 (defun prog2-fn (a b)
+  (declare (ignore a))
   b)
 
 (define-external-rewrite-rule prog2-fn (a b)
