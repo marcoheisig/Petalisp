@@ -306,15 +306,5 @@
 ;;;
 ;;; Primitive Control Flow.
 
-(declaim (inline prog2-fn))
-(defun prog2-fn (a b)
-  (declare (ignore a))
-  b)
-
-(define-external-rewrite-rule prog2-fn (a b)
-  (multiple-value-bind (a-type-codes a-value)
-      (process-argument a)
-    (declare (ignore a-type-codes))
-    (multiple-value-bind (b-type-codes b-value)
-        (process-argument b)
-      (process-call b-type-codes 'prog2-fn a-value b-value))))
+(defop (prog2 prog2-fn) (t) (t t) (a b)
+  (rewrite-default prog2-fn b))

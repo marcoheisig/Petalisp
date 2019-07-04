@@ -3,6 +3,9 @@
 (in-package #:petalisp.specialization)
 
 (defmacro rewrite-lambda (lambda-list &body body)
+  (dolist (symbol lambda-list)
+    (assert (symbolp symbol))
+    (assert (not (member symbol lambda-list-keywords))))
   (let* ((env (loop for var in lambda-list
                     collect (list var (gensym "TYPE-CODE") (gensym "VALUE"))))
          (block-name (gensym "REWRITE-LAMBDA"))
@@ -17,9 +20,11 @@
          (macrolet ((rewrite-as (form)
                       `(return-from ,',block-name
                          ,(expand-rewrite-as-form ',env form)))
-                    (rewrite-default (name type-codes)
+                    (rewrite-default (name &rest type-codes)
                       `(return-from ,',block-name
-                         (process-call ',type-codes ',name ,@',values))))
+                         (process-call
+                          (type-codes ,@type-codes)
+                          ',name ,@',values))))
            (let ,(loop for var in lambda-list
                        for type-code in type-codes
                        collect `(,var ,type-code))
@@ -117,7 +122,9 @@
                          :max-arguments ',max-arguments
                          :fn #',rewrite-rule-name)))
              (setf (gethash ',name *external-rewrite-rules*) ,rule)
-             (setf (gethash #',name *external-rewrite-rules*) ,rule)))))))
+             (when (and (fboundp ',name)
+                        (functionp (fdefinition ',name)))
+               (setf (gethash #',name *external-rewrite-rules*) ,rule))))))))
 
 (defmacro define-internal-rewrite-rule (name types lambda-list &body body)
   (multiple-value-bind (min-arguments max-arguments)
@@ -137,7 +144,7 @@
                :fn
                (rewrite-lambda ,lambda-list
                  ,@body
-                 (rewrite-default ,name ,type-codes))))))))
+                 (rewrite-default ,name ,@type-codes))))))))
 
 (defmacro define-rewrite-rules (name types lambda-list &body body)
   (multiple-value-bind (min-arguments max-arguments)
