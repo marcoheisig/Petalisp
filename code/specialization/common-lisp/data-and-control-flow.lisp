@@ -35,7 +35,10 @@
     ((not compiled-function) (rewrite-as nil))
     (compiled-function (rewrite-as t))))
 
-(define-rewrite-rules not (boolean) (object))
+(define-rewrite-rules not (boolean) (x)
+  (type-code-subtypecase x
+    (null (rewrite-as t))
+    ((not null) (rewrite-as nil))))
 
 (define-rewrite-rules eq (generalized-boolean) (a b))
 
@@ -52,14 +55,6 @@
   (check-type-code function function))
 
 (define-rewrite-rules constantly (function) (value))
-
-#+(or)
-(define-external-rewrite-rule every (predicate first-seq &rest more-sequences)
-  (check-type-code predicate function-designator)
-  (dolist (sequence sequences)
-    (check-type-code sequence sequence))
-  (type-codes
-   (type-code-from-type-specifier 'generalized-boolean)))
 
 (define-external-rewrite-rule values (&rest objects)
   (let ((type-codes '())

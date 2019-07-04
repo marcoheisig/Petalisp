@@ -286,7 +286,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Logical Operations
+;;; Functional Equivalents of Common Macros
 
 (defop (and and-fn) (generalized-boolean) (t t) (a b)
   (type-code-subtypecase a
@@ -300,15 +300,6 @@
   (type-code-subtypecase a
     ((not null) (rewrite-as a))
     (null (rewrite-as b))))
-
-(define-rewrite-rules not (boolean) (x)
-  (type-code-subtypecase x
-    (null (rewrite-as t))
-    ((not null) (rewrite-as nil))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Control Flow Primitives
 
 (defop (prog2 prog2-fn) (t) (t t) (a b)
   (rewrite-default prog2-fn b))
