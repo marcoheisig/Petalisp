@@ -2,6 +2,10 @@
 
 (in-package #:petalisp.specialization)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Number Types
+
 (defun slow-numeric-contagion (&rest type-codes)
   (labels ((initial-state ()
              (type-code-subtypecase (pop type-codes)
@@ -304,7 +308,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Primitive Control Flow.
+;;; Control Flow Primitives
 
 (defop (prog2 prog2-fn) (t) (t t) (a b)
   (rewrite-default prog2-fn b))

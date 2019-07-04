@@ -31,4 +31,7 @@
      (:file "div")
      (:file "cmpeq")
      (:file "cmpneq")
-     (:file "cmpx")))))
+     (:file "cmpx")
+     (:file "min")
+     (:file "max")
+     ))))
