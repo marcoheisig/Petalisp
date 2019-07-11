@@ -88,7 +88,7 @@
         (assert (= (length vector) input-rank))
         (loop for element across vector
               do (assert (typep element '(or rational null)))
-              unless (eql element 0) do
+              unless (null element) do
                 (setf identity-p nil))
         (values vector identity-p))))
 
