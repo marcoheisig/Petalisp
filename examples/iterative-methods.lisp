@@ -3,7 +3,12 @@
 (defpackage #:petalisp.examples.iterative-methods
   (:shadowing-import-from #:petalisp #:set-difference)
   (:use #:common-lisp #:petalisp)
-  (:export #:jacobi #:rbgs))
+  (:export
+   #:jacobi
+   #:rbgs
+   #:prolongate
+   #:restrict
+   #:v-cycle))
 
 (in-package #:petalisp.examples.iterative-methods)
 
@@ -132,53 +137,47 @@
 ;;; The Multigrid Method
 
 (defun prolongate (u)
-  ;; TODO
-  #+nil
-  (let* ((u* (reshape u (τ (i j) ((* i 2) (* j 2)))))
-         (space-1
-           (σ* u* ((1+ start) step (- (1+ end) step))
-                  (start step end)))
-         (space-2
-           (σ* u* (start step end)
-                  ((1+ start) step (- (1+ end) step))))
-         (space-3
-           (σ* u* ((1+ start) step (- (1+ end) step))
-                  ((1+ start) step (- (1+ end) step)))))
-    (fuse u*
-          (α #'* 0.5
-             (α #'+
-                (reshape u* (τ (i j) ((1+ i) j)) space-1)
-                (reshape u* (τ (i j) ((1- i) j)) space-1)))
-          (α #'* 0.5
-             (α #'+
-                (reshape u* (τ (i j) (i (1+ j))) space-2)
-                (reshape u* (τ (i j) (i (1- j))) space-2)))
-          (α #'* 0.25
-             (α #'+
-                (reshape u* (τ (i j) ((1+ i) (1+ j))) space-3)
-                (reshape u* (τ (i j) ((1+ i) (1- j))) space-3)
-                (reshape u* (τ (i j) ((1- i) (1+ j))) space-3)
-                (reshape u* (τ (i j) ((1- i) (1- j))) space-3))))))
+  (let ((u* (reshape u (τ (i j) ((* i 2) (* j 2))))))
+    (trivia:ematch (shape u*)
+      ((~ a b c ~ d e f)
+       (let ((space-1 (~ (1+ a) b (- (1+ c) b) ~ d e f))
+             (space-2 (~ a b c ~ (1+ d) e (- (1+ f) e)))
+             (space-3 (~ (1+ a) b (- (1+ c) b) ~ (1+ d) e (- (1+ f) e))))
+         (fuse u*
+               (α #'* 0.5
+                  (α #'+
+                     (reshape u* (τ (i j) ((1+ i) j)) space-1)
+                     (reshape u* (τ (i j) ((1- i) j)) space-1)))
+               (α #'* 0.5
+                  (α #'+
+                     (reshape u* (τ (i j) (i (1+ j))) space-2)
+                     (reshape u* (τ (i j) (i (1- j))) space-2)))
+               (α #'* 0.25
+                  (α #'+
+                     (reshape u* (τ (i j) ((1+ i) (1+ j))) space-3)
+                     (reshape u* (τ (i j) ((1+ i) (1- j))) space-3)
+                     (reshape u* (τ (i j) ((1- i) (1+ j))) space-3)
+                     (reshape u* (τ (i j) ((1- i) (1- j))) space-3)))))))))
 
 (defun restrict (u)
-  ;; TODO
-  #+nil
-  (let ((selection (σ* u (start 2 end) (start 2 end)))
-        (interior (interior u)))
-    (reshape
-     (fuse*
-      (reshape u selection)
-      (α #'+
-         (α #'* 0.25   (reshape u selection interior))
-         (α #'* 0.125  (reshape u (τ (i j) ((1+ i) j)) selection interior))
-         (α #'* 0.125  (reshape u (τ (i j) ((1- i) j)) selection interior))
-         (α #'* 0.125  (reshape u (τ (i j) (i (1+ j))) selection interior))
-         (α #'* 0.125  (reshape u (τ (i j) (i (1- j))) selection interior))
-         (α #'* 0.0625 (reshape u (τ (i j) ((1+ i) (1+ j))) selection interior))
-         (α #'* 0.0625 (reshape u (τ (i j) ((1- i) (1+ j))) selection interior))
-         (α #'* 0.0625 (reshape u (τ (i j) ((1+ i) (1- j))) selection interior))
-         (α #'* 0.0625 (reshape u (τ (i j) ((1- i) (1- j))) selection interior))))
-     (τ (i j) ((/ i 2) (/ j 2))))))
+  (trivia:ematch (shape u)
+    ((~ start-1 1 end-1 ~ start-2 1 end-2)
+     (let* ((selection (~ start-1 2 end-1 ~ start-2 2 end-2))
+            (interior (interior selection)))
+       (reshape
+        (fuse*
+         (reshape u selection)
+         (α #'+
+            (α #'* 0.25   (reshape u interior))
+            (α #'* 0.125  (reshape u (τ (i j) ((1+ i) j)) interior))
+            (α #'* 0.125  (reshape u (τ (i j) ((1- i) j)) interior))
+            (α #'* 0.125  (reshape u (τ (i j) (i (1+ j))) interior))
+            (α #'* 0.125  (reshape u (τ (i j) (i (1- j))) interior))
+            (α #'* 0.0625 (reshape u (τ (i j) ((1+ i) (1+ j))) interior))
+            (α #'* 0.0625 (reshape u (τ (i j) ((1- i) (1+ j))) interior))
+            (α #'* 0.0625 (reshape u (τ (i j) ((1+ i) (1- j))) interior))
+            (α #'* 0.0625 (reshape u (τ (i j) ((1- i) (1- j))) interior))))
+        (τ (i j) ((/ i 2) (/ j 2))))))))
 
 (defun residual (u b)
   (let ((interior (interior u))
@@ -195,9 +194,8 @@
 
 (defun v-cycle (u f v1 v2)
   (if (<= (total-size u) 25)
-      (rbgs u f 5) ; solve "exactly"
-      (let* ((x (rbgs u f v1))
+      (rbgs u :f f :iterations 3) ; solve "exactly"
+      (let* ((x (rbgs u :f f :iterations v1))
              (r (restrict (residual x f)))
-             (s (shape r))
-             (c (v-cycle (reshape 0.0 s) r v1 v2)))
-        (rbgs (α #'- x (prolongate c)) f v2))))
+             (c (v-cycle (reshape 0.0 (shape r)) r v1 v2)))
+        (rbgs (α #'- x (prolongate c)) :f f :iterations v2))))
