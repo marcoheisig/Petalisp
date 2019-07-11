@@ -435,35 +435,12 @@
 ;;; semantics is preserved.
 
 (defun normalize-ir (root-buffers)
-  (map-buffers #'normalize-buffer root-buffers))
+  (map-buffers #'normalize-buffer root-buffers)
+  (map-kernels #'normalize-kernel root-buffers))
 
 (defun normalize-buffer (buffer)
   (transform-buffer buffer (collapsing-transformation (buffer-shape buffer))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Locality Optimization
-;;;
-;;; Even after IR normalization, there remains another degree of freedom -
-;;; the order in which the iteration space of each kernel is traversed.  By
-;;; construction, kernels have no data dependencies, so the order does not
-;;; matter.
-;;;
-;;; The purpose of this IR transformation is to improve the data locality
-;;; by interchanging the ranges of the iteration space.  By convention,
-;;; backends treat the first range as the innermost loop and the last range
-;;; as the outermost loop.  So the goal is to move the loops with the
-;;; highest locality to the front.
-;;;
-;;; One invariant that is not touched by this transformation is that if the
-;;; kernel is a reduction kernel, then the first range of the iteration
-;;; space is always the range of the reduction.  Otherwise, we would need
-;;; to allocate an awful lot of temporaries for the reduction.
-
-;;; TODO Obviously, there is not yet any locality optimization going on.
-
-(defun optimize-locality (root-buffers)
-  (map-kernels #'optimize-kernel-locality root-buffers))
-
-(defun optimize-kernel-locality (kernel)
-  (transform-kernel kernel (identity-transformation (rank (kernel-iteration-space kernel)))))
+(defun normalize-kernel (kernel)
+  (unless (reduction-kernel-p kernel)
+    (transform-kernel kernel (collapsing-transformation (kernel-iteration-space kernel)))))
