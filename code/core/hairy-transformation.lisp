@@ -34,7 +34,7 @@
        (equalp (scalings t1)
                (scalings t2))))
 
-(defmethod compose-transformations
+(defmethod compose-two-transformations
     ((g hairy-transformation) (f hairy-transformation))
   ;; A2 (A1 x + b1) + b2 = A2 A1 x + A2 b1 + b2
   (let ((input-rank (input-rank f))

@@ -30,7 +30,9 @@
   (make-reference
    (input reference)
    shape
-   (compose-transformations (transformation reference) transformation)))
+   (compose-transformations
+    (transformation reference)
+    transformation)))
 
 ;;; Drop references with no effect.
 (defmethod make-reference

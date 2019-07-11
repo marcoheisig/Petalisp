@@ -152,7 +152,9 @@
    (transform
     (set-intersection iteration-space (shape reference))
     (transformation reference))
-   (compose-transformations (transformation reference) transformation)))
+   (compose-transformations
+    (transformation reference)
+    transformation)))
 
 (defmethod compute-value
     ((fusion fusion)

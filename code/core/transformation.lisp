@@ -29,7 +29,7 @@
 
 (defgeneric transformation-equal (transformation-1 transformation-2))
 
-(defgeneric compose-transformations (g f))
+(defgeneric compose-two-transformations (g f))
 
 (defgeneric invert-transformation (transformation))
 
@@ -97,7 +97,7 @@
   (= (output-rank t1)
      (output-rank t2)))
 
-(defmethod compose-transformations :before
+(defmethod compose-two-transformations :before
     ((g transformation) (f transformation))
   (assert (= (output-rank f) (input-rank g))))
 
@@ -117,3 +117,19 @@
      transformation
      :from-end t)
     (princ `(τ ,inputs ,(transform inputs transformation)) stream)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Functions
+
+(defun compose-transformations (transformation &rest more-transformations)
+  (if (null more-transformations)
+      (the transformation transformation)
+      (reduce #'compose-two-transformations more-transformations
+              :initial-value transformation)))
+
+(define-compiler-macro compose-transformations (&whole whole &rest transformations)
+  (trivia:match transformations
+    ((list) whole)
+    ((list transformation) (the transformation transformation))
+    (_ (reduce (lambda (a b) `(compose-two-transformations ,a ,b)) transformations))))

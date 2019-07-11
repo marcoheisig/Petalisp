@@ -21,11 +21,11 @@
   (= (input-rank transformation-1)
      (input-rank transformation-2)))
 
-(defmethod compose-transformations
+(defmethod compose-two-transformations
     ((g identity-transformation) (f transformation))
   f)
 
-(defmethod compose-transformations
+(defmethod compose-two-transformations
     ((g transformation) (f identity-transformation))
   g)
 

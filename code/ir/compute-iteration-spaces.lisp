@@ -96,7 +96,9 @@
    (transform
     (set-intersection iteration-space (shape reference))
     (transformation reference))
-   (compose-transformations (transformation reference) transformation)))
+   (compose-transformations
+    (transformation reference)
+    transformation)))
 
 (defmethod compute-iteration-spaces-aux
     ((reduction reduction) (iteration-space shape) (transformation transformation))
