@@ -198,7 +198,6 @@
           (invalid-call-function invalid-call)
           (invalid-call-argument-types invalid-call)))
 
-
 (defun infer-type-codes (function argument-type-codes)
   (let ((type-codes (multiple-value-list
                      (apply #'petalisp.type-codes:values-type-codes

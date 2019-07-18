@@ -85,11 +85,16 @@
       (values (make-sequence 'simple-vector input-rank :initial-element nil) t)
       (let ((vector (coerce value 'simple-vector))
             (identity-p t))
-        (assert (= (length vector) input-rank))
-        (loop for element across vector
-              do (assert (typep element '(or rational null)))
-              unless (null element) do
-                (setf identity-p nil))
+        (unless (= (length vector) input-rank)
+          (error "The input mask ~S does not match the input rank ~S."
+                 vector input-rank))
+        (loop for element across vector do
+          (typecase element
+            (null (values))
+            (integer (setf identity-p nil))
+            (otherwise
+             (error "Not a valid input mask element: ~S"
+                    element))))
         (values vector identity-p))))
 
 (defun canonicalize-output-mask (value supplied-p output-rank input-rank)
@@ -99,13 +104,30 @@
           (setf (svref vector index) index))
         (values vector (= input-rank output-rank)))
       (let ((vector (coerce value 'simple-vector))
-            (identity-p t))
-        (assert (= (length vector) output-rank))
+            (identity-p t)
+            (bitmask 0))
+        (unless (= (length vector) output-rank)
+          (error "The output mask ~S does not match the output rank ~S."
+                 vector output-rank))
         (loop for index below output-rank
-              for element across vector
-              do (assert (typep element '(or array-rank null)))
-              unless (eql element index) do
-                (setf identity-p nil))
+              for element across vector do
+                (typecase element
+                  (null
+                   (setf identity-p nil))
+                  (unsigned-byte
+                   (unless (< element input-rank)
+                     (error "The output mask element ~S is not below the input rank ~S."
+                            element input-rank))
+                   (unless (= element index)
+                     (setf identity-p nil))
+                   (let ((bit (ash 1 element)))
+                     (unless (zerop (logand bit bitmask))
+                       (error "Duplicate output mask element ~S at index ~S."
+                              element index))
+                     (setf bitmask (logior bit bitmask))))
+                  (otherwise
+                   (error "Not a valid output mask element: ~S"
+                          element))))
         (values vector identity-p))))
 
 (defun canonicalize-scalings (value supplied-p output-rank)
@@ -113,11 +135,17 @@
       (values (make-sequence 'simple-vector output-rank :initial-element 1))
       (let ((vector (coerce value 'simple-vector))
             (identity-p t))
-        (assert (= (length vector) output-rank))
-        (loop for element across vector
-              do (assert (rationalp element))
-              unless (eql element 1) do
-                (setf identity-p nil))
+        (unless (= (length vector) output-rank)
+          (error "The scaling vector ~S does not match the output rank ~S."
+                 vector output-rank))
+        (loop for element across vector do
+          (typecase element
+            (rational
+             (unless (= element 1)
+               (setf identity-p nil)))
+            (otherwise
+             (error "Not a valid scaling vector element: ~S (should be a rational)"
+                    element))))
         (values vector identity-p))))
 
 (defun canonicalize-offsets (value supplied-p output-rank)
@@ -125,11 +153,17 @@
       (values (make-sequence 'simple-vector output-rank :initial-element 0) t)
       (let ((vector (coerce value 'simple-vector))
             (identity-p t))
-        (assert (= (length vector) output-rank))
-        (loop for element across vector
-              do (assert (rationalp element))
-              unless (eql element 0) do
-                (setf identity-p nil))
+        (unless (= (length vector) output-rank)
+          (error "The offset vector ~S does not match the output rank ~S."
+                 vector output-rank))
+        (loop for element across vector do
+          (typecase element
+            (rational
+             (unless (zerop element)
+               (setf identity-p nil)))
+            (otherwise
+             (error "Not a valid scaling vector element: ~S (should be a rational)"
+                    element))))
         (values vector identity-p))))
 
 (defun free-variables (form &optional environment)
