@@ -2,7 +2,7 @@
 
 (in-package #:petalisp.graphviz)
 
-(defvar *graphviz-default-viewer*
+(defparameter *graphviz-default-viewer*
   (flet ((program-in-path-p (program)
            (multiple-value-bind (out err exit-code)
                (uiop:run-program
@@ -10,9 +10,9 @@
                 :ignore-error-status t)
              (declare (ignore out err))
              (zerop exit-code))))
-    (find-if #'program-in-path-p '("evince" "okular" "xpdf"))))
+    (find-if #'program-in-path-p '("okular" "evince" "xpdf"))))
 
-(defvar *graphviz-default-format* :pdf)
+(defparameter *graphviz-default-format* :pdf)
 
 (defun view (graph-root &key
                           (format *graphviz-default-format*)
