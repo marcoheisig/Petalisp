@@ -23,7 +23,7 @@
 ;;;
 ;;; The Jacobi method
 
-(defun jacobi (u &key (iterations 1) (h 1.0) (f 0))
+(defun jacobi (u f h &optional (iterations 1))
   "Iteratively solve the Poisson equation -Δu = f for a given uniform grid
   with spacing h, using the Jacobi scheme."
   (let ((interior (interior u)))
@@ -95,7 +95,7 @@
            (mapcar #'offset-space red-offsets)
            (mapcar #'offset-space black-offsets)))))))
 
-(defun rbgs (u &key (iterations 1) (h 1.0) (f 0))
+(defun rbgs (u f h &optional (iterations 1))
   "Iteratively solve the Poisson equation -Δu = f for a given uniform grid
   with spacing h, using the Red-Black Gauss-Seidel scheme."
   (let ((stencil (ecase (rank u)
@@ -179,23 +179,24 @@
             (α #'* 0.0625 (reshape u (τ (i j) ((1- i) (1- j))) interior))))
         (τ (i j) ((/ i 2) (/ j 2))))))))
 
-(defun residual (u b)
-  (let ((interior (interior u))
-        (h (/ (1- (sqrt (total-size u))))))
-    (fuse* (reshape 0.0 (shape u))
+(defun residual (u b h)
+  (let ((interior (interior u)))
+    (fuse* (reshape 0d0 (shape u))
            (α #'- (reshape b interior)
-              (α #'* (/ (* h h))
-                 (α #'+
-                    (reshape (α #'* -4.0 u) interior)
+              (α #'* (/ 1 (* h h))
+                 (α #'-
+                    (reshape (α #'* 4.0 u) interior)
                     (reshape u (τ (i j) ((1+ i) j)) interior)
                     (reshape u (τ (i j) ((1- i) j)) interior)
                     (reshape u (τ (i j) (i (1+ j))) interior)
                     (reshape u (τ (i j) (i (1- j))) interior)))))))
 
-(defun v-cycle (u f v1 v2)
+(defun v-cycle (u f h v1 v2)
   (if (<= (total-size u) 25)
-      (rbgs u :f f :iterations 3) ; solve "exactly"
-      (let* ((x (rbgs u :f f :iterations v1))
-             (r (restrict (residual x f)))
-             (c (v-cycle (reshape 0.0 (shape r)) r v1 v2)))
-        (rbgs (α #'- x (prolongate c)) :f f :iterations v2))))
+      (rbgs u f h 3)                    ; solve "exactly"
+      (let* ((x (rbgs u f h v1))
+             (r (restrict (residual x f h)))
+             (c (v-cycle (reshape 0d0 (shape r)) r (* 2 h) v1 v2)))
+        (rbgs (α #'+ x (prolongate c)) f h v2))))
+
+

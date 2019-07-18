@@ -3,16 +3,20 @@
 (in-package #:petalisp.test-suite)
 
 (test jacobi-test
-  (compute (jacobi (ndarray 1) :iterations 2))
-  (compute (jacobi (ndarray 2) :iterations 2))
-  (compute (jacobi (ndarray 3) :iterations 2))
-  (compute (jacobi (ndarray 3) :iterations 5)))
+  (compute (jacobi (ndarray 1) 0.0 1.0 2))
+  (compute (jacobi (ndarray 2) 0.0 1.0 2))
+  (compute (jacobi (ndarray 3) 0.0 1.0 2))
+  (compute (jacobi (ndarray 3) 0.0 1.0 5)))
 
 (test rbgs-test
-  (compute (rbgs (ndarray 1) :iterations 2))
-  (compute (rbgs (ndarray 2) :iterations 2))
-  (compute (rbgs (ndarray 3) :iterations 2))
-  (compute (rbgs (ndarray 3) :iterations 5)))
+  (compute (rbgs (ndarray 1) 0.0 1.0 2))
+  (compute (rbgs (ndarray 2) 0.0 1.0 2))
+  (compute (rbgs (ndarray 3) 0.0 1.0 2))
+  (compute (rbgs (ndarray 3) 0.0 1.0 5)))
+
+(test v-cycle-test
+  (compute (v-cycle (reshape 1.0 (~ 0 32 ~ 0 32)) 0.0 1.0 2 1))
+  (compute (v-cycle (reshape 1.0 (~ 0 64 ~ 0 64)) 0.0 1.0 3 3)))
 
 #+nil
 (test iterate-randomly
