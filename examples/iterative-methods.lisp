@@ -168,15 +168,15 @@
         (fuse*
          (reshape u selection)
          (α #'+
-            (α #'* 0.25   (reshape u interior))
-            (α #'* 0.125  (reshape u (τ (i j) ((1+ i) j)) interior))
-            (α #'* 0.125  (reshape u (τ (i j) ((1- i) j)) interior))
-            (α #'* 0.125  (reshape u (τ (i j) (i (1+ j))) interior))
-            (α #'* 0.125  (reshape u (τ (i j) (i (1- j))) interior))
-            (α #'* 0.0625 (reshape u (τ (i j) ((1+ i) (1+ j))) interior))
-            (α #'* 0.0625 (reshape u (τ (i j) ((1- i) (1+ j))) interior))
-            (α #'* 0.0625 (reshape u (τ (i j) ((1+ i) (1- j))) interior))
-            (α #'* 0.0625 (reshape u (τ (i j) ((1- i) (1- j))) interior))))
+            (α #'* 0.25d0   (reshape u interior))
+            (α #'* 0.125d0  (reshape u (τ (i j) ((1+ i) j)) interior))
+            (α #'* 0.125d0  (reshape u (τ (i j) ((1- i) j)) interior))
+            (α #'* 0.125d0  (reshape u (τ (i j) (i (1+ j))) interior))
+            (α #'* 0.125d0  (reshape u (τ (i j) (i (1- j))) interior))
+            (α #'* 0.0625d0 (reshape u (τ (i j) ((1+ i) (1+ j))) interior))
+            (α #'* 0.0625d0 (reshape u (τ (i j) ((1- i) (1+ j))) interior))
+            (α #'* 0.0625d0 (reshape u (τ (i j) ((1+ i) (1- j))) interior))
+            (α #'* 0.0625d0 (reshape u (τ (i j) ((1- i) (1- j))) interior))))
         (τ (i j) ((/ i 2) (/ j 2))))))))
 
 (defun residual (u b h)
@@ -185,7 +185,7 @@
            (α #'- (reshape b interior)
               (α #'* (/ 1 (* h h))
                  (α #'-
-                    (reshape (α #'* 4.0 u) interior)
+                    (reshape (α #'* 4.0d0 u) interior)
                     (reshape u (τ (i j) ((1+ i) j)) interior)
                     (reshape u (τ (i j) ((1- i) j)) interior)
                     (reshape u (τ (i j) (i (1+ j))) interior)
