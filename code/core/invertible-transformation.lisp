@@ -41,5 +41,5 @@
 
 (defmethod invert-transformation
     ((transformation transformation))
-  (error "~:<The transformation ~W is not invertible.~:@>"
+  (error "~@<The transformation ~W is not invertible.~:@>"
          transformation))

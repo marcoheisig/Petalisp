@@ -263,7 +263,8 @@
                           (multiple-value-list (apply function args)))
                   ()
                   "~@<The function ~W is not affine-linear.~:@>"
-                  function)
+                  (or (function-lambda-expression function)
+                      function))
           transformation)))))
 
 (define-compiler-macro make-transformation-from-function
