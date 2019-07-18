@@ -56,7 +56,8 @@
          'integer))))
 
 (defun buffer-blueprint (buffer)
-  (buffer-type-code buffer))
+  (ucons:ulist (buffer-type-code buffer)
+               (rank (buffer-shape buffer))))
 
 (defun transformation-blueprint (transformation)
   (let ((result '()))
@@ -131,6 +132,14 @@
 ;;; 4. A list of instructions.
 
 (defun parse-kernel-blueprint (blueprint)
-  (destructuring-bind (ranges reduction-range array-types instructions)
+  (destructuring-bind (ranges reduction-range array-info instructions)
       (ucons:tree-from-utree blueprint)
-    (values ranges reduction-range array-types instructions)))
+    (values
+     ranges
+     reduction-range
+     (loop for (element-type-code rank) in array-info
+           collect
+           `(simple-array
+             ,(petalisp.type-codes:type-specifier-from-type-code element-type-code)
+             ,(loop repeat rank collect '*)))
+     instructions)))
