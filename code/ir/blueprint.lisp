@@ -16,7 +16,7 @@
         (*function-counter* -1))
     (assign-instruction-numbers kernel)
     (ucons:ulist
-     (ucons:umapcar #'range-blueprint (ranges (kernel-iteration-space kernel)))
+     (ucons:umapcar #'range-blueprint (shape-ranges (kernel-iteration-space kernel)))
      (if (kernel-reduction-range kernel)
          (range-blueprint (kernel-reduction-range kernel))
          nil)

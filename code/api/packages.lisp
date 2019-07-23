@@ -8,6 +8,7 @@
    #:common-lisp
    #:petalisp.core)
   (:export
+
    ;; High-level API
    #:α
    #:β
@@ -38,22 +39,38 @@
    ;; Ranges
    #:range
    #:rangep
-   #:unary-range-p
-   #:split-range
    #:make-range
+   #:size-one-range-p
+   #:split-range
+   #:map-range
+   #:range-equal
+   #:range-contains
+   #:range-intersection
+   #:range-intersectionp
+   #:range-difference-list
    #:range-start-step-end
    #:range-start
    #:range-step
    #:range-end
+   #:range-size
 
    ;; Shapes
    #:shape
    #:shapep
    #:make-shape
-   #:rank
-   #:ranges
+   #:shape-rank
+   #:shape-ranges
+   #:shape-size
+   #:shape-equal
    #:shape-difference-list
+   #:shape-intersection
+   #:shape-intersectionp
+   #:map-shape
+   #:shape-contains
+   #:shrink-shape
    #:enlarge-shape
+   #:shape-union
+   #:subdivision
 
    ;; Transformations
    #:transformation
@@ -77,6 +94,7 @@
    #:empty-array-p
    #:coerce-to-lazy-array
    #:element-type
+   #:rank
    #:total-size
    #:refcount
    #:input

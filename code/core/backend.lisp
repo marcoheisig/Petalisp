@@ -81,14 +81,14 @@
     promise))
 
 (defmethod lisp-datum-from-immediate ((array-immediate array-immediate))
-  (if (zerop (rank (shape array-immediate)))
+  (if (zerop (rank array-immediate))
       (aref (storage array-immediate))
       (storage array-immediate)))
 
 (defmethod lisp-datum-from-immediate ((range-immediate range-immediate))
   (let* ((shape (shape range-immediate))
-         (range (first (ranges shape)))
-         (size (set-size range))
+         (range (first (shape-ranges shape)))
+         (size (range-size range))
          (array (make-array size)))
     (loop for index below size do
       (setf (aref array index) index))

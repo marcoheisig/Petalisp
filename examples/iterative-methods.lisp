@@ -17,7 +17,7 @@
            (multiple-value-bind (start step end)
                (range-start-step-end range)
              (range (+ start step) step (- end step)))))
-    (make-shape (mapcar #'range-interior (ranges (shape array))))))
+    (make-shape (mapcar #'range-interior (shape-ranges (shape array))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -65,7 +65,7 @@
 
 (defun red-black-coloring (array)
   (let* ((lazy-array (coerce-to-lazy-array array))
-         (ranges (ranges (shape lazy-array))))
+         (ranges (shape-ranges (shape lazy-array))))
     (labels ((prepend-1 (list)
                (cons 1 list))
              (prepend-2 (list)

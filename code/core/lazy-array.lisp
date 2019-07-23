@@ -142,7 +142,7 @@
   0)
 
 (defmethod total-size ((non-empty-array non-empty-array))
-  (set-size (shape non-empty-array)))
+  (shape-size (shape non-empty-array)))
 
 (defmethod element-type ((object t))
   (petalisp.type-codes:type-specifier-from-type-code
@@ -162,17 +162,18 @@
 
 (defmethod shape ((array array))
   (if (zerop (array-total-size array))
-      (empty-set)
-      (make-shape
+      nil
+      (%make-shape
        (loop for axis below (array-rank array)
              collect
-             (range 0 1 (1- (array-dimension array axis)))))))
-
-(defmethod shape ((any-set any-set))
-  any-set)
+             (range 0 1 (1- (array-dimension array axis))))
+       (array-rank array))))
 
 (defmethod shape ((empty-array empty-array))
   (error "The empty array has no shape."))
+
+(defmethod shape ((shape shape))
+  shape)
 
 (defmethod rank ((object t))
   0)
@@ -181,7 +182,10 @@
   (array-rank array))
 
 (defmethod rank ((lazy-array lazy-array))
-  (rank (shape lazy-array)))
+  (shape-rank (shape lazy-array)))
+
+(defmethod rank ((shape shape))
+  (shape-rank shape))
 
 (defmethod inputs ((object t))
   '())

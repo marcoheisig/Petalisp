@@ -102,7 +102,7 @@
          (nth
           (value-n reduction)
           (multiple-value-list
-           (divide-and-conquer (first (ranges (shape (first inputs))))))))))))
+           (divide-and-conquer (first (shape-ranges (shape (first inputs))))))))))))
 
 (defmethod evaluate ((fusion fusion))
   (let ((inputs (mapcar #'evaluate (inputs fusion))))
@@ -110,7 +110,7 @@
      (shape fusion)
      (element-type fusion)
      (lambda (index)
-       (let ((input (find-if (lambda (input) (set-contains (shape input) index)) inputs)))
+       (let ((input (find-if (lambda (input) (shape-contains (shape input) index)) inputs)))
          (assert input)
          (iref input index))))))
 

@@ -126,7 +126,7 @@
   (if (null reduction-axis)
       nil
       (flet ((reduction-range-of (lazy-array)
-               (nth reduction-axis (ranges (shape lazy-array)))))
+               (nth reduction-axis (shape-ranges (shape lazy-array)))))
         (let ((fusion-range (reduction-range-of fusion)))
           (loop for input in (inputs fusion)
                   thereis (not

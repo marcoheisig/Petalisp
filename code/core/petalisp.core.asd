@@ -20,10 +20,7 @@
   :components
   ((:file "packages")
 
-   ;; Sets
-   (:file "set")
-   (:file "empty-set")
-   (:file "explicit-set")
+   ;; Ranges and Shapes
    (:file "range")
    (:file "shape")
 

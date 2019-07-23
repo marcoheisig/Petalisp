@@ -2,6 +2,9 @@
 
 (in-package #:petalisp.core)
 
+(deftype rank ()
+  `(integer 0 (,array-rank-limit)))
+
 ;;; A shape of rank D is the Cartesian product of D ranges.  That means
 ;;; each element of a shape is a D-tuple of integers, such that the first
 ;;; integer is an element of the first range, the second integer is an
@@ -9,60 +12,73 @@
 ;;; there can also be no empty shapes.  However, there is one shape - the
 ;;; product of zero ranges - which has the empty tuple as its sole element.
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Generic Functions
-
-(defgeneric rank (shape))
-
-(defgeneric ranges (shape))
-
-(defgeneric shape-difference-list (shape-1 shape-2))
-
-(defgeneric shape-union (shapes))
-
-(defgeneric enlarge-shape (shape range))
-
-(defgeneric shrink-shape (shape))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Classes
-
-(defclass shape (finite-set)
-  ((%rank :initarg :rank :reader rank :type array-rank)
-   (%ranges :initarg :ranges :reader ranges :type list)))
+(defstruct (shape
+            (:predicate shapep)
+            (:constructor %make-shape (ranges rank &aux (x (assert (= (length ranges) rank))))))
+  (rank nil :type array-rank :read-only t)
+  (ranges nil :type list :read-only t))
 
 (defun make-shape (ranges)
-  (assert (every #'rangep ranges))
-  (make-instance 'shape :ranges ranges :rank (length ranges)))
+  (let ((rank 0))
+    (declare (rank rank))
+    (dolist (range ranges (%make-shape ranges rank))
+      (check-type range range)
+      (incf rank))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Methods
+(defun shape-size (shape)
+  (declare (shape shape))
+  (reduce #'* (shape-ranges shape) :key #'range-size))
 
-(petalisp.utilities:define-class-predicate shape)
+(defun shape-equal (shape-1 shape-2)
+  (declare (shape shape-1 shape-2))
+  (and (= (shape-rank shape-1)
+          (shape-rank shape-2))
+       (every #'range-equal
+              (shape-ranges shape-1)
+              (shape-ranges shape-2))))
 
-(defmethod shape-difference-list ((shape-1 shape) (shape-2 shape))
-  (let ((intersection (set-intersection shape-1 shape-2)))
-    (if (set-emptyp intersection)
+(defun shape-difference-list (shape-1 shape-2)
+  (declare (shape shape-1 shape-2))
+  (let ((intersection (shape-intersection shape-1 shape-2)))
+    (if (null intersection)
         (list shape-1)
-        (let ((intersection-ranges (ranges intersection))
+        (let ((intersection-ranges (shape-ranges intersection))
               (result '()))
-          (loop for (range-1 . tail) on (ranges shape-1)
-                for range-2 in (ranges shape-2)
+          (loop for (range-1 . tail) on (shape-ranges shape-1)
+                for range-2 in (shape-ranges shape-2)
                 for i from 0
                 for head = (subseq intersection-ranges 0 i) do
                   (loop for difference in (range-difference-list range-1 range-2) do
-                    (push (make-shape (append head (cons difference tail)))
+                    (push (%make-shape
+                           (append head (cons difference tail))
+                           (shape-rank shape-1))
                           result)))
           result))))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Shapes as Sets
+(defun shape-intersection (shape-1 shape-2)
+  (if (/= (shape-rank shape-1)
+          (shape-rank shape-2))
+      nil
+      (%make-shape
+       (loop for range-1 in (shape-ranges shape-1)
+             for range-2 in (shape-ranges shape-2)
+             for intersection = (range-intersection range-1 range-2)
+             when (null intersection) do
+               (return-from shape-intersection nil)
+               collect intersection)
+       (shape-rank shape-1))))
 
-(defmethod set-for-each ((function function) (shape shape))
+(defun shape-intersectionp (shape-1 shape-2)
+  (declare (shape shape-1 shape-2))
+  (and (= (shape-rank shape-1)
+          (shape-rank shape-2))
+       (every #'range-intersectionp
+              (shape-ranges shape-1)
+              (shape-ranges shape-2))))
+
+(defun map-shape (function shape)
+  (declare (function function)
+           (shape shape))
   (labels ((rec (ranges indices function)
              (if (null ranges)
                  (funcall function indices)
@@ -72,72 +88,57 @@
                          (cons index indices)
                          function))
                   (first ranges)))))
-    (rec (reverse (ranges shape)) '() function)))
+    (rec (reverse (shape-ranges shape)) '() function)))
 
-(defmethod set-size ((shape shape))
-  (reduce #'* (ranges shape) :key #'range-size))
-
-(defmethod set-contains ((shape shape) (tuple list))
-  (loop for integer in tuple
-        for range in (ranges shape)
+(defun shape-contains (shape index)
+  (declare (shape shape)
+           (list index))
+  (loop for integer in index
+        for range in (shape-ranges shape)
         always (range-contains range integer)))
 
-(defmethod set-difference ((shape-1 shape) (shape-2 shape))
-  (trivia:match (shape-difference-list shape-1 shape-2)
-    ((list) (empty-set))
-    ((list shape) shape)
-    ((list* shapes)
-     (make-explicit-set
-      (apply #'append (mapcar #'set-elements shapes))))))
+(defun shrink-shape (shape)
+  (declare (shape shape))
+  (assert (plusp (shape-rank shape)))
+  (let ((ranges (shape-ranges shape)))
+    (values (%make-shape
+             (rest ranges)
+             (1- (shape-rank shape)))
+            (first ranges))))
 
-(defmethod set-equal ((shape-1 shape) (shape-2 shape))
-  (and (= (rank shape-1)
-          (rank shape-2))
-       (every #'range-equal (ranges shape-1) (ranges shape-2))))
+(defun enlarge-shape (shape range)
+  (declare (shape shape)
+           (range range))
+  (%make-shape
+   (list* range (shape-ranges shape))
+   (1+ (shape-rank shape))))
 
-(defmethod set-intersection ((shape-1 shape) (shape-2 shape))
-  (if (/= (rank shape-1) (rank shape-2))
-      (empty-set)
-      (block nil
-        (make-shape
-         (mapcar (lambda (range-1 range-2)
-                   (let ((intersection (range-intersection range-1 range-2)))
-                     (if (null intersection)
-                         (return (empty-set))
-                         intersection)))
-                 (ranges shape-1)
-                 (ranges shape-2))))))
+(defun subshapep (shape-1 shape-2)
+  (declare (shape shape-1 shape-2))
+  (and (= (shape-rank shape-1)
+          (shape-rank shape-2))
+       (loop for range-1 in (shape-ranges shape-1)
+             for range-2 in (shape-ranges shape-2)
+             always (subrangep range-1 range-2))))
 
-(defmethod set-intersectionp ((shape-1 shape) (shape-2 shape))
-  (and (= (rank shape-1)
-          (rank shape-2))
-       (every #'range-intersectionp (ranges shape-1) (ranges shape-2))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Shape Union
-
-(defmethod shape-union ((null null))
-  (empty-set))
-
-(defmethod shape-union :before ((shapes cons))
-  (assert (petalisp.utilities:identical shapes :key #'rank) ()
-          "~@<Can only determine the union of index shapes with ~
-              equal rank. The index shapes ~
-              ~{~#[~;and ~S~;~S ~:;~S, ~]~} violate this requirement.~:@>"
-    shapes))
-
-(defmethod shape-union ((shapes cons))
-  (make-shape
-   (apply #'mapcar #'shape-union-range-oracle
-          (mapcar #'ranges shapes))))
-
-(defmethod shape-union :around ((shapes cons))
-  (let ((union (call-next-method)))
-    (flet ((proper-subspace-p (shape)
-             (set-subsetp shape union)))
-      (assert (every #'proper-subspace-p shapes))
-      union)))
+(defun shape-union (shapes)
+  (if (null shapes)
+      nil
+      (let* ((first-shape (first shapes))
+             (rank (shape-rank first-shape)))
+        (loop for shape in (rest shapes) do
+          (unless (= (shape-rank shape) rank)
+            (error "~@<Can only determine the union of index shapes with ~
+                       equal rank. The index shapes ~
+                       ~{~#[~;and ~S~;~S ~:;~S, ~]~} violate this requirement.~:@>"
+                   shapes)))
+        (let ((union (%make-shape
+                      (apply #'mapcar #'shape-union-range-oracle
+                             (mapcar #'shape-ranges shapes))
+                      rank)))
+          (loop for shape in shapes do
+            (assert (subshapep shape union)))
+          union))))
 
 (defun shape-union-range-oracle (&rest ranges)
   ;; determine the bounding box
@@ -162,16 +163,6 @@
                                        (range-step range)))))))
                    (make-range global-start step-size global-end))))))
 
-(defmethod enlarge-shape ((shape shape) (range range))
-  (make-shape (list* range (ranges shape))))
-
-(defmethod shrink-shape ((shape shape))
-  (if (set-emptyp shape)
-      (empty-set)
-      (let ((ranges (ranges shape)))
-        (values (make-shape (rest ranges))
-                (first ranges)))))
-
 ;;; Return a list of disjoint shapes. Each resulting object is a proper
 ;;; subspace of one or more of the arguments and their fusion covers all
 ;;; arguments.
@@ -186,8 +177,8 @@
                  (setf object-w/o-dust (subtract object-w/o-dust particle))
                  (loop for shape in (shape-difference-list particle object) do
                    (push shape new-dust))
-                 (let ((it (set-intersection particle object)))
-                   (unless (set-emptyp it)
+                 (let ((it (shape-intersection particle object)))
+                   (unless (null it)
                      (push it new-dust))))
                (append object-w/o-dust new-dust))))
     (trivia:ematch shapes
@@ -195,7 +186,6 @@
       ((list _) shapes)
       ((list* _ _ _)
        (reduce #'shatter shapes :initial-value nil)))))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -210,7 +200,7 @@
                 (cond ((= start end) (list start))
                       ((= step 1) (list start end))
                       ((list start step end)))))
-            (ranges shape))))
+            (shape-ranges shape))))
     (cond ((and *print-readably* *read-eval*)
            (format stream "#.(~~~{~^ ~{~D~^ ~}~^ ~~~})"
                    (listify-shape shape)))
@@ -218,7 +208,7 @@
            (format stream "(~~~{~^ ~{~D~^ ~}~^ ~~~})"
                    (listify-shape shape)))
           (t (print-unreadable-object (shape stream :type t)
-               (format stream "~{~S~^ ~}" (ranges shape)))))))
+               (format stream "~{~S~^ ~}" (shape-ranges shape)))))))
 
 (defconstant ~ '~)
 
@@ -268,7 +258,7 @@
 (trivia:defpattern shape (&rest ranges)
   (with-gensyms (it)
     `(trivia:guard1 ,it (shapep ,it)
-                    (ranges ,it) (list ,@ranges))))
+                    (shape-ranges ,it) (list ,@ranges))))
 
 (trivia:defpattern ~ (&rest tilde-separated-range-designators)
   (if (null tilde-separated-range-designators)

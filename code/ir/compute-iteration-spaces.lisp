@@ -46,7 +46,7 @@
         (list (cons (shape root) nil)))))
 
 (defun reduction-range (reduction)
-  (first (ranges (shape (first (inputs reduction))))))
+  (first (shape-ranges (shape (first (inputs reduction))))))
 
 (defmethod compute-iteration-spaces ((root reduction))
   (let* ((*root* root)
@@ -77,9 +77,9 @@
   ;; Check whether any inputs are free of fusion nodes.  If so, push an
   ;; iteration space.
   (loop for input in (inputs fusion) do
-    (let ((subspace (set-intersection iteration-space (shape input))))
+    (let ((subspace (shape-intersection iteration-space (shape input))))
       ;; If the input is unreachable, we do nothing.
-      (unless (set-emptyp subspace)
+      (unless (null subspace)
         ;; If the input contains fusion nodes, we also do nothing.
         (unless (compute-iteration-spaces-aux input subspace transformation)
           ;; We have an outer fusion.  This means we have to add a new
@@ -94,7 +94,7 @@
   (compute-iteration-spaces-aux
    (input reference)
    (transform
-    (set-intersection iteration-space (shape reference))
+    (shape-intersection iteration-space (shape reference))
     (transformation reference))
    (compose-transformations
     (transformation reference)

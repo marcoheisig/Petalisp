@@ -58,7 +58,7 @@
           (shape-generator (make-shape-generator)))
   (lambda ()
     (let* ((shape (funcall shape-generator))
-           (array (make-array (mapcar #'range-size (ranges shape))
+           (array (make-array (mapcar #'range-size (shape-ranges shape))
                               :element-type element-type)))
       (loop for index below (array-total-size array) do
         (setf (row-major-aref array index)

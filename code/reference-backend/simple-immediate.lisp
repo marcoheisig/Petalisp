@@ -17,7 +17,7 @@
 
 (defun make-simple-immediate (shape element-type value-fn)
   (let ((table (make-hash-table :test #'equal)))
-    (set-for-each
+    (map-shape
      (lambda (index)
        (let ((value (funcall value-fn index)))
          (assert (typep value element-type))
@@ -40,8 +40,8 @@
   (with-accessors ((shape shape) (table table)) simple-immediate
     (if (zerop (rank shape))
         (gethash '() table)
-        (let ((array (make-array (mapcar #'range-size (ranges shape)))))
-          (set-for-each
+        (let ((array (make-array (mapcar #'range-size (shape-ranges shape)))))
+          (map-shape
            (lambda (index)
              (setf (apply #'aref array index)
                    (gethash index table)))

@@ -6,22 +6,8 @@
   (:use
    #:common-lisp
    #:alexandria)
-  (:shadow cl:set-difference alexandria:set-equal)
   (:import-from #:petalisp.utilities #:document-variable #:document-function)
   (:export
-
-   ;; Sets
-   #:make-explicit-set
-   #:set-for-each
-   #:set-difference
-   #:set-elements
-   #:set-emptyp
-   #:set-contains
-   #:set-intersection
-   #:set-intersectionp
-   #:set-subsetp
-   #:set-size
-   #:set-union
 
    ;; Ranges
    #:range
@@ -46,11 +32,19 @@
    #:shape
    #:shapep
    #:make-shape
-   #:rank
-   #:ranges
+   #:shape-rank
+   #:shape-ranges
+   #:shape-size
+   #:shape-equal
    #:shape-difference-list
-   #:enlarge-shape
+   #:shape-intersection
+   #:shape-intersectionp
+   #:map-shape
+   #:shape-contains
    #:shrink-shape
+   #:enlarge-shape
+   #:shape-union
+   #:subdivision
 
    ;; Transformations
    #:τ
@@ -79,6 +73,7 @@
    #:coerce-to-lazy-array
    #:total-size
    #:element-type
+   #:rank
    #:type-code
    #:input
    #:inputs

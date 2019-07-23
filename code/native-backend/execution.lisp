@@ -31,7 +31,7 @@
            (memory-pool native-backend)
            (petalisp.type-codes:type-specifier-from-type-code
             (buffer-type-code buffer))
-           (mapcar #'range-size (ranges (buffer-shape buffer)))))
+           (mapcar #'range-size (shape-ranges (buffer-shape buffer)))))
     (map-buffer-inputs
      (lambda (kernel)
        (execute-kernel kernel native-backend))
@@ -70,7 +70,7 @@
     (setf (fill-pointer arrays) 0)
     (setf (fill-pointer functions) 0)
     ;; Initialize the range arguments.
-    (loop for range in (ranges (kernel-iteration-space kernel))
+    (loop for range in (shape-ranges (kernel-iteration-space kernel))
           for offset from 0 by 3 do
             (multiple-value-bind (start step end)
                 (range-start-step-end range)

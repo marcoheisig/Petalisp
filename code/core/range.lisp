@@ -96,6 +96,7 @@
     (loop for element from start by step to end do
       (funcall function element))))
 
+(declaim (inline range-contains))
 (defun range-contains (range integer)
   (declare (range range)
            (integer integer))
@@ -258,6 +259,14 @@
 (defun range-intersectionp (range-1 range-2)
   (declare (range range-1 range-2))
   (and (range-intersection-start-step-end range-1 range-2) t))
+
+(defun subrangep (range-1 range-2)
+  (declare (range range-1 range-2))
+  (multiple-value-bind (start step end)
+      (range-start-step-end range-1)
+    (range-contains range-2 start)
+    (range-contains range-2 (+ start step))
+    (range-contains range-2 end)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

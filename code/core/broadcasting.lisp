@@ -5,8 +5,8 @@
 (defun broadcast (array shape)
   (let* ((lazy-array (coerce-to-lazy-array array))
          (old-rank (rank lazy-array))
-         (new-rank (rank shape)))
-    (cond ((set-equal (shape array) shape) lazy-array)
+         (new-rank (shape-rank shape)))
+    (cond ((shape-equal (shape array) shape) lazy-array)
           ((< new-rank old-rank)
            (error "~@<Cannot broadcast the rank ~D array ~A ~
                       to the rank ~D shape ~A.~:@>"
@@ -15,7 +15,7 @@
            (let ((output-mask (make-array old-rank))
                  (offsets (make-array old-rank))
                  (scalings (make-array old-rank)))
-             (loop for range in (ranges (shape lazy-array))
+             (loop for range in (shape-ranges (shape lazy-array))
                    for oindex from 0
                    for iindex from (- new-rank old-rank) do
                      (if (size-one-range-p range)
@@ -58,7 +58,7 @@
 (defun broadcast-list-of-arrays (list-of-arrays)
   (let* ((lazy-arrays (mapcar #'coerce-to-lazy-array list-of-arrays))
          (shapes (mapcar #'shape lazy-arrays))
-         (rank (loop for shape in shapes maximize (rank shape)))
+         (rank (loop for shape in shapes maximize (shape-rank shape)))
          (broadcast-ranges '()))
     (loop for axis from (1- rank) downto 0 do
       (let ((broadcast-range (range 0)))
@@ -77,16 +77,16 @@
 ;;; BROADCAST-RANK.  Then, access the range corresponding to AXIS of the
 ;;; resulting padded shape.
 (defun nth-broadcast-range (shape broadcast-rank axis)
-  (with-accessors ((rank rank) (ranges ranges)) shape
-    (let* ((padding (- broadcast-rank rank))
-           (n (- axis padding)))
-      (if (minusp n)
-          (range 0)
-          (nth n ranges)))))
+  (declare (shape shape))
+  (let* ((padding (- broadcast-rank (shape-rank shape)))
+         (n (- axis padding)))
+    (if (minusp n)
+        (range 0)
+        (nth n (shape-ranges shape)))))
 
 (defun broadcasting-transformation (input-shape output-shape)
-  (let* ((input-ranges (ranges input-shape))
-         (output-ranges (ranges output-shape))
+  (let* ((input-ranges (shape-ranges input-shape))
+         (output-ranges (shape-ranges output-shape))
          (input-rank (length input-ranges))
          (output-rank (length output-ranges))
          (offsets (make-array output-rank :initial-element 0))

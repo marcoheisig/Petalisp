@@ -2,6 +2,7 @@
 
 (in-package #:petalisp.utilities)
 
+(declaim (inline identical))
 (defun identical (sequence &key (test #'eql) (key #'identity))
   "Check whether the KEYs of SEQUENCE are identical with respect to TEST."
   (etypecase sequence

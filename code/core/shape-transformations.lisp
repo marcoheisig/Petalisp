@@ -7,15 +7,15 @@
 ;;; Methods
 
 (defmethod transform :before ((shape shape) (transformation transformation))
-  (assert (= (rank shape) (input-rank transformation)) ()
+  (assert (= (shape-rank shape) (input-rank transformation)) ()
           "~@<Cannot apply the transformation ~A with input rank ~R ~
               to the index shape ~A with rank ~R.~:@>"
     transformation (input-rank transformation)
-    shape (rank shape)))
+    shape (shape-rank shape)))
 
 (defmethod transform :before ((shape shape) (transformation hairy-transformation))
   (let ((input-mask (input-mask transformation)))
-    (loop for range in (ranges shape)
+    (loop for range in (shape-ranges shape)
           for constraint across input-mask
           for index from 0 do
             (unless (not constraint)
@@ -31,7 +31,7 @@
 
 (defmethod transform ((shape shape) (transformation hairy-transformation))
   (let ((output-ranges (make-list (output-rank transformation)))
-        (input-ranges (ranges shape)))
+        (input-ranges (shape-ranges shape)))
     (flet ((store-output-range (output-index input-index scaling offset)
              (setf (elt output-ranges output-index)
                    (if (not input-index)
@@ -51,7 +51,7 @@
 ;;; Return a non-permuting, affine transformation from a zero based array
 ;;; with step size one to the given SHAPE.
 (defun from-storage-transformation (shape)
-  (let ((ranges (ranges shape)))
+  (let ((ranges (shape-ranges shape)))
     (make-transformation
      :scalings (map 'vector #'range-step ranges)
      :offsets (map 'vector #'range-start ranges))))

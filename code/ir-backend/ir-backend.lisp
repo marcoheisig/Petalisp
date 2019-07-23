@@ -37,7 +37,7 @@
     (setf (buffer-executedp buffer) t)
     (setf (buffer-storage buffer)
           (make-array
-           (mapcar #'range-size (ranges (buffer-shape buffer)))
+           (mapcar #'range-size (shape-ranges (buffer-shape buffer)))
            :element-type (petalisp.type-codes:type-specifier-from-type-code
                           (buffer-type-code buffer))))
     (map-buffer-inputs #'execute-kernel buffer)))
@@ -76,7 +76,7 @@
     (map-kernel-inputs #'execute-buffer kernel)
     (let* ((*kernel* kernel)
            (*instruction-values-cache* (make-instruction-values-cache kernel)))
-      (set-for-each
+      (map-shape
        (lambda (index)
          (let ((*index* index))
            ;; Clear the cached values of the previous iteration.

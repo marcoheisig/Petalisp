@@ -37,13 +37,13 @@
 ;;; Drop references with no effect.
 (defmethod make-reference
     ((lazy-array lazy-array) (shape shape) (identity-transformation identity-transformation))
-  (if (set-equal (shape lazy-array) shape)
+  (if (shape-equal (shape lazy-array) shape)
       lazy-array
       (call-next-method)))
 
 ;;; Handle empty shapes.
 (defmethod make-reference
-    ((lazy-array lazy-array) (empty-set empty-set) (transformation transformation))
+    ((lazy-array lazy-array) (null null) (transformation transformation))
   (empty-array))
 
 ;;; The default - construct a new reference.
@@ -60,8 +60,8 @@
     ((lazy-array lazy-array) (shape shape) (transformation transformation))
   (let ((relevant-shape (transform shape transformation))
         (input-shape (shape lazy-array)))
-    (unless (and (= (rank relevant-shape) (rank input-shape))
-                 (set-subsetp relevant-shape input-shape))
+    (unless (and (= (shape-rank relevant-shape) (shape-rank input-shape))
+                 (subshapep relevant-shape input-shape))
       (error "~@<Invalid reference to ~S with shape ~S and transformation ~S.~:@>"
              lazy-array shape transformation))))
 
@@ -108,13 +108,13 @@
          (destructuring-bind (input-1 input-2) two-inputs
            (let ((shape-1 (shape input-1))
                  (shape-2 (shape input-2)))
-             (assert (not (set-intersectionp shape-1 shape-2)) ()
+             (assert (not (shape-intersectionp shape-1 shape-2)) ()
                      "~@<The index shapes of the arguments to a fusion operation ~
                          must be disjoint, but shape ~S and shape ~S have the ~
                          common subshape ~S.~:@>"
                      shape-1
                      shape-2
-                     (set-intersection shape-1 shape-2)))))
+                     (shape-intersection shape-1 shape-2)))))
        lazy-arrays :length 2 :copy nil))
     (make-fusion lazy-arrays)))
 
@@ -124,7 +124,7 @@
          (identity (identity-transformation (rank (first lazy-arrays)))))
     (flet ((reference-origin (shape)
              (make-reference
-              (find shape lazy-arrays :from-end t :key #'shape :test #'set-subsetp)
+              (find shape lazy-arrays :from-end t :key #'shape :test #'subshapep)
               shape identity)))
       (make-fusion (mapcar #'reference-origin shapes)))))
 
@@ -164,20 +164,19 @@
      (petalisp.type-codes:type-code-of (range-end range)))))
 
 (defun indices (array-or-shape &optional (axis 0))
-  (let ((shape (if (shapep array-or-shape)
-                   array-or-shape
-                   (shape array-or-shape))))
-    (if (set-emptyp shape)
-        (empty-array)
-        (let ((rank (rank shape)))
-          (unless (<= 0 axis (1- rank))
-            (error "Invalid axis ~A for a shape with rank ~D." axis rank))
-          (make-reference
-           (make-range-immediate (nth axis (ranges shape)))
-           shape
-           (make-transformation
-            :input-rank rank
-            :output-mask (vector axis)))))))
+  (cond ((null array-or-shape)
+         (empty-array))
+        ((shapep array-or-shape)
+         (let ((rank (shape-rank array-or-shape)))
+           (unless (<= 0 axis (1- rank))
+             (error "Invalid axis ~A for a shape with rank ~D." axis rank))
+           (make-reference
+            (make-range-immediate (nth axis (shape-ranges array-or-shape)))
+            array-or-shape
+            (make-transformation
+             :input-rank rank
+             :output-mask (vector axis)))))
+        (t (indices (shape array-or-shape)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -236,7 +235,7 @@
 
 (declaim (notinline α-aux))
 (defun α-aux (n-outputs shape function inputs)
-  (if (set-emptyp shape)
+  (if (null shape)
       (empty-arrays n-outputs)
       (let* ((argument-type-codes (mapcar #'type-code inputs))
              (type-codes (infer-type-codes function argument-type-codes))
@@ -267,10 +266,11 @@
 (defun β (function &rest arrays)
   (multiple-value-bind (inputs input-shape)
       (broadcast-list-of-arrays arrays)
-    (let ((n-outputs (length inputs))
-          (shape (shrink-shape input-shape)))
-      (if (set-emptyp shape)
-          (empty-arrays n-outputs)
+    (if (or (null input-shape)
+            (zerop (shape-rank input-shape)))
+        (empty-arrays (length inputs))
+        (let ((n-outputs (length inputs))
+              (shape (shrink-shape input-shape)))
           (let* ((argument-type-codes (mapcar #'type-code inputs))
                  (reduction-type-codes (append argument-type-codes argument-type-codes))
                  (type-codes (infer-type-codes function reduction-type-codes))
