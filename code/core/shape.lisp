@@ -14,7 +14,7 @@
 
 (defstruct (shape
             (:predicate shapep)
-            (:constructor %make-shape (ranges rank &aux (x (assert (= (length ranges) rank))))))
+            (:constructor %make-shape (ranges rank)))
   (rank nil :type array-rank :read-only t)
   (ranges nil :type list :read-only t))
 

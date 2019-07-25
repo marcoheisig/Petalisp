@@ -55,7 +55,7 @@
    #:identity-transformation-p
    #:input-rank
    #:output-rank
-   #:invertible-transformation-p
+   #:transformation-invertiblep
    #:make-transformation
    #:identity-transformation
    #:invert-transformation

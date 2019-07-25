@@ -2,6 +2,10 @@
 
 (in-package #:petalisp.core)
 
+(defun identity-transformation (rank)
+  (petalisp.utilities:with-vector-memoization (rank)
+    (%make-identity-transformation rank)))
+
 (defun make-transformation
     (&key
        (input-mask nil input-mask-supplied-p)
@@ -60,25 +64,15 @@
                      identity-scalings-p
                      identity-offsets-p)
                 (identity-transformation input-rank)
-                ;; A transformation is invertible, if each unused argument
-                ;; has a corresponding input constraint.
-                (if (loop for constraint across input-mask
-                          for input-index from 0
-                          always (or constraint (find input-index output-mask)))
-                    (make-instance 'hairy-invertible-transformation
-                      :input-rank input-rank
-                      :output-rank output-rank
-                      :input-mask input-mask
-                      :output-mask output-mask
-                      :scalings scalings
-                      :offsets offsets)
-                    (make-instance 'hairy-transformation
-                      :input-rank input-rank
-                      :output-rank output-rank
-                      :input-mask input-mask
-                      :output-mask output-mask
-                      :scalings scalings
-                      :offsets offsets)))))))))
+                (%make-transformation
+                 input-rank output-rank
+                 input-mask output-mask
+                 scalings offsets
+                 ;; A transformation is invertible, if each unused argument
+                 ;; has a corresponding input constraint.
+                 (loop for constraint across input-mask
+                       for input-index from 0
+                       always (or constraint (find input-index output-mask)))))))))))
 
 (defun canonicalize-input-mask (value supplied-p input-rank)
   (if (not supplied-p)
@@ -280,3 +274,19 @@
            ,function
            ,@(when input-mask-p `(,input-mask))))))
   whole)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Auxiliary Constructors
+
+(defun collapsing-transformation (shape)
+  (invert-transformation
+   (from-storage-transformation shape)))
+
+;;; Return a non-permuting, affine transformation from a zero based array
+;;; with step size one to the given SHAPE.
+(defun from-storage-transformation (shape)
+  (let ((ranges (shape-ranges shape)))
+    (make-transformation
+     :scalings (map 'vector #'range-step ranges)
+     :offsets (map 'vector #'range-start ranges))))

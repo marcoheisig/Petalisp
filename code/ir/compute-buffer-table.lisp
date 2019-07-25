@@ -101,7 +101,7 @@
           (values
            traverse-inputs-p
            ;; Rule 3.
-           (or inputs-special-p (not (invertible-transformation-p transformation)))
+           (or inputs-special-p (not (transformation-invertiblep transformation)))
            ;; Adapt the reduction axis.
            (if (null reduction-axis)
                nil
