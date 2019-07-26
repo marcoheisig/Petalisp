@@ -46,7 +46,7 @@
     (if (zerop step)
         (if (= start end)
             (%make-range start 1 1)
-            (error "Bad step size 0 for range with start ~d and end ~d" start end))
+            (error "~@<Bad step size 0 for range with start ~d and end ~d~:@>" start end))
         (%make-range (min start end) step (1+ (truncate (abs (- end start)) step))))))
 
 (defun range (start &optional (step-or-end 1 two-args-p) (end start three-args-p))

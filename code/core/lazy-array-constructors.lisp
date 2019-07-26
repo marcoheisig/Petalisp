@@ -177,7 +177,7 @@
         ((shapep array-or-shape)
          (let ((rank (shape-rank array-or-shape)))
            (unless (<= 0 axis (1- rank))
-             (error "Invalid axis ~A for a shape with rank ~D." axis rank))
+             (error "~@<Invalid axis ~A for a shape with rank ~D.~:@>" axis rank))
            (make-reference
             (make-range-immediate (nth axis (shape-ranges array-or-shape)))
             array-or-shape

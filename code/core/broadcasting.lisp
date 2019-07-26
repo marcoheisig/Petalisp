@@ -118,7 +118,7 @@
                      (= 1 output-size)
                      (setf (svref offsets index) (range-start output-range))
                      (setf (svref scalings index) 0))
-                    (t (error "Cannot broadcast the range ~S to the range ~S."
+                    (t (error "~@<Cannot broadcast the range ~S to the range ~S.~:@>"
                               input-range output-range)))))
     (make-transformation
      :input-rank input-rank

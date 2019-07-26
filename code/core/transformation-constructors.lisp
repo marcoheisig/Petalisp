@@ -72,14 +72,14 @@
       (let ((vector (make-simple-vector input-mask))
             (identity-p t))
         (unless (= (length vector) input-rank)
-          (error "The input mask ~S does not match the input rank ~S."
+          (error "~@<The input mask ~S does not match the input rank ~S.~:@>"
                  vector input-rank))
         (loop for element across vector do
           (typecase element
             (null)
             (integer (setf identity-p nil))
             (otherwise
-             (error "Not a valid input mask element: ~S"
+             (error "~@<The object ~S is not a valid input mask element.~:@>"
                     element))))
         (values vector identity-p))))
 
@@ -100,13 +100,13 @@
                      (make-array output-rank :initial-element 0)
                      (make-simple-vector offsets))))
     (unless (= (length output-mask) output-rank)
-      (error "The output mask ~S does not match the output rank ~S."
+      (error "~@<The output mask ~S does not match the output rank ~S.~:@>"
              output-mask output-rank))
     (unless (= (length scalings) output-rank)
-      (error "The scaling vector ~S does not match the output rank ~S."
+      (error "~@<The scaling vector ~S does not match the output rank ~S.~:@>"
              scalings output-rank))
     (unless (= (length offsets) output-rank)
-      (error "The offset vector ~S does not match the output rank ~S."
+      (error "~@<The offset vector ~S does not match the output rank ~S.~:@>"
              offsets output-rank))
     (let (;; The IDENTITY-P flag is set to NIL as soon as an entry is
           ;; detected that deviates from the identity values.
@@ -119,10 +119,10 @@
             for scaling across scalings
             for offset across offsets do
               (unless (rationalp scaling)
-                (error "Not a valid scaling vector element: ~S (should be a rational)"
+                (error "~@<The scaling vector element ~S is not a rational.~:@>"
                        scaling))
               (unless (rationalp offset)
-                (error "Not a valid offset vector element: ~S (should be a rational)"
+                (error "~@<The offset vector element ~S is not a rational.~:@>"
                        offset))
               (typecase input-index
                 ;; Case 1 - The output mask entry is NIL, so all we have to
@@ -131,16 +131,16 @@
                  (setf (aref scalings output-index) 0)
                  (setf identity-p nil))
                 ((not integer)
-                 (error "Not a valid output mask element: ~S"
+                 (error "~@<The object ~S is not a valid output mask element.~:@>"
                         input-index))
                 (integer
                  (unless (array-in-bounds-p input-mask input-index)
-                   (error "The output mask element ~S is not below the input rank ~S."
+                   (error "~@<The output mask element ~S is not below the input rank ~S.~:@>"
                           input-index input-rank))
                  (let ((bit (ash 1 input-index)))
                    (unless (zerop (logand bit bitmask))
-                     (error "Duplicate output mask element ~S at index ~S."
-                            input-index output-index))
+                     (error "~@<The output mask ~S contains duplicate entries.~:@>"
+                            output-mask))
                    (setf bitmask (logior bit bitmask)))
                  (let ((input-constraint (aref input-mask input-index)))
                    (etypecase input-constraint

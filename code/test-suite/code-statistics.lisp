@@ -67,7 +67,7 @@
             stream
             "~<The package ~S defines ~D classes, ~D macros and ~D functions.  ~
                ~D of the functions are generic.  ~
-               Each generic function has, on average, ~,2F methods.~@:>~%"
+               Each generic function has, on average, ~,2F methods.~:@>~%"
             (list
              (package-name (find-package package))
              classes macros (+ defuns defgenerics) defgenerics (float (/ methods defgenerics))))))

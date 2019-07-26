@@ -187,20 +187,20 @@
              (if (null f-mask)
                  (unless (= f-offset g-constraint)
                    (error "~@<The output ~S of the transformation ~S ~
-                              violates the input constraint of the transformation ~S.~@:>"
+                              violates the input constraint of the transformation ~S.~:@>"
                           input-index f g))
                  (let ((old-constraint (svref input-mask f-mask))
                        (new-constraint (/ (- g-constraint f-offset) f-scaling)))
                    (unless (integerp new-constraint)
                      (error "~@<There is no valid integer suitable as argument ~S ~
                              to the transformation ~S such that it composes ~
-                             with the transformation ~S.~@:>"
+                             with the transformation ~S.~:@>"
                             f-mask f g))
                    (unless (or (null old-constraint)
                                (= old-constraint new-constraint))
                      (error "~@<Composing the transformations ~S and ~S ~
                              yields the conflicting input constraints ~
-                             ~S and ~S.~@:>"
+                             ~S and ~S.~:@>"
                             g f new-constraint old-constraint))
                    (setf (svref input-mask f-mask) new-constraint))))))
        g)
@@ -236,7 +236,7 @@
 (defmethod invert-transformation ((transformation hairy-transformation))
   (let ((inverse (transformation-inverse transformation)))
     (unless inverse
-      (error "~@<The transformation ~S is not invertible.~@:>"
+      (error "~@<The transformation ~S is not invertible.~:@>"
              transformation))
     (if (transformationp inverse)
         inverse
