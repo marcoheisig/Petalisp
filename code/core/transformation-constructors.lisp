@@ -35,130 +35,143 @@
                         (scalings-supplied-p (length scalings))
                         (i i)))))
         (two-value-fixpoint #'narrow-input-and-output-rank nil nil))
-    (check-type input-rank array-rank)
-    (check-type output-rank array-rank)
+    (check-type input-rank rank)
+    (check-type output-rank rank)
     ;; Canonicalize all sequence arguments.
-    (multiple-value-bind (input-mask identity-input-mask-p)
-        (canonicalize-input-mask input-mask input-mask-supplied-p input-rank)
-      (declare (simple-vector input-mask)
-               (boolean identity-input-mask-p))
-      (multiple-value-bind (output-mask identity-output-mask-p)
-          (canonicalize-output-mask output-mask output-mask-supplied-p output-rank input-rank)
-        (declare (simple-vector output-mask)
-                 (boolean identity-output-mask-p))
-        (multiple-value-bind (scalings identity-scalings-p)
-            (canonicalize-scalings scalings scalings-supplied-p output-rank)
-          (declare (simple-vector scalings)
-                   (boolean identity-scalings-p))
-          (multiple-value-bind (offsets identity-offsets-p)
-              (canonicalize-offsets offsets offsets-supplied-p output-rank)
-            (declare (simple-vector offsets)
-                     (boolean identity-offsets-p))
-            (unless identity-input-mask-p
-              (loop for input-index across output-mask
-                    for scaling across scalings
-                    do (assert (or (zerop scaling) input-index))))
-            (if (and (= input-rank output-rank)
-                     identity-input-mask-p
-                     identity-output-mask-p
-                     identity-scalings-p
-                     identity-offsets-p)
-                (identity-transformation input-rank)
-                (%make-transformation
-                 input-rank output-rank
-                 input-mask output-mask
-                 scalings offsets
-                 ;; A transformation is invertible, if each unused argument
-                 ;; has a corresponding input constraint.
-                 (loop for constraint across input-mask
-                       for input-index from 0
-                       always (or constraint (find input-index output-mask)))))))))))
+    (multiple-value-bind (input-mask identity-inputs-p)
+        (canonicalize-inputs input-mask input-mask-supplied-p input-rank)
+      (declare (simple-vector input-mask))
+      (multiple-value-bind (output-mask scalings offsets identity-outputs-p)
+          (canonicalize-outputs
+           input-rank output-rank input-mask
+           output-mask output-mask-supplied-p
+           scalings scalings-supplied-p
+           offsets offsets-supplied-p)
+        (declare (simple-vector output-mask scalings offsets))
+        (if (and (= input-rank output-rank) identity-inputs-p identity-outputs-p)
+            (identity-transformation input-rank)
+            (%make-transformation
+             input-rank output-rank
+             input-mask output-mask
+             scalings offsets
+             ;; A transformation is invertible, if each unused argument
+             ;; has a corresponding input constraint.
+             (loop for constraint across input-mask
+                   for input-index from 0
+                   always (or constraint (find input-index output-mask)))))))))
 
-(defun canonicalize-input-mask (value supplied-p input-rank)
+(defun make-simple-vector (sequence)
+  (etypecase sequence
+    (simple-vector (copy-seq sequence))
+    (vector (replace (make-array (length sequence)) sequence))
+    (list (coerce sequence 'simple-vector))))
+
+(defun canonicalize-inputs (input-mask supplied-p input-rank)
   (if (not supplied-p)
-      (values (make-sequence 'simple-vector input-rank :initial-element nil) t)
-      (let ((vector (coerce value 'simple-vector))
+      (values (make-array input-rank :initial-element nil) t)
+      (let ((vector (make-simple-vector input-mask))
             (identity-p t))
         (unless (= (length vector) input-rank)
           (error "The input mask ~S does not match the input rank ~S."
                  vector input-rank))
         (loop for element across vector do
           (typecase element
-            (null (values))
+            (null)
             (integer (setf identity-p nil))
             (otherwise
              (error "Not a valid input mask element: ~S"
                     element))))
         (values vector identity-p))))
 
-(defun canonicalize-output-mask (value supplied-p output-rank input-rank)
-  (if (not supplied-p)
-      (let ((vector (make-sequence 'simple-vector output-rank :initial-element nil)))
-        (loop for index below (min input-rank output-rank) do
-          (setf (svref vector index) index))
-        (values vector (= input-rank output-rank)))
-      (let ((vector (coerce value 'simple-vector))
-            (identity-p t)
-            (bitmask 0))
-        (unless (= (length vector) output-rank)
-          (error "The output mask ~S does not match the output rank ~S."
-                 vector output-rank))
-        (loop for index below output-rank
-              for element across vector do
-                (typecase element
-                  (null
-                   (setf identity-p nil))
-                  (unsigned-byte
-                   (unless (< element input-rank)
-                     (error "The output mask element ~S is not below the input rank ~S."
-                            element input-rank))
-                   (unless (= element index)
-                     (setf identity-p nil))
-                   (let ((bit (ash 1 element)))
-                     (unless (zerop (logand bit bitmask))
-                       (error "Duplicate output mask element ~S at index ~S."
-                              element index))
-                     (setf bitmask (logior bit bitmask))))
-                  (otherwise
-                   (error "Not a valid output mask element: ~S"
-                          element))))
-        (values vector identity-p))))
-
-(defun canonicalize-scalings (value supplied-p output-rank)
-  (if (not supplied-p)
-      (values (make-sequence 'simple-vector output-rank :initial-element 1))
-      (let ((vector (coerce value 'simple-vector))
-            (identity-p t))
-        (unless (= (length vector) output-rank)
-          (error "The scaling vector ~S does not match the output rank ~S."
-                 vector output-rank))
-        (loop for element across vector do
-          (typecase element
-            (rational
-             (unless (= element 1)
-               (setf identity-p nil)))
-            (otherwise
-             (error "Not a valid scaling vector element: ~S (should be a rational)"
-                    element))))
-        (values vector identity-p))))
-
-(defun canonicalize-offsets (value supplied-p output-rank)
-  (if (not supplied-p)
-      (values (make-sequence 'simple-vector output-rank :initial-element 0) t)
-      (let ((vector (coerce value 'simple-vector))
-            (identity-p t))
-        (unless (= (length vector) output-rank)
-          (error "The offset vector ~S does not match the output rank ~S."
-                 vector output-rank))
-        (loop for element across vector do
-          (typecase element
-            (rational
-             (unless (zerop element)
-               (setf identity-p nil)))
-            (otherwise
-             (error "Not a valid scaling vector element: ~S (should be a rational)"
-                    element))))
-        (values vector identity-p))))
+(defun canonicalize-outputs (input-rank output-rank input-mask
+                             output-mask output-mask-supplied-p
+                             scalings scalings-supplied-p
+                             offsets offsets-supplied-p)
+  (declare (rank input-rank output-rank))
+  (let ((output-mask (if (not output-mask-supplied-p)
+                         (let ((vector (make-array output-rank :initial-element nil)))
+                           (dotimes (index (min input-rank output-rank) vector)
+                             (setf (svref vector index) index)))
+                         (make-simple-vector output-mask)))
+        (scalings (if (not scalings-supplied-p)
+                      (make-array output-rank :initial-element 1)
+                      (make-simple-vector scalings)))
+        (offsets (if (not offsets-supplied-p)
+                     (make-array output-rank :initial-element 0)
+                     (make-simple-vector offsets))))
+    (unless (= (length output-mask) output-rank)
+      (error "The output mask ~S does not match the output rank ~S."
+             output-mask output-rank))
+    (unless (= (length scalings) output-rank)
+      (error "The scaling vector ~S does not match the output rank ~S."
+             scalings output-rank))
+    (unless (= (length offsets) output-rank)
+      (error "The offset vector ~S does not match the output rank ~S."
+             offsets output-rank))
+    (let (;; The IDENTITY-P flag is set to NIL as soon as an entry is
+          ;; detected that deviates from the identity values.
+          (identity-p t)
+          ;; We use a bitmask to track which input indices have already
+          ;; occurred in the output mask.
+          (bitmask 0))
+      (loop for output-index from 0
+            for input-index across output-mask
+            for scaling across scalings
+            for offset across offsets do
+              (unless (rationalp scaling)
+                (error "Not a valid scaling vector element: ~S (should be a rational)"
+                       scaling))
+              (unless (rationalp offset)
+                (error "Not a valid offset vector element: ~S (should be a rational)"
+                       offset))
+              (typecase input-index
+                ;; Case 1 - The output mask entry is NIL, so all we have to
+                ;; ensure is that the corresponding scaling value is zero.
+                (null
+                 (setf (aref scalings output-index) 0)
+                 (setf identity-p nil))
+                ((not integer)
+                 (error "Not a valid output mask element: ~S"
+                        input-index))
+                (integer
+                 (unless (array-in-bounds-p input-mask input-index)
+                   (error "The output mask element ~S is not below the input rank ~S."
+                          input-index input-rank))
+                 (let ((bit (ash 1 input-index)))
+                   (unless (zerop (logand bit bitmask))
+                     (error "Duplicate output mask element ~S at index ~S."
+                            input-index output-index))
+                   (setf bitmask (logior bit bitmask)))
+                 (let ((input-constraint (aref input-mask input-index)))
+                   (etypecase input-constraint
+                     ;; Case 2 - The output mask entry is non-NIL, but
+                     ;; references an input with an input constraint.  In
+                     ;; this case, we need to update the offset such that
+                     ;; we can set the output mask entry to NIL and the
+                     ;; scaling to zero.
+                     (integer
+                      (setf (aref offsets output-index)
+                            (+ (* scaling input-constraint) offset))
+                      (setf (aref scalings output-index) 0)
+                      (setf (aref output-mask output-index) nil)
+                      (setf identity-p nil))
+                     (null
+                      (cond ((zerop scaling)
+                             ;; Case 3 - The output mask entry is non-NIL and
+                             ;; references an unconstrained input, but the scaling
+                             ;; is zero.
+                             (setf (aref output-mask output-index) nil)
+                             (setf identity-p nil))
+                            ;; Case 4 - We are dealing with a
+                            ;; transformation that is not the identity.
+                            ((or (/= input-index output-index)
+                                 (/= 1 scaling)
+                                 (/= 0 offset))
+                             (setf identity-p nil))
+                            ;; Case 5 - We have to do nothing.
+                            (t (values)))))))
+                ))
+      (values output-mask scalings offsets identity-p))))
 
 (defun free-variables (form &optional environment)
   (let (result)

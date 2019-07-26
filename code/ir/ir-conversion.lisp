@@ -29,11 +29,7 @@
       (create-kernels root))
     ;; Finally, return the buffers corresponding to the root nodes.
     (loop for lazy-array in lazy-arrays
-          collect
-          (let ((entry (gethash lazy-array *buffer-table*)))
-            (if (eq entry '.range-immediate.)
-                (make-buffer lazy-array)
-                entry)))))
+          collect (gethash lazy-array *buffer-table*))))
 
 (defvar *kernel-root*)
 

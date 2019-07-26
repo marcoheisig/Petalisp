@@ -25,8 +25,9 @@
   (:argument-precedence-order transformation shape input))
 
 ;;; Compose consecutive references.
-(defmethod make-reference
-    ((reference reference) (shape shape) (transformation transformation))
+(defmethod make-reference ((reference reference)
+                           (shape shape)
+                           (transformation transformation))
   (make-reference
    (input reference)
    shape
@@ -35,20 +36,27 @@
     transformation)))
 
 ;;; Drop references with no effect.
-(defmethod make-reference
-    ((lazy-array lazy-array) (shape shape) (identity-transformation identity-transformation))
-  (if (shape-equal (shape lazy-array) shape)
+(defmethod make-reference ((lazy-array lazy-array)
+                           (shape shape)
+                           (identity-transformation identity-transformation))
+  (if (and (shape-equal (shape lazy-array) shape)
+           ;; Don't drop references to range immediates.  The reason for
+           ;; this is that we never want these immediates to appear as
+           ;; roots of a data flow graph.
+           (not (typep lazy-array 'range-immediate)))
       lazy-array
       (call-next-method)))
 
 ;;; Handle empty shapes.
-(defmethod make-reference
-    ((lazy-array lazy-array) (null null) (transformation transformation))
+(defmethod make-reference ((lazy-array lazy-array)
+                           (null null)
+                           (transformation transformation))
   (empty-array))
 
 ;;; The default - construct a new reference.
-(defmethod make-reference
-    ((lazy-array lazy-array) (shape shape) (transformation transformation))
+(defmethod make-reference ((lazy-array lazy-array)
+                           (shape shape)
+                           (transformation transformation))
   (make-instance 'reference
     :type-code (type-code lazy-array)
     :inputs (list lazy-array)
