@@ -299,7 +299,25 @@
 ;;; Return a non-permuting, affine transformation from a zero based array
 ;;; with step size one to the given SHAPE.
 (defun from-storage-transformation (shape)
-  (let ((ranges (shape-ranges shape)))
-    (make-transformation
-     :scalings (map 'vector #'range-step ranges)
-     :offsets (map 'vector #'range-start ranges))))
+  (let* ((rank (shape-rank shape))
+         (ranges (shape-ranges shape))
+         (input-mask (make-array rank))
+         (output-mask (make-array rank))
+         (scalings (make-array rank))
+         (offsets (make-array rank)))
+    (loop for range in ranges
+          for index from 0 do
+            (if (size-one-range-p range)
+                (let ((value (range-start range)))
+                  (setf (aref input-mask index) 0)
+                  (setf (aref output-mask index) nil)
+                  (setf (aref scalings index) 0)
+                  (setf (aref offsets index) value))
+                (multiple-value-bind (start step end)
+                    (range-start-step-end range)
+                  (declare (ignore end))
+                  (setf (aref input-mask index) nil)
+                  (setf (aref output-mask index) index)
+                  (setf (aref scalings index) step)
+                  (setf (aref offsets index) start))))
+    (%make-transformation rank rank input-mask output-mask scalings offsets t)))

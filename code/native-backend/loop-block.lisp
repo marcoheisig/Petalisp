@@ -25,6 +25,7 @@
     (let ((step (if (= 1 step-bits) 1 step)))
       (if (= 1 size-bits)
           `(let ((,var (the ,type ,start)))
+             (declare (ignorable ,var))
              ,(call-next-method))
           `(loop for ,var ,type from ,start by ,step to ,end
                  do ,(call-next-method))))))
