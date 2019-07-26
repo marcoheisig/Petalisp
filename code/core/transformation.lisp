@@ -171,27 +171,52 @@
   ;; A2 (A1 x + b1) + b2 = A2 A1 x + A2 b1 + b2
   (let ((input-rank (transformation-input-rank f))
         (output-rank (transformation-output-rank g)))
-    ;; TODO check the input mask of G.
-    (let ((f-input-mask (transformation-input-mask f))
-          (f-output-mask (transformation-output-mask f))
+    (let ((f-output-mask (transformation-output-mask f))
           (f-offsets (transformation-offsets f))
           (f-scalings (transformation-scalings f))
           (input-mask (copy-array (transformation-input-mask f)))
           (output-mask (make-array output-rank :initial-element nil))
           (scalings (make-array output-rank :initial-element 0))
           (offsets (make-array output-rank :initial-element 0)))
+      (map-transformation-inputs
+       (lambda (input-index g-constraint)
+         (when (integerp g-constraint)
+           (let ((f-mask (svref f-output-mask input-index))
+                 (f-offset (svref f-offsets input-index))
+                 (f-scaling (svref f-scalings input-index)))
+             (if (null f-mask)
+                 (unless (= f-offset g-constraint)
+                   (error "~@<The output ~S of the transformation ~S ~
+                              violates the input constraint of the transformation ~S.~@:>"
+                          input-index f g))
+                 (let ((old-constraint (svref input-mask f-mask))
+                       (new-constraint (/ (- g-constraint f-offset) f-scaling)))
+                   (unless (integerp new-constraint)
+                     (error "~@<There is no valid integer suitable as argument ~S ~
+                             to the transformation ~S such that it composes ~
+                             with the transformation ~S.~@:>"
+                            f-mask f g))
+                   (unless (or (null old-constraint)
+                               (= old-constraint new-constraint))
+                     (error "~@<Composing the transformations ~S and ~S ~
+                             yields the conflicting input constraints ~
+                             ~S and ~S.~@:>"
+                            g f new-constraint old-constraint))
+                   (setf (svref input-mask f-mask) new-constraint))))))
+       g)
       (map-transformation-outputs
        (lambda (output-index input-index a b)
-         (if (null input-index)
-             (setf (svref scalings output-index) 0
-                   (svref offsets output-index) b)
-             (progn
-               (setf (svref output-mask output-index)
-                     (svref f-output-mask input-index))
-               (setf (svref scalings output-index)
-                     (* a (svref f-scalings input-index)))
-               (setf (svref offsets output-index)
-                     (+ (* a (svref f-offsets input-index)) b)))))
+         (etypecase input-index
+           (null
+            (setf (svref scalings output-index) 0)
+            (setf (svref offsets output-index) b))
+           (integer
+            (let ((f-mask (svref f-output-mask input-index))
+                  (f-scaling (svref f-scalings input-index))
+                  (f-offset (svref f-offsets input-index)))
+              (setf (svref output-mask output-index) f-mask)
+              (setf (svref scalings output-index) (* a f-scaling))
+              (setf (svref offsets output-index) (+ (* a f-offset) b))))))
        g)
       (%make-transformation
        input-rank output-rank
