@@ -11,9 +11,14 @@
 
    ;; High-level API
    #:α
-   #:β
    #:a
+   #:alpha
+   #:β
    #:b
+   #:beta
+   #:β*
+   #:b*
+   #:beta*
    #:~
    #:broadcast
    #:broadcast-arrays
@@ -21,6 +26,7 @@
    #:reshape
    #:transform
    #:τ
+   #:tau
    #:fuse
    #:fuse*
    #:compute

@@ -4,21 +4,24 @@
 
 (defvar *backend* (make-native-backend))
 
-(petalisp.utilities:defalias a α)
+(defun flip (array axis-1 axis-2)
+  (check-type axis-1 rank)
+  (check-type axis-1 rank)
+  (reshape array
+           (make-transformation
+            :output-mask
+            (loop for axis below (rank array)
+                  collect
+                  (cond ((= axis axis-1) axis-2)
+                        ((= axis axis-2) axis-1)
+                        (t axis))))))
 
-(petalisp.utilities:defalias b β)
-
-(defmacro define-parallel-aliases (name)
-  (let ((αsym (alexandria:symbolicate 'α name))
-        (βsym (alexandria:symbolicate 'β name)))
-    `(progn
-       (declaim (inline ,αsym ,βsym))
-       (defun ,αsym (&rest args)
-         (apply #'α #',name args))
-       (defun ,βsym (&rest args)
-         (apply #'β #',name args))
-       (define-compiler-macro ,αsym (&rest args)
-         `(α #',name ,@args))
-       (define-compiler-macro ,βsym (&rest args)
-         `(β #',name ,@args))
-       ',name)))
+(defun β* (f z x &optional axis)
+  (cond ((empty-array-p x) z)
+        ((typep axis 'rank)
+         (β f (flip x 0 axis)))
+        ((null axis)
+         (loop repeat (rank x)
+               do (setf x (β f x))
+               finally (return x)))
+        (t (error "Not a valid axis: ~S" axis))))

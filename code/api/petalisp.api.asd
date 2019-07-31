@@ -17,4 +17,5 @@
   :serial t
   :components
   ((:file "packages")
-   (:file "api")))
+   (:file "api")
+   (:file "aliases")))

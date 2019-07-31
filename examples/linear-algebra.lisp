@@ -90,24 +90,6 @@
 (defun norm (x)
   (α #'sqrt (dot x x)))
 
-(defun flip (array i j)
-  (reshape array
-           (make-transformation
-            :output-mask
-            (loop for index below (rank array)
-                  collect
-                  (cond ((= index i) j)
-                        ((= index j) i)
-                        (t index))))))
-
-(defun β* (f z x &optional axis)
-  (cond ((empty-array-p x) z)
-        ((integerp axis)
-         (β f (flip x 0 axis)))
-        ((loop until (zerop (rank x))
-               do (setf x (β f x))
-               finally (return x)))))
-
 (defun sum (x &optional axis)
   (β* #'+ 0 x axis))
 

@@ -17,5 +17,4 @@
    #:symmetric-function
    #:define-method-pair
    #:define-class-predicate
-   #:extended-euclid
-   #:defalias))
+   #:extended-euclid))
