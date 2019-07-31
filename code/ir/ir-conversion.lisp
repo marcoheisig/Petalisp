@@ -26,7 +26,7 @@
   (let ((*buffer-table* (compute-buffer-table lazy-arrays)))
     ;; Now create a list of kernels for each entry in the buffer table.
     (loop for root being each hash-key of *buffer-table* do
-      (create-kernels root))
+      (compute-kernels root))
     ;; Finally, return the buffers corresponding to the root nodes.
     (loop for lazy-array in lazy-arrays
           collect (gethash lazy-array *buffer-table*))))
@@ -38,7 +38,7 @@
 ;;; shape of the root, but such that each iteration space selects only a
 ;;; single input of each encountered fusion node. Each such iteration space
 ;;; is used to create one kernel.
-(defun create-kernels (root)
+(defun compute-kernels (root)
   (unless (immediatep root)
     (let ((*kernel-root* root))
       (loop for (iteration-space . reduction-range) in (compute-iteration-spaces root) do
