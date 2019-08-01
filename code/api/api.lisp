@@ -6,7 +6,7 @@
 
 (defun flip (array axis-1 axis-2)
   (check-type axis-1 rank)
-  (check-type axis-1 rank)
+  (check-type axis-2 rank)
   (reshape array
            (make-transformation
             :output-mask
