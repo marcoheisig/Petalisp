@@ -31,7 +31,7 @@
     ((shape (range 1 _)) (reshape x (τ (i) (i 1))))
     ((shape (range 0 _)) (reshape x (τ (i) ((1+ i) 1))))
     ;; Rank 2
-    ((shape (range 1 _) (range 1 _)) (reshape x (τ (i j) (i j))))
+    ((shape (range 1 _) (range 1 _)) x)
     ((shape (range 0 _) (range 1 _)) (reshape x (τ (i j) ((1+ i) j))))
     ((shape (range 1 _) (range 0 _)) (reshape x (τ (i j) (i (1+ j)))))
     ((shape (range 0 _) (range 0 _)) (reshape x (τ (i j) ((1+ i) (1+ j)))))))
@@ -79,7 +79,7 @@
 (defun transpose (x)
   (reshape
    (coerce-to-matrix x)
-   (τ (m n) (n M))))
+   (τ (m n) (n m))))
 
 (defun dot (x y)
   (coerce-to-scalar
