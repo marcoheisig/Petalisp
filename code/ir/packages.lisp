@@ -65,8 +65,6 @@
    #:buffer-storage
    #:kernel-iteration-space
    #:kernel-reduction-range
-   #:kernel-loads
-   #:kernel-stores
    #:kernel-executedp
    #:kernel-blueprint
    #:kernel-buffers
