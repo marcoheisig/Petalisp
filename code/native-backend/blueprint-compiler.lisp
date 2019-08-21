@@ -87,7 +87,12 @@
            (end (end-symbol -1))
            (thunk-form
              (destructuring-bind (size-bits step-bits index-type) range
-               (declare (ignore size-bits step-bits))
+               (declare (ignore step-bits))
+               (if (= 1 size-bits)
+                   `(lambda ()
+                      (let ((,reduction-index (* ,start ,step)))
+                        (declare (ignorable ,reduction-index))
+                        ,(form tail-block))))
                `(lambda ()
                   (labels
                       ((divide-and-conquer (min max)
