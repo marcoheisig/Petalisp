@@ -84,7 +84,8 @@
            ;; Evaluate all instructions with side-effects (= store
            ;; instructions) and their dependencies.
            (map-kernel-store-instructions #'instruction-values kernel)))
-       (kernel-iteration-space kernel)))))
+       (shrink-shape
+        (kernel-iteration-space kernel))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -120,7 +121,7 @@
 (defmethod instruction-values ((store-instruction store-instruction))
   (setf (apply #'aref
                (buffer-storage (store-instruction-buffer store-instruction))
-               (transform *index* (instruction-transformation store-instruction)))
+               (transform (cons 0 *index*) (instruction-transformation store-instruction)))
         (destructuring-bind ((value-n . instruction))
             (instruction-inputs store-instruction)
           (nth value-n (instruction-values instruction))))

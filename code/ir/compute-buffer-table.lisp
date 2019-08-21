@@ -18,7 +18,7 @@
 ;;; in main memory.  Rule 5 is chosen in addition, because it greatly
 ;;; simplifies reasoning about kernels, while the cost of allocating the
 ;;; results of a reduction is usually negligible.  Rule 6 is potentially
-;;; costly, but the alternative of implementing heterogeneous reduction
+;;; costly, but the alternative of dealing with heterogeneous reduction
 ;;; kernels is a nightmare.
 ;;;
 ;;; The derivation of the buffer table of a graph consists of two steps.

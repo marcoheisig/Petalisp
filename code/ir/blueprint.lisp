@@ -14,12 +14,8 @@
 (defun kernel-blueprint (kernel)
   (let ((*buffers* (kernel-buffers kernel))
         (*function-counter* -1))
-    (assign-instruction-numbers kernel)
     (ucons:ulist
      (ucons:umapcar #'range-blueprint (shape-ranges (kernel-iteration-space kernel)))
-     (if (kernel-reduction-range kernel)
-         (range-blueprint (kernel-reduction-range kernel))
-         nil)
      (ucons:umapcar #'buffer-blueprint *buffers*)
      ;; Now generate the blueprints for all instructions in the kernel
      (let* ((size (1+ (kernel-highest-instruction-number kernel)))
@@ -132,11 +128,10 @@
 ;;; 4. A list of instructions.
 
 (defun parse-kernel-blueprint (blueprint)
-  (destructuring-bind (ranges reduction-range array-info instructions)
+  (destructuring-bind (ranges array-info instructions)
       (ucons:tree-from-utree blueprint)
     (values
      ranges
-     reduction-range
      (loop for (element-type-code rank) in array-info
            collect
            `(simple-array

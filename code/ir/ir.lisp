@@ -38,18 +38,19 @@
 
 ;;; A kernel represents a computation that, for each element in its
 ;;; iteration space, reads from some buffers and writes to some buffers.
-;;; Its exact behavior is determined by its graph of instructions.
+;;; By convention, the first range of the iteration space is always the
+;;; reduction range.
 (defstruct (kernel
             (:predicate kernelp))
   (iteration-space nil :type shape)
-  (reduction-range nil :type (or range null))
   (load-instructions nil :type list)
   (store-instructions nil :type list)
   (executedp nil :type boolean))
 
-(defun reduction-kernel-p (object)
-  (and (kernelp object)
-       (not (null (kernel-reduction-range object)))))
+(declaim (inline kernel-reduction-range))
+(defun kernel-reduction-range (kernel)
+  (declare (kernel kernel))
+  (first (shape-ranges (kernel-iteration-space kernel))))
 
 ;;; The behavior of a kernel is described by its iteration space and its
 ;;; instructions.  The instructions form a DAG, whose leaves are load
@@ -128,7 +129,7 @@
             (:include instruction)
             (:predicate reduce-instruction-p)
             (:constructor make-reduce-instruction (operator inputs)))
-  (operator nil :type function))
+  (operator nil :type (or function symbol)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -143,9 +144,8 @@
 
 (defmethod print-object ((kernel kernel) stream)
   (print-unreadable-object (kernel stream :type t :identity t)
-    (format stream "~S ~S"
-            (kernel-iteration-space kernel)
-            (kernel-reduction-range kernel))))
+    (format stream "~S"
+            (kernel-iteration-space kernel))))
 
 ;;; This function is used during printing, to avoid excessive circularity.
 (defun simplify-input (input)
@@ -441,5 +441,4 @@
   (transform-buffer buffer (collapsing-transformation (buffer-shape buffer))))
 
 (defun normalize-kernel (kernel)
-  (unless (reduction-kernel-p kernel)
-    (transform-kernel kernel (collapsing-transformation (kernel-iteration-space kernel)))))
+  (transform-kernel kernel (collapsing-transformation (kernel-iteration-space kernel))))

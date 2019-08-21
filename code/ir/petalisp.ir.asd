@@ -12,7 +12,7 @@
   ((:file "packages")
    (:file "ir")
    (:file "compute-buffer-table")
-   (:file "compute-iteration-spaces")
+   (:file "map-iteration-spaces")
    (:file "ir-conversion")
    (:file "blueprint")
    (:file "documentation")))

@@ -3,7 +3,7 @@
 (in-package #:petalisp.native-backend)
 
 (defun make-dummy-kernel ()
-  (make-kernel :iteration-space (~) :reduction-range (range 0)))
+  (make-kernel :iteration-space (~)))
 
 (defmethod compute-immediates ((lazy-arrays list) (native-backend native-backend))
   (let ((root-buffers (ir-from-lazy-arrays lazy-arrays)))

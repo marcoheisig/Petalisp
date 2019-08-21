@@ -5,20 +5,17 @@
 ;;; A vector of instructions.
 (defvar *instructions*)
 
-(defvar *reductionp*)
-
 (defun lambda-expression-from-blueprint (blueprint)
-  (multiple-value-bind (ranges reduction-range array-types instructions)
+  (multiple-value-bind (ranges array-types instructions)
       (parse-kernel-blueprint blueprint)
     (let ((*instructions* (coerce instructions 'simple-vector))
           (*translation-unit* (make-translation-unit array-types))
           (*gensym-counter* 0)
-          (*reductionp* nil)
           (innermost-block nil))
       ;; Add loop blocks.
       (let ((immediate-dominator *initial-basic-block*))
-        (loop for range in ranges
-              for index from 0 do
+        (loop for range in (rest ranges)
+              for index from 1 do
                 (let ((loop-block (add-loop-block range index immediate-dominator)))
                   (setf (successors immediate-dominator)
                         (list loop-block))
@@ -26,9 +23,7 @@
         (setf innermost-block immediate-dominator))
       ;; If we are dealing with a reduction kernel, emit a single
       ;; instruction that combines all reduce instructions in that kernel.
-      (unless (null reduction-range)
-        (setf *reductionp* t)
-        (handle-reductions reduction-range innermost-block))
+      (handle-reductions (first ranges) innermost-block)
       ;; Now translate and pseudo-evaluate all store instructions and their
       ;; dependencies.
       (loop for instruction across *instructions*
@@ -73,7 +68,7 @@
   ;; Add an auxiliary basic block to the symbol table, to collect all
   ;; instructions that depend on the reduction index.
   (let ((tail-block (make-tail-block :immediate-dominator immediate-dominator))
-        (reduction-index (index-symbol -1))
+        (reduction-index (index-symbol 0))
         (reduction-values '())
         (reduction-spec '()))
     (setf (defining-basic-block reduction-index) tail-block)
@@ -164,7 +159,7 @@
     ((list* :load array-number irefs)
      `(row-major-aref
        ,(array-symbol array-number)
-       ,(translate-row-major-index array-number irefs *reductionp*)))
+       ,(translate-row-major-index array-number irefs)))
     ((list* :store argument array-number irefs)
      `(store ,(pseudo-eval-argument argument)
              ,(array-symbol array-number)
@@ -172,7 +167,7 @@
     ((list :iref index scale offset)
      (if (null index)
          `(identity ,offset)
-         `(identity ,(i+ (i* (index-symbol (if *reductionp* (1- index) index)) scale) offset))))
+         `(identity ,(i+ (i* (index-symbol index) scale) offset))))
     ((list* :rref symbols)
      `(values ,@symbols))))
 

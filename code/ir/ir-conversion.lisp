@@ -26,47 +26,45 @@
   (let ((*buffer-table* (compute-buffer-table lazy-arrays)))
     ;; Now create a list of kernels for each entry in the buffer table.
     (loop for root being each hash-key of *buffer-table* do
-      (compute-kernels root))
+      (create-kernels root))
     ;; Finally, return the buffers corresponding to the root nodes.
     (loop for lazy-array in lazy-arrays
           collect (gethash lazy-array *buffer-table*))))
 
-(defvar *kernel-root*)
+(defvar *root*)
 
 ;;; We compute a partitioning of the shape of the root into multiple
 ;;; iteration spaces.  These spaces are chosen such that their union is the
-;;; shape of the root, but such that each iteration space selects only a
-;;; single input of each encountered fusion node. Each such iteration space
-;;; is used to create one kernel.
-(defun compute-kernels (root)
+;;; shape of the root, and such that each iteration space selects only a
+;;; single input of each encountered fusion node.  Each such iteration
+;;; space is used to create one kernel.
+(defun create-kernels (root)
   (unless (immediatep root)
-    (let ((*kernel-root* root))
-      (loop for (iteration-space . reduction-range) in (compute-iteration-spaces root) do
-        (let ((kernel (compute-kernel root iteration-space reduction-range)))
-          (assign-instruction-numbers kernel)
-          ;; Update the inputs and outputs of all buffers to match the
-          ;; inputs and outputs of the corresponding kernels.
-          (map-kernel-inputs
-           (lambda (buffer)
-             (pushnew kernel (buffer-outputs buffer)))
-           kernel)
-          (map-kernel-outputs
-           (lambda (buffer)
-             (pushnew kernel (buffer-inputs buffer)))
-           kernel))))))
+    (let ((*root* root))
+      (map-iteration-spaces
+       (lambda (iteration-space)
+         (let ((kernel (compute-kernel root iteration-space)))
+           (assign-instruction-numbers kernel)
+           ;; Update the inputs and outputs of all buffers to match the
+           ;; inputs and outputs of the corresponding kernels.
+           (map-kernel-inputs
+            (lambda (buffer)
+              (pushnew kernel (buffer-outputs buffer)))
+            kernel)
+           (map-kernel-outputs
+            (lambda (buffer)
+              (pushnew kernel (buffer-inputs buffer)))
+            kernel)))
+       root))))
 
-(defun compute-kernel (root iteration-space reduction-range)
-  (let* ((root-rank (rank root))
-         (transformation (identity-transformation root-rank)))
-    (multiple-value-bind (value load-instructions)
-        (compute-kernel-body root iteration-space transformation)
-      (make-kernel
-       :iteration-space iteration-space
-       :reduction-range reduction-range
-       :load-instructions load-instructions
-       :store-instructions
-       (list
-        (make-store-instruction value (gethash root *buffer-table*) transformation))))))
+;;; Create one kernel from the given root and iteration space.
+(defun compute-kernel (root iteration-space)
+  (multiple-value-bind (store-instruction load-instructions)
+      (compute-kernel-body root iteration-space)
+    (make-kernel
+     :iteration-space iteration-space
+     :load-instructions load-instructions
+     :store-instructions (list store-instruction))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -74,9 +72,28 @@
 
 (defvar *loads*)
 
-(defun compute-kernel-body (root iteration-space transformation)
-  (let ((*loads* '()))
-    (values (compute-value root iteration-space transformation) *loads*)))
+(defun compute-kernel-body (root iteration-space)
+  (let* ((*loads* '())
+         (rank (shape-rank iteration-space))
+         (inner-transformation (identity-transformation rank))
+         (outer-transformation (outer-transformation rank)))
+    (values
+     (make-store-instruction
+      (if (typep root 'reduction)
+          (compute-value root iteration-space inner-transformation)
+          (cons 0 (make-reduce-instruction
+                   'values
+                   (list
+                    (compute-value root (shrink-shape iteration-space) outer-transformation)))))
+      (gethash root *buffer-table*)
+      outer-transformation)
+     *loads*)))
+
+(defun outer-transformation (rank)
+  (petalisp.utilities:with-vector-memoization (rank)
+    (make-transformation
+     :input-rank rank
+     :output-mask (loop for index from 1 below rank collect index))))
 
 ;;; Return the 'value' of ROOT for a given point in the iteration space of
 ;;; the kernel, i.e., return a cons cell whose cdr is an instruction and
@@ -93,7 +110,7 @@
      (transformation transformation))
   ;; The root node always has an entry in the buffer table, yet we do not
   ;; want to treat it as a leaf node.
-  (if (eq node *kernel-root*)
+  (if (eq node *root*)
       (call-next-method)
       (multiple-value-bind (buffer buffer-p)
           (gethash node *buffer-table*)
@@ -128,16 +145,17 @@
     ((reduction reduction)
      (iteration-space shape)
      (transformation transformation))
-  (let* ((shape (shape (first (inputs reduction)))))
+  (let* ((inputs (inputs reduction))
+         ;; We do not have to intersect the shape with the current
+         ;; iteration space, because reductions only occur as the root
+         ;; node of a kernel.
+         (shape (shape (first inputs))))
     (cons (value-n reduction)
           (make-reduce-instruction
            (operator reduction)
            (loop for input in (inputs reduction)
                  collect
-                 (compute-value
-                  input
-                  shape
-                  (enlarge-transformation transformation 1 0)))))))
+                 (compute-value input shape transformation))))))
 
 (defmethod compute-value
     ((reference reference)
