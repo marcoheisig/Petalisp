@@ -135,6 +135,6 @@
      (loop for (element-type-code rank) in array-info
            collect
            `(simple-array
-             ,(petalisp.type-codes:type-specifier-from-type-code element-type-code)
+             ,(petalisp.type-inference:type-specifier-from-type-code element-type-code)
              ,(loop repeat rank collect '*)))
      instructions)))

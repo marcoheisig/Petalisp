@@ -29,7 +29,7 @@
     (setf (buffer-storage buffer)
           (memory-pool-allocate
            (memory-pool native-backend)
-           (petalisp.type-codes:type-specifier-from-type-code
+           (petalisp.type-inference:type-specifier-from-type-code
             (buffer-type-code buffer))
            (mapcar #'range-size (shape-ranges (buffer-shape buffer)))))
     (map-buffer-inputs

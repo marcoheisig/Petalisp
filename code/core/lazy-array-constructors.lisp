@@ -143,7 +143,7 @@
       ((list) (empty-array))
       ((list x) x)
       (_ (make-instance 'fusion
-           :type-code (reduce #'petalisp.type-codes:type-code-union
+           :type-code (reduce #'petalisp.type-inference:type-code-union
                               inputs
                               :key #'type-code)
            :inputs inputs
@@ -161,15 +161,15 @@
         :shape (shape array)
         :storage array
         :reusablep reusablep
-        :type-code (petalisp.type-codes:array-element-type-code array))))
+        :type-code (petalisp.type-inference:array-element-type-code array))))
 
 (defun make-range-immediate (range)
   (make-instance 'range-immediate
     :shape (make-shape (list range))
     :type-code
-    (petalisp.type-codes:type-code-union
-     (petalisp.type-codes:type-code-of (range-start range))
-     (petalisp.type-codes:type-code-of (range-end range)))))
+    (petalisp.type-inference:type-code-union
+     (petalisp.type-inference:type-code-of (range-start range))
+     (petalisp.type-inference:type-code-of (range-end range)))))
 
 (defun indices (array-or-shape &optional (axis 0))
   (cond ((null array-or-shape)
@@ -207,15 +207,15 @@
 
 (defun infer-type-codes (function argument-type-codes)
   (let ((type-codes (multiple-value-list
-                     (apply #'petalisp.type-codes:values-type-codes
+                     (apply #'petalisp.type-inference:values-type-codes
                             function
                             argument-type-codes))))
     (unless (or (null type-codes)
-                (not (petalisp.type-codes:empty-type-code-p (first type-codes))))
+                (not (petalisp.type-inference:empty-type-code-p (first type-codes))))
       (error 'invalid-call
              :function function
              :argument-types
-             (mapcar #'petalisp.type-codes:type-specifier-from-type-code
+             (mapcar #'petalisp.type-inference:type-specifier-from-type-code
                      argument-type-codes)))
     type-codes))
 
@@ -250,7 +250,7 @@
              (operator function))
         (labels ((next-type-code ()
                    (if (null type-codes)
-                       (petalisp.type-codes:type-code-from-type-specifier 't)
+                       (petalisp.type-inference:type-code-from-type-specifier 't)
                        (pop type-codes)))
                  (make-application (value-n)
                    (make-instance 'application
@@ -285,7 +285,7 @@
                  (operator function))
             (labels ((next-type-code ()
                        (if (null type-codes)
-                           (petalisp.type-codes:type-code-from-type-specifier 't)
+                           (petalisp.type-inference:type-code-from-type-specifier 't)
                            (pop type-codes)))
                      (make-reduction (value-n)
                        (make-instance 'reduction

@@ -7,7 +7,7 @@
   (print-platform-information)
   (format t "~&Git revision: ~a~%" (system-git-revision :petalisp))
   (print-system-statistics "petalisp.utilities")
-  (print-system-statistics "petalisp.type-codes")
+  (print-system-statistics "petalisp.type-inference")
   (print-system-statistics "petalisp.core")
   (print-system-statistics "petalisp.ir")
   (print-system-statistics "petalisp.reference-backend")

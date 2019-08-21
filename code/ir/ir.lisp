@@ -12,7 +12,7 @@
   ;; The shape of the buffer.
   (shape nil :type shape)
   ;; The type code of all elements stored in the buffer.
-  (type-code nil :type petalisp.type-codes:type-code)
+  (type-code nil :type petalisp.type-inference:type-code)
   ;; The list of kernels that store into this buffer.
   (inputs '() :type list)
   ;; The list of kernels that load from this buffer.
@@ -138,7 +138,7 @@
 (defmethod print-object ((buffer buffer) stream)
   (print-unreadable-object (buffer stream :type t :identity t)
     (format stream "~S ~S"
-            (petalisp.type-codes:type-specifier-from-type-code
+            (petalisp.type-inference:type-specifier-from-type-code
              (buffer-type-code buffer))
             (buffer-shape buffer))))
 

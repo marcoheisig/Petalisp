@@ -38,7 +38,7 @@
     (setf (buffer-storage buffer)
           (make-array
            (mapcar #'range-size (shape-ranges (buffer-shape buffer)))
-           :element-type (petalisp.type-codes:type-specifier-from-type-code
+           :element-type (petalisp.type-inference:type-specifier-from-type-code
                           (buffer-type-code buffer))))
     (map-buffer-inputs #'execute-kernel buffer)))
 

@@ -54,7 +54,7 @@
 
 (defclass non-empty-array (lazy-array)
   ((%shape :initarg :shape :reader shape :reader shape)
-   (%type-code :initarg :type-code :reader type-code :type petalisp.type-codes:type-code)))
+   (%type-code :initarg :type-code :reader type-code :type petalisp.type-inference:type-code)))
 
 (defclass non-empty-immediate (non-empty-array immediate)
   ())
@@ -125,8 +125,8 @@
   (make-array-immediate array))
 
 (defmethod coerce-to-lazy-array ((object t))
-  (let* ((type-code (petalisp.type-codes:type-code-of object))
-         (element-type (petalisp.type-codes:type-specifier-from-type-code type-code)))
+  (let* ((type-code (petalisp.type-inference:type-code-of object))
+         (element-type (petalisp.type-inference:type-specifier-from-type-code type-code)))
     (make-instance 'array-immediate
       :shape (~)
       :type-code type-code
@@ -145,17 +145,17 @@
   (shape-size (shape non-empty-array)))
 
 (defmethod element-type ((object t))
-  (petalisp.type-codes:type-specifier-from-type-code
+  (petalisp.type-inference:type-specifier-from-type-code
    (type-code object)))
 
 (defmethod type-code ((object t))
-  (petalisp.type-codes:type-code-of object))
+  (petalisp.type-inference:type-code-of object))
 
 (defmethod type-code ((array array))
-  (petalisp.type-codes:array-element-type-code array))
+  (petalisp.type-inference:array-element-type-code array))
 
 (defmethod type-code ((empty-array empty-array))
-  (petalisp.type-codes:type-code-from-type-specifier 'nil))
+  (petalisp.type-inference:type-code-from-type-specifier 'nil))
 
 (defmethod shape ((object t))
   (load-time-value (make-shape '())))
