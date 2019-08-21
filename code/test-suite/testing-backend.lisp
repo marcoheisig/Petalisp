@@ -24,15 +24,21 @@
                    (ir-backend ir-backend)
                    (native-backend native-backend)) testing-backend
     (let ((reference-solutions
-            (compute-immediates data-structures reference-backend)))
-      (loop for backend in (list ir-backend native-backend) do
-        (loop for immediate in (compute-immediates data-structures backend)
-              for expected-immediate in reference-solutions
-              for index from 0 do
-                (is (approximately-equal
-                     (lisp-datum-from-immediate immediate)
-                     (lisp-datum-from-immediate expected-immediate)))))
+            (compute-immediates data-structures reference-backend))
+          (ir-backend-solutions
+            (compute-immediates data-structures ir-backend))
+          (native-backend-solutions
+            (compute-immediates data-structures native-backend)))
+      (compare-solutions reference-solutions ir-backend-solutions)
+      (compare-solutions reference-solutions native-backend-solutions)
       reference-solutions)))
+
+(defun compare-solutions (solutions-1 solutions-2)
+  (loop for immediate-1 in solutions-1
+        for immediate-2 in solutions-2 do
+          (is (approximately-equal
+               (lisp-datum-from-immediate immediate-1)
+               (lisp-datum-from-immediate immediate-2)))))
 
 (defmethod delete-backend ((testing-backend testing-backend))
   (delete-backend (reference-backend testing-backend))
