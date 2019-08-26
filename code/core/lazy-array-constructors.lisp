@@ -231,7 +231,8 @@
                      function
                      inputs
                      #'ntype
-                     #'make-scalar-immediate
+                     (lambda (constant)
+                       (reshape constant shape))
                      (lambda (ntypes function inputs)
                        (values-list
                         (loop for ntype in ntypes
