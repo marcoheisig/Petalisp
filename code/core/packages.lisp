@@ -74,7 +74,7 @@
    #:total-size
    #:element-type
    #:rank
-   #:type-code
+   #:ntype
    #:input
    #:inputs
    #:value-n

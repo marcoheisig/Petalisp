@@ -57,7 +57,7 @@
 
    ;; Accessors
    #:buffer-shape
-   #:buffer-type-code
+   #:buffer-ntype
    #:buffer-inputs
    #:buffer-outputs
    #:buffer-executedp

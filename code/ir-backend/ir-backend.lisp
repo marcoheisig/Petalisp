@@ -24,7 +24,7 @@
 
 (defun immediate-from-buffer (buffer)
   (make-instance 'array-immediate
-    :type-code (buffer-type-code buffer)
+    :ntype (buffer-ntype buffer)
     :shape (buffer-shape buffer)
     :storage (buffer-storage buffer)))
 
@@ -38,8 +38,8 @@
     (setf (buffer-storage buffer)
           (make-array
            (mapcar #'range-size (shape-ranges (buffer-shape buffer)))
-           :element-type (petalisp.type-inference:type-specifier-from-type-code
-                          (buffer-type-code buffer))))
+           :element-type (petalisp.type-inference:type-specifier
+                          (buffer-ntype buffer))))
     (map-buffer-inputs #'execute-kernel buffer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

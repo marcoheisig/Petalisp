@@ -52,7 +52,7 @@
          'integer))))
 
 (defun buffer-blueprint (buffer)
-  (ucons:ulist (buffer-type-code buffer)
+  (ucons:ulist (buffer-ntype buffer)
                (rank (buffer-shape buffer))))
 
 (defun transformation-blueprint (transformation)
@@ -132,9 +132,9 @@
       (ucons:tree-from-utree blueprint)
     (values
      ranges
-     (loop for (element-type-code rank) in array-info
+     (loop for (element-ntype rank) in array-info
            collect
            `(simple-array
-             ,(petalisp.type-inference:type-specifier-from-type-code element-type-code)
+             ,(petalisp.type-inference:type-specifier element-ntype)
              ,(loop repeat rank collect '*)))
      instructions)))

@@ -12,7 +12,7 @@
   ;; The shape of the buffer.
   (shape nil :type shape)
   ;; The type code of all elements stored in the buffer.
-  (type-code nil :type petalisp.type-inference:type-code)
+  (ntype nil)
   ;; The list of kernels that store into this buffer.
   (inputs '() :type list)
   ;; The list of kernels that load from this buffer.
@@ -26,7 +26,7 @@
     (array-immediate
      (%make-buffer
       :shape (shape array)
-      :type-code (type-code array)
+      :ntype (ntype array)
       :storage (storage array)
       :reusablep (reusablep array)
       :executedp t))
@@ -34,7 +34,7 @@
      (%make-buffer
       :shape (shape array)
       :reusablep t
-      :type-code (type-code array)))))
+      :ntype (ntype array)))))
 
 ;;; A kernel represents a computation that, for each element in its
 ;;; iteration space, reads from some buffers and writes to some buffers.
@@ -138,8 +138,8 @@
 (defmethod print-object ((buffer buffer) stream)
   (print-unreadable-object (buffer stream :type t :identity t)
     (format stream "~S ~S"
-            (petalisp.type-inference:type-specifier-from-type-code
-             (buffer-type-code buffer))
+            (petalisp.type-inference:type-specifier
+             (buffer-ntype buffer))
             (buffer-shape buffer))))
 
 (defmethod print-object ((kernel kernel) stream)

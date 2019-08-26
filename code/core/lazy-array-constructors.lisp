@@ -58,7 +58,7 @@
                            (shape shape)
                            (transformation transformation))
   (make-instance 'reference
-    :type-code (type-code lazy-array)
+    :ntype (ntype lazy-array)
     :inputs (list lazy-array)
     :shape shape
     :transformation transformation))
@@ -143,15 +143,33 @@
       ((list) (empty-array))
       ((list x) x)
       (_ (make-instance 'fusion
-           :type-code (reduce #'petalisp.type-inference:type-code-union
-                              inputs
-                              :key #'type-code)
+           :ntype (reduce #'petalisp.type-inference:ntype-union
+                          inputs
+                          :key #'ntype)
            :inputs inputs
            :shape shape)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Immediates
+
+(defmethod coerce-to-lazy-array ((lazy-array lazy-array))
+  lazy-array)
+
+(defmethod coerce-to-lazy-array ((array array))
+  (make-array-immediate array))
+
+(defmethod coerce-to-lazy-array ((object t))
+  (make-scalar-immediate object))
+
+(defun make-scalar-immediate (object)
+  (let* ((ntype (petalisp.type-inference:ntype-of object))
+         (element-type (petalisp.type-inference:type-specifier ntype)))
+    (make-instance 'array-immediate
+      :shape (~)
+      :ntype ntype
+      :storage (make-array '() :initial-element object
+                               :element-type element-type))))
 
 (defun make-array-immediate (array &optional reusablep)
   (check-type array array)
@@ -161,15 +179,15 @@
         :shape (shape array)
         :storage array
         :reusablep reusablep
-        :type-code (petalisp.type-inference:array-element-type-code array))))
+        :ntype (petalisp.type-inference:array-element-ntype array))))
 
 (defun make-range-immediate (range)
   (make-instance 'range-immediate
     :shape (make-shape (list range))
-    :type-code
-    (petalisp.type-inference:type-code-union
-     (petalisp.type-inference:type-code-of (range-start range))
-     (petalisp.type-inference:type-code-of (range-end range)))))
+    :ntype
+    (petalisp.type-inference:ntype-union
+     (petalisp.type-inference:ntype-of (range-start range))
+     (petalisp.type-inference:ntype-of (range-end range)))))
 
 (defun indices (array-or-shape &optional (axis 0))
   (cond ((null array-or-shape)
@@ -188,39 +206,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Type Inference
-
-(define-condition invalid-call (error)
-  ((%function :initarg :function :reader invalid-call-function)
-   (%argument-types :initarg :argument-types :reader invalid-call-argument-types)))
-
-(defmethod print-object ((invalid-call invalid-call) stream)
-  (format stream
-          "~@<Invalid call to ~S with ~
-           ~{~#[no arguments~;~
-                one argument of type ~S~;~
-                arguments of types ~a and ~a~:;~
-                arguments of types ~@{~a~#[~;, and ~:;, ~]~}~
-                ~]~:}.~:@>"
-          (invalid-call-function invalid-call)
-          (invalid-call-argument-types invalid-call)))
-
-(defun infer-type-codes (function argument-type-codes)
-  (let ((type-codes (multiple-value-list
-                     (apply #'petalisp.type-inference:values-type-codes
-                            function
-                            argument-type-codes))))
-    (unless (or (null type-codes)
-                (not (petalisp.type-inference:empty-type-code-p (first type-codes))))
-      (error 'invalid-call
-             :function function
-             :argument-types
-             (mapcar #'petalisp.type-inference:type-specifier-from-type-code
-                     argument-type-codes)))
-    type-codes))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
 ;;; Applications
 
 (declaim (inline α))
@@ -230,12 +215,9 @@
       (broadcast-list-of-arrays arrays)
     (α-aux 1 shape (coerce function 'function) inputs)))
 
-(deftype multiple-value-count ()
-  `(integer 0 ,multiple-values-limit))
-
 (declaim (inline α*))
 (defun α* (n-values function &rest arrays)
-  (declare (multiple-value-count n-values)
+  (declare (petalisp.type-inference:multiple-value-count n-values)
            (dynamic-extent arrays))
   (multiple-value-bind (inputs shape)
       (broadcast-list-of-arrays arrays)
@@ -245,27 +227,32 @@
 (defun α-aux (n-outputs shape function inputs)
   (if (null shape)
       (empty-arrays n-outputs)
-      (let* ((argument-type-codes (mapcar #'type-code inputs))
-             (type-codes (infer-type-codes function argument-type-codes))
-             (operator function))
-        (labels ((next-type-code ()
-                   (if (null type-codes)
-                       (petalisp.type-inference:type-code-from-type-specifier 't)
-                       (pop type-codes)))
-                 (make-application (value-n)
-                   (make-instance 'application
-                     :operator operator
-                     :value-n value-n
-                     :inputs inputs
-                     :shape shape
-                     :type-code (next-type-code))))
-          (case n-outputs
-            (0 (values))
-            (1 (values (make-application 0)))
-            (otherwise
-             (values-list
-              (loop for value-n below n-outputs
-                    collect (make-application value-n)))))))))
+      (handler-case (petalisp.type-inference:specialize
+                     function
+                     inputs
+                     #'ntype
+                     #'make-scalar-immediate
+                     (lambda (ntypes function inputs)
+                       (values-list
+                        (loop for ntype in ntypes
+                              for value-n from 0
+                              collect
+                              (make-instance 'application
+                                :operator function
+                                :value-n value-n
+                                :inputs inputs
+                                :shape shape
+                                :ntype ntype)))))
+        (petalisp.type-inference:give-up-specialization ()
+          (values-list
+           (loop for value-n below n-outputs
+                 collect
+                 (make-instance 'application
+                   :operator function
+                   :value-n value-n
+                   :inputs inputs
+                   :shape shape
+                   :ntype (petalisp.type-inference:ntype 't))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -279,21 +266,25 @@
         (empty-arrays (length inputs))
         (let ((n-outputs (length inputs))
               (shape (shrink-shape input-shape)))
-          (let* ((argument-type-codes (mapcar #'type-code inputs))
-                 (reduction-type-codes (append argument-type-codes argument-type-codes))
-                 (type-codes (infer-type-codes function reduction-type-codes))
+          (let* ((argument-ntypes (mapcar #'ntype inputs))
+                 (reduction-ntypes (append argument-ntypes argument-ntypes))
+                 (ntypes
+                   (multiple-value-list
+                    (apply #'petalisp.type-inference:infer-ntypes
+                           function
+                           reduction-ntypes)))
                  (operator function))
-            (labels ((next-type-code ()
-                       (if (null type-codes)
-                           (petalisp.type-inference:type-code-from-type-specifier 't)
-                           (pop type-codes)))
+            (labels ((next-ntype ()
+                       (if (null ntypes)
+                           (petalisp.type-inference:ntype 't)
+                           (pop ntypes)))
                      (make-reduction (value-n)
                        (make-instance 'reduction
                          :operator operator
                          :value-n value-n
                          :inputs inputs
                          :shape shape
-                         :type-code (next-type-code))))
+                         :ntype (next-ntype))))
               (case n-outputs
                 (0 (values))
                 (1 (values (make-reduction 0)))

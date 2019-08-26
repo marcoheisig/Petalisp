@@ -25,7 +25,7 @@
      shape)
     (make-instance 'simple-immediate
       :shape shape
-      :type-code (petalisp.type-inference:type-code-from-type-specifier element-type)
+      :ntype (petalisp.type-inference:ntype element-type)
       :table table)))
 
 (defun iref (simple-immediate index)
