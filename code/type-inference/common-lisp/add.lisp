@@ -68,7 +68,7 @@
       (add.complex-long-float
        (coerce-to-complex-long-float a)
        (coerce-to-complex-long-float b))))
-    (t (rewrite-default number))))
+    (t (rewrite-default (ntype 'number)))))
 
 (define-rule 1+ (number)
   (rewrite-as

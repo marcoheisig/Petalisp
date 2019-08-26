@@ -16,15 +16,15 @@
 
 (define-rule fdefinition (name)
   (check-ntype name function-name)
-  (rewrite-default t))
+  (rewrite-default (ntype 't)))
 
 (define-rule fboundp (name)
   (check-ntype name function-name)
-  (rewrite-default t))
+  (rewrite-default (ntype 't)))
 
 (define-rule fmakunbound (name)
   (check-ntype name function-name)
-  (rewrite-default function-name))
+  (rewrite-default (ntype 'function-name)))
 
 (define-rule funcall (function &rest arguments)
   (if (functionp function)
@@ -35,47 +35,47 @@
 
 (define-rule function-lambda-expression (function)
   (check-ntype function function)
-  (rewrite-default list))
+  (rewrite-default (ntype 'list)))
 
 (define-rule functionp (object)
   (ntype-subtypecase (wrapper-ntype object)
     ((not function) (rewrite-as nil))
     (function (rewrite-as t))
-    (t (rewrite-default generalized-boolean))))
+    (t (rewrite-default (ntype 'generalized-boolean)))))
 
 (define-rule compiled-function-p (object)
   (ntype-subtypecase (wrapper-ntype object)
     ((not compiled-function) (rewrite-as nil))
     (compiled-function (rewrite-as t))
-    (t (rewrite-default generalized-boolean))))
+    (t (rewrite-default (ntype 'generalized-boolean)))))
 
 (define-rule not (x)
   (ntype-subtypecase x
     (null (rewrite-as t))
     ((not null) (rewrite-as nil))
-    (t (rewrite-default boolean))))
+    (t (rewrite-default (ntype 'boolean)))))
 
 (define-rule eq (a b)
-  (rewrite-default generalized-boolean))
+  (rewrite-default (ntype 'generalized-boolean)))
 
 (define-rule eql (a b)
-  (rewrite-default generalized-boolean))
+  (rewrite-default (ntype 'generalized-boolean)))
 
 (define-rule equal (a b)
-  (rewrite-default generalized-boolean))
+  (rewrite-default (ntype 'generalized-boolean)))
 
 (define-rule equalp (a b)
-  (rewrite-default generalized-boolean))
+  (rewrite-default (ntype 'generalized-boolean)))
 
 (define-rule identity (object)
   (rewrite-as object))
 
 (define-rule complement (function)
   (check-ntype function function)
-  (rewrite-default function))
+  (rewrite-default (ntype 'function)))
 
 (define-rule constantly (value)
-  (rewrite-default function))
+  (rewrite-default (ntype 'function)))
 
 (define-rule values (&rest objects)
   (wrap-function

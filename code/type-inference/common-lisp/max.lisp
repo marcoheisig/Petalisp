@@ -10,7 +10,7 @@
 (define-simple-instruction (max max.long-float) (long-float) (long-float long-float))
 (define-instruction (max max.real) (real) (a b)
   ;; TODO
-  (rewrite-default real))
+  (rewrite-default (ntype 'real)))
 
 (define-rule max (real &rest more-reals)
   (cond ((null more-reals)

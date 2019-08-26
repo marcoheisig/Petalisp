@@ -20,7 +20,7 @@
     (single-float (rewrite-as (short-float-from-single-float real)))
     (double-float (rewrite-as (short-float-from-double-float real)))
     (long-float (rewrite-as (short-float-from-long-float real)))
-    (t (rewrite-default short-float))))
+    (t (rewrite-default (ntype 'short-float)))))
 
 (defun coerce-to-single-float (number)
   (coerce number 'single-float))
@@ -36,7 +36,7 @@
     (short-float (rewrite-as (single-float-from-short-float real)))
     (double-float (rewrite-as (single-float-from-double-float real)))
     (long-float (rewrite-as (single-float-from-long-float real)))
-    (t (rewrite-default single-float))))
+    (t (rewrite-default (ntype 'single-float)))))
 
 (defun coerce-to-double-float (number)
   (coerce number 'double-float))
@@ -52,7 +52,7 @@
     (short-float (rewrite-as (double-float-from-short-float real)))
     (single-float (rewrite-as (double-float-from-single-float real)))
     (long-float (rewrite-as (double-float-from-long-float real)))
-    (t (rewrite-default double-float))))
+    (t (rewrite-default (ntype 'double-float)))))
 
 (defun coerce-to-long-float (number)
   (coerce number 'long-float))
@@ -68,7 +68,7 @@
     (short-float (rewrite-as (long-float-from-short-float real)))
     (single-float (rewrite-as (long-float-from-single-float real)))
     (double-float (rewrite-as (long-float-from-double-float real)))
-    (t (rewrite-default long-float))))
+    (t (rewrite-default (ntype 'long-float)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -88,7 +88,7 @@
     (complex-single-float (rewrite-as (complex-short-float-from-complex-single-float number)))
     (complex-double-float (rewrite-as (complex-short-float-from-complex-double-float number)))
     (complex-long-float (rewrite-as (complex-short-float-from-complex-long-float number)))
-    (t (rewrite-default complex-short-float))))
+    (t (rewrite-default (ntype 'complex-short-float)))))
 
 (defun coerce-to-complex-single-float (number)
   (coerce number 'complex-single-float))
@@ -104,7 +104,7 @@
     (complex-short-float (rewrite-as (complex-single-float-from-complex-short-float number)))
     (complex-double-float (rewrite-as (complex-single-float-from-complex-double-float number)))
     (complex-long-float (rewrite-as (complex-single-float-from-complex-long-float number)))
-    (t (rewrite-default complex-single-float))))
+    (t (rewrite-default (ntype 'complex-single-float)))))
 
 (defun coerce-to-complex-double-float (number)
   (coerce number 'complex-double-float))
@@ -120,7 +120,7 @@
     (complex-short-float (rewrite-as (complex-double-float-from-complex-short-float number)))
     (complex-single-float (rewrite-as (complex-double-float-from-complex-single-float number)))
     (complex-long-float (rewrite-as (complex-double-float-from-complex-long-float number)))
-    (t (rewrite-default complex-double-float))))
+    (t (rewrite-default (ntype 'complex-double-float)))))
 
 (defun coerce-to-complex-long-float (number)
   (coerce number 'complex-long-float))
@@ -136,4 +136,4 @@
     (complex-short-float (rewrite-as (complex-long-float-from-complex-short-float number)))
     (complex-single-float (rewrite-as (complex-long-float-from-complex-single-float number)))
     (complex-double-float (rewrite-as (complex-long-float-from-complex-double-float number)))
-    (t (rewrite-default complex-long-float))))
+    (t (rewrite-default (ntype 'complex-long-float)))))

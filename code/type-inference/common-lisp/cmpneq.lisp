@@ -69,7 +69,8 @@
        (coerce-to-complex-long-float a)
        (coerce-to-complex-long-float b))))
     (t
-     (rewrite-default generalized-boolean))))
+     (rewrite-default
+      (ntype 'generalized-boolean)))))
 
 (defun map-unique-pairs (fn list)
   (loop for sublist on list

@@ -299,7 +299,8 @@
        (null
         (rewrite-as nil))
        (t
-        (rewrite-default generalized-boolean))))))
+        (rewrite-default
+         (ntype 'generalized-boolean)))))))
 
 (define-rule and (&rest forms)
   (if (null forms)
@@ -316,7 +317,8 @@
     (null
      (rewrite-as b))
     (t
-     (rewrite-default generalized-boolean))))
+     (rewrite-default
+      (ntype 'generalized-boolean)))))
 
 (define-rule or (&rest forms)
   (if (null forms)

@@ -69,7 +69,8 @@
        (coerce-to-complex-long-float a)
        (coerce-to-complex-long-float b))))
     (t
-     (rewrite-default generalized-boolean))))
+     (rewrite-default
+      (ntype 'generalized-boolean)))))
 
 (define-rule = (number &rest more-numbers)
   (if (null more-numbers)

@@ -14,7 +14,7 @@
          (ntype-subtypecase (wrapper-ntype object)
            ((not ,type) (abort-specialization))
            (,type (rewrite-as object))
-           (t (rewrite-default ,type)))))))
+           (t (rewrite-default (ntype ',type))))))))
 
 (define-type-check number)
 (define-type-check real)

@@ -49,7 +49,8 @@
               (coerce-to-long-float a)
               (coerce-to-long-float b))))
            (t
-            (rewrite-default generalized-boolean))))
+            (rewrite-default
+             (ntype 'generalized-boolean)))))
 
        (define-rule ,base-name (real &rest more-reals)
          (if (null more-reals)

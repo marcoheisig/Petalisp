@@ -49,9 +49,6 @@
          ;; Place this function in the external rule database.
          (setf (find-rule ',function) #',rule-name)))))
 
-;;; This macro provides two local macros REWRITE-AS and REWRITE-DEFAULT to
-;;; combine the original wrapped objects using further rules, or by passing
-;;; the name and types of the current rule, respectively.
 (defmacro %define-rule ((function-name rule-name) lambda-list &body body)
   (multiple-value-bind (required optional rest keyword)
       (alexandria:parse-ordinary-lambda-list lambda-list)
@@ -66,14 +63,14 @@
          (flet ((abort-specialization ()
                   (%abort-specialization
                    ',function-name
+                   (list* ,@required ,@(mapcar #'first optional) ,rest)))
+                (rewrite-default (&rest ntypes)
+                  (wrap-function
+                   (apply #'list-ntypes ntypes)
+                   ',function-name
                    (list* ,@required ,@(mapcar #'first optional) ,rest))))
-           (declare (ignorable #'abort-specialization))
-           (macrolet ((rewrite-default (&rest type-specifiers)
-                        `(wrap-function
-                          ',(mapcar #'ntype type-specifiers)
-                          ',',function-name
-                          ,'(list* ,@required ,@(mapcar #'first optional) ,rest)))
-                      (check-ntype (object ntype)
+           (declare (ignorable #'abort-specialization #'rewrite-default))
+           (macrolet ((check-ntype (object ntype)
                         `(ntype-subtypecase (wrapper-ntype ,object)
                            ((not ,ntype) (abort-specialization))
                            (t (values)))))

@@ -68,7 +68,9 @@
       (sub.complex-long-float
        (coerce-to-complex-long-float a)
        (coerce-to-complex-long-float b))))
-    (t (rewrite-default number))))
+    (t
+     (rewrite-default
+      (ntype 'number)))))
 
 (define-simple-instruction (- neg.integer) (integer) (integer))
 (define-simple-instruction (- neg.rational) (rational) (rational))
@@ -93,7 +95,7 @@
     (complex-single-float (rewrite-as (neg.complex-single-float x)))
     (complex-double-float (rewrite-as (neg.complex-double-float x)))
     (complex-long-float (rewrite-as (neg.complex-long-float x)))
-    (t (rewrite-default number))))
+    (t (rewrite-default (ntype 'number)))))
 
 (define-rule 1- (number)
   (rewrite-as (sub number 1)))

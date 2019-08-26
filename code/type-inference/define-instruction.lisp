@@ -21,30 +21,36 @@
 
 (defmacro define-simple-instruction ((base-name instruction-name) result-types argument-types)
   (let ((arguments (mapcar #'gensymify argument-types))
-        (ntypes (loop repeat (length argument-types) collect (gensym "NTYPE")))
-        (foldable (gensym "FOLDABLE")))
+        (ntypes (loop repeat (length argument-types) collect (gensym "NTYPE"))))
     `(define-instruction (,base-name ,instruction-name) ,result-types ,arguments
-       (let ((,foldable t)
-             ,@(loop for argument in arguments
+       (let (,@(loop for argument in arguments
                      for ntype in ntypes
                      collect `(,ntype (wrapper-ntype ,argument))))
-         ,@(loop for argument-type in argument-types
-                 for ntype in ntypes
-                 collect
-                 `(cond ((%ntypep ,ntype)
-                         (setf ,foldable nil)
-                         (ntype-subtypecase ,ntype
-                           ((not ,argument-type) (abort-specialization))
-                           (t (values))))
-                        (t
-                         (unless (typep ,ntype ',argument-type)
-                           (abort-specialization)))))
-         (if ,foldable
-             (handler-case (wrap-constant (funcall #',base-name ,@ntypes))
-               (error () (rewrite-default ,@result-types)))
-             (rewrite-default ,@result-types))))))
+         (with-constant-folding (,base-name ,@(mapcar #'list ntypes argument-types))
+           (rewrite-default ,@(mapcar #'ntype result-types)))))))
 
 (defun gensymify (x)
   (if (symbolp x)
       (gensym (symbol-name x))
       (gensym)))
+
+(defmacro with-constant-folding ((function &rest ntype-specs) &body body)
+  (alexandria:with-gensyms (foldable default)
+    `(let ((,foldable t))
+       ,@(loop for (ntype type) in ntype-specs
+               collect
+               `(cond ((%ntypep ,ntype)
+                       (setf ,foldable nil)
+                       (ntype-subtypecase ,ntype
+                         ((not ,type) (abort-specialization))
+                         (t (values))))
+                      (t
+                       (unless (typep ,ntype ',type)
+                         (abort-specialization)))))
+       (flet ((,default () ,@body))
+         (declare (dynamic-extent #',default))
+         (if ,foldable
+             (handler-case (wrap-constant (funcall #',function ,@(mapcar #'first ntype-specs)))
+               (error () (,default)))
+             (,default))))))
+

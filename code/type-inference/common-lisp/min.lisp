@@ -9,8 +9,11 @@
 (define-simple-instruction (min min.double-float) (double-float) (double-float double-float))
 (define-simple-instruction (min min.long-float) (long-float) (long-float long-float))
 (define-instruction (min min.real) (real) (a b)
-  ;; TODO
-  (rewrite-default real))
+  (let ((a-ntype (wrapper-ntype a))
+        (b-ntype (wrapper-ntype b)))
+    (with-constant-folding (min (a-ntype real) (b-ntype real))
+      (rewrite-default
+       (ntype-union a-ntype b-ntype)))))
 
 (define-rule min (real &rest more-reals)
   (cond ((null more-reals)
