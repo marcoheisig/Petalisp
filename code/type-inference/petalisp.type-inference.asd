@@ -27,6 +27,7 @@
      (:file "data-and-control-flow")
      (:file "type-checks")
      (:file "casts")
+     (:file "types-and-classes")
      (:file "add")
      (:file "sub")
      (:file "mul")

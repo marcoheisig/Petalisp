@@ -89,10 +89,19 @@
            (null (rest (rest type-specifier)))
            (not (%ntypep (second type-specifier))))
       (second type-specifier)
-      (the ntype
-           (find type-specifier *ntypes*
-                 :test #'subtypep
-                 :key #'%ntype-type-specifier))))
+      ;; Searching via subtypep is very slow, so we try to avoid it for the
+      ;; common cases.
+      (let ((cache (load-time-value
+                    (alexandria:alist-hash-table
+                     (loop for ntype across *ntypes*
+                           for type = (%ntype-type-specifier ntype)
+                           when (symbolp type)
+                             collect (cons type ntype))))))
+        (the ntype
+             (or (values (gethash type-specifier cache))
+                 (find type-specifier *ntypes*
+                       :test #'subtypep
+                       :key #'%ntype-type-specifier))))))
 
 (define-compiler-macro ntype (&whole form type-specifier)
   (if (constantp type-specifier)

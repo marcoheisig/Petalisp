@@ -56,3 +56,6 @@
 
 (deftype multiple-value-count ()
   `(integer 0 ,multiple-values-limit))
+
+(deftype type-specifier ()
+  t)

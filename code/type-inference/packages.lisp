@@ -24,6 +24,7 @@
    #:complex-long-float
    #:generalized-boolean
    #:multiple-value-count
+   #:type-specifier
 
    ;; Ntype manipulation.
    #:ntype
