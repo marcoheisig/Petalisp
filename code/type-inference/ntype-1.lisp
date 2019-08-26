@@ -88,32 +88,48 @@
 ;;;
 ;;; Type Specifier Ntypes
 
-(defparameter *ntype-cache*
-  (let ((table (make-hash-table :test #'equal)))
-    (loop for ntype across *ntypes* do
-      (setf (gethash (%ntype-type-specifier ntype) table) ntype))
-    table))
-
-(defun ntype (type-specifier)
+(defun %ntype (type-specifier)
   (if (and (consp type-specifier)
            (eq (first type-specifier) 'eql)
            (consp (rest type-specifier))
            (null (rest (rest type-specifier)))
            (not (%ntypep (second type-specifier))))
       (second type-specifier)
-      (the ntype
-           ;; Searching via subtypep is very slow, so we try to avoid it in
-           ;; the common cases.
-           (or (values (gethash type-specifier *ntype-cache*))
-               (let ((ntype
-                       (find type-specifier *ntypes*
-                             :test #'subtypep
-                             :key #'%ntype-type-specifier)))
-                 ;; After looking up an atomic type specifier, place it in
-                 ;; the *ntype-cache* for future use.
-                 (when (symbolp type-specifier)
-                   (setf (gethash type-specifier *ntype-cache*) ntype))
-                 ntype)))))
+      (find type-specifier *ntypes*
+            :test #'subtypep
+            :key #'%ntype-type-specifier)))
+
+(defparameter *ntype-cache*
+  (let ((table (make-hash-table :test #'equal)))
+    ;; Register all known ntypes.
+    (loop for ntype across *ntypes* do
+      (if (eql (%ntype-type-specifier ntype) 'null)
+          ;; We treat NULL specially, because it is a singleton type.
+          nil
+          (setf (gethash (%ntype-type-specifier ntype) table)
+                ntype)))
+    ;; Also register a few other commonly used types.
+    (dolist (type-specifier '((complex short-float)
+                              (complex single-float)
+                              (complex double-float)
+                              (complex long-float)))
+      (setf (gethash type-specifier table)
+            (%ntype type-specifier)))
+    table))
+
+(defun ntype (type-specifier)
+  ;; Searching via subtypep is very slow, so we try to avoid it in
+  ;; the common cases.
+  (multiple-value-bind (ntype present-p)
+      (gethash type-specifier *ntype-cache*)
+    (if present-p
+        ntype
+        (let ((ntype (%ntype type-specifier)))
+          ;; After looking up an atomic type specifier, place it in
+          ;; the *ntype-cache* for future use.
+          (when (symbolp type-specifier)
+            (setf (gethash type-specifier *ntype-cache*) ntype))
+          ntype))))
 
 (define-compiler-macro ntype (&whole form type-specifier)
   (if (constantp type-specifier)
