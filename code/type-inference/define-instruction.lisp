@@ -27,7 +27,10 @@
                      for ntype in ntypes
                      collect `(,ntype (wrapper-ntype ,argument))))
          (with-constant-folding (,base-name ,@(mapcar #'list ntypes argument-types))
-           (rewrite-default ,@(mapcar #'ntype result-types)))))))
+           (rewrite-default
+            (loop for type in result-types
+                  collect
+                  `',(ntype result-types))))))))
 
 (defun gensymify (x)
   (if (symbolp x)

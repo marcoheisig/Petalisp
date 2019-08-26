@@ -9,8 +9,11 @@
 (define-simple-instruction (max max.double-float) (double-float) (double-float double-float))
 (define-simple-instruction (max max.long-float) (long-float) (long-float long-float))
 (define-instruction (max max.real) (real) (a b)
-  ;; TODO
-  (rewrite-default (ntype 'real)))
+  (let ((a-ntype (wrapper-ntype a))
+        (b-ntype (wrapper-ntype b)))
+    (with-constant-folding (max (a-ntype real) (b-ntype real))
+      (rewrite-default
+       (ntype-union a-ntype b-ntype)))))
 
 (define-rule max (real &rest more-reals)
   (cond ((null more-reals)
