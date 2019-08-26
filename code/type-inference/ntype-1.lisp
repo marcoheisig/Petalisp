@@ -71,6 +71,7 @@
              complex-long-float
              complex
              number
+             (not null)
              t)
            :test #'alexandria:type=)))
     (map 'simple-vector
@@ -103,10 +104,10 @@
   (let ((table (make-hash-table :test #'equal)))
     ;; Register all known ntypes.
     (loop for ntype across *ntypes* do
-      (if (eql (%ntype-type-specifier ntype) 'null)
-          ;; We treat NULL specially, because it is a singleton type.
-          nil
-          (setf (gethash (%ntype-type-specifier ntype) table)
+      (setf (gethash (%ntype-type-specifier ntype) table)
+            ;; We treat NULL specially, because it is a singleton type.
+            (if (eql (%ntype-type-specifier ntype) 'null)
+                nil
                 ntype)))
     ;; Also register a few other commonly used types.
     (dolist (type-specifier '((complex short-float)

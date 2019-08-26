@@ -52,6 +52,11 @@
     (subtypep (type-specifier ntype-1)
               (type-specifier ntype-2))))
 
+(defun ntype-subtypepc1 (ntype-1 ntype-2)
+  (with-ntype-caching (ntype-1 ntype-2)
+    (subtypep (type-specifier ntype-1)
+              `(not ,(type-specifier ntype-2)))))
+
 (defmacro ntype-subtypecase (ntype &body clauses &environment env)
   (let ((checked-bits 0)
         (id (gensym "ID"))
