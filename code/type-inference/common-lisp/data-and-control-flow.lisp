@@ -50,22 +50,33 @@
     (t (rewrite-default (ntype 'generalized-boolean)))))
 
 (define-rule not (x)
-  (ntype-subtypecase x
-    (null (rewrite-as t))
-    ((not null) (rewrite-as nil))
-    (t (rewrite-default (ntype 'boolean)))))
+  (let ((ntype (wrapper-ntype x)))
+    (if (eql-ntype-p ntype)
+        (wrap-constant (not x))
+        (ntype-subtypecase ntype
+          (null (rewrite-as t))
+          ((not null) (rewrite-as nil))
+          (t (rewrite-default (ntype 'boolean)))))))
 
 (define-rule eq (a b)
-  (rewrite-default (ntype 'generalized-boolean)))
+  (with-constant-folding (eq ((wrapper-ntype a) t) ((wrapper-ntype b) t))
+    (rewrite-default
+     (ntype 'generalized-boolean))))
 
 (define-rule eql (a b)
-  (rewrite-default (ntype 'generalized-boolean)))
+  (with-constant-folding (eql ((wrapper-ntype a) t) ((wrapper-ntype b) t))
+    (rewrite-default
+     (ntype 'generalized-boolean))))
 
 (define-rule equal (a b)
-  (rewrite-default (ntype 'generalized-boolean)))
+  (with-constant-folding (equal ((wrapper-ntype a) t) ((wrapper-ntype b) t))
+    (rewrite-default
+     (ntype 'generalized-boolean))))
 
 (define-rule equalp (a b)
-  (rewrite-default (ntype 'generalized-boolean)))
+  (with-constant-folding (equalp ((wrapper-ntype a) t) ((wrapper-ntype b) t))
+    (rewrite-default
+     (ntype 'generalized-boolean))))
 
 (define-rule identity (object)
   (rewrite-as object))

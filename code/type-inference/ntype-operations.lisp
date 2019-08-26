@@ -117,6 +117,12 @@
   (and (%ntypep ntype)
        (ntype= ntype (ntype 't))))
 
+(defun eql-ntype-p (ntype)
+  ;; In principle, the NULL ntype is also an EQL type.  But we do not treat
+  ;; it as such, because the purpose of EQL ntypes is that they can be used
+  ;; directly for constant folding.
+  (not (%ntypep ntype)))
+
 (defun ntype-union (ntype-1 ntype-2)
   (with-ntype-caching (ntype-1 ntype-2)
     (ntype

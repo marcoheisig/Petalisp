@@ -28,9 +28,9 @@
                      collect `(,ntype (wrapper-ntype ,argument))))
          (with-constant-folding (,base-name ,@(mapcar #'list ntypes argument-types))
            (rewrite-default
-            (loop for type in result-types
-                  collect
-                  `',(ntype result-types))))))))
+            ,@(loop for type in result-types
+                    collect
+                    `',(ntype result-types))))))))
 
 (defun gensymify (x)
   (if (symbolp x)
@@ -38,22 +38,28 @@
       (gensym)))
 
 (defmacro with-constant-folding ((function &rest ntype-specs) &body body)
-  (alexandria:with-gensyms (foldable default)
-    `(let ((,foldable t))
-       ,@(loop for (ntype type) in ntype-specs
-               collect
-               `(cond ((%ntypep ,ntype)
-                       (setf ,foldable nil)
-                       (ntype-subtypecase ,ntype
-                         ((not ,type) (abort-specialization))
-                         (t (values))))
-                      (t
-                       (unless (typep ,ntype ',type)
-                         (abort-specialization)))))
-       (flet ((,default () ,@body))
-         (declare (dynamic-extent #',default))
-         (if ,foldable
-             (handler-case (wrap-constant (funcall #',function ,@(mapcar #'first ntype-specs)))
-               (error () (,default)))
-             (,default))))))
+  (let ((ntypes (loop repeat (length ntype-specs) collect (gensym "NTYPE"))))
+    (alexandria:with-gensyms (foldable default)
+      `(let ((,foldable t)
+             ,@(loop for (ntype-form nil) in ntype-specs
+                     for ntype in ntypes
+                     collect
+                     `(,ntype ,ntype-form)))
+         ,@(loop for (nil type) in ntype-specs
+                 for ntype in ntypes
+                 collect
+                 `(cond ((eql-ntype-p ,ntype)
+                         (unless (typep ,ntype ',type)
+                           (abort-specialization)))
+                        (t
+                         (setf ,foldable nil)
+                         (ntype-subtypecase ,ntype
+                           ((not ,type) (abort-specialization))
+                           (t (values))))))
+         (flet ((,default () ,@body))
+           (declare (dynamic-extent #',default))
+           (if ,foldable
+               (handler-case (wrap-constant (,function ,@ntypes))
+                 (error () (,default)))
+               (,default)))))))
 
