@@ -25,89 +25,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Caching of Ntype Operations
-
-(let ((id-limit (1+ (loop for ntype across *ntypes*
-                          maximize (%ntype-id ntype)))))
-
-  (deftype ntype-cache (rank)
-    `(simple-array t ,(loop repeat rank collect id-limit)))
-
-  (defun make-ntype-cache (rank fn)
-    (let ((cache (make-array (loop repeat rank collect id-limit))))
-      (labels ((rec (n ids)
-                 (if (zerop n)
-                     (setf (apply #'aref cache ids)
-                           (apply fn (mapcar (lambda (id) (aref *ntypes* id)) ids)))
-                     (loop for id below id-limit do
-                       (rec (1- n) (cons id ids))))))
-        (rec rank '()))
-      cache)))
-
-(defmacro with-ntype-caching (ntypes &body body)
-  (assert (null (intersection ntypes lambda-list-keywords)))
-  (assert (every #'symbolp ntypes))
-  (let* ((n (length ntypes))
-         (cache (gensym "CACHE"))
-         (indices (loop repeat n collect (gensym "INDEX"))))
-    `(let ((,cache
-             (load-time-value
-              (make-ntype-cache ,n (lambda ,ntypes ,@body))))
-           ,@(loop for index in indices
-                   for ntype in ntypes
-                   collect
-                   `(,index (%ntype-id (generalize-ntype ,ntype)))))
-       (declare (optimize (speed 3) (safety 0))
-                (type (ntype-cache ,n) ,cache))
-       (aref ,cache ,@indices))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Non-consing lists of Ntypes
-
-(defun list-ntypes (&rest ntypes)
-  "Behaves just like LIST, but avoids consing in some cases."
-  ntypes)
-
-(define-compiler-macro list-ntypes (&whole form &rest ntypes)
-  (trivia:match ntypes
-    ((list a) `(list-one-ntype ,a))
-    ((list a b) `(lits-two-ntypes ,a ,b))
-    (_ form)))
-
-(defun list-one-ntype (ntype)
-  (if (%ntypep ntype)
-      (with-ntype-caching (ntype)
-        (list ntype))
-      (list ntype)))
-
-(defun list-two-ntypes (ntype-1 ntype-2)
-  (if (and (%ntypep ntype-1)
-           (%ntypep ntype-2))
-      (with-ntype-caching (ntype-1 ntype-2)
-        (list ntype-1 ntype-2))
-      (list ntype-1 ntype-2)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
 ;;; Reasoning About Ntypes
-
-(declaim (inline ntype-of))
-(defun ntype-of (object)
-  (if (%ntypep object)
-      (ntype 't)
-      object))
-
-(declaim (inline generalize-ntype))
-(defun generalize-ntype (object)
-  (if (%ntypep object)
-      object
-      (macrolet ((body ()
-                   `(typecase object
-                      ,@(loop for ntype across *ntypes*
-                              collect
-                              `(,(%ntype-type-specifier ntype) ',ntype)))))
-        (body))))
 
 (defun empty-ntype-p (ntype)
   (and (%ntypep ntype)
@@ -160,3 +78,30 @@
         sum (if (subtypep (%ntype-type-specifier ntype) type-specifier env)
                 (ash 1 (%ntype-id ntype))
                 0)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Non-consing lists of Ntypes
+
+(defun list-ntypes (&rest ntypes)
+  "Behaves just like LIST, but avoids consing in some cases."
+  ntypes)
+
+(define-compiler-macro list-ntypes (&whole form &rest ntypes)
+  (trivia:match ntypes
+    ((list a) `(list-one-ntype ,a))
+    ((list a b) `(lits-two-ntypes ,a ,b))
+    (_ form)))
+
+(defun list-one-ntype (ntype)
+  (if (%ntypep ntype)
+      (with-ntype-caching (ntype)
+        (list ntype))
+      (list ntype)))
+
+(defun list-two-ntypes (ntype-1 ntype-2)
+  (if (and (%ntypep ntype-1)
+           (%ntypep ntype-2))
+      (with-ntype-caching (ntype-1 ntype-2)
+        (list ntype-1 ntype-2))
+      (list ntype-1 ntype-2)))

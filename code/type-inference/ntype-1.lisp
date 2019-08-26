@@ -24,7 +24,8 @@
     (format stream "~S" (%ntype-type-specifier ntype))))
 
 (defmethod make-load-form ((ntype ntype) &optional environment)
-  (make-load-form-saving-slots ntype :environment environment))
+  (declare (ignore environment))
+  `(svref *ntypes* ,(%ntype-id ntype)))
 
 (declaim (inline ntype=))
 (defun ntype= (ntype-1 ntype-2)
@@ -64,10 +65,10 @@
              integer
              rational
              real
-             (complex short-float)
-             (complex single-float)
-             (complex long-float)
-             (complex double-float)
+             complex-short-float
+             complex-single-float
+             complex-double-float
+             complex-long-float
              complex
              number
              t)
@@ -77,10 +78,21 @@
          type-specifiers
          (alexandria:iota (length type-specifiers)))))
 
-(defun type-specifier (ntype)
-  (if (%ntypep ntype)
-      (%ntype-type-specifier ntype)
-      `(eql ,ntype)))
+;;; Explicitly check some invariants, just to make sure.
+
+(loop for ntype across *ntypes*
+      for id from 0 do
+      (assert (= id (%ntype-id ntype))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Type Specifier Ntypes
+
+(defparameter *ntype-cache*
+  (let ((table (make-hash-table :test #'equal)))
+    (loop for ntype across *ntypes* do
+      (setf (gethash (%ntype-type-specifier ntype) table) ntype))
+    table))
 
 (defun ntype (type-specifier)
   (if (and (consp type-specifier)
@@ -89,19 +101,19 @@
            (null (rest (rest type-specifier)))
            (not (%ntypep (second type-specifier))))
       (second type-specifier)
-      ;; Searching via subtypep is very slow, so we try to avoid it for the
-      ;; common cases.
-      (let ((cache (load-time-value
-                    (alexandria:alist-hash-table
-                     (loop for ntype across *ntypes*
-                           for type = (%ntype-type-specifier ntype)
-                           when (symbolp type)
-                             collect (cons type ntype))))))
-        (the ntype
-             (or (values (gethash type-specifier cache))
-                 (find type-specifier *ntypes*
-                       :test #'subtypep
-                       :key #'%ntype-type-specifier))))))
+      (the ntype
+           ;; Searching via subtypep is very slow, so we try to avoid it in
+           ;; the common cases.
+           (or (values (gethash type-specifier *ntype-cache*))
+               (let ((ntype
+                       (find type-specifier *ntypes*
+                             :test #'subtypep
+                             :key #'%ntype-type-specifier)))
+                 ;; After looking up an atomic type specifier, place it in
+                 ;; the *ntype-cache* for future use.
+                 (when (symbolp type-specifier)
+                   (setf (gethash type-specifier *ntype-cache*) ntype))
+                 ntype)))))
 
 (define-compiler-macro ntype (&whole form type-specifier)
   (if (constantp type-specifier)
@@ -109,8 +121,11 @@
         (ntype (eval type-specifier)))
       form))
 
-;;; Explicitly check some invariants, just to make sure.
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Ntype Type Specifiers
 
-(loop for ntype across *ntypes*
-      for id from 0 do
-      (assert (= id (%ntype-id ntype))))
+(defun type-specifier (ntype)
+  (if (%ntypep ntype)
+      (%ntype-type-specifier ntype)
+      `(eql ,ntype)))
