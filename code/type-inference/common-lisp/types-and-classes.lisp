@@ -7,8 +7,8 @@
         (result-ntype (wrapper-ntype result-type)))
     (with-constant-folding (coerce (object-ntype t)
                                    (result-ntype type-specifier))
-      (if (eql-ntype-p result-type)
-          (let ((result-ntype (ntype result-type)))
+      (if (eql-ntype-p result-ntype)
+          (let ((result-ntype (ntype result-ntype)))
             (ntype-subtypecase result-ntype
               (short-float
                (rewrite-as
