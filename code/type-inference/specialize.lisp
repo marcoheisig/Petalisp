@@ -87,18 +87,19 @@ arguments are too complicated.
     (give-up-specialization ()
       (values))))
 
-(defun expression-builder (function &rest arguments)
+(defun expression-builder (function &rest ntypes)
   (flet ((wrap-object (object)
-           (cons (ntype-of object) object)))
+           (cons (ntype-of object) object))
+         (wrap-function (ntypes function arguments)
+           (let ((expression (cons function arguments)))
+             (values-list
+              (loop for ntype in ntypes
+                    collect
+                    (cons ntype expression))))))
     (specialize
      function
-     (mapcar #'wrap-object arguments)
+     (mapcar #'list ntypes)
      #'first
      #'wrap-object
-     (lambda (ntypes function arguments)
-       (let ((expression (cons function arguments)))
-         (values-list
-          (loop for ntype in ntypes
-                collect
-                (cons ntype expression))))))))
+     #'wrap-function)))
 
