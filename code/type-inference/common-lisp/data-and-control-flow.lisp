@@ -27,11 +27,12 @@
   (rewrite-default (ntype 'function-name)))
 
 (define-rule funcall (function &rest arguments)
-  (if (functionp function)
-      (apply (find-rule function) arguments)
-      (progn
-        (check-ntype function function)
-        (give-up-specialization))))
+  (let ((function-ntype (wrapper-ntype function)))
+    (if (eql-ntype-p function-ntype)
+        (apply (find-rule function-ntype) arguments)
+        (progn
+          (check-ntype function function)
+          (give-up-specialization)))))
 
 (define-rule function-lambda-expression (function)
   (check-ntype function function)
