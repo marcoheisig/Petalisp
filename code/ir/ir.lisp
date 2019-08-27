@@ -21,34 +21,15 @@
   (reusablep nil :type boolean)
   (storage nil))
 
-(defvar *scalar-buffers*)
-
 (defun make-buffer (array)
   (etypecase array
     (array-immediate
-     (with-accessors ((shape shape)
-                      (ntype ntype)
-                      (storage storage)
-                      (reusablep reusablep)) array
-       (if (zerop (array-rank storage))
-           (multiple-value-bind (buffer present-p)
-               (gethash (aref storage) *scalar-buffers*)
-             (if present-p
-                 buffer
-                 (let ((buffer
-                         (%make-buffer
-                          :shape shape
-                          :ntype ntype
-                          :storage storage
-                          :reusablep nil
-                          :executedp t)))
-                   (setf (gethash (aref storage) *scalar-buffers*) buffer))))
-           (%make-buffer
-            :shape (shape array)
-            :ntype (ntype array)
-            :storage (storage array)
-            :reusablep (reusablep array)
-            :executedp t))))
+     (%make-buffer
+      :shape (shape array)
+      :ntype (ntype array)
+      :storage (storage array)
+      :reusablep (reusablep array)
+      :executedp t))
     (lazy-array
      (%make-buffer
       :shape (shape array)
