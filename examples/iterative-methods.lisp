@@ -303,7 +303,7 @@
   (let ((interior (interior u)))
     (ecase (rank u)
       (1
-       (fuse* (reshape 0 (shape u))
+       (fuse* (reshape 0d0 (shape u))
               (α #'- (reshape b interior)
                  (α #'* (/ 1 (* h h))
                     (α #'-
@@ -311,7 +311,7 @@
                        (reshape u (τ (i) ((1+ i))) interior)
                        (reshape u (τ (i) ((1- i))) interior))))))
       (2
-       (fuse* (reshape 0 (shape u))
+       (fuse* (reshape 0d0 (shape u))
               (α #'- (reshape b interior)
                  (α #'* (/ 1 (* h h))
                     (α #'-
@@ -321,7 +321,7 @@
                        (reshape u (τ (i j) (i (1+ j))) interior)
                        (reshape u (τ (i j) (i (1- j))) interior))))))
       (3
-       (fuse* (reshape 0 (shape u))
+       (fuse* (reshape 0d0 (shape u))
               (α #'- (reshape b interior)
                  (α #'* (/ 1 (* h h))
                     (α #'-
@@ -338,7 +338,7 @@
       (rbgs u f h 3) ; solve "exactly"
       (let* ((x (rbgs u f h v1))
              (r (restrict (residual x f h)))
-             (c (v-cycle (reshape 0 (shape r)) r (* 2 h) v1 v2)))
+             (c (v-cycle (reshape 0d0 (shape r)) r (* 2 h) v1 v2)))
         (rbgs (α #'+ x (prolongate c)) f h v2))))
 
 
