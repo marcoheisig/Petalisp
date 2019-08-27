@@ -28,22 +28,33 @@
 
    ;; Ntype manipulation.
    #:ntype
-   #:ntypep
    #:type-specifier
    #:ntype-of
+   #:generalize-ntype
+   #:with-ntype-caching
+   #:ntype-subtypecase
    #:array-element-ntype
    #:empty-ntype-p
    #:universal-ntype-p
-   #:with-ntype-caching
+   #:eql-ntype-p
    #:ntype-union
-   #:ntype-subtypecase
+   #:ntype-subtypep
+   #:ntype-subtypepc1
+   #:coerce-to-ntype
+   #:list-ntypes
 
    ;; Type inference.
-   #:define-external-rewrite-rule
-   #:define-rewrite-rules
    #:abort-specialization
    #:give-up-specialization
-   #:defop
+   #:check-ntype
+   #:define-rule
+   #:rewrite-as
+   #:rewrite-default
+   #:wrapper-ntype
+   #:wrap-constant
+   #:wrap-function
+   #:define-instruction
+   #:define-simple-instruction
    #:specialize
    #:infer-ntypes
 

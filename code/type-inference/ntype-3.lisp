@@ -57,33 +57,6 @@
     (subtypep (type-specifier ntype-1)
               `(not ,(type-specifier ntype-2)))))
 
-(defmacro ntype-subtypecase (ntype &body clauses &environment env)
-  (let ((checked-bits 0)
-        (id (gensym "ID"))
-        (cond-clauses '()))
-    (loop for (type-specifier . body) in clauses do
-      (let ((mask (logandc2
-                   (ntype-subtypep-mask type-specifier env)
-                   checked-bits)))
-        (unless (zerop mask)
-          (push `((logbitp ,id ,mask) ,@body) cond-clauses)
-          (setf checked-bits (logior checked-bits mask)))))
-    (unless (= checked-bits (ntype-subtypep-mask t))
-      (warn "The provided NTYPE-SUBTYPECASE clauses do not cover all types.~@
-             The following types are missing:~%~{ ~S~%~}"
-            (loop for ntype across *ntypes*
-                  unless (logbitp (%ntype-id ntype) checked-bits)
-                    collect (%ntype-type-specifier ntype))))
-    (alexandria:once-only (ntype)
-      `(let ((,id (%ntype-id (generalize-ntype ,ntype))))
-         (cond ,@(reverse cond-clauses))))))
-
-(defun ntype-subtypep-mask (type-specifier &optional env)
-  (loop for ntype across *ntypes*
-        sum (if (subtypep (%ntype-type-specifier ntype) type-specifier env)
-                (ash 1 (%ntype-id ntype))
-                0)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Non-consing lists of Ntypes
