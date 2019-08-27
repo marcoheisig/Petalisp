@@ -70,11 +70,12 @@
                    ',function-name
                    (list* ,@required ,@(mapcar #'first optional) ,rest))))
            (declare (ignorable #'abort-specialization #'rewrite-default))
-           (macrolet ((check-ntype (object ntype)
-                        `(ntype-subtypecase (wrapper-ntype ,object)
-                           ((not ,ntype) (abort-specialization))
-                           (t (values)))))
-             ,@remaining-forms))))))
+           ,@remaining-forms)))))
+
+(defmacro check-ntype (object ntype)
+  `(ntype-subtypecase (wrapper-ntype ,object)
+     ((not ,ntype) (abort-specialization))
+     (t (values))))
 
 (declaim (notinline %abort-specialization))
 (defun %abort-specialization (function arguments)
