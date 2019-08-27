@@ -149,7 +149,7 @@
       ((~ start-1 2 end-1)
        (let ((space-1 (~ (1+ start-1) 2 end-1)))
          (fuse u*
-               (α #'* 0.5d0
+               (α #'* 1/2
                   (α #'+
                      (reshape u* (τ (i) ((1+ i))) space-1)
                      (reshape u* (τ (i) ((1- i))) space-1))))))
@@ -158,15 +158,15 @@
              (space-2 (~ start-1 2 end-1 ~ (1+ start-2) 2 end-2))
              (space-3 (~ (1+ start-1) 2 end-1 ~ (1+ start-2) 2 end-2)))
          (fuse u*
-               (α #'* 0.5d0
+               (α #'* 1/2
                   (α #'+
                      (reshape u* (τ (i j) ((1+ i) j)) space-1)
                      (reshape u* (τ (i j) ((1- i) j)) space-1)))
-               (α #'* 0.5d0
+               (α #'* 1/2
                   (α #'+
                      (reshape u* (τ (i j) (i (1+ j))) space-2)
                      (reshape u* (τ (i j) (i (1- j))) space-2)))
-               (α #'* 0.25d0
+               (α #'* 1/4
                   (α #'+
                      (reshape u* (τ (i j) ((1+ i) (1+ j))) space-3)
                      (reshape u* (τ (i j) ((1+ i) (1- j))) space-3)
@@ -181,37 +181,37 @@
              (space-6 (~ (1+ start-1) 2 end-1 ~ (1+ start-2) 2 end-2 ~ start-3 2 end-3))
              (space-7 (~ (1+ start-1) 2 end-1 ~ (1+ start-2) 2 end-2 ~ (1+ start-3) 2 end-3)))
          (fuse u*
-               (α #'* 0.5d0
+               (α #'* 1/2
                   (α #'+
                      (reshape u* (τ (i j k) ((1+ i) j k)) space-1)
                      (reshape u* (τ (i j k) ((1- i) j k)) space-1)))
-               (α #'* 0.5d0
+               (α #'* 1/2
                   (α #'+
                      (reshape u* (τ (i j k) (i (1+ j) k)) space-2)
                      (reshape u* (τ (i j k) (i (1- j) k)) space-2)))
-               (α #'* 0.5d0
+               (α #'* 1/2
                   (α #'+
                      (reshape u* (τ (i j k) (i j (1+ k))) space-3)
                      (reshape u* (τ (i j k) (i j (1- k))) space-3)))
-               (α #'* 0.25d0
+               (α #'* 1/4
                   (α #'+
                      (reshape u* (τ (i j k) (i (1+ j) (1+ k))) space-4)
                      (reshape u* (τ (i j k) (i (1+ j) (1- k))) space-4)
                      (reshape u* (τ (i j k) (i (1- j) (1+ k))) space-4)
                      (reshape u* (τ (i j k) (i (1- j) (1- k))) space-4)))
-               (α #'* 0.25d0
+               (α #'* 1/4
                   (α #'+
                      (reshape u* (τ (i j k) ((1+ i) j (1+ k))) space-5)
                      (reshape u* (τ (i j k) ((1+ i) j (1- k))) space-5)
                      (reshape u* (τ (i j k) ((1- i) j (1+ k))) space-5)
                      (reshape u* (τ (i j k) ((1- i) j (1- k))) space-5)))
-               (α #'* 0.25d0
+               (α #'* 1/4
                   (α #'+
                      (reshape u* (τ (i j k) ((1+ i) (1+ j) k)) space-6)
                      (reshape u* (τ (i j k) ((1+ i) (1- j) k)) space-6)
                      (reshape u* (τ (i j k) ((1- i) (1+ j) k)) space-6)
                      (reshape u* (τ (i j k) ((1- i) (1- j) k)) space-6)))
-               (α #'* 0.125d0
+               (α #'* 1/8
                   (α #'+
                      (reshape u* (τ (i j k) ((1+ i) (1+ j) (1+ k))) space-7)
                      (reshape u* (τ (i j k) ((1+ i) (1+ j) (1- k))) space-7)
@@ -231,9 +231,9 @@
         (fuse*
          (reshape u selection)
          (α #'+
-            (α #'* 0.50d0   (reshape u interior))
-            (α #'* 0.25d0  (reshape u (τ (i) ((1+ i))) interior))
-            (α #'* 0.25d0  (reshape u (τ (i) ((1- i))) interior))))
+            (α #'* 1/2 (reshape u interior))
+            (α #'* 1/4 (reshape u (τ (i) ((1+ i))) interior))
+            (α #'* 1/4 (reshape u (τ (i) ((1- i))) interior))))
         (τ (i) ((+ start-1 (/ (- i start-1) 2)))))))
     ((~ start-1 1 end-1 ~ start-2 1 end-2)
      (let* ((selection (~ start-1 2 end-1 ~ start-2 2 end-2))
@@ -242,15 +242,19 @@
         (fuse*
          (reshape u selection)
          (α #'+
-            (α #'* 0.25d0   (reshape u interior))
-            (α #'* 0.125d0  (reshape u (τ (i j) ((1+ i) j)) interior))
-            (α #'* 0.125d0  (reshape u (τ (i j) ((1- i) j)) interior))
-            (α #'* 0.125d0  (reshape u (τ (i j) (i (1+ j))) interior))
-            (α #'* 0.125d0  (reshape u (τ (i j) (i (1- j))) interior))
-            (α #'* 0.0625d0 (reshape u (τ (i j) ((1+ i) (1+ j))) interior))
-            (α #'* 0.0625d0 (reshape u (τ (i j) ((1- i) (1+ j))) interior))
-            (α #'* 0.0625d0 (reshape u (τ (i j) ((1+ i) (1- j))) interior))
-            (α #'* 0.0625d0 (reshape u (τ (i j) ((1- i) (1- j))) interior))))
+            (α #'* 1/4
+               (reshape u interior))
+            (α #'* 1/8
+               (α #'+
+                  (reshape u (τ (i j) ((1+ i) j)) interior)
+                  (reshape u (τ (i j) ((1- i) j)) interior)
+                  (reshape u (τ (i j) (i (1+ j))) interior)
+                  (reshape u (τ (i j) (i (1- j))) interior)))
+            (α #'* 1/16
+               (reshape u (τ (i j) ((1+ i) (1+ j))) interior)
+               (reshape u (τ (i j) ((1- i) (1+ j))) interior)
+               (reshape u (τ (i j) ((1+ i) (1- j))) interior)
+               (reshape u (τ (i j) ((1- i) (1- j))) interior))))
         (τ (i j) ((+ start-1 (/ (- i start-1) 2))
                   (+ start-2 (/ (- j start-2) 2)))))))
     ((~ start-1 1 end-1 ~ start-2 1 end-2 ~ start-3 1 end-3)
@@ -260,33 +264,37 @@
         (fuse*
          (reshape u selection)
          (α #'+
-            (α #'* (float 1/8 0d0) (reshape u interior))
-            (α #'* (float 1/16 0d0) (reshape u (τ (i j k) ((1+ i) j k)) interior))
-            (α #'* (float 1/16 0d0) (reshape u (τ (i j k) (i (1+ j) k)) interior))
-            (α #'* (float 1/16 0d0) (reshape u (τ (i j k) (i j (1+ k))) interior))
-            (α #'* (float 1/16 0d0) (reshape u (τ (i j k) ((1- i) j k)) interior))
-            (α #'* (float 1/16 0d0) (reshape u (τ (i j k) (i (1- j) k)) interior))
-            (α #'* (float 1/16 0d0) (reshape u (τ (i j k) (i j (1- k))) interior))
-            (α #'* (float 1/32 0d0) (reshape u (τ (i j k) (i (1+ j) (1+ k))) interior))
-            (α #'* (float 1/32 0d0) (reshape u (τ (i j k) ((1+ i) j (1+ k))) interior))
-            (α #'* (float 1/32 0d0) (reshape u (τ (i j k) ((1+ i) (1+ j) k)) interior))
-            (α #'* (float 1/32 0d0) (reshape u (τ (i j k) (i (1- j) (1+ k))) interior))
-            (α #'* (float 1/32 0d0) (reshape u (τ (i j k) ((1- i) j (1+ k))) interior))
-            (α #'* (float 1/32 0d0) (reshape u (τ (i j k) ((1- i) (1+ j) k)) interior))
-            (α #'* (float 1/32 0d0) (reshape u (τ (i j k) (i (1+ j) (1- k))) interior))
-            (α #'* (float 1/32 0d0) (reshape u (τ (i j k) ((1+ i) j (1- k))) interior))
-            (α #'* (float 1/32 0d0) (reshape u (τ (i j k) ((1+ i) (1- j) k)) interior))
-            (α #'* (float 1/32 0d0) (reshape u (τ (i j k) (i (1- j) (1- k))) interior))
-            (α #'* (float 1/32 0d0) (reshape u (τ (i j k) ((1- i) j (1- k))) interior))
-            (α #'* (float 1/32 0d0) (reshape u (τ (i j k) ((1- i) (1- j) k)) interior))
-            (α #'* (float 1/64 0d0) (reshape u (τ (i j k) ((1+ i) (1+ j) (1+ k))) interior))
-            (α #'* (float 1/64 0d0) (reshape u (τ (i j k) ((1+ i) (1+ j) (1- k))) interior))
-            (α #'* (float 1/64 0d0) (reshape u (τ (i j k) ((1+ i) (1- j) (1+ k))) interior))
-            (α #'* (float 1/64 0d0) (reshape u (τ (i j k) ((1+ i) (1- j) (1- k))) interior))
-            (α #'* (float 1/64 0d0) (reshape u (τ (i j k) ((1- i) (1+ j) (1+ k))) interior))
-            (α #'* (float 1/64 0d0) (reshape u (τ (i j k) ((1- i) (1+ j) (1- k))) interior))
-            (α #'* (float 1/64 0d0) (reshape u (τ (i j k) ((1- i) (1- j) (1+ k))) interior))
-            (α #'* (float 1/64 0d0) (reshape u (τ (i j k) ((1- i) (1- j) (1- k))) interior))))
+            (α #'* 1/8
+               (reshape u interior))
+            (α #'* 1/16
+               (reshape u (τ (i j k) ((1+ i) j k)) interior)
+               (reshape u (τ (i j k) (i (1+ j) k)) interior)
+               (reshape u (τ (i j k) (i j (1+ k))) interior)
+               (reshape u (τ (i j k) ((1- i) j k)) interior)
+               (reshape u (τ (i j k) (i (1- j) k)) interior)
+               (reshape u (τ (i j k) (i j (1- k))) interior))
+            (α #'* 1/32
+               (reshape u (τ (i j k) (i (1+ j) (1+ k))) interior)
+               (reshape u (τ (i j k) ((1+ i) j (1+ k))) interior)
+               (reshape u (τ (i j k) ((1+ i) (1+ j) k)) interior)
+               (reshape u (τ (i j k) (i (1- j) (1+ k))) interior)
+               (reshape u (τ (i j k) ((1- i) j (1+ k))) interior)
+               (reshape u (τ (i j k) ((1- i) (1+ j) k)) interior)
+               (reshape u (τ (i j k) (i (1+ j) (1- k))) interior)
+               (reshape u (τ (i j k) ((1+ i) j (1- k))) interior)
+               (reshape u (τ (i j k) ((1+ i) (1- j) k)) interior)
+               (reshape u (τ (i j k) (i (1- j) (1- k))) interior)
+               (reshape u (τ (i j k) ((1- i) j (1- k))) interior)
+               (reshape u (τ (i j k) ((1- i) (1- j) k)) interior))
+            (α #'* 1/64
+               (reshape u (τ (i j k) ((1+ i) (1+ j) (1+ k))) interior)
+               (reshape u (τ (i j k) ((1+ i) (1+ j) (1- k))) interior)
+               (reshape u (τ (i j k) ((1+ i) (1- j) (1+ k))) interior)
+               (reshape u (τ (i j k) ((1+ i) (1- j) (1- k))) interior)
+               (reshape u (τ (i j k) ((1- i) (1+ j) (1+ k))) interior)
+               (reshape u (τ (i j k) ((1- i) (1+ j) (1- k))) interior)
+               (reshape u (τ (i j k) ((1- i) (1- j) (1+ k))) interior)
+               (reshape u (τ (i j k) ((1- i) (1- j) (1- k))) interior))))
         (τ (i j k) ((+ start-1 (/ (- i start-1) 2))
                     (+ start-2 (/ (- j start-2) 2))
                     (+ start-3 (/ (- k start-3) 2)))))))))
@@ -295,29 +303,29 @@
   (let ((interior (interior u)))
     (ecase (rank u)
       (1
-       (fuse* (reshape 0d0 (shape u))
+       (fuse* (reshape 0 (shape u))
               (α #'- (reshape b interior)
                  (α #'* (/ 1 (* h h))
                     (α #'-
-                       (reshape (α #'* 2.0d0 u) interior)
+                       (reshape (α #'* 2 u) interior)
                        (reshape u (τ (i) ((1+ i))) interior)
                        (reshape u (τ (i) ((1- i))) interior))))))
       (2
-       (fuse* (reshape 0d0 (shape u))
+       (fuse* (reshape 0 (shape u))
               (α #'- (reshape b interior)
                  (α #'* (/ 1 (* h h))
                     (α #'-
-                       (reshape (α #'* 4.0d0 u) interior)
+                       (reshape (α #'* 4 u) interior)
                        (reshape u (τ (i j) ((1+ i) j)) interior)
                        (reshape u (τ (i j) ((1- i) j)) interior)
                        (reshape u (τ (i j) (i (1+ j))) interior)
                        (reshape u (τ (i j) (i (1- j))) interior))))))
       (3
-       (fuse* (reshape 0d0 (shape u))
+       (fuse* (reshape 0 (shape u))
               (α #'- (reshape b interior)
                  (α #'* (/ 1 (* h h))
                     (α #'-
-                       (reshape (α #'* 6.0d0 u) interior)
+                       (reshape (α #'* 6 u) interior)
                        (reshape u (τ (i j k) ((1+ i) j k)) interior)
                        (reshape u (τ (i j k) ((1- i) j k)) interior)
                        (reshape u (τ (i j k) (i (1+ j) k)) interior)
@@ -330,7 +338,7 @@
       (rbgs u f h 3) ; solve "exactly"
       (let* ((x (rbgs u f h v1))
              (r (restrict (residual x f h)))
-             (c (v-cycle (reshape 0d0 (shape r)) r (* 2 h) v1 v2)))
+             (c (v-cycle (reshape 0 (shape r)) r (* 2 h) v1 v2)))
         (rbgs (α #'+ x (prolongate c)) f h v2))))
 
 
