@@ -22,16 +22,21 @@
 ;;; 3. All buffers are updated to contain a list of kernels that read to
 ;;;    them or write from them.
 
+(defvar *buffer-table*)
+
+(defvar *scalar-buffers*)
+
+(defvar *root*)
+
 (defun ir-from-lazy-arrays (lazy-arrays)
-  (let ((*buffer-table* (compute-buffer-table lazy-arrays)))
+  (let* ((*scalar-buffers* (make-hash-table))
+         (*buffer-table* (compute-buffer-table lazy-arrays)))
     ;; Now create a list of kernels for each entry in the buffer table.
     (loop for root being each hash-key of *buffer-table* do
       (create-kernels root))
     ;; Finally, return the buffers corresponding to the root nodes.
     (loop for lazy-array in lazy-arrays
           collect (gethash lazy-array *buffer-table*))))
-
-(defvar *root*)
 
 ;;; We compute a partitioning of the shape of the root into multiple
 ;;; iteration spaces.  These spaces are chosen such that their union is the
