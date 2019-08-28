@@ -38,17 +38,9 @@
   (check-ntype function function)
   (rewrite-default (ntype 'list)))
 
-(define-rule functionp (object)
-  (ntype-subtypecase (wrapper-ntype object)
-    ((not function) (rewrite-as nil))
-    (function (rewrite-default (ntype '(not null))))
-    (t (rewrite-default (ntype 'generalized-boolean)))))
+(define-predicate-rule functionp function)
 
-(define-rule compiled-function-p (object)
-  (ntype-subtypecase (wrapper-ntype object)
-    ((not compiled-function) (rewrite-as nil))
-    (compiled-function (rewrite-default (ntype '(not null))))
-    (t (rewrite-default (ntype 'generalized-boolean)))))
+(define-predicate-rule compiled-function-p compiled-function)
 
 (define-rule not (x)
   (let ((ntype (wrapper-ntype x)))

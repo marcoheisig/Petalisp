@@ -97,3 +97,14 @@
         ((symbolp form)
          form)
         (t `(wrap-constant ,form))))
+
+(defmacro define-predicate-rule (predicate type-specifier)
+  (alexandria:with-gensyms (object ntype)
+    `(define-rule ,predicate (,object)
+       (let ((,ntype (wrapper-ntype ,object)))
+         (if (eql-ntype-p ,ntype)
+             (,predicate ,ntype)
+             (ntype-subtypecase ,ntype
+               ((not ,type-specifier) (rewrite-as nil))
+               (,type-specifier (rewrite-default (ntype '(not null))))
+               (t (rewrite-default (ntype 'generalized-boolean)))))))))

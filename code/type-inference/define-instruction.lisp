@@ -30,7 +30,7 @@
            (rewrite-default
             ,@(loop for type in result-types
                     collect
-                    `(ntype ',result-types))))))))
+                    `(ntype ',type))))))))
 
 (defun gensymify (x)
   (if (symbolp x)
