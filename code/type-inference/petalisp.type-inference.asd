@@ -32,6 +32,7 @@
      (:file "cmpeq")
      (:file "cmpneq")
      (:file "cmpx")
+     (:file "complex")
      (:file "cos")
      (:file "data-and-control-flow")
      (:file "div")

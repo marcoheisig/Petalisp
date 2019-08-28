@@ -154,6 +154,10 @@
         (complex-double-float (rewrite-as (complex-long-float-from-complex-double-float number)))
         (t (rewrite-default (ntype 'complex-long-float)))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; FLOAT
+
 (define-rule float (number &optional (prototype nil prototype-supplied-p))
   (if prototype-supplied-p
       (ntype-subtypecase (wrapper-ntype prototype)
