@@ -25,9 +25,10 @@
    (:module "common-lisp"
     :components
     ((:file "auxiliary")
+     (:file "type-checks")
+     (:file "casts")
      (:file "abs")
      (:file "add")
-     (:file "casts")
      (:file "cmpeq")
      (:file "cmpneq")
      (:file "cmpx")
@@ -41,5 +42,4 @@
      (:file "sin")
      (:file "sub")
      (:file "tan")
-     (:file "type-checks")
      (:file "types-and-classes")))))
