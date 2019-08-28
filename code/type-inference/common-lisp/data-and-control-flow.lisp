@@ -38,10 +38,6 @@
   (check-ntype function function)
   (rewrite-default (ntype 'list)))
 
-(define-predicate-rule functionp function)
-
-(define-predicate-rule compiled-function-p compiled-function)
-
 (define-rule not (x)
   (let ((ntype (wrapper-ntype x)))
     (if (eql-ntype-p ntype)
