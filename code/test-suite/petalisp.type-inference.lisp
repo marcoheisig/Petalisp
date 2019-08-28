@@ -81,10 +81,10 @@
            (let ((predicted
                    (mapcar #'petalisp.type-inference:type-specifier
                            (multiple-value-list
-                            (apply
-                             #'petalisp.type-inference:infer-ntypes
+                            (petalisp.type-inference:infer-ntypes
                              function
-                             (mapcar #'petalisp.type-inference:ntype-of args))))))
+                             (mapcar #'petalisp.type-inference:ntype-of args)
+                             (lambda () (values)))))))
              (handler-case
                  (let ((values
                          (multiple-value-list

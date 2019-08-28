@@ -11,14 +11,6 @@
 (define-condition specialization-error (error)
   ((%function :initarg :function :reader specialization-error-function)))
 
-(define-condition no-specialization-rule (specialization-error)
-  ()
-  (:report
-   (lambda (condition stream)
-     (format stream
-             "~@<No specialization rule for ~S.~:@>"
-             (specialization-error-function condition)))))
-
 (define-condition wrong-number-of-arguments (specialization-error)
   ((%arguments :initarg :arguments :reader specialization-error-arguments))
   (:report

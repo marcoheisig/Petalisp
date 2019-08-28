@@ -227,33 +227,33 @@
 (defun α-aux (n-outputs shape function inputs)
   (if (null shape)
       (empty-arrays n-outputs)
-      (handler-case (petalisp.type-inference:specialize
-                     function
-                     inputs
-                     #'ntype
-                     (lambda (constant)
-                       (reshape constant shape))
-                     (lambda (ntypes function inputs)
-                       (values-list
-                        (loop for ntype in ntypes
-                              for value-n from 0
-                              collect
-                              (make-instance 'application
-                                :operator function
-                                :value-n value-n
-                                :inputs inputs
-                                :shape shape
-                                :ntype ntype)))))
-        (petalisp.type-inference:give-up-specialization ()
-          (values-list
-           (loop for value-n below n-outputs
-                 collect
-                 (make-instance 'application
-                   :operator function
-                   :value-n value-n
-                   :inputs inputs
-                   :shape shape
-                   :ntype (petalisp.type-inference:ntype 't))))))))
+      (petalisp.type-inference:specialize
+       function
+       inputs
+       #'ntype
+       (lambda (constant)
+         (reshape constant shape))
+       (lambda (ntypes function inputs)
+         (values-list
+          (loop for ntype in ntypes
+                for value-n from 0
+                collect
+                (make-instance 'application
+                  :operator function
+                  :value-n value-n
+                  :inputs inputs
+                  :shape shape
+                  :ntype ntype))))
+       (lambda ()
+         (values-list
+          (loop for value-n below n-outputs
+                collect
+                (make-instance 'application
+                  :operator function
+                  :value-n value-n
+                  :inputs inputs
+                  :shape shape
+                  :ntype (petalisp.type-inference:ntype 't))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -268,12 +268,12 @@
         (let ((n-outputs (length inputs))
               (shape (shrink-shape input-shape)))
           (let* ((argument-ntypes (mapcar #'ntype inputs))
-                 (reduction-ntypes (append argument-ntypes argument-ntypes))
                  (ntypes
                    (multiple-value-list
-                    (apply #'petalisp.type-inference:infer-ntypes
-                           function
-                           reduction-ntypes)))
+                    (petalisp.type-inference:infer-ntypes
+                     function
+                     (append argument-ntypes argument-ntypes)
+                     (lambda () (values)))))
                  (operator function))
             (labels ((next-ntype ()
                        (if (null ntypes)
@@ -286,10 +286,6 @@
                          :inputs inputs
                          :shape shape
                          :ntype (next-ntype))))
-              (case n-outputs
-                (0 (values))
-                (1 (values (make-reduction 0)))
-                (otherwise
-                 (values-list
-                  (loop for value-n below n-outputs
-                        collect (make-reduction value-n)))))))))))
+              (values-list
+               (loop for value-n below n-outputs
+                     collect (make-reduction value-n)))))))))
