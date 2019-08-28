@@ -41,13 +41,13 @@
 (define-rule functionp (object)
   (ntype-subtypecase (wrapper-ntype object)
     ((not function) (rewrite-as nil))
-    (function (rewrite-as t))
+    (function (rewrite-default (ntype '(not null))))
     (t (rewrite-default (ntype 'generalized-boolean)))))
 
 (define-rule compiled-function-p (object)
   (ntype-subtypecase (wrapper-ntype object)
     ((not compiled-function) (rewrite-as nil))
-    (compiled-function (rewrite-as t))
+    (compiled-function (rewrite-default (ntype '(not null))))
     (t (rewrite-default (ntype 'generalized-boolean)))))
 
 (define-rule not (x)

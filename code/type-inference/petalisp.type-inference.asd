@@ -38,4 +38,7 @@
      (:file "cmpx")
      (:file "min")
      (:file "max")
+     (:file "sin")
+     (:file "cos")
+     (:file "tan")
      ))))

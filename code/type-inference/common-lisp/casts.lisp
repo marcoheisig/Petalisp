@@ -153,3 +153,18 @@
         (complex-single-float (rewrite-as (complex-long-float-from-complex-single-float number)))
         (complex-double-float (rewrite-as (complex-long-float-from-complex-double-float number)))
         (t (rewrite-default (ntype 'complex-long-float)))))))
+
+(define-rule float (number &optional (prototype nil prototype-supplied-p))
+  (if prototype-supplied-p
+      (ntype-subtypecase (wrapper-ntype prototype)
+        ((not float) (abort-specialization))
+        (short-float (rewrite-as (coerce-to-short-float number)))
+        (single-float (rewrite-as (coerce-to-single-float number)))
+        (double-float (rewrite-as (coerce-to-double-float number)))
+        (long-float (rewrite-as (coerce-to-long-float number)))
+        (t (rewrite-default (ntype 'float))))
+      (ntype-subtypecase (wrapper-ntype number)
+        ((not real) (abort-specialization))
+        (float (rewrite-as number))
+        ((not float) (rewrite-as (coerce-to-single-float number)))
+        (t (rewrite-default (ntype 'float))))))
