@@ -88,6 +88,41 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; CONJUGATE
+
+(define-rule conjugate (number)
+  (let ((ntype (wrapper-ntype number)))
+    (if (and (eql-ntype-p number)
+             (numberp number))
+        (wrap-constant
+         (conjugate ntype))
+        (ntype-subtypecase ntype
+          ((not number) (abort-specialization))
+          (real (rewrite-as number))
+          (complex (rewrite-as (complex (realpart number) (- (imagpart number)))))
+          (t (rewrite-default (ntype 'number)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; PHASE
+
+(define-rule phase (number)
+  (let ((ntype (wrapper-ntype number)))
+    (if (and (eql-ntype-p ntype)
+             (numberp ntype))
+        (wrap-constant
+         (phase ntype))
+        (ntype-subtypecase ntype
+          ((not number) (abort-specialization))
+          ((float 0e0 *) (rewrite-as (float 0 number)))
+          ((rational 0 *) (rewrite-as 0))
+          ((float * (0e0)) (rewrite-as (float #.pi number)))
+          ((rational * (0)) (wrap-constant (coerce pi 'single-float)))
+          ((complex float) (rewrite-default (complex-part-ntype ntype)))
+          (t (rewrite-default (ntype 'number)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; CIS
 
 (define-simple-instruction (cis cis.short-float) (complex-short-float) (short-float))

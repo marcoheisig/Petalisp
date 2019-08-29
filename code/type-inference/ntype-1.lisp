@@ -73,7 +73,8 @@
              number
              (not null)
              t)
-           :test #'alexandria:type=)))
+           :test #'alexandria:type=
+           :from-end t)))
     (map 'simple-vector
          #'%make-ntype
          type-specifiers
