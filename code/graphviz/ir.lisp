@@ -113,17 +113,49 @@
 (defun hide-buffers (references)
   (subst-if :buffer #'petalisp.ir:bufferp references))
 
+(defun simplify-input (input)
+  (destructuring-bind (value-n . instruction) input
+    (cons value-n (petalisp.ir:instruction-number instruction))))
+
 (defmethod graphviz-node-properties append
     ((graph ir-graph)
      (kernel petalisp.ir:kernel))
   `(("iteration-space" . ,(stringify (petalisp.ir:kernel-iteration-space kernel)))
-    ("reduction-range" . ,(stringify (petalisp.ir:kernel-reduction-range kernel)))
-    ("body" . ,(with-output-to-string (stream)
-                 (let ((instructions '()))
-                   (petalisp.ir:map-instructions
-                    (lambda (instruction)
-                      (push instruction instructions))
-                    kernel)
-                   (loop for instruction
-                           in (sort instructions #'< :key #'petalisp.ir:instruction-number)
-                         do (print instruction stream)))))))
+    ,@(let ((instructions '()))
+        (petalisp.ir:map-instructions
+         (lambda (instruction)
+           (push instruction instructions))
+         kernel)
+        (loop for instruction in (sort instructions #'< :key #'petalisp.ir:instruction-number)
+              collect
+              (cons
+               (format nil "instruction ~2D" (petalisp.ir:instruction-number instruction))
+               (etypecase instruction
+                 (petalisp.ir:call-instruction
+                  (format nil "~S~{ ~S~}~%"
+                          (petalisp.ir:call-instruction-operator instruction)
+                          (mapcar #'simplify-input
+                                  (petalisp.ir:instruction-inputs instruction))))
+                 (petalisp.ir:iref-instruction
+                  (format nil "iref ~S~%"
+                          (petalisp.ir:instruction-transformation instruction)))
+                 (petalisp.ir:load-instruction
+                  (format nil "load ~S ~S~%"
+                          (petalisp.type-inference:type-specifier
+                           (petalisp.ir:buffer-ntype
+                            (petalisp.ir:load-instruction-buffer instruction)))
+                          (petalisp.ir:instruction-transformation instruction)))
+                 (petalisp.ir:store-instruction
+                  (format nil "store ~S ~S ~S~%"
+                          (petalisp.type-inference:type-specifier
+                           (petalisp.ir:buffer-ntype
+                            (petalisp.ir:store-instruction-buffer instruction)))
+                          (petalisp.ir:instruction-transformation instruction)
+                          (simplify-input
+                           (first
+                            (petalisp.ir:instruction-inputs instruction)))))
+                 (petalisp.ir:reduce-instruction
+                  (format nil "reduce ~S~{ ~S~}~%"
+                          (petalisp.ir:reduce-instruction-operator instruction)
+                          (mapcar #'simplify-input
+                                  (petalisp.ir:instruction-inputs instruction))))))))))
