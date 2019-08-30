@@ -163,13 +163,10 @@
   (make-scalar-immediate object))
 
 (defun make-scalar-immediate (object)
-  (let* ((ntype (petalisp.type-inference:ntype-of object))
-         (element-type (petalisp.type-inference:type-specifier ntype)))
-    (make-instance 'array-immediate
-      :shape (~)
-      :ntype ntype
-      :storage (make-array '() :initial-element object
-                               :element-type element-type))))
+  (make-instance 'array-immediate
+    :shape (~)
+    :ntype (petalisp.type-inference:ntype-of object)
+    :storage (petalisp.type-inference:make-rank-zero-array object)))
 
 (defun make-array-immediate (array &optional reusablep)
   (check-type array array)

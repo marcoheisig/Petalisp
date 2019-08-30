@@ -6,7 +6,6 @@
 ;;;
 ;;; Array Ntypes
 
-(declaim (inline array-element-ntype))
 (defun array-element-ntype (array)
   (macrolet ((body ()
                (let ((ntypes (remove-duplicates
@@ -15,13 +14,27 @@
                               :key (alexandria:compose
                                     #'upgraded-array-element-type
                                     #'%ntype-type-specifier))))
-                 `(typecase array
+                 `(etypecase array
                     ,@(loop for ntype across ntypes
                             collect
-                            `((array ,(%ntype-type-specifier ntype)) ',ntype))
-                    (t ',(ntype 't))))))
+                            `((array ,(%ntype-type-specifier ntype)) ',ntype))))))
     (body)))
-(declaim (notinline array-element-ntype))
+
+(defun make-rank-zero-array (value)
+  (macrolet ((body ()
+               (let ((ntypes (remove-duplicates
+                              *ntypes*
+                              :test #'alexandria:type=
+                              :key (alexandria:compose
+                                    #'upgraded-array-element-type
+                                    #'%ntype-type-specifier))))
+                 `(etypecase value
+                    ,@(loop for ntype across ntypes
+                            collect
+                            `(,(%ntype-type-specifier ntype)
+                              (make-array '() :element-type ',(%ntype-type-specifier ntype)
+                                              :initial-element value)))))))
+    (body)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

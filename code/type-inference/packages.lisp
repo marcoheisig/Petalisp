@@ -34,6 +34,7 @@
    #:with-ntype-caching
    #:ntype-subtypecase
    #:array-element-ntype
+   #:make-rank-zero-array
    #:empty-ntype-p
    #:universal-ntype-p
    #:eql-ntype-p
