@@ -24,12 +24,14 @@
 (defun make-buffer (array)
   (etypecase array
     (array-immediate
-     (%make-buffer
-      :shape (shape array)
-      :ntype (ntype array)
-      :storage (storage array)
-      :reusablep (reusablep array)
-      :executedp t))
+     (let ((storage (storage array)))
+       (assert (typep storage 'simple-array)) ; TODO support non-simple arrays, too.
+       (%make-buffer
+        :shape (shape array)
+        :ntype (petalisp.type-inference:array-element-ntype storage)
+        :storage storage
+        :reusablep (reusablep array)
+        :executedp t)))
     (lazy-array
      (%make-buffer
       :shape (shape array)
@@ -394,7 +396,7 @@
      (lambda (store-instruction)
        (pushnew (store-instruction-buffer store-instruction) buffers))
      kernel)
-    buffers))
+    (nreverse buffers)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

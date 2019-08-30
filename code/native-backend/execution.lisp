@@ -56,41 +56,74 @@
          (free-storage buffer native-backend)))
      kernel)))
 
+(defun kernel-ranges (kernel)
+  (let* ((iteration-space (kernel-iteration-space kernel))
+         (rank (shape-rank iteration-space))
+         (vector (make-array (* 3 rank))))
+    (loop for index below rank
+          for range in (shape-ranges iteration-space) do
+      (multiple-value-bind (start step end)
+          (range-start-step-end range)
+        (setf (svref vector (+ (* 3 index) 0)) start)
+        (setf (svref vector (+ (* 3 index) 1)) step)
+        (setf (svref vector (+ (* 3 index) 2)) end)))
+    vector))
+
+(defun kernel-arrays (kernel size)
+  (let ((buffers (make-array size))
+        (vector (make-array size))
+        (current 0))
+    (flet ((register-buffer (buffer)
+             (unless (find buffer buffers :test #'eq :end current)
+               (cond ((= current size)
+                      (kernel-arrays kernel (* 5 size)))
+                     (t
+                      (setf (svref buffers current) buffer)
+                      (setf (svref vector current) (buffer-storage buffer))
+                      (incf current))))))
+      (map-kernel-load-instructions
+       (lambda (load-instruction)
+         (register-buffer
+          (load-instruction-buffer load-instruction)))
+       kernel)
+      (map-kernel-store-instructions
+       (lambda (store-instruction)
+         (register-buffer
+          (store-instruction-buffer store-instruction)))
+       kernel)
+      vector)))
+
+(defun kernel-functions (kernel size)
+  (let ((vector (make-array size))
+        (current 0))
+    (flet ((register-function (function)
+             ;; If FUNCTION is a symbol, it is part of the kernel blueprint
+             ;; and we don't need to pass it explicitly.
+             (unless (symbolp function)
+               (unless (find function vector :test #'eq :end current)
+                 (cond ((= current size)
+                        (kernel-functions kernel (* 5 size)))
+                       (t
+                        (setf (svref vector current) function)
+                        (incf current)))))))
+      (map-instructions
+       (lambda (instruction)
+         (cond ((call-instruction-p instruction)
+                (register-function (call-instruction-operator instruction)))
+               ((reduce-instruction-p instruction)
+                (register-function (reduce-instruction-operator instruction)))))
+       kernel)
+      vector)))
+
 (defun compile-and-execute-kernel (kernel backend)
-  (let ((ranges (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
-        (arrays (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
-        (functions (load-time-value (make-array 0 :adjustable t :fill-pointer 0) nil))
+  (let ((ranges (kernel-ranges kernel))
+        (arrays (kernel-arrays kernel 8))
+        (functions (kernel-functions kernel 8))
         (compiled-kernel
           (let ((blueprint (kernel-blueprint kernel)))
             (petalisp.utilities:with-hash-table-memoization (blueprint)
                 (compile-cache backend)
               (compile nil (lambda-expression-from-blueprint blueprint))))))
-    (setf (fill-pointer ranges) 0)
-    (setf (fill-pointer arrays) 0)
-    (setf (fill-pointer functions) 0)
-    ;; Initialize the range arguments.
-    (loop for range in (shape-ranges (kernel-iteration-space kernel))
-          for offset from 0 by 3 do
-            (multiple-value-bind (start step end)
-                (range-start-step-end range)
-              (vector-push-extend start ranges)
-              (vector-push-extend step ranges)
-              (vector-push-extend end ranges)))
-    ;; Initialize the array arguments.
-    (loop for buffer in (kernel-buffers kernel) do
-      (vector-push-extend (the array (buffer-storage buffer)) arrays))
-    ;; Initialize the function arguments.
-    (map-instructions
-     (lambda (instruction)
-       (cond ((call-instruction-p instruction)
-              (let ((operator (call-instruction-operator instruction)))
-                (when (functionp operator)
-                  (vector-push-extend operator functions))))
-             ((reduce-instruction-p instruction)
-              (let ((operator (reduce-instruction-operator instruction)))
-                (when (functionp operator)
-                  (vector-push-extend operator functions))))))
-     kernel)
     ;; Now call the compiled kernel.
     (funcall compiled-kernel ranges arrays functions)))
 

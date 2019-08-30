@@ -18,9 +18,10 @@
            (make-lambda-block
             :lambda-list lambda-list
             :declarations `((ignorable ,@lambda-list)
-                            (type (and (vector t) (not simple-vector)) ranges)
-                            (type (and (vector t) (not simple-vector)) arrays)
-                            (type (and (vector t) (not simple-vector)) functions)))))
+                            (type simple-vector ranges)
+                            (type simple-vector arrays)
+                            (type simple-vector functions)
+                            (optimize (debug 3))))))
     (loop for symbol in lambda-list
           do (setf (gethash symbol symbol-table) initial-basic-block))
     (make-instance 'translation-unit
