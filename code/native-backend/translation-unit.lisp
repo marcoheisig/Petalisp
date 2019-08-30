@@ -12,14 +12,13 @@
 ;;; Translation Unit Creation
 
 (defun make-translation-unit (array-types)
-  (let* ((lambda-list '(ranges reduction-range arrays functions))
+  (let* ((lambda-list '(ranges arrays functions))
          (symbol-table (make-hash-table :test #'eq))
          (initial-basic-block
            (make-lambda-block
             :lambda-list lambda-list
             :declarations `((ignorable ,@lambda-list)
                             (type (and (vector t) (not simple-vector)) ranges)
-                            (type (simple-array t (3)) reduction-range)
                             (type (and (vector t) (not simple-vector)) arrays)
                             (type (and (vector t) (not simple-vector)) functions)))))
     (loop for symbol in lambda-list
@@ -50,9 +49,7 @@
         basic-block))
 
 (defun index-symbol (n)
-  (if (minusp n)
-      'reduction-index
-      (alexandria:format-symbol '#:petalisp.native-backend "INDEX-~D" n)))
+  (alexandria:format-symbol '#:petalisp.native-backend "INDEX-~D" n))
 
 (defun array-symbol (n)
   (pseudo-eval
@@ -64,19 +61,13 @@
   (pseudo-eval 0 `(aref functions ,n)))
 
 (defun start-symbol (n)
-  (if (minusp n)
-      (pseudo-eval 0 `(aref reduction-range 0))
-      (pseudo-eval 0 `(aref ranges ,(+ (* n 3) 0)))))
+  (pseudo-eval 0 `(aref ranges ,(+ (* n 3) 0))))
 
 (defun step-symbol (n)
-  (if (minusp n)
-      (pseudo-eval 0 `(aref reduction-range 1))
-      (pseudo-eval 0 `(aref ranges ,(+ (* n 3) 1)))))
+  (pseudo-eval 0 `(aref ranges ,(+ (* n 3) 1))))
 
 (defun end-symbol (n)
-  (if (minusp n)
-      (pseudo-eval 0 `(aref reduction-range 2))
-      (pseudo-eval 0 `(aref ranges ,(+ (* n 3) 2)))))
+  (pseudo-eval 0 `(aref ranges ,(+ (* n 3) 2))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

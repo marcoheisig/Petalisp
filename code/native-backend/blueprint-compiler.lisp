@@ -82,9 +82,9 @@
     ;; Define the reduction thunk.
     (setf (tail tail-block)
           `(values . ,(nreverse reduction-values)))
-    (let* ((start (start-symbol -1))
-           (step (step-symbol -1))
-           (end (end-symbol -1))
+    (let* ((start (start-symbol 0))
+           (step (step-symbol 0))
+           (end (end-symbol 0))
            (thunk-form
              (destructuring-bind (size-bits step-bits index-type) range
                (declare (ignore step-bits))
@@ -180,16 +180,13 @@
   (destructuring-bind (value-n instruction-number) argument
     (pseudo-eval value-n (instruction instruction-number))))
 
-(defun translate-row-major-index (array-number irefs &optional reductionp)
+(defun translate-row-major-index (array-number irefs)
   (let* ((quads (sort (loop for (index scale offset) in irefs
                             for axis from 0
                             collect
-                            (cond ((null index)
-                                   (list axis -42 scale offset))
-                                  (reductionp
-                                   (list axis (1- index) scale offset))
-                                  (t
-                                   (list axis index scale offset))))
+                            (if (null index)
+                                (list axis -42 scale offset)
+                                (list axis index scale offset)))
                       #'< :key #'second))
          (array-rank (length irefs)))
     (reduce
