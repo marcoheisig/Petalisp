@@ -69,30 +69,6 @@
         (setf (svref vector (+ (* 3 index) 2)) end)))
     vector))
 
-(defun kernel-arrays (kernel size)
-  (let ((buffers (make-array size))
-        (vector (make-array size))
-        (current 0))
-    (flet ((register-buffer (buffer)
-             (unless (find buffer buffers :test #'eq :end current)
-               (cond ((= current size)
-                      (kernel-arrays kernel (* 5 size)))
-                     (t
-                      (setf (svref buffers current) buffer)
-                      (setf (svref vector current) (buffer-storage buffer))
-                      (incf current))))))
-      (map-kernel-load-instructions
-       (lambda (load-instruction)
-         (register-buffer
-          (load-instruction-buffer load-instruction)))
-       kernel)
-      (map-kernel-store-instructions
-       (lambda (store-instruction)
-         (register-buffer
-          (store-instruction-buffer store-instruction)))
-       kernel)
-      vector)))
-
 (defun kernel-functions (kernel size)
   (let ((vector (make-array size))
         (current 0))
@@ -102,7 +78,8 @@
              (unless (symbolp function)
                (unless (find function vector :test #'eq :end current)
                  (cond ((= current size)
-                        (kernel-functions kernel (* 5 size)))
+                        (return-from kernel-functions
+                          (kernel-functions kernel (* 5 size))))
                        (t
                         (setf (svref vector current) function)
                         (incf current)))))))
@@ -117,7 +94,7 @@
 
 (defun compile-and-execute-kernel (kernel backend)
   (let ((ranges (kernel-ranges kernel))
-        (arrays (kernel-arrays kernel 8))
+        (arrays (map 'vector #'buffer-storage (kernel-buffers kernel)))
         (functions (kernel-functions kernel 8))
         (compiled-kernel
           (let ((blueprint (kernel-blueprint kernel)))

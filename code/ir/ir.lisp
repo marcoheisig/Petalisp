@@ -384,8 +384,6 @@
      kernel)
     max))
 
-;; TODO: This function is only used to allocate a vector of buffers during
-;; scheduling, so there is some opportunity to avoid consing.
 (defun kernel-buffers (kernel)
   (let ((buffers '()))
     (map-kernel-load-instructions

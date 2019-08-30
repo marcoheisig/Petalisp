@@ -7,6 +7,7 @@
 ;;; for this kernel.  The idea is that blueprints can be used to cache
 ;;; compiled evaluation functions.
 
+(declaim (type list *buffers*))
 (defvar *buffers*)
 
 (defvar *function-counter*)
@@ -52,8 +53,9 @@
          'integer))))
 
 (defun buffer-blueprint (buffer)
-  (ucons:ulist (buffer-ntype buffer)
-               (rank (buffer-shape buffer))))
+  (ucons:ulist
+   (buffer-ntype buffer)
+   (shape-rank (buffer-shape buffer))))
 
 (defun transformation-blueprint (transformation)
   (let ((result '()))
@@ -76,7 +78,8 @@
     (ucons:ulist value-n (instruction-number instruction))))
 
 (defun buffer-number (buffer)
-  (position buffer *buffers*))
+  (or (position buffer *buffers*)
+      (error "No such buffer ~S." buffer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
