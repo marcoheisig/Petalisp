@@ -20,8 +20,7 @@
             :declarations `((ignorable ,@lambda-list)
                             (type simple-vector ranges)
                             (type simple-vector arrays)
-                            (type simple-vector functions)
-                            (optimize (debug 3))))))
+                            (type simple-vector functions)))))
     (loop for symbol in lambda-list
           do (setf (gethash symbol symbol-table) initial-basic-block))
     (make-instance 'translation-unit
