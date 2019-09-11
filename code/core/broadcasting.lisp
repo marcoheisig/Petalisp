@@ -2,42 +2,92 @@
 
 (in-package #:petalisp.core)
 
-(defun broadcast (array shape)
+;;; Make a transformation that maps every index of SHAPE to an element of
+;;; the shape of ARRAY.
+(defun make-broadcasting-transformation (array shape)
   (let* ((lazy-array (coerce-to-lazy-array array))
-         (old-rank (rank lazy-array))
-         (new-rank (shape-rank shape)))
-    (cond ((shape-equal (shape array) shape) lazy-array)
-          ((< new-rank old-rank)
-           (error "~@<Cannot broadcast the rank ~D array ~A ~
-                      to the rank ~D shape ~A.~:@>"
-                  old-rank array new-rank shape))
-          (t
-           (let ((output-mask (make-array old-rank))
-                 (offsets (make-array old-rank))
-                 (scalings (make-array old-rank)))
-             (loop for range in (shape-ranges (shape lazy-array))
-                   for oindex from 0
-                   for iindex from (- new-rank old-rank) do
-                     (if (size-one-range-p range)
-                         (setf (svref output-mask oindex) nil
-                               (svref offsets oindex) (range-start range)
-                               (svref scalings oindex) 0)
-                         (setf (svref output-mask oindex) iindex
-                               (svref offsets oindex) 0
-                               (svref scalings oindex) 1)))
-             (make-reference
-              lazy-array
-              shape
-              (make-transformation
-               :input-rank new-rank
-               :output-rank old-rank
-               :output-mask output-mask
-               :offsets offsets
-               :scalings scalings)))))))
+         (output-rank (rank lazy-array))
+         (input-rank (shape-rank shape))
+         (growth (- input-rank output-rank)))
+    (unless (not (minusp growth))
+      (error "~@<Cannot broadcast the rank ~D array ~S ~
+                 to the rank ~D shape ~S.~:@>"
+             output-rank array input-rank shape))
+    (let ((input-mask (make-array input-rank :initial-element nil))
+          (output-mask (make-array output-rank))
+          (offsets (make-array output-rank))
+          (scalings (make-array output-rank)))
+      (loop for array-range of-type range in (shape-ranges (shape lazy-array))
+            for shape-range of-type range in (nthcdr growth (shape-ranges shape))
+            for oindex from 0
+            for iindex from growth do
+              (symbol-macrolet ((input-constraint (svref input-mask iindex))
+                                (output-mask-entry (svref output-mask oindex))
+                                (scaling (svref scalings oindex))
+                                (offset (svref offsets oindex)))
+                ;; Now we need to pick the appropriate input constraint,
+                ;; output mask entry, scaling and offset to map from the
+                ;; range of SHAPE to the corresponding range of ARRAY.
+                (cond
+                  ;; First, we pick of the trivial case of 'broadcasting' a
+                  ;; one element range to another one element range.  This
+                  ;; case is significant, because it allows us to introduce
+                  ;; a suitable input constraint, thus increasing the
+                  ;; chances that the resulting transformation is
+                  ;; invertible.
+                  ((size-one-range-p shape-range)
+                   (unless (size-one-range-p array-range)
+                     (error "~@<Cannot broadcast the range ~S
+                              to the one element range ~S.~:@>"
+                            shape-range array-range))
+                   (setf input-constraint (range-start shape-range))
+                   (setf output-mask-entry nil)
+                   (setf offset (range-start array-range))
+                   (setf scaling 0))
+                  ;; The second case is that of collapsing an arbitrary
+                  ;; range of SHAPE to a one element range of ARRAY.  It is
+                  ;; similar to the previous case, except that we do not
+                  ;; introduce an input constraint.
+                  ((size-one-range-p array-range)
+                   (setf output-mask-entry nil)
+                   (setf offset (range-start array-range))
+                   (setf scaling 0))
+                  (t
+                   ;; Now comes the general case.  We need to map an
+                   ;; arbitrary range to another one.
+                   (let* ((old-start (range-start shape-range))
+                          (new-start (range-start array-range))
+                          (old-step (range-step shape-range))
+                          (new-step (range-step array-range))
+                          (a (/ new-step old-step))
+                          (b (- new-start (* a old-start))))
+                     (setf output-mask-entry iindex)
+                     (setf offset b)
+                     (setf scaling a))))))
+      (make-transformation
+       :input-rank input-rank
+       :output-rank output-rank
+       :input-mask input-mask
+       :output-mask output-mask
+       :offsets offsets
+       :scalings scalings))))
+
+(defun broadcast (array shape)
+  (let ((lazy-array (coerce-to-lazy-array array)))
+    ;; Pick off the trivial case immediately.
+    (if (shape-equal (shape lazy-array) shape)
+        lazy-array
+        (make-reference
+         lazy-array
+         shape
+         (make-broadcasting-transformation array shape)))))
 
 (defun broadcast-ranges (range-1 range-2)
   (cond ((size-one-range-p range-1) range-2)
         ((size-one-range-p range-2) range-1)
+        ((= (range-size range-1)
+            (range-size range-2))
+         range-2)
         ((range-equal range-1 range-2) range-2)
         (t
          (error "~@<Cannot broadcast the ranges ~S and ~S.~:@>"
@@ -47,13 +97,8 @@
   broadcast-ranges)
 
 (defun broadcast-arrays (&rest arrays)
-  (let ((n (length arrays)))
-    (case n
-      (0 (values))
-      (1 (values (coerce-to-lazy-array (first arrays))))
-      (otherwise
-       (values-list
-        (broadcast-list-of-arrays arrays))))))
+  (values-list
+   (broadcast-list-of-arrays arrays)))
 
 (defun broadcast-list-of-arrays (list-of-arrays)
   (let* ((lazy-arrays (mapcar #'coerce-to-lazy-array list-of-arrays))
