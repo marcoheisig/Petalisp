@@ -23,13 +23,19 @@
 ;;;    them or write from them.
 
 (defun ir-from-lazy-arrays (lazy-arrays)
-  (let ((*buffer-table* (compute-buffer-table lazy-arrays)))
+  (let ((*buffer-table* (compute-buffer-table lazy-arrays))
+        (leaf-buffers '()))
     ;; Now create a list of kernels for each entry in the buffer table.
-    (loop for root being each hash-key of *buffer-table* do
-      (create-kernels root))
-    ;; Finally, return the buffers corresponding to the root nodes.
-    (loop for lazy-array in lazy-arrays
-          collect (gethash lazy-array *buffer-table*))))
+    (loop for buffer being each hash-key of *buffer-table* do
+      (if (immediatep buffer)
+          (pushnew buffer leaf-buffers)
+          (create-kernels buffer)))
+    ;; Finally, return the buffers corresponding to the root and leaf
+    ;; nodes.
+    (values
+     (loop for lazy-array in lazy-arrays
+           collect (gethash lazy-array *buffer-table*))
+     leaf-buffers)))
 
 (defvar *root*)
 
@@ -39,23 +45,22 @@
 ;;; single input of each encountered fusion node.  Each such iteration
 ;;; space is used to create one kernel.
 (defun create-kernels (root)
-  (unless (immediatep root)
-    (let ((*root* root))
-      (map-iteration-spaces
-       (lambda (iteration-space)
-         (let ((kernel (compute-kernel root iteration-space)))
-           (assign-instruction-numbers kernel)
-           ;; Update the inputs and outputs of all buffers to match the
-           ;; inputs and outputs of the corresponding kernels.
-           (map-kernel-inputs
-            (lambda (buffer)
-              (pushnew kernel (buffer-outputs buffer)))
-            kernel)
-           (map-kernel-outputs
-            (lambda (buffer)
-              (pushnew kernel (buffer-inputs buffer)))
-            kernel)))
-       root))))
+  (let ((*root* root))
+    (map-iteration-spaces
+     (lambda (iteration-space)
+       (let ((kernel (compute-kernel root iteration-space)))
+         (assign-instruction-numbers kernel)
+         ;; Update the inputs and outputs of all buffers to match the
+         ;; inputs and outputs of the corresponding kernels.
+         (map-kernel-inputs
+          (lambda (buffer)
+            (pushnew kernel (buffer-outputs buffer)))
+          kernel)
+         (map-kernel-outputs
+          (lambda (buffer)
+            (pushnew kernel (buffer-inputs buffer)))
+          kernel)))
+     root)))
 
 ;;; Create one kernel from the given root and iteration space.
 (defun compute-kernel (root iteration-space)
