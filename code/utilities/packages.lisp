@@ -13,6 +13,7 @@
    #:with-multiple-value-hash-table-memoization
    #:with-vector-memoization
    #:with-multiple-value-vector-memoization
+   #:with-collectors
    #:identical
    #:symmetric-function
    #:define-method-pair

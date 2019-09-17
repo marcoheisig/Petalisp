@@ -15,4 +15,5 @@
    (:file "extended-euclid")
    (:file "define-method-pair")
    (:file "define-class-predicate")
-   (:file "float-bits")))
+   (:file "float-bits")
+   (:file "with-collectors")))
