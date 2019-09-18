@@ -14,7 +14,6 @@
    #:document-function)
 
   (:export
-
    ;; IR Conversion
    #:ir-from-lazy-arrays
 

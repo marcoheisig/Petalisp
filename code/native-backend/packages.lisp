@@ -8,6 +8,5 @@
    #:alexandria
    #:petalisp.core
    #:petalisp.ir)
-  (:shadowing-import-from :petalisp.core #:set-difference #:set-equal)
   (:export
    #:make-native-backend))

@@ -3,7 +3,6 @@
 (cl:in-package #:common-lisp-user)
 
 (defpackage #:petalisp.test-suite
-  (:shadowing-import-from #:petalisp.core #:set-difference #:set-equal)
   (:use
    #:common-lisp
    #:alexandria

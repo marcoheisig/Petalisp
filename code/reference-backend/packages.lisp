@@ -4,7 +4,6 @@
 
 (defpackage #:petalisp.reference-backend
   (:use :common-lisp :alexandria :petalisp.core)
-  (:shadowing-import-from :petalisp.core #:set-difference #:set-equal)
   (:export
    #:make-reference-backend))
 
