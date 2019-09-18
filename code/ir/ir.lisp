@@ -54,6 +54,12 @@
   (declare (kernel kernel))
   (first (shape-ranges (kernel-iteration-space kernel))))
 
+;;; This function is a very ad-hoc approximation of the cost of executing
+;;; the kernel.
+(defun kernel-cost (kernel)
+  (* (shape-size (kernel-iteration-space kernel))
+     (kernel-highest-instruction-number kernel)))
+
 ;;; The behavior of a kernel is described by its iteration space and its
 ;;; instructions.  The instructions form a DAG, whose leaves are load
 ;;; instructions or references to iteration variables, and whose roots are

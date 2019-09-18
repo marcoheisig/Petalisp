@@ -26,10 +26,12 @@
   (let ((*buffer-table* (compute-buffer-table lazy-arrays))
         (leaf-buffers '()))
     ;; Now create a list of kernels for each entry in the buffer table.
-    (loop for buffer being each hash-key of *buffer-table* do
-      (if (immediatep buffer)
-          (pushnew buffer leaf-buffers)
-          (create-kernels buffer)))
+    (maphash
+     (lambda (lazy-array buffer)
+       (if (immediatep lazy-array)
+           (pushnew buffer leaf-buffers)
+           (create-kernels lazy-array)))
+     *buffer-table*)
     ;; Finally, return the buffers corresponding to the root and leaf
     ;; nodes.
     (values

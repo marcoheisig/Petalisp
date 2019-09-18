@@ -7,8 +7,12 @@
    #:common-lisp
    #:alexandria
    #:petalisp.core)
-  (:shadowing-import-from :petalisp.core #:set-difference #:set-equal)
-  (:import-from #:petalisp.utilities #:document-variable #:document-function)
+
+  (:import-from
+   #:petalisp.utilities
+   #:document-variable
+   #:document-function)
+
   (:export
 
    ;; IR Conversion
