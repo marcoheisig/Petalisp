@@ -74,6 +74,7 @@
    #:kernel-highest-instruction-number
    #:kernel-number-of-loads
    #:kernel-number-of-stores
+   #:kernel-cost
    #:instruction-number
    #:instruction-inputs
    #:instruction-transformation
