@@ -7,8 +7,10 @@
    "bordeaux-threads"
    "lparallel"
    "trivia"
+   "petalisp.utilities"
    "petalisp.core"
-   "petalisp.ir")
+   "petalisp.ir"
+   "petalisp.scheduler")
 
   :serial t
   :components

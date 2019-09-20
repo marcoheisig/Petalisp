@@ -108,7 +108,11 @@
 (defmethod graphviz-node-properties append
     ((graph ir-graph)
      (buffer petalisp.ir:buffer))
-  `(("shape" . ,(stringify (petalisp.ir:buffer-shape buffer)))))
+  `(("shape" . ,(stringify (petalisp.ir:buffer-shape buffer)))
+    ("ntype" . ,(stringify (petalisp.ir:buffer-ntype buffer)))
+    ("executedp" . ,(stringify (petalisp.ir:buffer-executedp buffer)))
+    ("reusablep" . ,(stringify (petalisp.ir:buffer-reusablep buffer)))
+    ("storage" . ,(stringify (type-of (petalisp.ir:buffer-storage buffer))))))
 
 (defun hide-buffers (references)
   (subst-if :buffer #'petalisp.ir:bufferp references))

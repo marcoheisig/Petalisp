@@ -2,59 +2,37 @@
 
 (in-package #:petalisp.native-backend)
 
-(defun make-dummy-kernel ()
-  (make-kernel :iteration-space (~)))
-
-(defmethod compute-immediates ((lazy-arrays list) (native-backend native-backend))
-  (let ((root-buffers (ir-from-lazy-arrays lazy-arrays)))
-    (normalize-ir root-buffers)
-    (loop for root-buffer in root-buffers
-          for lazy-array in lazy-arrays
-          ;; We add a fictitious kernel to the outputs of each root buffer,
-          ;; to avoid that their memory is reclaimed.
-          do (push (make-dummy-kernel) (buffer-outputs root-buffer))
-          collect
-          (if (immediatep lazy-array)
-              lazy-array
-              (coerce-to-lazy-array
-               (buffer-storage
-                (compute-buffer root-buffer native-backend)))))))
-
-(defmethod compute-immediates :after ((lazy-arrays list) (native-backend native-backend))
-  (memory-pool-reset
-   (memory-pool native-backend)))
-
-(defmethod compute-buffer ((buffer buffer) (native-backend native-backend))
-  (when (null (buffer-storage buffer))
-    (setf (buffer-storage buffer)
-          (memory-pool-allocate
-           (memory-pool native-backend)
-           (petalisp.type-inference:type-specifier
-            (buffer-ntype buffer))
-           (mapcar #'range-size (shape-ranges (buffer-shape buffer)))))
-    (map-buffer-inputs
-     (lambda (kernel)
-       (execute-kernel kernel native-backend))
-     buffer))
-  buffer)
-
-(defmethod execute-kernel :before ((kernel kernel) (native-backend native-backend))
-  (map-kernel-inputs
-   (lambda (buffer)
-     (compute-buffer buffer native-backend))
-   kernel))
-
-(defmethod execute-kernel
-    ((kernel kernel) (native-backend native-backend))
-  (unless (kernel-executedp kernel)
-    (setf (kernel-executedp kernel) t)
-    (compile-and-execute-kernel kernel native-backend)
-    ;; Free the memory of buffers that are no longer in use.
-    (map-kernel-inputs
+(defmethod compute-immediates
+    ((lazy-arrays list) (native-backend native-backend))
+  (let ((memory-pool (memory-pool native-backend)))
+    (petalisp.scheduler:schedule-on-workers
+     lazy-arrays
+     (worker-count native-backend)
+     ;; Execute.
+     (lambda (tasks)
+       (loop for task in tasks do
+         (let ((kernel (petalisp.scheduler:task-kernel task)))
+           (compile-and-execute-kernel kernel native-backend))))
+     ;; Allocate.
      (lambda (buffer)
-       (when (every #'kernel-executedp (buffer-outputs buffer))
-         (free-storage buffer native-backend)))
-     kernel)))
+       (setf (buffer-storage buffer)
+             (memory-pool-allocate
+              memory-pool
+              (petalisp.type-inference:type-specifier
+               (buffer-ntype buffer))
+              (mapcar #'range-size (shape-ranges (buffer-shape buffer))))))
+     ;; Deallocate.
+     (lambda (buffer)
+       (let ((storage (buffer-storage buffer)))
+         (unless (null storage)
+           (setf (buffer-storage buffer) nil)
+           (when (buffer-reusablep buffer)
+             (memory-pool-free memory-pool storage))))))))
+
+;; Cleanup.
+(defmethod compute-immediates :after
+    ((lazy-arrays list) (native-backend native-backend))
+  (memory-pool-reset (memory-pool native-backend)))
 
 (defun kernel-ranges (kernel)
   (let* ((iteration-space (kernel-iteration-space kernel))
@@ -101,18 +79,6 @@
             (petalisp.utilities:with-hash-table-memoization (blueprint)
                 (compile-cache backend)
               (compile nil (lambda-expression-from-blueprint blueprint))))))
+    (assert (notany #'null arrays))
     ;; Now call the compiled kernel.
     (funcall compiled-kernel ranges arrays functions)))
-
-(defgeneric free-storage (buffer backend))
-
-(defmethod free-storage ((buffer buffer) (backend native-backend))
-  (values))
-
-(defmethod free-storage ((buffer buffer) (native-backend native-backend))
-  (let ((memory-pool (memory-pool native-backend))
-        (storage (buffer-storage buffer)))
-    (unless (null storage)
-      (setf (buffer-storage buffer) nil)
-      (when (buffer-reusablep buffer)
-        (memory-pool-free memory-pool storage)))))

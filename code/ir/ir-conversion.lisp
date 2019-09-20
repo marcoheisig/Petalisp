@@ -28,16 +28,18 @@
     ;; Now create a list of kernels for each entry in the buffer table.
     (maphash
      (lambda (lazy-array buffer)
-       (if (immediatep lazy-array)
-           (pushnew buffer leaf-buffers)
-           (create-kernels lazy-array)))
+       (unless (or (eq buffer '.range-immediate.)
+                   (immediatep lazy-array))
+         (create-kernels lazy-array)))
      *buffer-table*)
-    ;; Finally, return the buffers corresponding to the root and leaf
-    ;; nodes.
-    (values
-     (loop for lazy-array in lazy-arrays
-           collect (gethash lazy-array *buffer-table*))
-     leaf-buffers)))
+    ;; Finally, return the buffers corresponding to the root and leaf nodes
+    ;; and mark them as non-reusable, to avoid that their memory is
+    ;; reclaimed.
+    (loop for lazy-array in lazy-arrays
+          collect
+          (let ((buffer (gethash lazy-array *buffer-table*)))
+            (setf (buffer-reusablep buffer) nil)
+            buffer))))
 
 (defvar *root*)
 

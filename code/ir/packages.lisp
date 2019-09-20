@@ -49,6 +49,9 @@
    #:make-buffer
 
    ;; Mapping
+   #:map-buffers-and-kernels
+   #:map-kernels
+   #:map-buffers
    #:map-buffer-inputs
    #:map-buffer-outputs
    #:map-kernel-store-instructions

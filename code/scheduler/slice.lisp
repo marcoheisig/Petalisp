@@ -18,12 +18,11 @@
   ;; An alist of buffers to kernels that have yet to read from them.
   (active-buffers '() :type list))
 
-(defun make-slice (kernels parent)
+(defun make-slice (kernels active-buffers)
   (let ((active-buffers
           ;; We copy both the alist of buffers, and the list of kernels
-          ;; therein, so that we can operate destructively later on.
-          (copy-tree
-           (slice-active-buffers parent))))
+          ;; therein, so that we can operate destructively on them.
+          (copy-tree active-buffers)))
     (dolist (kernel kernels)
       (petalisp.ir:map-kernel-inputs
        (lambda (buffer)
@@ -32,17 +31,19 @@
                (error "~@<The input ~S of the kernel ~S
                           has not yet been allocated~:@>"
                       buffer kernel)
-               (setf (cdr entry) (delete kernel (cdr entry))))))
+               (setf (cdr entry)
+                     (delete kernel (cdr entry))))))
        kernel))
     (let ((deallocations
             (loop for (buffer . kernels) in active-buffers
-                  when (null kernels)
+                  when (and (null kernels)
+                            (petalisp.ir:buffer-reusablep buffer))
                     collect buffer))
           (active-buffers
             (delete-if #'null active-buffers :key #'cdr))
           (allocations '()))
-      ;; Ensure that output buffers that are not yet part of the set active
-      ;; buffers are allocated and added to the set.
+      ;; Ensure that output buffers that are not yet part of the set of
+      ;; active buffers are allocated and added to the set.
       (dolist (kernel kernels)
         (petalisp.ir:map-kernel-outputs
          (lambda (buffer)
@@ -53,11 +54,41 @@
          kernel))
       (%make-slice allocations kernels deallocations active-buffers))))
 
-(defun make-initial-slice (leaf-buffers)
-  (%make-slice
-   '()
-   '()
-   '()
-   (loop for leaf-buffer in leaf-buffers
-         collect
-         (cons leaf-buffer (petalisp.ir:buffer-outputs leaf-buffer)))))
+(defun make-initial-slice (root-buffers)
+  (let ((kernels '())
+        (active-buffers '()))
+    (petalisp.ir:map-buffers-and-kernels
+     (lambda (buffer)
+       (when (leaf-buffer-p buffer)
+         (push (cons buffer (petalisp.ir:buffer-outputs buffer))
+               active-buffers)))
+     (lambda (kernel)
+       (when (kernel-ready-p kernel)
+         (push kernel kernels)))
+     root-buffers)
+    (make-slice kernels active-buffers)))
+
+(defun kernel-ready-p (kernel)
+  (catch 'result
+    (petalisp.ir:map-kernel-outputs
+     (lambda (buffer)
+       (petalisp.ir:map-buffer-inputs
+        (lambda (kernel)
+          (unless (leaf-kernel-p kernel)
+            (throw 'result nil)))
+        buffer))
+     kernel)
+    t))
+
+(defun leaf-kernel-p (kernel)
+  (catch 'result
+    (petalisp.ir:map-kernel-inputs
+     (lambda (buffer)
+       (unless (leaf-buffer-p buffer)
+         (throw 'result nil)))
+     kernel)
+    t))
+
+(defun leaf-buffer-p (buffer)
+  (null
+   (petalisp.ir:buffer-inputs buffer)))

@@ -14,4 +14,8 @@
    #:document-function)
 
   (:export
-   ))
+   #:task
+   #:task-kernel
+   #:task-workers
+   #:tasks-from-slice
+   #:schedule-on-workers))

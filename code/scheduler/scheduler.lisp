@@ -9,19 +9,29 @@
 ;;;
 ;;; COMPUTE-TASKS - A function that receives a list of tasks and sends them
 ;;; to the workers.
-(defun schedule-on-workers (lazy-arrays n-workers compute-tasks)
-  (multiple-value-bind (root-buffers leaf-buffers)
-      (petalisp.ir:ir-from-lazy-arrays lazy-arrays)
+(defun schedule-on-workers (lazy-arrays n-workers compute-tasks allocate deallocate)
+  (let ((root-buffers (petalisp.ir:ir-from-lazy-arrays lazy-arrays)))
     (petalisp.ir:normalize-ir root-buffers)
+    ;; Now comes the actual scheduling.
     (labels ((schedule-1 (slice)
+               (mapc allocate (slice-allocations slice))
+               (funcall compute-tasks
+                        (tasks-from-slice slice (range 0 (1- n-workers))))
+               (mapc deallocate (slice-deallocations slice))
+               ;; Prepare the next step.
                (let ((kernels (available-kernels slice)))
-                 (if (null kernels)
-                     (values)
-                     (let ((next-slice (make-slice kernels slice)))
-                       (funcall compute-tasks
-                                (tasks-from-slice next-slice (range 0 (1- n-workers))))
-                       (schedule-1 next-slice))))))
-      (schedule-1 (make-initial-slice leaf-buffers)))))
+                 (unless (null kernels)
+                   (schedule-1 (make-slice kernels (slice-active-buffers slice)))))))
+      (schedule-1 (make-initial-slice root-buffers))
+      ;; Return the results.
+      (loop for root-buffer in root-buffers
+            for lazy-array in lazy-arrays
+            collect
+            (if (immediatep lazy-array)
+                lazy-array
+                (let ((storage (petalisp.ir:buffer-storage root-buffer)))
+                  (assert (arrayp storage))
+                  (coerce-to-lazy-array storage)))))))
 
 ;;; Compute all kernels whose target buffers are ready.  A buffer is ready
 ;;; if all kernels writing to it are ready.  A kernel is ready if it only
@@ -35,12 +45,13 @@
     (loop for (nil . kernels) in active-buffers do
       (loop for kernel in kernels do
         (unless (member kernel potentially-available-kernels)
-          (petalisp.ir:map-kernel-inputs
-           (lambda (buffer)
-             (unless (assoc buffer active-buffers)
-               (return)))
-           kernel)
-          (push kernel potentially-available-kernels))))
+          (block skip-this-kernel
+            (petalisp.ir:map-kernel-inputs
+             (lambda (buffer)
+               (unless (assoc buffer active-buffers)
+                 (return-from skip-this-kernel)))
+             kernel)
+            (push kernel potentially-available-kernels)))))
     ;; Step 2 - Pick all buffers whose inputs are potentially available
     ;; kernels.
     (let ((available-buffers '()))
