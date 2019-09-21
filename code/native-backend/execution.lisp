@@ -4,15 +4,22 @@
 
 (defmethod compute-immediates
     ((lazy-arrays list) (native-backend native-backend))
-  (let ((memory-pool (memory-pool native-backend)))
+  (let ((memory-pool (memory-pool native-backend))
+        (worker-pool (worker-pool native-backend)))
     (petalisp.scheduler:schedule-on-workers
      lazy-arrays
-     (worker-pool-size (worker-pool native-backend))
+     (worker-pool-size worker-pool)
      ;; Execute.
      (lambda (tasks)
        (loop for task in tasks do
-         (let ((kernel (petalisp.scheduler:task-kernel task)))
-           (compile-and-execute-kernel kernel native-backend))))
+         (let* ((kernel (petalisp.scheduler:task-kernel task))
+                (workers (petalisp.scheduler:task-workers task))
+                (fn (compile-kernel kernel native-backend)))
+           (worker-pool-enqueue
+            (lambda (worker-id)
+              (invoke-kernel kernel fn workers worker-id))
+            worker-pool)))
+       (worker-pool-wait worker-pool))
      ;; Allocate.
      (lambda (buffer)
        (setf (buffer-storage buffer)
@@ -70,15 +77,16 @@
        kernel)
       vector)))
 
-(defun compile-and-execute-kernel (kernel backend)
+(defun invoke-kernel (kernel kernel-fn workers worker-id)
   (let ((ranges (kernel-ranges kernel))
         (arrays (map 'vector #'buffer-storage (kernel-buffers kernel)))
-        (functions (kernel-functions kernel 8))
-        (compiled-kernel
-          (let ((blueprint (kernel-blueprint kernel)))
-            (petalisp.utilities:with-hash-table-memoization (blueprint)
-                (compile-cache backend)
-              (compile nil (lambda-expression-from-blueprint blueprint))))))
-    (assert (notany #'null arrays))
+        (functions (kernel-functions kernel 8)))
     ;; Now call the compiled kernel.
-    (funcall compiled-kernel ranges arrays functions)))
+    (when (zerop worker-id)
+      (funcall kernel-fn ranges arrays functions))))
+
+(defun compile-kernel (kernel backend)
+  (let ((blueprint (kernel-blueprint kernel)))
+    (petalisp.utilities:with-hash-table-memoization (blueprint)
+        (compile-cache backend)
+      (compile nil (lambda-expression-from-blueprint blueprint)))))

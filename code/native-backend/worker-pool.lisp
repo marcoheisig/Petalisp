@@ -21,28 +21,33 @@
         (setf (svref threads index)
               (bt:make-thread
                (lambda ()
-                 (let ((*worker-id* index))
-                   (catch 'join-thread
-                     (loop
-                       (funcall
-                        (lparallel.queue:pop-queue queue))))))
-               :name (format nil "Petalisp worker thread #~D" index)))))
+                 (catch 'join-thread
+                   (loop
+                     (funcall (lparallel.queue:pop-queue queue) *worker-id*))))
+               :name (format nil "Petalisp worker pool thread #~D" index)
+               :initial-bindings `((*worker-id* . ,index))))))
     (%make-worker-pool threads queues)))
 
 (defun worker-pool-size (worker-pool)
   (length
    (worker-pool-threads worker-pool)))
 
-(defun execute-in-worker-pool (function worker-pool)
-  (loop for thread across (worker-pool-threads worker-pool)
-        for queue across (worker-pool-queues worker-pool) do
-          (lparallel.queue:push-queue
-           (lambda ()
-             (funcall function *worker-id*))
-           queue)))
+(defun worker-pool-enqueue (function worker-pool)
+  (loop for queue across (worker-pool-queues worker-pool) do
+    (lparallel.queue:push-queue function queue)))
+
+(let ((semaphore (bt:make-semaphore :name "Petalisp worker pool wait semaphore")))
+  (defun worker-pool-wait (worker-pool)
+    (worker-pool-enqueue
+     (lambda (worker-id)
+       (declare (ignore worker-id))
+       (bt:signal-semaphore semaphore))
+     worker-pool)
+    (loop repeat (worker-pool-size worker-pool) do
+      (bt:wait-on-semaphore semaphore))))
 
 (defun delete-worker-pool (worker-pool)
-  (execute-in-worker-pool
+  (worker-pool-enqueue
    (lambda (worker-id)
      (declare (ignore worker-id))
      (throw 'join-thread (values)))
