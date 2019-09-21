@@ -69,23 +69,23 @@
     (make-slice kernels active-buffers)))
 
 (defun kernel-ready-p (kernel)
-  (catch 'result
+  (block result
     (petalisp.ir:map-kernel-outputs
      (lambda (buffer)
        (petalisp.ir:map-buffer-inputs
         (lambda (kernel)
           (unless (leaf-kernel-p kernel)
-            (throw 'result nil)))
+            (return-from result nil)))
         buffer))
      kernel)
     t))
 
 (defun leaf-kernel-p (kernel)
-  (catch 'result
+  (block result
     (petalisp.ir:map-kernel-inputs
      (lambda (buffer)
        (unless (leaf-buffer-p buffer)
-         (throw 'result nil)))
+         (return-from result nil)))
      kernel)
     t))
 
