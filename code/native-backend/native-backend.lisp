@@ -8,7 +8,6 @@
 (defclass native-backend (asynchronous-backend)
   ((%memory-pool :initarg :memory-pool :reader memory-pool)
    (%worker-pool :initarg :worker-pool :reader worker-pool)
-   (%worker-count :initarg :worker-count :reader worker-count)
    (%compile-cache :initarg :compile-cache :reader compile-cache
                    :initform (make-hash-table :test #'eq))))
 
@@ -16,5 +15,7 @@
   (check-type threads positive-integer)
   (make-instance 'native-backend
     :memory-pool (make-memory-pool)
-    :worker-pool (lparallel:make-kernel threads)
-    :worker-count threads))
+    :worker-pool (make-worker-pool threads)))
+
+(defmethod delete-backend ((native-backend native-backend))
+  (delete-worker-pool (worker-pool native-backend)))

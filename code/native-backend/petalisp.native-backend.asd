@@ -16,6 +16,7 @@
   :components
   ((:file "packages")
    (:file "utilities")
+   (:file "worker-pool")
    (:file "basic-block")
    (:file "lambda-block")
    (:file "loop-block")

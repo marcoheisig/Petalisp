@@ -7,7 +7,7 @@
   (let ((memory-pool (memory-pool native-backend)))
     (petalisp.scheduler:schedule-on-workers
      lazy-arrays
-     (worker-count native-backend)
+     (worker-pool-size (worker-pool native-backend))
      ;; Execute.
      (lambda (tasks)
        (loop for task in tasks do
