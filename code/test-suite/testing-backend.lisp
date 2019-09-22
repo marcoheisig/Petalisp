@@ -12,8 +12,6 @@
    (%native-backend
     :reader native-backend
     :initform
-    #+nil
-    (petalisp.ir-backend:make-ir-backend)
     (petalisp.native-backend:make-native-backend))))
 
 (defun make-testing-backend ()
