@@ -50,6 +50,7 @@
   (worker-pool-enqueue
    (lambda (worker-id)
      (declare (ignore worker-id))
-     (throw 'join-thread (values)))
+     (throw 'join-thread nil))
    worker-pool)
-  (map nil #'bt:join-thread (worker-pool-threads worker-pool)))
+  (loop for thread across (worker-pool-threads worker-pool)
+        do (bt:join-thread thread)))
