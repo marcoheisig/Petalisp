@@ -21,22 +21,22 @@
   (reusablep nil :type boolean)
   (storage nil))
 
-(defun make-buffer (array)
-  (etypecase array
+(defun make-buffer (lazy-array)
+  (etypecase lazy-array
     (array-immediate
-     (let ((storage (storage array)))
+     (let ((storage (storage lazy-array)))
        (assert (typep storage 'simple-array)) ; TODO support non-simple arrays, too.
        (%make-buffer
-        :shape (shape array)
+        :shape (shape lazy-array)
         :ntype (petalisp.type-inference:array-element-ntype storage)
         :storage storage
-        :reusablep (reusablep array)
+        :reusablep (reusablep lazy-array)
         :executedp t)))
     (lazy-array
      (%make-buffer
-      :shape (shape array)
+      :shape (shape lazy-array)
       :reusablep t
-      :ntype (ntype array)))))
+      :ntype (ntype lazy-array)))))
 
 ;;; A kernel represents a computation that, for each element in its
 ;;; iteration space, reads from some buffers and writes to some buffers.
