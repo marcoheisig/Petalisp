@@ -70,13 +70,13 @@
   (compute-on-backend lazy-arrays backend))
 
 (defmethod schedule-on-backend
-    ((data-structures list)
+    ((lazy-arrays list)
      (asynchronous-backend asynchronous-backend))
   (let ((promise (lparallel.promise:promise)))
     (lparallel.queue:push-queue
      (lambda ()
        (lparallel.promise:fulfill promise
-         (compute-on-backend data-structures asynchronous-backend)))
+         (compute-on-backend lazy-arrays asynchronous-backend)))
      (scheduler-queue asynchronous-backend))
     promise))
 

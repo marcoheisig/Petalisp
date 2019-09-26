@@ -33,24 +33,14 @@
            (setf result (ucons:ucons instruction result))))
        result))))
 
-;;; Returns an ulist with the following elements:
-;;;
-;;; 1. The number of bits necessary to describe the range size.
-;;;
-;;; 2. The number of bits necessary to describe the range step.
-;;;
-;;; 3. The type of the iteration variable, either integer or fixnum.
 (defun range-blueprint (range)
   (declare (range range))
-  (multiple-value-bind (start step end)
-      (range-start-step-end range)
-    (ucons:ulist
-     (integer-length (range-size range))
-     (integer-length step)
-     (if (and (typep start 'fixnum)
-              (typep end 'fixnum))
-         'fixnum
-         'integer))))
+  (cond ((size-one-range-p range)
+         :single)
+        ((= 1 (range-step range))
+         :contiguous)
+        (t
+         :strided)))
 
 (defun buffer-blueprint (buffer)
   (ucons:ulist
@@ -122,19 +112,17 @@
 
 ;;; Return as multiple values
 ;;;
-;;; 1. A list of range specifications.
+;;; 1. A list of range descriptions.
 ;;;
-;;; 2. The specification of the reduction range, or NIL.
+;;; 2. A list of array ntypes.
 ;;;
-;;; 3. A list of array types.
-;;;
-;;; 4. A list of instructions.
+;;; 3. A list of instructions.
 
 (defun parse-kernel-blueprint (blueprint)
-  (destructuring-bind (ranges array-info instructions)
+  (destructuring-bind (range-info array-info instructions)
       (ucons:tree-from-utree blueprint)
     (values
-     ranges
+     range-info
      (loop for (element-ntype rank) in array-info
            collect
            `(simple-array

@@ -6,7 +6,7 @@
 (defvar *instructions*)
 
 (defun lambda-expression-from-blueprint (blueprint)
-  (multiple-value-bind (ranges array-types instructions)
+  (multiple-value-bind (range-info array-types instructions)
       (parse-kernel-blueprint blueprint)
     (let ((*instructions* (coerce instructions 'simple-vector))
           (*translation-unit* (make-translation-unit array-types))
@@ -14,16 +14,16 @@
           (innermost-block nil))
       ;; Add loop blocks.
       (let ((immediate-dominator *initial-basic-block*))
-        (loop for range in (rest ranges)
+        (loop for info in (rest range-info) ; Skip the reduction range.
               for index from 1 do
-                (let ((loop-block (add-loop-block range index immediate-dominator)))
+                (let ((loop-block (add-loop-block info index immediate-dominator)))
                   (setf (successors immediate-dominator)
                         (list loop-block))
                   (setf immediate-dominator loop-block)))
         (setf innermost-block immediate-dominator))
       ;; If we are dealing with a reduction kernel, emit a single
       ;; instruction that combines all reduce instructions in that kernel.
-      (handle-reductions (first ranges) innermost-block)
+      (handle-reductions (first range-info) innermost-block)
       ;; Now translate and pseudo-evaluate all store instructions and their
       ;; dependencies.
       (loop for instruction across *instructions*
@@ -33,22 +33,19 @@
       ;; Done.
       (form *initial-basic-block*))))
 
-(defun add-loop-block (range index immediate-dominator)
-  (destructuring-bind (size-bits step-bits type) range
-    (let* ((loop-index (index-symbol index))
-           (start (start-symbol index))
-           (step (step-symbol index))
-           (end (end-symbol index)))
-      (setf (defining-basic-block loop-index)
-            (make-loop-block
-             :start start
-             :step step
-             :end end
-             :var loop-index
-             :var-type type
-             :size-bits size-bits
-             :step-bits step-bits
-             :immediate-dominator immediate-dominator)))))
+(defun add-loop-block (range-info index immediate-dominator)
+  (let* ((loop-index (index-symbol index))
+         (start (start-symbol index))
+         (step (step-symbol index))
+         (end (end-symbol index)))
+    (setf (defining-basic-block loop-index)
+          (make-loop-block
+           :start start
+           :step step
+           :end end
+           :var loop-index
+           :info range-info
+           :immediate-dominator immediate-dominator))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -64,7 +61,7 @@
 ;;; reduce instructions are replaced with :rref instructions, i.e.,
 ;;; references to some of the values of the combined reduction instruction.
 
-(defun handle-reductions (range immediate-dominator)
+(defun handle-reductions (range-info immediate-dominator)
   ;; Add an auxiliary basic block to the symbol table, to collect all
   ;; instructions that depend on the reduction index.
   (let ((tail-block (make-tail-block :immediate-dominator immediate-dominator))
@@ -86,19 +83,19 @@
            (step (step-symbol 0))
            (end (end-symbol 0))
            (thunk-form
-             (destructuring-bind (size-bits step-bits index-type) range
-               (declare (ignore step-bits))
-               (if (= 1 size-bits)
-                   `(lambda ()
-                      (let ((,reduction-index (* ,start ,step)))
-                        (declare (ignorable ,reduction-index))
-                        ,(form tail-block)))
-                   `(lambda ()
+             (ecase range-info
+               (:single
+                `(lambda ()
+                   (let ((,reduction-index ,start))
+                     (declare (ignorable ,reduction-index))
+                     ,(form tail-block))))
+               (:contiguous
+                `(lambda ()
                       (labels
                           ((divide-and-conquer (min max)
-                             (declare (type ,index-type min max))
+                             (declare (type fixnum min max))
                              (if (= min max)
-                                 (let ((,reduction-index (+ min (* ,start ,step))))
+                                 (let ((,reduction-index (+ min ,start)))
                                    (declare (ignorable ,reduction-index))
                                    ,(form tail-block))
                                  (let ((mid (+ min (floor (- max min) 2))))
@@ -106,7 +103,22 @@
                                        ,(make-reduction-lambda (nreverse reduction-spec))
                                      (divide-and-conquer min mid)
                                      (divide-and-conquer (1+ mid) max))))))
-                        (divide-and-conquer 0 (/ (- ,end ,start) ,step)))))))
+                        (divide-and-conquer 0 (- ,end ,start)))))
+               (:strided
+                `(lambda ()
+                   (labels
+                       ((divide-and-conquer (min max)
+                          (declare (type fixnum min max))
+                          (if (= min max)
+                              (let ((,reduction-index (+ min (* ,start ,step))))
+                                (declare (ignorable ,reduction-index))
+                                ,(form tail-block))
+                              (let ((mid (+ min (floor (- max min) 2))))
+                                (multiple-value-call
+                                    ,(make-reduction-lambda (nreverse reduction-spec))
+                                  (divide-and-conquer min mid)
+                                  (divide-and-conquer (1+ mid) max))))))
+                     (divide-and-conquer 0 (/ (- ,end ,start) ,step)))))))
            (thunk (value-symbol 0 thunk-form immediate-dominator)))
       (setf (defining-basic-block thunk) immediate-dominator)
       ;; Replace all reduce instructions with references to the result of
