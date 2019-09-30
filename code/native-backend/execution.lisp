@@ -117,4 +117,4 @@
   (let ((blueprint (kernel-blueprint kernel)))
     (petalisp.utilities:with-hash-table-memoization (blueprint)
         (compile-cache backend)
-      (compile nil (lambda-expression-from-blueprint blueprint)))))
+      (compile nil (petalisp.blueprint-compiler:translate-blueprint blueprint)))))

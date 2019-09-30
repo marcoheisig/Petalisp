@@ -1,15 +1,18 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package #:petalisp.native-backend)
+(in-package #:petalisp.blueprint-compiler)
 
-;;; A vector of instructions.
+;;; A vector of instructions.  With this vector, we can look up the
+;;; instruction corresponding to an instruction number in constant time.
 (defvar *instructions*)
 
-(defun lambda-expression-from-blueprint (blueprint)
-  (multiple-value-bind (range-info array-types instructions)
-      (parse-kernel-blueprint blueprint)
+(defun translate-blueprint (blueprint)
+  (multiple-value-bind (range-info array-info instructions)
+      (petalisp.ir:parse-kernel-blueprint blueprint)
     (let ((*instructions* (coerce instructions 'simple-vector))
-          (*translation-unit* (make-translation-unit array-types))
+          (*translation-unit* (make-translation-unit array-info))
+          ;; Resetting the gensym counter makes the generated code more
+          ;; legible.
           (*gensym-counter* 0)
           (innermost-block nil))
       ;; Add loop blocks.
@@ -51,10 +54,9 @@
 ;;;
 ;;; Reductions
 ;;;
-;;; The handling of reductions is somewhat involved, because instead
-;;; of having several reduction statements in the final code, we want to
-;;; have a single reduction that computes all reduction values
-;;; simultaneously.
+;;; The handling of reductions is somewhat involved, because instead of
+;;; having several reduction statements in the final code, we want to have
+;;; a single reduction that computes all reduction values simultaneously.
 ;;;
 ;;; To achieve this, we collect a list of all reduce instructions in the
 ;;; kernel and combine them into a single instruction.  In the process, all
@@ -64,7 +66,7 @@
 (defun handle-reductions (range-info immediate-dominator)
   ;; Add an auxiliary basic block to the symbol table, to collect all
   ;; instructions that depend on the reduction index.
-  (let ((tail-block (make-tail-block :immediate-dominator immediate-dominator))
+  (let ((tail-block (make-progn-block :immediate-dominator immediate-dominator))
         (reduction-index (index-symbol 0))
         (reduction-values '())
         (reduction-spec '()))
@@ -77,7 +79,7 @@
               (loop for argument in arguments do
                 (push (pseudo-eval-argument argument) reduction-values))))
     ;; Define the reduction thunk.
-    (setf (tail tail-block)
+    (setf (tail-form tail-block)
           `(values . ,(nreverse reduction-values)))
     (let* ((start (start-symbol 0))
            (step (step-symbol 0))

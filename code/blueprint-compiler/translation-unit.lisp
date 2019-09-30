@@ -1,17 +1,13 @@
 ;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package #:petalisp.native-backend)
+(in-package #:petalisp.blueprint-compiler)
 
 (defclass translation-unit ()
   ((%symbol-table :initarg :symbol-table :reader symbol-table)
    (%initial-basic-block :initarg :initial-basic-block :reader initial-basic-block)
-   (%array-types :initarg :array-types :reader array-types)))
+   (%array-info :initarg :array-info :reader array-info)))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Translation Unit Creation
-
-(defun make-translation-unit (array-types)
+(defun make-translation-unit (array-info)
   (let* ((lambda-list '(ranges arrays functions))
          (symbol-table (make-hash-table :test #'eq))
          (initial-basic-block
@@ -26,7 +22,7 @@
     (make-instance 'translation-unit
       :symbol-table symbol-table
       :initial-basic-block initial-basic-block
-      :array-types array-types)))
+      :array-info array-info)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -55,7 +51,7 @@
   (pseudo-eval
    0
    `(aref arrays ,n)
-   (elt (array-types *translation-unit*) n)))
+   (elt (array-info *translation-unit*) n)))
 
 (defun function-symbol (n)
   (pseudo-eval 0 `(aref functions ,n)))

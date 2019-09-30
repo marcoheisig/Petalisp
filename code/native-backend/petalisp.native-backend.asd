@@ -10,19 +10,13 @@
    "petalisp.utilities"
    "petalisp.core"
    "petalisp.ir"
-   "petalisp.scheduler")
+   "petalisp.scheduler"
+   "petalisp.blueprint-compiler")
 
   :serial t
   :components
   ((:file "packages")
-   (:file "utilities")
    (:file "worker-pool")
-   (:file "basic-block")
-   (:file "lambda-block")
-   (:file "loop-block")
-   (:file "tail-block")
-   (:file "translation-unit")
-   (:file "blueprint-compiler")
    (:file "memory-pool")
    (:file "native-backend")
    (:file "execution")))
