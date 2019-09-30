@@ -18,7 +18,9 @@
            (worker-pool-enqueue
             (lambda (worker-id)
               (invoke-kernel kernel fn workers worker-id))
-            worker-pool)))
+            worker-pool))))
+     ;; Barrier.
+     (lambda ()
        (worker-pool-wait worker-pool))
      ;; Allocate.
      (lambda (buffer)

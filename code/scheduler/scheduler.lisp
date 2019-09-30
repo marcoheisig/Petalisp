@@ -9,29 +9,36 @@
 ;;;
 ;;; COMPUTE-TASKS - A function that receives a list of tasks and sends them
 ;;; to the workers.
-(defun schedule-on-workers (lazy-arrays n-workers compute-tasks allocate deallocate)
+(defun schedule-on-workers (lazy-arrays n-workers enqueue-tasks barrier allocate deallocate)
   (let ((root-buffers (petalisp.ir:ir-from-lazy-arrays lazy-arrays)))
     (petalisp.ir:normalize-ir root-buffers)
     ;; Now comes the actual scheduling.
-    (labels ((schedule-1 (slice)
-               (mapc allocate (slice-allocations slice))
-               (funcall compute-tasks
-                        (tasks-from-slice slice (range 0 (1- n-workers))))
-               (mapc deallocate (slice-deallocations slice))
-               ;; Prepare the next step.
-               (let ((kernels (available-kernels slice)))
-                 (unless (null kernels)
-                   (schedule-1 (make-slice kernels (slice-active-buffers slice)))))))
-      (schedule-1 (make-initial-slice root-buffers))
-      ;; Return the results.
-      (loop for root-buffer in root-buffers
-            for lazy-array in lazy-arrays
-            collect
-            (if (immediatep lazy-array)
-                lazy-array
-                (let ((storage (petalisp.ir:buffer-storage root-buffer)))
-                  (assert (arrayp storage))
-                  (coerce-to-lazy-array storage)))))))
+    (let ((current-slice (make-initial-slice root-buffers)))
+      (mapc allocate (slice-allocations current-slice))
+      (loop
+        (funcall enqueue-tasks (tasks-from-slice current-slice (range 0 (1- n-workers))))
+        (let ((next-slice (compute-next-slice current-slice)))
+          (funcall barrier)
+          (mapc deallocate (slice-deallocations current-slice))
+          (when (null next-slice)
+            (return))
+          (mapc allocate (slice-allocations next-slice))
+          (setf current-slice next-slice))))
+    ;; Return the results.
+    (loop for root-buffer in root-buffers
+          for lazy-array in lazy-arrays
+          collect
+          (if (immediatep lazy-array)
+              lazy-array
+              (let ((storage (petalisp.ir:buffer-storage root-buffer)))
+                (assert (arrayp storage))
+                (coerce-to-lazy-array storage))))))
+
+;;; Return a suitable next slice, or NIL, if all work is done.
+(defun compute-next-slice (slice)
+  (let ((kernels (available-kernels slice)))
+    (unless (null kernels)
+      (make-slice kernels (slice-active-buffers slice)))))
 
 ;;; Compute all kernels whose target buffers are ready.  A buffer is ready
 ;;; if all kernels writing to it are ready.  A kernel is ready if it only
