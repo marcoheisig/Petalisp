@@ -41,6 +41,7 @@
      (:file "max")
      (:file "min")
      (:file "mul")
+     (:file "signum")
      (:file "sin")
      (:file "sub")
      (:file "tan")))))
