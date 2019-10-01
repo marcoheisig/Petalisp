@@ -2,18 +2,10 @@
 
 (in-package #:petalisp.type-inference)
 
-(define-simple-instruction (max max.integer) (integer) (integer integer))
-(define-simple-instruction (max max.rational) (rational) (rational rational))
-(define-simple-instruction (max max.short-float) (short-float) (short-float short-float))
-(define-simple-instruction (max max.single-float) (single-float) (single-float single-float))
-(define-simple-instruction (max max.double-float) (double-float) (double-float double-float))
-(define-simple-instruction (max max.long-float) (long-float) (long-float long-float))
-(define-instruction (max max.real) (real) (a b)
-  (let ((a-ntype (wrapper-ntype a))
-        (b-ntype (wrapper-ntype b)))
-    (with-constant-folding (max (a-ntype real) (b-ntype real))
-      (rewrite-default
-       (ntype-union a-ntype b-ntype)))))
+(define-simple-instruction (max short-float-max) (short-float) (short-float short-float))
+(define-simple-instruction (max single-float-max) (single-float) (single-float single-float))
+(define-simple-instruction (max double-float-max) (double-float) (double-float double-float))
+(define-simple-instruction (max long-float-max) (long-float) (long-float long-float))
 
 (define-rule max (real &rest more-reals)
   (cond ((null more-reals)
@@ -21,6 +13,30 @@
         (t
          (reduce
           (lambda (a b)
-            (rewrite-as (max.real a b)))
+            (let ((ntype-of-a (wrapper-ntype a))
+                  (ntype-of-b (wrapper-ntype b)))
+              (ntype-subtypecase ntype-of-a
+                ((not real) (abort-specialization))
+                (short-float
+                 (ntype-subtypecase ntype-of-b
+                   ((not real) (abort-specialization))
+                   (short-float (rewrite-as (short-float-max a b)))
+                   (t (rewrite-default (ntype-union ntype-of-a ntype-of-b)))))
+                (single-float
+                 (ntype-subtypecase ntype-of-b
+                   ((not real) (abort-specialization))
+                   (single-float (rewrite-as (single-float-max a b)))
+                   (t (rewrite-default (ntype-union ntype-of-a ntype-of-b)))))
+                (double-float
+                 (ntype-subtypecase ntype-of-b
+                   ((not real) (abort-specialization))
+                   (double-float (rewrite-as (double-float-max a b)))
+                   (t (rewrite-default (ntype-union ntype-of-a ntype-of-b)))))
+                (long-float
+                 (ntype-subtypecase ntype-of-b
+                   ((not real) (abort-specialization))
+                   (long-float (rewrite-as (long-float-max a b)))
+                   (t (rewrite-default (ntype-union ntype-of-a ntype-of-b)))))
+                (t (rewrite-default (ntype 'real))))))
           more-reals
           :initial-value real))))

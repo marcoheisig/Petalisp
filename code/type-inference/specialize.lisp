@@ -9,7 +9,7 @@
                    wrap-function
                    default)
   " Traverses a decomposition of FUNCTION into successive calls to more
-specialized functions, using the supplied PROCESS-* functions.  Returns the
+specialized functions, using the supplied wrapping functions.  Returns the
 values returned by PROCESS-MULTIPLE-VALUE-FUNCTION.
 
 Arguments:

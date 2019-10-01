@@ -2,14 +2,14 @@
 
 (in-package #:petalisp.type-inference)
 
-(define-simple-instruction (cos cos.short-float) (short-float) (short-float))
-(define-simple-instruction (cos cos.single-float) (single-float) (single-float))
-(define-simple-instruction (cos cos.double-float) (double-float) (double-float))
-(define-simple-instruction (cos cos.long-float) (long-float) (long-float))
-(define-simple-instruction (cos cos.complex-short-float) (complex-short-float) (complex-short-float))
-(define-simple-instruction (cos cos.complex-single-float) (complex-single-float) (complex-single-float))
-(define-simple-instruction (cos cos.complex-double-float) (complex-double-float) (complex-double-float))
-(define-simple-instruction (cos cos.complex-long-float) (complex-long-float) (complex-long-float))
+(define-simple-instruction (cos short-float-cos) (short-float) (short-float))
+(define-simple-instruction (cos single-float-cos) (single-float) (single-float))
+(define-simple-instruction (cos double-float-cos) (double-float) (double-float))
+(define-simple-instruction (cos long-float-cos) (long-float) (long-float))
+(define-simple-instruction (cos complex-short-float-cos) (complex-short-float) (complex-short-float))
+(define-simple-instruction (cos complex-single-float-cos) (complex-single-float) (complex-single-float))
+(define-simple-instruction (cos complex-double-float-cos) (complex-double-float) (complex-double-float))
+(define-simple-instruction (cos complex-long-float-cos) (complex-long-float) (complex-long-float))
 
 (define-rule cos (x)
   (ntype-subtypecase (wrapper-ntype x)
@@ -17,27 +17,27 @@
      (abort-specialization))
     (short-float
      (rewrite-as
-      (cos.short-float x)))
+      (short-float-cos x)))
     (single-float
      (rewrite-as
-      (cos.single-float x)))
+      (single-float-cos x)))
     (double-float
      (rewrite-as
-      (cos.double-float x)))
+      (double-float-cos x)))
     (long-float
      (rewrite-as
-      (cos.long-float x)))
+      (long-float-cos x)))
     (complex-short-float
      (rewrite-as
-      (cos.complex-short-float x)))
+      (complex-short-float-cos x)))
     (complex-single-float
      (rewrite-as
-      (cos.complex-single-float x)))
+      (complex-single-float-cos x)))
     (complex-double-float
      (rewrite-as
-      (cos.complex-double-float x)))
+      (complex-double-float-cos x)))
     (complex-long-float
      (rewrite-as
-      (cos.complex-long-float x)))
+      (complex-long-float-cos x)))
     (t
      (rewrite-default (ntype 'number)))))

@@ -2,14 +2,14 @@
 
 (in-package #:petalisp.type-inference)
 
-(define-simple-instruction (tan tan.short-float) (short-float) (short-float))
-(define-simple-instruction (tan tan.single-float) (single-float) (single-float))
-(define-simple-instruction (tan tan.double-float) (double-float) (double-float))
-(define-simple-instruction (tan tan.long-float) (long-float) (long-float))
-(define-simple-instruction (tan tan.complex-short-float) (complex-short-float) (complex-short-float))
-(define-simple-instruction (tan tan.complex-single-float) (complex-single-float) (complex-single-float))
-(define-simple-instruction (tan tan.complex-double-float) (complex-double-float) (complex-double-float))
-(define-simple-instruction (tan tan.complex-long-float) (complex-long-float) (complex-long-float))
+(define-simple-instruction (tan short-float-tan) (short-float) (short-float))
+(define-simple-instruction (tan single-float-tan) (single-float) (single-float))
+(define-simple-instruction (tan double-float-tan) (double-float) (double-float))
+(define-simple-instruction (tan long-float-tan) (long-float) (long-float))
+(define-simple-instruction (tan complex-short-float-tan) (complex-short-float) (complex-short-float))
+(define-simple-instruction (tan complex-single-float-tan) (complex-single-float) (complex-single-float))
+(define-simple-instruction (tan complex-double-float-tan) (complex-double-float) (complex-double-float))
+(define-simple-instruction (tan complex-long-float-tan) (complex-long-float) (complex-long-float))
 
 (define-rule tan (x)
   (ntype-subtypecase (wrapper-ntype x)
@@ -17,27 +17,27 @@
      (abort-specialization))
     (short-float
      (rewrite-as
-      (tan.short-float x)))
+      (short-float-tan x)))
     (single-float
      (rewrite-as
-      (tan.single-float x)))
+      (single-float-tan x)))
     (double-float
      (rewrite-as
-      (tan.double-float x)))
+      (double-float-tan x)))
     (long-float
      (rewrite-as
-      (tan.long-float x)))
+      (long-float-tan x)))
     (complex-short-float
      (rewrite-as
-      (tan.complex-short-float x)))
+      (complex-short-float-tan x)))
     (complex-single-float
      (rewrite-as
-      (tan.complex-single-float x)))
+      (complex-single-float-tan x)))
     (complex-double-float
      (rewrite-as
-      (tan.complex-double-float x)))
+      (complex-double-float-tan x)))
     (complex-long-float
      (rewrite-as
-      (tan.complex-long-float x)))
+      (complex-long-float-tan x)))
     (t
      (rewrite-default (ntype 'number)))))

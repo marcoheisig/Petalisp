@@ -2,6 +2,17 @@
 
 (in-package #:petalisp.type-inference)
 
+(defmacro define-predicate-rule (predicate type-specifier)
+  (alexandria:with-gensyms (object ntype)
+    `(define-rule ,predicate (,object)
+       (let ((,ntype (wrapper-ntype ,object)))
+         (if (eql-ntype-p ,ntype)
+             (,predicate ,ntype)
+             (ntype-subtypecase ,ntype
+               ((not ,type-specifier) (rewrite-as nil))
+               (,type-specifier (rewrite-default (ntype '(not null))))
+               (t (rewrite-default (ntype 'generalized-boolean)))))))))
+
 (define-predicate-rule arrayp array)
 (define-predicate-rule bit-vector-p bit-vector)
 (define-predicate-rule characterp character)
@@ -20,6 +31,9 @@
 (define-predicate-rule rationalp rational)
 (define-predicate-rule realp real)
 (define-predicate-rule streamp stream)
+
+;;; The remaining rules cannot be handled by DEFINE-PREDICATE-RULE, because
+;;; the domain of these functions is limited to numbers.
 
 (define-rule minusp (real)
   (let ((ntype (wrapper-ntype real)))
@@ -50,5 +64,5 @@
     (rewrite-default (ntype 'generalized-boolean))))
 
 (define-rule oddp (integer)
-  (with-constant-folding (evenp ((wrapper-ntype integer) integer))
+  (with-constant-folding (oddp ((wrapper-ntype integer) integer))
     (rewrite-default (ntype 'generalized-boolean))))
