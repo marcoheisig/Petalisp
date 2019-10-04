@@ -262,11 +262,13 @@
 
 (defun subrangep (range-1 range-2)
   (declare (range range-1 range-2))
-  (multiple-value-bind (start step end)
-      (range-start-step-end range-1)
-    (range-contains range-2 start)
-    (range-contains range-2 (+ start step))
-    (range-contains range-2 end)))
+  (if (size-one-range-p range-1)
+      (range-contains range-2 (range-start range-1))
+      (multiple-value-bind (start step end)
+          (range-start-step-end range-1)
+        (and (range-contains range-2 start)
+             (range-contains range-2 end)
+             (range-contains range-2 (+ start step))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

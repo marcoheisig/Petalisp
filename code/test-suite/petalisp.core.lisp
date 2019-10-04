@@ -102,6 +102,8 @@
 (test reference-test
   (compute
    (reshape #(1 2 3) (τ (i) ((- i)))) #(3 2 1))
+  (signals error
+    (compute (reshape #(1 2 3 4) (~ -1 3))))
   (compute
    (fuse*
     (reshape #2A((1 2 3) (4 5 6))
