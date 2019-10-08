@@ -73,22 +73,121 @@
       (error "~@<Invalid reference to ~S with shape ~S and transformation ~S.~:@>"
              lazy-array shape transformation))))
 
-(defun reshape (array &rest shapes-and-transformations)
-  (labels ((reshape-with-shape (lazy-array shape)
-             (make-reference
-              lazy-array
-              shape
-              (broadcasting-transformation shape (shape lazy-array))))
-           (reshape-with-transformation (lazy-array transformation)
-             (make-reference
-              lazy-array
-              (transform (shape lazy-array) transformation)
-              (invert-transformation transformation)))
-           (reshape1 (lazy-array modifier)
-             (if (shapep modifier)
-                 (reshape-with-shape lazy-array modifier)
-                 (reshape-with-transformation lazy-array modifier))))
-    (reduce #'reshape1 shapes-and-transformations :initial-value (coerce-to-lazy-array array))))
+(defun reshape (array &rest modifiers)
+  (reduce (lambda (lazy-array modifier)
+            (if (transformationp modifier)
+                (reshape-using-transformation lazy-array modifier)
+                (reshape-using-shape lazy-array (shape modifier))))
+          modifiers
+          :initial-value (coerce-to-lazy-array array)))
+
+(defun reshape-using-transformation (lazy-array transformation)
+  (make-reference
+   lazy-array
+   (transform (shape lazy-array) transformation)
+   (invert-transformation transformation)))
+
+(defun reshape-using-shape (lazy-array shape)
+  (let ((array-shape (shape lazy-array))
+        (shape-size 1)
+        (array-size 1)
+        (similar-shapes-p t))
+    (loop for shape-range in (shape-ranges shape)
+          for array-range in (shape-ranges array-shape) do
+            (let ((shape-range-size (range-size shape-range))
+                  (array-range-size (range-size array-range)))
+              (setf shape-size (* shape-size shape-range-size))
+              (setf array-size (* array-size array-range-size))
+              (unless (= shape-range-size array-range-size)
+                (setf similar-shapes-p nil))))
+    (if (and (= shape-size array-size)
+             (not similar-shapes-p))
+        ;; Case 1 - Reshaping while preserving the number of elements.
+        (unflatten (flatten lazy-array) shape)
+        ;; Case 2 - Broadcasting or selection of a subspace.
+        (multiple-value-bind (transformation broadcast-p select-p)
+            (make-shape-transformation array-shape shape)
+          ;; We do not allow transformations that broadcast some ranges, but
+          ;; shrink others.  Otherwise, we would risk ambiguity with case 1.
+          (unless (not (and broadcast-p select-p))
+            (error "~@<Cannot broadcast the array ~S ~
+                 to the shape ~S.~:@>"
+                   lazy-array shape))
+          (make-reference lazy-array shape transformation)))))
+
+;; Turn an arbitrary lazy array into a rank one array.
+(defun flatten (lazy-array)
+  ;; TODO
+  )
+
+;; Turn a rank one array into an array of the supplied SHAPE.
+(defun unflatten (lazy-array shape)
+  (assert (= (rank lazy-array) 1))
+  (let ((vector-of-prime-factors (make-array (rank shape)))
+        (most-positive-prime-factor 1)
+        (most-positive-prime-factor-index 0))
+    (loop for range in (shape-ranges shape)
+          for index from 0 do
+            (let* ((prime-factors (petalisp.utilities:prime-factors (range-size range)))
+                   (max (apply #'max prime-factors)))
+              (setf (aref vector-of-prime-factors index) prime-factors)
+              (when (>= max most-positive-prime-factor)
+                (setf most-positive-prime-factor max)
+                (setf most-positive-prime-factor-index index))))
+    ;; TODO
+    ))
+
+;; Turn the range at the supplied AXIS with size N into a range of size K,
+;; followed by a range of size N / K.
+(defun insert-axis-before (lazy-array axis k)
+  (let* ((shape (shape lazy-array))
+         (rank (rank shape))
+         (ranges (shape-ranges shape))
+         (prefix (subseq ranges 0 axis))
+         (suffix (subseq ranges (1+ axis)))
+         (rest-size (/ (range-size (nth axis ranges)) k)))
+    (flet ((selection (index)
+             (make-shape
+              (append
+               prefix
+               (list (range (* index rest-size) (1- (* (1+ index) rest-size))))
+               suffix)))
+           (backtransformation (offset)
+             (let ((output-mask (make-array (1+ rank)))
+                   (offsets (make-array (1+ rank))))
+               (loop for index below axis do
+                 (setf (aref output-mask index) index)
+                 (setf (aref offsets index) 0))
+               (setf (aref output-mask axis) nil)
+               (setf (aref offsets axis) offset)
+               (setf (aref output-mask (1+ axis)) axis)
+               (setf (aref offsets (1+ axis)) (- (* rest-size offset)))
+               (loop for index from (+ axis 2) to rank do
+                 (setf (aref output-mask index) (1- index))
+                 (setf (aref offsets index) 0))
+               (make-transformation
+                :input-rank rank
+                :output-mask output-mask
+                :offsets offsets))))
+      (apply #'fuse
+             (loop for index below k
+                   collect
+                   (reshape lazy-array (selection index) (backtransformation index)))))))
+
+;; Turn the range at axis I with size N into a range of size N / K,
+;; followed by a range of size K.
+(defun insert-axis-after (lazy-array axis k)
+  ;; TODO
+  )
+
+;; Combine the range at the specified AXIS with the next one.
+(defun combine-axes (lazy-array axis)
+  (let* ((shape (shape lazy-array))
+         (ranges (shape-ranges shape))
+         (range-1 (nth axis ranges))
+         (range-2 (nth (1+ axis) ranges)))
+    ;; There are two ways to combine the axes - by appending the 
+    ))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -111,7 +210,7 @@
   (let ((lazy-arrays (sanitize-fusion-inputs inputs)))
     ;; When given more than one input, check for disjointnes.
     (when (cdr lazy-arrays)
-      (map-combinations
+      (alexandria:map-combinations
        (lambda (two-inputs)
          (destructuring-bind (input-1 input-2) two-inputs
            (let ((shape-1 (shape input-1))
@@ -131,9 +230,9 @@
          (shapes (subdivision (mapcar #'shape lazy-arrays)))
          (identity (identity-transformation (rank (first lazy-arrays)))))
     (flet ((reference-origin (shape)
-             (make-reference
-              (find shape lazy-arrays :from-end t :key #'shape :test #'subshapep)
-              shape identity)))
+             (let ((origin (find shape lazy-arrays :from-end t :key #'shape :test #'subshapep)))
+               (assert origin)
+               (make-reference origin shape identity))))
       (make-fusion (mapcar #'reference-origin shapes)))))
 
 ;; Create a fusion, assuming INPUTS are non-empty, non-overlapping lazy-arrays.

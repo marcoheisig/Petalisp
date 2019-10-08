@@ -132,19 +132,42 @@ Examples:
 ")
 
 (document-function reshape
-  "Return a data structure of given SHAPE, either by selecting a subset of
-the elements of DATA, or by broadcasting them.
+  "Return a lazy array with the contents of ARRAY, but after applying the
+supplied MODIFIERS in left-to-right order.  A modifier must either be a
+shape, or a transformation.
+
+A shape can denote one of three different modifications, depending on
+whether it is larger than the array, smaller than the array, or has the
+same number of elements as the array.  If the shape is larger than the
+array, it denotes a broadcasting operation.  If the shape is smaller than
+the array, it denotes a selection of a sub-array.  If the shape has the
+same number of elements, it denotes a lexicographic reordering operation.
+
+In case the modifier is a transformation, the new array is obtained by
+taking each index and corresponding value of the original array and
+applying the transformation to the index while retaining the value.
 
 Examples:
 
+ ;; Broadcasting.
  (compute (reshape 4 (~ 0 4)))
   => #(4 4 4 4 4)
 
- (compute (reshape 0 (~ 0 1 ~ 0 1)))
-  => #2A((0 0) (0 0))
-
+ ;; Selection.
  (compute (reshape #(1 2 3 4) (~ 1 2)))
   => #(2 3)
+
+ ;; Lexicographic reordering.
+ (compute (reshape (indices (~ 1 9)) (~ 0 2 ~ 0 2)))
+  => #2A((1 2 3) (4 5 6) (7 8 9))
+
+ ;; Element-wise transformation.
+ (compute (reshape #2A((1 2) (3 4)) (τ (i j) (j i))))
+  => #2A((1 3) (2 4))
+
+ ;; Multiple modifications at once.
+ (compute (reshape #(1 2 3 4) (~ 1 2) (~ 0 1 ~ 0 1)))
+  => #2A((2 3) (2 3))
 ")
 
 (document-function fuse

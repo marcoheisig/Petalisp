@@ -71,7 +71,7 @@
                                 (:offsets sequence)
                                 (:scalings sequence)))
                 make-transformation)
-         (ftype (function (array-length))
+         (ftype (function (alexandria:array-length))
                 identity-transformation))
 
 (defun transformation-invertiblep (transformation)
@@ -174,7 +174,7 @@
     (let ((f-output-mask (transformation-output-mask f))
           (f-offsets (transformation-offsets f))
           (f-scalings (transformation-scalings f))
-          (input-mask (copy-array (transformation-input-mask f)))
+          (input-mask (alexandria:copy-array (transformation-input-mask f)))
           (output-mask (make-array output-rank :initial-element nil))
           (scalings (make-array output-rank :initial-element 0))
           (offsets (make-array output-rank :initial-element 0)))
@@ -247,7 +247,7 @@
                (input-mask (make-array input-rank :initial-element nil))
                (output-mask (make-array output-rank :initial-element nil))
                (scalings (make-array output-rank :initial-element 0))
-               (offsets (copy-array (transformation-input-mask transformation))))
+               (offsets (alexandria:copy-array (transformation-input-mask transformation))))
           (map-transformation-outputs
            (lambda (output-index input-index a b)
              (if (not input-index)
@@ -480,7 +480,7 @@
     (map-transformation-inputs
      (lambda (input-index input-constraint)
        (if (null input-constraint)
-           (push (format-symbol :keyword "I~D" input-index) inputs)
+           (push (alexandria:format-symbol :keyword "I~D" input-index) inputs)
            (push input-constraint inputs)))
      transformation
      :from-end t)

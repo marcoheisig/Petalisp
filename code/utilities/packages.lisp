@@ -18,4 +18,5 @@
    #:symmetric-function
    #:define-method-pair
    #:define-class-predicate
-   #:extended-euclid))
+   #:extended-euclid
+   #:prime-factors))

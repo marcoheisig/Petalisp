@@ -16,4 +16,5 @@
    (:file "define-method-pair")
    (:file "define-class-predicate")
    (:file "float-bits")
+   (:file "prime-factors")
    (:file "with-collectors")))

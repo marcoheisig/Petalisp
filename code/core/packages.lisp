@@ -3,9 +3,7 @@
 (cl:in-package #:common-lisp-user)
 
 (defpackage #:petalisp.core
-  (:use
-   #:common-lisp
-   #:alexandria)
+  (:use #:common-lisp)
   (:import-from #:petalisp.utilities #:document-variable #:document-function)
   (:export
 

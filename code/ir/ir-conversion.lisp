@@ -23,8 +23,7 @@
 ;;;    them or write from them.
 
 (defun ir-from-lazy-arrays (lazy-arrays)
-  (let ((*buffer-table* (compute-buffer-table lazy-arrays))
-        (leaf-buffers '()))
+  (let ((*buffer-table* (compute-buffer-table lazy-arrays)))
     ;; Now create a list of kernels for each entry in the buffer table.
     (maphash
      (lambda (lazy-array buffer)

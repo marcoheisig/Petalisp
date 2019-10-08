@@ -72,7 +72,7 @@
                  ((list start step end) `(make-range ,start ,step ,end))))))))
 
 (trivia:defpattern range (&rest start-step-end)
-  (with-gensyms (it tmp)
+  (alexandria:with-gensyms (it tmp)
     (multiple-value-bind (start step end)
         (trivia:ematch start-step-end
           ((list start step end) (values start step end))
@@ -154,7 +154,7 @@
 (defun range-difference-list--contiguous
     (start-1 end-1 start-2 step-2 end-2 make-range-fn)
   (declare (integer start-1 end-1 start-2 end-2)
-           (positive-integer step-2)
+           (alexandria:positive-integer step-2)
            (function make-range-fn))
   ;; There are two strategies to partition the contiguous indices
   ;; start-1..end-1 into ranges.  The first one is to create strided ranges
@@ -206,7 +206,7 @@
 ;;; Remove a single (valid) index from the given range.
 (defun range-difference-list--single (start-1 step-1 end-1 index)
   (declare (integer start-1 end-1 index)
-           (positive-integer step-1))
+           (alexandria:positive-integer step-1))
   (cond ((= start-1 end-1)
          '())
         ((= index start-1)
@@ -285,8 +285,9 @@
         maximizing (range-end range) into end
         finally
            (flet ((fail ()
-                    (simple-program-error
-                     "Unable to fuse ranges:~%~{~A~%~}" ranges)))
+                    (alexandria:simple-program-error
+                     "Unable to fuse ranges:~%~{~A~%~}"
+                     ranges)))
              (let ((step (if (= size 1)
                              1
                              (/ (- end start)

@@ -256,7 +256,7 @@
               (make-shape ,ranges)))))))
 
 (trivia:defpattern shape (&rest ranges)
-  (with-gensyms (it)
+  (alexandria:with-gensyms (it)
     `(trivia:guard1 ,it (shapep ,it)
                     (shape-ranges ,it) (list ,@ranges))))
 

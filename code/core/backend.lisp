@@ -51,7 +51,7 @@
 
 (defmethod compute-on-backend ((lazy-arrays list) (backend backend))
   (let* ((collapsing-transformations
-           (mapcar (compose #'collapsing-transformation #'shape)
+           (mapcar (alexandria:compose #'collapsing-transformation #'shape)
                    lazy-arrays))
          (immediates
            (compute-immediates

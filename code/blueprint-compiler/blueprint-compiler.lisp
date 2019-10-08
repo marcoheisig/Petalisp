@@ -75,7 +75,9 @@
     (loop for instruction across *instructions*
           when (eq (car instruction) :reduce) do
             (destructuring-bind (operator . arguments) (rest instruction)
+              ;; Store the operator and arity of the reduction.
               (push (cons operator (length arguments)) reduction-spec)
+              ;; Ensure evaluation of all arguments.
               (loop for argument in arguments do
                 (push (pseudo-eval-argument argument) reduction-values))))
     ;; Define the reduction thunk.
