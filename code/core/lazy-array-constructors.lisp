@@ -146,13 +146,13 @@
          (prefix (subseq ranges 0 axis))
          (suffix (subseq ranges (1+ axis)))
          (rest-size (/ (range-size (nth axis ranges)) k)))
-    (flet ((selection (index)
+    (flet ((select (index)
              (make-shape
               (append
                prefix
                (list (range (* index rest-size) (1- (* (1+ index) rest-size))))
                suffix)))
-           (backtransformation (offset)
+           (move (offset)
              (let ((output-mask (make-array (1+ rank)))
                    (offsets (make-array (1+ rank))))
                (loop for index below axis do
@@ -172,22 +172,90 @@
       (apply #'fuse
              (loop for index below k
                    collect
-                   (reshape lazy-array (selection index) (backtransformation index)))))))
+                   (reshape lazy-array (select index) (move index)))))))
 
 ;; Turn the range at axis I with size N into a range of size N / K,
 ;; followed by a range of size K.
 (defun insert-axis-after (lazy-array axis k)
-  ;; TODO
-  )
+  (let* ((shape (shape lazy-array))
+         (rank (rank shape))
+         (ranges (shape-ranges shape))
+         (prefix (subseq ranges 0 axis))
+         (suffix (subseq ranges (1+ axis)))
+         (n (range-size (nth axis ranges))))
+    (flet ((select (index)
+             (make-shape
+              (append
+               prefix
+               (list (range index k (1- n)))
+               suffix)))
+           (move (offset)
+             (let ((output-mask (make-array (1+ rank)))
+                   (offsets (make-array (1+ rank)))
+                   (scalings (make-array (1+ rank))))
+               (loop for index below axis do
+                 (setf (aref output-mask index) index)
+                 (setf (aref offsets index) 0)
+                 (setf (aref scalings index) 1))
+               (setf (aref output-mask axis) axis)
+               (setf (aref offsets axis) (- (/ offset k)))
+               (setf (aref scalings axis) (/ k))
+               (setf (aref output-mask (1+ axis)) nil)
+               (setf (aref offsets (1+ axis)) offset)
+               (setf (aref scalings (1+ axis)) 1)
+               (loop for index from (+ axis 2) to rank do
+                 (setf (aref output-mask index) (1- index))
+                 (setf (aref offsets index) 0)
+                 (setf (aref scalings index) 0))
+               (make-transformation
+                :input-rank rank
+                :output-mask output-mask
+                :offsets offsets
+                :scalings scalings))))
+      (apply #'fuse
+             (loop for index below k
+                   collect
+                   (reshape lazy-array (select index) (move index)))))))
 
 ;; Combine the range at the specified AXIS with the next one.
+#+(or)
 (defun combine-axes (lazy-array axis)
   (let* ((shape (shape lazy-array))
+         (rank (shape-rank shape))
          (ranges (shape-ranges shape))
+         (prefix (subseq ranges 0 axis))
+         (suffix (subseq ranges (+ axis 2)))
          (range-1 (nth axis ranges))
-         (range-2 (nth (1+ axis) ranges)))
-    ;; There are two ways to combine the axes - by appending the 
-    ))
+         (range-2 (nth (1+ axis) ranges))
+         (size-1 (range-size range-1))
+         (size-2 (range-size range-2)))
+    ;; There are two ways to combine the axes - by appending SIZE-1 arrays
+    ;; entries, or by interleaving SIZE-2 arrays.  We pick the more
+    ;; economic one.
+    (if (< size-1 size-2)
+        (flet ((select (index)
+                 (make-shape
+                  (append
+                   prefix
+                   (list (range index))
+                   suffix)))
+               (move (offset)
+                 (let ((output-mask (make-array (1- rank))))
+                   (loop for index below rank do
+                     (setf (aref output-mask index) index))
+                   (make-transformation
+                    :input-rank rank
+                    :output-mask output-mask))))
+          (apply
+           #'fuse
+           (loop for index below size-1
+                 collect
+                 (reshape lazy-array (select index) (move index)))))
+        (apply
+         #'fuse
+         (loop for index below size-2
+               collect
+               (reshape lazy-array (select index) (move index)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
