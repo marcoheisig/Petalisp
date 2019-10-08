@@ -5,7 +5,8 @@
   :depends-on
   ("alexandria"
    "petalisp.utilities"
-   "petalisp.core")
+   "petalisp.core"
+   "petalisp.ir")
 
   :serial t
   :components
