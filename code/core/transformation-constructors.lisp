@@ -169,8 +169,7 @@
                                  (/= 0 offset))
                              (setf identity-p nil))
                             ;; Case 5 - We have to do nothing.
-                            (t (values)))))))
-                ))
+                            (t (values)))))))))
       (values output-mask scalings offsets identity-p))))
 
 (defun free-variables (form &optional environment)

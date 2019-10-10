@@ -91,6 +91,15 @@
     ((non-immediate non-immediate) &key &allow-other-keys)
   (mapc #'increment-refcount (inputs non-immediate)))
 
+(defmethod coerce-to-lazy-array ((lazy-array lazy-array))
+  lazy-array)
+
+(defmethod coerce-to-lazy-array ((array array))
+  (make-array-immediate array))
+
+(defmethod coerce-to-lazy-array ((object t))
+  (make-scalar-immediate object))
+
 (defmethod lazy-array-p ((object t))
   (declare (ignore object))
   nil)
@@ -207,6 +216,60 @@
    lazy-array
    (transform (shape lazy-array) transformation)
    (invert-transformation transformation)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Immediate Constructors
+
+(defun make-scalar-immediate (object)
+  (make-instance 'array-immediate
+    :shape (~)
+    :ntype (petalisp.type-inference:ntype-of object)
+    :storage (petalisp.type-inference:make-rank-zero-array object)))
+
+(defun make-array-immediate (array &optional reusablep)
+  (check-type array array)
+  (if (zerop (array-total-size array))
+      (empty-array)
+      (make-instance 'array-immediate
+        :shape (shape array)
+        :storage array
+        :reusablep reusablep
+        :ntype (petalisp.type-inference:array-element-ntype array))))
+
+(defun make-range-immediate (range)
+  (make-instance 'range-immediate
+    :shape (make-shape (list range))
+    :ntype
+    (petalisp.type-inference:ntype-union
+     (petalisp.type-inference:ntype-of (range-start range))
+     (petalisp.type-inference:ntype-of (range-end range)))))
+
+(defun indices (array-or-shape &optional (axis 0))
+  (cond ((null array-or-shape)
+         (empty-array))
+        ((shapep array-or-shape)
+         (let ((rank (shape-rank array-or-shape)))
+           (unless (<= 0 axis (1- rank))
+             (error "~@<Invalid axis ~A for a shape with rank ~D.~:@>" axis rank))
+           (make-reference
+            (make-range-immediate (nth axis (shape-ranges array-or-shape)))
+            array-or-shape
+            (make-transformation
+             :input-rank rank
+             :output-mask (vector axis)))))
+        (t (indices (shape array-or-shape)))))
+
+(defun empty-array ()
+  (load-time-value
+   (make-instance 'empty-array)))
+
+(defun empty-arrays (n)
+  (case n
+    (0 (values))
+    (1 (values (empty-array)))
+    (2 (values (empty-array) (empty-array)))
+    (otherwise (values-list (make-list n :initial-element (empty-array))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
