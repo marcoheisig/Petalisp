@@ -99,16 +99,28 @@
    (fuse* (reshape 0.0 (~ 2 4 ~ 2 4))
           (reshape 1.0 (~ 3 ~ 3)))))
 
-(test reference-test
-  (compute
-   (reshape #(1 2 3) (τ (i) ((- i)))) #(3 2 1))
-  (signals error
-    (compute (reshape #(1 2 3 4) (~ -1 3))))
+(test reshape-test
+  (compute (reshape 4 (~ 0 4)))
+  (compute (reshape #(1 2 3) (τ (i) ((- i)))) #(3 2 1))
+  (compute (reshape #(1 2 3 4) (~ 1 2)))
+  (compute (reshape (indices (~ 1 9)) (~ 0 2 ~ 0 2)))
+  (compute (reshape #2A((1 2) (3 4)) (τ (i j) (j i))))
+  (compute (reshape #(1 2 3 4) (~ 1 2) (~ 0 1 ~ 0 1)))
+  (alexandria:map-permutations
+   (lambda (shapes)
+     (compute
+      (apply #'reshape (indices (~ 1 100)) shapes)))
+   (list (~ 0 4 ~ 0 4 ~ 0 3)
+         (~ 0 1 ~ 0 4 ~ 0 1 ~ 0 4)
+         (~ 1 2 ~ 1 5 ~ 1 2 ~ 1 5)
+         (~ 1 2 3 ~ 1 2 9 ~ 1 2 3 ~ 1 2 9)
+         (~ 0 99)))
   (compute
    (fuse*
-    (reshape #2A((1 2 3) (4 5 6))
-             (τ (i j) ((+ 2 i) (+ 3 j))))
-    (reshape 9 (τ () (3 4))))))
+    (reshape #2A((1 2 3) (4 5 6)) (τ (i j) ((+ 2 i) (+ 3 j))))
+    (reshape 9 (τ () (3 4)))))
+  (signals error
+    (compute (reshape #(1 2 3 4) (~ -1 3)))))
 
 (test multiple-arguments
   (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1))))
