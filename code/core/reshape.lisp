@@ -26,7 +26,7 @@
              ;; transformations can deal with that.
              (not (shapes-congruent-p array-shape shape)))
         ;; Case 1 - Reshaping while preserving the number of elements.
-        (reshape-using-equally-large-shape lazy-array shape)
+        (unflatten (flatten lazy-array) shape)
         ;; Case 2 - Broadcasting or selection of a subspace.
         (multiple-value-bind (transformation broadcast-p select-p)
             (make-shape-transformation array-shape shape)
@@ -64,9 +64,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Size-Preserving Reshape
-
-(defun reshape-using-equally-large-shape (lazy-array shape)
-  (unflatten (flatten lazy-array) shape))
 
 (defun flatten (lazy-array)
   (if (zerop (rank lazy-array))

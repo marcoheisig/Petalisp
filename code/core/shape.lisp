@@ -121,48 +121,6 @@
              for range-2 in (shape-ranges shape-2)
              always (subrangep range-1 range-2))))
 
-(defun shape-union (shapes)
-  (if (null shapes)
-      nil
-      (let* ((first-shape (first shapes))
-             (rank (shape-rank first-shape)))
-        (loop for shape in (rest shapes) do
-          (unless (= (shape-rank shape) rank)
-            (error "~@<Can only determine the union of index shapes with ~
-                       equal rank. The index shapes ~
-                       ~{~#[~;and ~S~;~S ~:;~S, ~]~} violate this requirement.~:@>"
-                   shapes)))
-        (let ((union (%make-shape
-                      (apply #'mapcar #'shape-union-range-oracle
-                             (mapcar #'shape-ranges shapes))
-                      rank)))
-          (loop for shape in shapes do
-            (assert (subshapep shape union)))
-          union))))
-
-(defun shape-union-range-oracle (&rest ranges)
-  ;; determine the bounding box
-  (loop for range in ranges
-        minimize (range-start range) into global-start
-        maximize (range-end range) into global-end
-        finally
-           (return
-             (if (= global-start global-end)
-                 (first ranges)
-                 ;; now determine the step size
-                 (let ((step-size (- global-end global-start)))
-                   (dolist (range ranges)
-                     (flet ((check (n)
-                              (setf step-size
-                                    (min step-size
-                                         (- n global-start)))))
-                       (if (> (range-start range) global-start)
-                           (check (range-start range))
-                           (unless (size-one-range-p range)
-                             (check (+ (range-start range)
-                                       (range-step range)))))))
-                   (make-range global-start step-size global-end))))))
-
 ;;; Return a list of disjoint shapes. Each resulting object is a proper
 ;;; subspace of one or more of the arguments and their fusion covers all
 ;;; arguments.

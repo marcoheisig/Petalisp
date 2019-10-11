@@ -41,7 +41,6 @@
    #:shape-contains
    #:shrink-shape
    #:enlarge-shape
-   #:shape-union
    #:subdivision
 
    ;; Transformations
