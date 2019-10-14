@@ -1,7 +1,6 @@
 (in-package :common-lisp-user)
 
 (defpackage #:petalisp.examples.linear-algebra
-  (:shadowing-import-from #:petalisp #:set-difference)
   (:use #:common-lisp #:alexandria #:petalisp)
   (:export
    #:matrix

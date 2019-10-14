@@ -204,30 +204,28 @@
 (defun map-buffer-inputs (function buffer)
   (declare (function function)
            (buffer buffer))
-  (loop for kernel of-type kernel in (buffer-inputs buffer) do
+  (loop for kernel in (buffer-inputs buffer) do
     (funcall function kernel)))
 
 (declaim (inline map-buffer-outputs))
 (defun map-buffer-outputs (function buffer)
   (declare (function function)
            (buffer buffer))
-  (loop for kernel of-type kernel in (buffer-outputs buffer) do
+  (loop for kernel in (buffer-outputs buffer) do
     (funcall function kernel)))
 
 (declaim (inline map-kernel-store-instructions))
 (defun map-kernel-store-instructions (function kernel)
   (declare (function function)
            (kernel kernel))
-  (loop for store-instruction of-type store-instruction
-          in (kernel-store-instructions kernel) do
+  (loop for store-instruction in (kernel-store-instructions kernel) do
     (funcall function store-instruction)))
 
 (declaim (inline map-kernel-load-instructions))
 (defun map-kernel-load-instructions (function kernel)
   (declare (function function)
            (kernel kernel))
-  (loop for load-instruction of-type load-instruction
-          in (kernel-load-instructions kernel) do
+  (loop for load-instruction in (kernel-load-instructions kernel) do
     (funcall function load-instruction)))
 
 (declaim (inline map-kernel-inputs))

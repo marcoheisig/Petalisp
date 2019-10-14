@@ -4,7 +4,6 @@
 (asdf:test-system :petalisp)
 
 (defpackage #:petalisp.examples.getting-started
-  (:shadowing-import-from #:petalisp #:set-difference)
   (:use #:common-lisp #:petalisp))
 
 (in-package #:petalisp.examples.getting-started)
