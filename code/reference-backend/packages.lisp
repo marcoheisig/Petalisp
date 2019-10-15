@@ -3,7 +3,7 @@
 (cl:in-package #:common-lisp-user)
 
 (defpackage #:petalisp.reference-backend
-  (:use :common-lisp :alexandria :petalisp.core)
+  (:use :common-lisp :petalisp.core)
   (:export
    #:make-reference-backend))
 

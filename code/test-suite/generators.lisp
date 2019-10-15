@@ -100,4 +100,4 @@
               :input-rank rank
               :output-rank rank
               :scalings (loop repeat rank collect (funcall generator))
-              :output-mask (shuffle (iota rank))))))
+              :output-mask (alexandria:shuffle (alexandria:iota rank))))))

@@ -5,7 +5,6 @@
 (defpackage #:petalisp.ir
   (:use
    #:common-lisp
-   #:alexandria
    #:petalisp.core)
 
   (:import-from

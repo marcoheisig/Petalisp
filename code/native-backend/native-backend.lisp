@@ -19,7 +19,7 @@
                    :initform (make-hash-table :test #'eq))))
 
 (defun make-native-backend (&key (threads (number-of-processors)))
-  (check-type threads positive-integer)
+  (check-type threads alexandria:positive-integer)
   (make-instance 'native-backend
     :memory-pool (make-memory-pool)
     :worker-pool (make-worker-pool threads)))

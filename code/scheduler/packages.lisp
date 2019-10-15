@@ -5,7 +5,6 @@
 (defpackage #:petalisp.scheduler
   (:use
    #:common-lisp
-   #:alexandria
    #:petalisp.core)
 
   (:import-from

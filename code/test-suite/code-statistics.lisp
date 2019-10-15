@@ -27,7 +27,7 @@
 (defun print-system-statistics (system &optional (stream *standard-output*))
   (loop
     for pathname in (system-source-file-pathnames system)
-    summing (count #\newline (read-file-into-string pathname)) into lines-of-code
+    summing (count #\newline (alexandria:read-file-into-string pathname)) into lines-of-code
     counting pathname into files
     finally
        (format stream "The system ~s consists of ~d lines of code in ~d file~:P.~%"

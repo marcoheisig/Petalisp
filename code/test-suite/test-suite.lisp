@@ -98,5 +98,5 @@
   *tests*)
 
 (defun run-tests (&rest tests)
-  (with-test-harness (mapc #'funcall (shuffle tests)))
+  (with-test-harness (mapc #'funcall (alexandria:shuffle tests)))
   (values))

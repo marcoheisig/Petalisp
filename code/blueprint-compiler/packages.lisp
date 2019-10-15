@@ -5,7 +5,6 @@
 (defpackage #:petalisp.blueprint-compiler
   (:use
    #:common-lisp
-   #:alexandria
    #:petalisp.core)
 
   (:import-from

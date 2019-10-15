@@ -5,7 +5,6 @@
 (defpackage #:petalisp.test-suite
   (:use
    #:common-lisp
-   #:alexandria
    #:petalisp.core
    #:petalisp.api
    #:petalisp.reference-backend

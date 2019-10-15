@@ -384,7 +384,7 @@
     ;; store instructions.
     (map-kernel-store-instructions
      (lambda (store-instruction)
-       (maxf max (instruction-number store-instruction)))
+       (alexandria:maxf max (instruction-number store-instruction)))
      kernel)
     max))
 

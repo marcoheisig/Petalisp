@@ -13,8 +13,8 @@
 
 (defmacro defgenerator (name lambda-list &body body)
   (check-type name symbol)
-  (let ((make-generator (symbolicate '#:make- name '#:-generator))
-        (generate (symbolicate '#:generate- name)))
+  (let ((make-generator (alexandria:symbolicate '#:make- name '#:-generator))
+        (generate (alexandria:symbolicate '#:generate- name)))
     `(progn
        (defun ,make-generator ,lambda-list
          ,@body)
@@ -35,7 +35,7 @@
   (multiple-value-bind (wrapper-lambda-list arguments ignorable)
       (parse-defwrapper-lambda-list lambda-list)
     (multiple-value-bind (body-forms declarations documentation)
-        (parse-body body)
+        (alexandria:parse-body body)
       `(defun ,name ,wrapper-lambda-list
          ,@(when documentation (list documentation))
          ,@declarations
@@ -46,7 +46,7 @@
 
 (defun parse-defwrapper-lambda-list (lambda-list)
   (multiple-value-bind (required optional rest keyword)
-      (parse-ordinary-lambda-list lambda-list)
+      (alexandria:parse-ordinary-lambda-list lambda-list)
     (when (not rest)
       (setf rest (gensym "REST")))
     (values

@@ -5,7 +5,6 @@
 (defpackage #:petalisp.native-backend
   (:use
    #:common-lisp
-   #:alexandria
    #:petalisp.core
    #:petalisp.ir)
   (:export
