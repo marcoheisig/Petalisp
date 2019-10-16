@@ -24,16 +24,12 @@
 (defun coerce-to-matrix (x)
   (setf x (coerce-to-lazy-array x))
   (trivia:ematch (shape x)
-    ;; Rank 0
-    ((shape) (reshape x (τ () (1 1))))
-    ;; Rank 1
-    ((shape (range 1 _)) (reshape x (τ (i) (i 1))))
-    ((shape (range 0 _)) (reshape x (τ (i) ((1+ i) 1))))
-    ;; Rank 2
-    ((shape (range 1 _) (range 1 _)) x)
-    ((shape (range 0 _) (range 1 _)) (reshape x (τ (i j) ((1+ i) j))))
-    ((shape (range 1 _) (range 0 _)) (reshape x (τ (i j) (i (1+ j)))))
-    ((shape (range 0 _) (range 0 _)) (reshape x (τ (i j) ((1+ i) (1+ j)))))))
+    ((shape)
+     (reshape x (~ 1 ~ 1)))
+    ((shape range)
+     (reshape x (~ 1 (range-size range) ~ 1)))
+    ((shape range-1 range-2)
+     (reshape x (~ 1 (range-size range-1) ~ 1 (range-size range-2))))))
 
 (defun coerce-to-scalar (x)
   (setf x (coerce-to-lazy-array x))

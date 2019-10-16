@@ -132,7 +132,7 @@ Examples:
 ")
 
 (document-function reshape
-  "Return a lazy array with the contents of ARRAY, but after applying the
+  "Returns a lazy array with the contents of ARRAY, but after applying the
 supplied MODIFIERS in left-to-right order.  A modifier must either be a
 shape, or a transformation.
 
