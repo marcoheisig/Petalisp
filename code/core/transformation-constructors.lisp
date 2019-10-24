@@ -295,7 +295,7 @@
   (invert-transformation
    (from-storage-transformation shape)))
 
-;;; Return a non-permuting, affine transformation from a zero based array
+;;; Returns a non-permuting, affine transformation from a zero based array
 ;;; with step size one to the given SHAPE.
 (defun from-storage-transformation (shape)
   (let* ((rank (shape-rank shape))
@@ -321,92 +321,130 @@
                   (setf (aref offsets index) start))))
     (%make-transformation rank rank input-mask output-mask scalings offsets t)))
 
+;;; Returns an invertible transformation that eliminates all ranges with
+;;; size one from a supplied SHAPE.
+(defun size-one-range-removing-transformation (shape)
+  (let* ((rank (shape-rank shape))
+         (ranges (shape-ranges shape))
+         (size-one-ranges
+           (loop for range in ranges
+                 count (size-one-range-p range))))
+    (if (zerop size-one-ranges)
+        (identity-transformation rank)
+        (let* ((input-rank rank)
+               (output-rank (- rank size-one-ranges))
+               (input-mask (make-array input-rank :initial-element nil))
+               (output-mask (make-array  output-rank :initial-element nil))
+               (scalings (make-array output-rank :initial-element 1))
+               (offsets (make-array output-rank :initial-element 0))
+               (output-index 0))
+          (loop for range in ranges
+                for input-index from 0 do
+                  (if (size-one-range-p range)
+                      (setf (aref input-mask input-index) (range-start range))
+                      (progn
+                        (setf (aref output-mask output-index) input-index)
+                        (incf output-index))))
+          (%make-transformation
+           input-rank output-rank input-mask output-mask scalings offsets t)))))
+
+(defun normalizing-transformation (shape)
+  (let* ((f (size-one-range-removing-transformation shape))
+         (s (transform shape f))
+         (g (collapsing-transformation s)))
+    (compose-transformations g f)))
+
 ;;; The function MAKE-SHAPE-TRANSFORMATION returns three values:
 ;;;
-;;; 1. A transformation that maps each element of SHAPE to an element of
-;;;    ARRAY-SHAPE.
+;;; 1. A transformation that maps each element of INPUT-SHAPE to an element
+;;;    of OUTPUT-SHAPE.
 ;;;
 ;;; 2. A boolean, indicating whether broadcasting has been performed.
 ;;;
-;;; 3. A boolean, indicating whether some values of ARRAY-SHAPE have been
+;;; 3. A boolean, indicating whether some values of OUTPUT-SHAPE have been
 ;;;    discarded.
 ;;;
-;;; An error is signaled when there is no sensible way to reshape ARRAY to
-;;; the supplied SHAPE.
-(defun make-shape-transformation (array-shape shape)
-  (if (shape-equal array-shape shape)
-      (identity-transformation (shape-rank shape))
-      (let* ((output-rank (shape-rank array-shape))
-             (input-rank (shape-rank shape))
+;;; An error is signaled when there is no sensible way to transform
+;;; INPUT-SHAPE to the supplied OUTPUT-SHAPE.
+;;;
+;;; This function is primarily used for broadcasting.  In that case the
+;;; INPUT shape is the desired shape after broadcasting, and the
+;;; OUTPUT-SHAPE is that of the array to be broadcast.
+(defun make-shape-transformation (input-shape output-shape)
+  (if (shape-equal output-shape input-shape)
+      (identity-transformation (shape-rank input-shape))
+      (let* ((output-rank (shape-rank output-shape))
+             (input-rank (shape-rank input-shape))
              (growth (- input-rank output-rank)))
         (unless (not (minusp growth))
-          (error "~@<Cannot broadcast the rank ~D shape ~S ~
+          (error "~@<Cannot reshape the rank ~D shape ~S ~
                      to the rank ~D shape ~S.~:@>"
-                 output-rank array-shape input-rank shape))
+                 output-rank output-shape input-rank input-shape))
         (let ((input-mask (make-array input-rank :initial-element nil))
               (output-mask (make-array output-rank))
               (offsets (make-array output-rank))
               (scalings (make-array output-rank))
               (broadcast-p nil)
               (select-p nil))
-          (loop for array-range of-type range in (shape-ranges array-shape)
-                for shape-range of-type range in (nthcdr growth (shape-ranges shape))
+          (loop for output-range in (shape-ranges output-shape)
+                for input-range in (nthcdr growth (shape-ranges input-shape))
                 for oindex from 0
                 for iindex from growth do
                   (symbol-macrolet ((input-constraint (svref input-mask iindex))
                                     (output-mask-entry (svref output-mask oindex))
                                     (scaling (svref scalings oindex))
                                     (offset (svref offsets oindex)))
-                    ;; Now we need to pick the appropriate input constraint,
-                    ;; output mask entry, scaling and offset to map from the
-                    ;; range of SHAPE to the corresponding range of ARRAY.
+                    ;; Now we need to pick the appropriate input
+                    ;; constraint, output mask entry, scaling and offset to
+                    ;; map from the range of INPUT-SHAPE to the
+                    ;; corresponding range of OUTPUT-SHAPE.
                     (cond
                       ;; First, we pick of the trivial case of reshaping a one
                       ;; element range to another one element range.  This case
                       ;; is significant, because it allows us to introduce a
                       ;; suitable input constraint, thus increasing the chances
                       ;; that the resulting transformation is invertible.
-                      ((and (size-one-range-p shape-range)
-                            (size-one-range-p array-range))
-                       (setf input-constraint (range-start shape-range))
+                      ((and (size-one-range-p input-range)
+                            (size-one-range-p output-range))
+                       (setf input-constraint (range-start input-range))
                        (setf output-mask-entry nil)
-                       (setf offset (range-start array-range))
+                       (setf offset (range-start output-range))
                        (setf scaling 0))
                       ;; The second case is that of collapsing an arbitrary
-                      ;; range of SHAPE to a one element range of ARRAY, i.e.,
-                      ;; actual broadcasting.  It is similar to the previous
-                      ;; case, except that we do not introduce an input
-                      ;; constraint.
-                      ((size-one-range-p array-range)
+                      ;; range of INPUT-SHAPE to a one element range of
+                      ;; OUTPUT-SHAPE, i.e., actual broadcasting.  It is
+                      ;; similar to the previous case, except that we do
+                      ;; not introduce an input constraint.
+                      ((size-one-range-p output-range)
                        (setf output-mask-entry nil)
-                       (setf offset (range-start array-range))
+                       (setf offset (range-start output-range))
                        (setf scaling 0)
                        (setf broadcast-p t))
                       ;; The third case is that of mapping an arbitrary range
                       ;; to another one of the same size.
-                      ((= (range-size shape-range)
-                          (range-size array-range))
-                       (let* ((old-start (range-start shape-range))
-                              (new-start (range-start array-range))
-                              (old-step (range-step shape-range))
-                              (new-step (range-step array-range))
+                      ((= (range-size input-range)
+                          (range-size output-range))
+                       (let* ((old-start (range-start input-range))
+                              (new-start (range-start output-range))
+                              (old-step (range-step input-range))
+                              (new-step (range-step output-range))
                               (a (/ new-step old-step))
                               (b (- new-start (* a old-start))))
                          (setf output-mask-entry iindex)
                          (setf offset b)
                          (setf scaling a)))
                       ;; The fourth case is that of selecting a subset of the
-                      ;; elements of ARRAY-RANGE.
-                      ((subrangep shape-range array-range)
+                      ;; elements of OUTPUT-RANGE.
+                      ((subrangep input-range output-range)
                        (setf output-mask-entry iindex)
                        (setf offset 0)
                        (setf scaling 1)
                        (setf select-p t))
                       ;; Otherwise, an error is signaled.
                       (t
-                       (error "~@<Cannot broadcast the range ~S ~
+                       (error "~@<Cannot reshape the range ~S ~
                                   to the range ~S.~:@>"
-                              shape-range array-range)))))
+                              input-range output-range)))))
           (values
            (make-transformation
             :input-rank input-rank

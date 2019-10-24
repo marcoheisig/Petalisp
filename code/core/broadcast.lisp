@@ -10,7 +10,7 @@
     (if (shape-equal array-shape shape)
         lazy-array
         (multiple-value-bind (transformation broadcast-p select-p)
-            (make-shape-transformation array-shape shape)
+            (make-shape-transformation shape array-shape)
           (declare (ignore broadcast-p))
           (assert (not select-p))
           (make-reference lazy-array shape transformation)))))

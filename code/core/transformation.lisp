@@ -451,8 +451,6 @@
       (map-transformation-outputs #'store-output-range transformation))
     (make-shape output-ranges)))
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; TRANSFORM-AXIS

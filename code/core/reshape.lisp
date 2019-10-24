@@ -19,58 +19,68 @@
 (defun reshape-using-shape (lazy-array shape)
   (let ((array-shape (shape lazy-array)))
     (if (and (= (shape-size array-shape)
-                (shape-size shape))
-             ;; If the shapes are congruent, i.e., ranges of equal sizes
-             ;; (ignoring one element ranges) occur in the same order, we
-             ;; don't need the full reordering machinery.  Ordinary shape
-             ;; transformations can deal with that.
-             (not (shapes-congruent-p array-shape shape)))
+                (shape-size shape)))
         ;; Case 1 - Reshaping while preserving the number of elements.
-        (unflatten (flatten lazy-array) shape)
+        (change-shape lazy-array shape)
         ;; Case 2 - Broadcasting or selection of a subspace.
         (multiple-value-bind (transformation broadcast-p select-p)
-            (make-shape-transformation array-shape shape)
+            (make-shape-transformation shape array-shape)
           ;; We do not allow transformations that broadcast some ranges, but
           ;; shrink others.  Otherwise, we would risk ambiguity with case 1.
           (unless (not (and broadcast-p select-p))
-            (error "~@<Cannot broadcast the array ~S ~
+            (error "~@<Cannot reshape the array ~S ~
                  to the shape ~S.~:@>"
                    lazy-array shape))
           (make-reference lazy-array shape transformation)))))
 
-(defun shapes-congruent-p (shape-1 shape-2)
-  (labels ((step-1/skip-left (left-ranges right-ranges)
-             (if (and (not (null left-ranges))
-                      (size-one-range-p (first left-ranges)))
-                 (step-1/skip-left (rest left-ranges) right-ranges)
-                 (step-2/skip-right left-ranges right-ranges)))
-           (step-2/skip-right (left-ranges right-ranges)
-             (if (and (not (null right-ranges))
-                      (size-one-range-p (first right-ranges)))
-                 (step-2/skip-right left-ranges (rest right-ranges))
-                 (step-3/compare left-ranges right-ranges)))
-           (step-3/compare (left-ranges right-ranges)
-             (if (null left-ranges)
-                 (null right-ranges)
-                 (if (null right-ranges)
-                     nil
-                     (and (= (range-size (first left-ranges))
-                             (range-size (first right-ranges)))
-                          (step-1/skip-left (rest left-ranges)
-                                            (rest right-ranges)))))))
-    (step-1/skip-left (shape-ranges shape-1)
-                      (shape-ranges shape-2))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Size-Preserving Reshape
+;;;
+;;; The central data structures of CHANGE-SHAPE are two vectors of prime
+;;; factors - simple vectors whose elements are the lists of prime factors
+;;; of the ranges of the supplied lazy array and shape.  The goal is to
+;;; reorder the prime factors of LAZY-ARRAY until they match those of
+;;; SHAPE.  To do so, we augment the former vector with two additional,
+;;; empty elements at the beginning and the end.
+;;;
+;;; To simplify the implementation, the lazy array is immediately
+;;; transformed such that all its ranges start from zero, and such that
+;;; there are not ranges of size one involved.
+;;;
+;;; These mechanisms are best viewed on an example.  Imagine the task is to
+;;; reshape an array with shape (~ 1 10 ~ 1 2 ~ 1 3) to the equally large
+;;; shape (~ 0 3 ~ 0 4 ~ 0 2).  In this case, the vector of prime factors
+;;; of the target shape is #((2 2) (5) (3)), and the augmented vector of
+;;; prime factors of the supplied lazy array is #(nil (2 5) (2) (3) nil).
+;;;
+;;; #(() (2 5) (2) (3) ()) ; Initial configuration
+;;;   ^                ^
+;;;
+;;; #(() (2 5) (2) () (3)) ; Skip right
+;;;   ^            ^
+;;;
+;;; #((2) (5) (2) () (3)) ; Grow left
+;;;   ^   °       ^
+;;;
+;;; #((2) (2 5) () () (3)) ; Gather left+1
+;;;   ^   °         ^
+;;;
+;;; #((2 2) (5) () () (3)) ; Grow left
+;;;             ^  ^
+
+(defun change-shape (lazy-array shape)
+  (let ((n1 (normalizing-transformation (shape lazy-array)))
+        (n2 (normalizing-transformation shape)))
+    (reshape (unflatten (flatten (reshape lazy-array n1))
+                        (transform shape n2))
+             (invert-transformation n2))))
 
 (defun flatten (lazy-array)
   (if (zerop (rank lazy-array))
       (make-reference lazy-array (~ 0) (τ (0) nil))
       (multiple-value-bind (vector-of-prime-factors pivot)
           (factorize-shape (shape lazy-array))
-        (setf lazy-array (reshape lazy-array (collapsing-transformation (shape lazy-array))))
         ;; Flatten all ranges above PIVOT.
         (loop for index from (1+ pivot) below (length vector-of-prime-factors)
               for prime-factors = (aref vector-of-prime-factors index) do
@@ -88,23 +98,28 @@
         lazy-array)))
 
 (defun unflatten (lazy-array shape)
-  (multiple-value-bind (vector-of-prime-factors pivot)
-      (factorize-shape shape)
-    ;; Unflatten all ranges above PIVOT.
-    (loop for index from (1- (length vector-of-prime-factors)) above pivot
-          for prime-factors = (aref vector-of-prime-factors index) do
-            (setf lazy-array (insert-axis-after lazy-array 0 (first prime-factors)))
-            (loop for prime-factor in (rest prime-factors) do
-              (setf lazy-array (insert-axis-after lazy-array 0 prime-factor))
-              (setf lazy-array (remove-axis-before lazy-array 2))))
-    ;; Unflatten all ranges below PIVOT.
-    (loop for index from 0 below pivot
-          for prime-factors = (aref vector-of-prime-factors index) do
-            (setf lazy-array (insert-axis-before lazy-array index (first prime-factors)))
-            (loop for prime-factor in (rest prime-factors) do
-              (setf lazy-array (insert-axis-before lazy-array (1+ index) prime-factor))
-              (setf lazy-array (remove-axis-after lazy-array index))))
-    (make-reference lazy-array shape (make-shape-transformation (shape lazy-array) shape))))
+  (if (zerop (rank shape))
+      (reshape lazy-array (τ (0) ()))
+      (multiple-value-bind (vector-of-prime-factors pivot)
+          (factorize-shape shape)
+        ;; Unflatten all ranges above PIVOT.
+        (loop for index from (1- (length vector-of-prime-factors)) above pivot
+              for prime-factors = (aref vector-of-prime-factors index) do
+                (setf lazy-array (insert-axis-after lazy-array 0 (first prime-factors)))
+                (loop for prime-factor in (rest prime-factors) do
+                  (setf lazy-array (insert-axis-after lazy-array 0 prime-factor))
+                  (setf lazy-array (remove-axis-before lazy-array 2))))
+        ;; Unflatten all ranges below PIVOT.
+        (loop for index from 0 below pivot
+              for prime-factors = (aref vector-of-prime-factors index) do
+                (setf lazy-array (insert-axis-before lazy-array index (first prime-factors)))
+                (loop for prime-factor in (rest prime-factors) do
+                  (setf lazy-array (insert-axis-before lazy-array (1+ index) prime-factor))
+                  (setf lazy-array (remove-axis-after lazy-array index))))
+        (make-reference
+         lazy-array
+         shape
+         (make-shape-transformation shape (shape lazy-array))))))
 
 (defun factorize-shape (shape)
   (let ((vector-of-prime-factors (make-array (rank shape)))
