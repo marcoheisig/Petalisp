@@ -107,22 +107,24 @@
      shape
      (make-shape-transformation shape (shape lazy-array)))))
 
+;;; Return a vector with the prime factors of SHAPE bounded by START and
+;;; END, and the axis with the larges sum of prime factors therein.
 (defun factorize-shape (shape start end)
   (let* ((size (- end start))
          (vector-of-prime-factors (make-array size))
-         (most-positive-prime-factor 1)
-         (most-positive-prime-factor-index start))
+         (maximum 1)
+         (position start))
     (loop for range in (nthcdr start (shape-ranges shape))
           for index from 0 below size do
             (let* ((prime-factors (petalisp.utilities:prime-factors (range-size range)))
-                   (max (apply #'max prime-factors)))
+                   (sum (reduce #'+ prime-factors)))
               (setf (aref vector-of-prime-factors index) prime-factors)
-              (when (>= max most-positive-prime-factor)
-                (setf most-positive-prime-factor max)
-                (setf most-positive-prime-factor-index index))))
+              (when (>= sum maximum)
+                (setf maximum sum)
+                (setf position index))))
     (values
      vector-of-prime-factors
-     (+ start most-positive-prime-factor-index))))
+     (+ start position))))
 
 ;; Turn the range at the supplied AXIS with size N into a range of size K,
 ;; followed by a range of size N / K.
