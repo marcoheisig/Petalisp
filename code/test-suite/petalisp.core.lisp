@@ -115,6 +115,20 @@
          (~ 1 2 ~ 1 5 ~ 1 2 ~ 1 5)
          (~ 1 2 3 ~ 1 2 9 ~ 1 2 3 ~ 1 2 9)
          (~ 0 99)))
+  (alexandria:map-permutations
+   (lambda (shapes)
+     (compute
+      (apply #'reshape (indices (~ 1 200)) shapes)))
+   (list (~ 0 1 ~ 0 4 ~ 0 4 ~ 0 3)
+         (~ 0 1 ~ 0 1 ~ 0 4 ~ 0 0 ~ 0 1 ~ 0 4)
+         (~ 0 1 ~ 0 99)))
+  (alexandria:map-permutations
+   (lambda (shapes)
+     (compute
+      (apply #'reshape (indices (~ 1 200)) shapes)))
+   (list (~ 0 4 ~ 0 4 ~ 0 3 ~ 0 1)
+         (~ 0 1 ~ 0 4 ~ 0 0 ~ 0 1 ~ 0 4 ~ 0 1)
+         (~ 0 99 ~ 0 1)))
   (compute
    (fuse*
     (reshape #2A((1 2 3) (4 5 6)) (τ (i j) ((+ 2 i) (+ 3 j))))

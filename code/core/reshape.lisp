@@ -38,8 +38,6 @@
 ;;; Size-Preserving Reshape
 
 (defun change-shape (lazy-array shape)
-  (assert (= (total-size lazy-array)
-             (shape-size shape)))
   (let ((n1 (normalizing-transformation (shape lazy-array)))
         (n2 (normalizing-transformation shape)))
     (reshape
@@ -59,7 +57,7 @@
          (input-ranges (shape-ranges input-shape))
          (output-ranges (shape-ranges output-shape))
          (start (mismatch input-ranges output-ranges :key #'range-size :from-end nil)))
-    (if (not start)
+    (if (not start) ; If there is no mismatch, we don't have to do anything.
         lazy-array
         (let ((end (mismatch input-ranges output-ranges :key #'range-size :from-end t)))
           (unflatten
@@ -73,14 +71,14 @@
       (factorize-shape (shape lazy-array) start end)
     ;; Flatten all ranges above PIVOT.
     (loop for index from (1+ pivot) below end
-          for prime-factors = (aref vector-of-prime-factors index) do
+          for prime-factors = (aref vector-of-prime-factors (- index start)) do
             (loop for prime-factor in (rest prime-factors) do
               (setf lazy-array (insert-axis-before lazy-array (1+ pivot) prime-factor))
               (setf lazy-array (remove-axis-after lazy-array pivot)))
             (setf lazy-array (remove-axis-after lazy-array pivot)))
     ;; Flatten all ranges below PIVOT.
     (loop for index from (1- pivot) downto start
-          for prime-factors = (aref vector-of-prime-factors index) do
+          for prime-factors = (aref vector-of-prime-factors (- index start)) do
             (loop for prime-factor in (rest prime-factors) do
               (setf lazy-array (insert-axis-after lazy-array index prime-factor))
               (setf lazy-array (remove-axis-before lazy-array (1+ index))))
@@ -92,14 +90,14 @@
       (factorize-shape shape start end)
     ;; Unflatten all ranges above PIVOT.
     (loop for index from (1- end) above pivot
-          for prime-factors = (aref vector-of-prime-factors index) do
-            (setf lazy-array (insert-axis-after lazy-array 0 (first prime-factors)))
+          for prime-factors = (aref vector-of-prime-factors (- index start)) do
+            (setf lazy-array (insert-axis-after lazy-array start (first prime-factors)))
             (loop for prime-factor in (rest prime-factors) do
-              (setf lazy-array (insert-axis-after lazy-array 0 prime-factor))
-              (setf lazy-array (remove-axis-before lazy-array 2))))
+              (setf lazy-array (insert-axis-after lazy-array start prime-factor))
+              (setf lazy-array (remove-axis-before lazy-array (+ start 2)))))
     ;; Unflatten all ranges below PIVOT.
     (loop for index from start below pivot
-          for prime-factors = (aref vector-of-prime-factors index) do
+          for prime-factors = (aref vector-of-prime-factors (- index start)) do
             (setf lazy-array (insert-axis-before lazy-array index (first prime-factors)))
             (loop for prime-factor in (rest prime-factors) do
               (setf lazy-array (insert-axis-before lazy-array (1+ index) prime-factor))
