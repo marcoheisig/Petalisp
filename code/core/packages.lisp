@@ -59,6 +59,7 @@
    #:transformation-equal
    #:compose-transformations
    #:collapsing-transformation
+   #:normalizing-transformation
    #:enlarge-transformation
    #:map-transformation-outputs
 

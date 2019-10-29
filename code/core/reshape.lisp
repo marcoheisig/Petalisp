@@ -36,104 +36,95 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Size-Preserving Reshape
-;;;
-;;; The central data structures of CHANGE-SHAPE are two vectors of prime
-;;; factors - simple vectors whose elements are the lists of prime factors
-;;; of the ranges of the supplied lazy array and shape.  The goal is to
-;;; reorder the prime factors of LAZY-ARRAY until they match those of
-;;; SHAPE.  To do so, we augment the former vector with two additional,
-;;; empty elements at the beginning and the end.
-;;;
-;;; To simplify the implementation, the lazy array is immediately
-;;; transformed such that all its ranges start from zero, and such that
-;;; there are not ranges of size one involved.
-;;;
-;;; These mechanisms are best viewed on an example.  Imagine the task is to
-;;; reshape an array with shape (~ 1 10 ~ 1 2 ~ 1 3) to the equally large
-;;; shape (~ 0 3 ~ 0 4 ~ 0 2).  In this case, the vector of prime factors
-;;; of the target shape is #((2 2) (5) (3)), and the augmented vector of
-;;; prime factors of the supplied lazy array is #(nil (2 5) (2) (3) nil).
-;;;
-;;; #(() (2 5) (2) (3) ()) ; Initial configuration
-;;;   ^                ^
-;;;
-;;; #(() (2 5) (2) () (3)) ; Skip right
-;;;   ^            ^
-;;;
-;;; #((2) (5) (2) () (3)) ; Grow left
-;;;   ^   °       ^
-;;;
-;;; #((2) (2 5) () () (3)) ; Gather left+1
-;;;   ^   °         ^
-;;;
-;;; #((2 2) (5) () () (3)) ; Grow left
-;;;             ^  ^
 
 (defun change-shape (lazy-array shape)
+  (assert (= (total-size lazy-array)
+             (shape-size shape)))
   (let ((n1 (normalizing-transformation (shape lazy-array)))
         (n2 (normalizing-transformation shape)))
-    (reshape (unflatten (flatten (reshape lazy-array n1))
-                        (transform shape n2))
-             (invert-transformation n2))))
+    (reshape
+     (change-shape/normalized
+      (reshape lazy-array n1)
+      (transform shape n2))
+     (invert-transformation n2))))
 
-(defun flatten (lazy-array)
-  (if (zerop (rank lazy-array))
-      (make-reference lazy-array (~ 0) (τ (0) nil))
-      (multiple-value-bind (vector-of-prime-factors pivot)
-          (factorize-shape (shape lazy-array))
-        ;; Flatten all ranges above PIVOT.
-        (loop for index from (1+ pivot) below (length vector-of-prime-factors)
-              for prime-factors = (aref vector-of-prime-factors index) do
-                (loop for prime-factor in (rest prime-factors) do
-                  (setf lazy-array (insert-axis-before lazy-array (1+ pivot) prime-factor))
-                  (setf lazy-array (remove-axis-after lazy-array pivot)))
-                (setf lazy-array (remove-axis-after lazy-array pivot)))
-        ;; Flatten all ranges below PIVOT.
-        (loop for index from (1- pivot) downto 0
-              for prime-factors = (aref vector-of-prime-factors index) do
-                (loop for prime-factor in (rest prime-factors) do
-                  (setf lazy-array (insert-axis-after lazy-array index prime-factor))
-                  (setf lazy-array (remove-axis-before lazy-array (1+ index))))
-                (setf lazy-array (remove-axis-before lazy-array (1+ index))))
-        lazy-array)))
+(defun change-shape/normalized (lazy-array output-shape)
+  ;; As a small, but important optimization, we detect whether a prefix or
+  ;; suffix of the ranges of LAZY-ARRAY matches a prefix or suffix of the
+  ;; ranges of SHAPE.  If so, they are left unchanged for the entire
+  ;; procedure.
+  (let* ((input-shape (shape lazy-array))
+         (input-rank (shape-rank input-shape))
+         (output-rank (shape-rank output-shape))
+         (input-ranges (shape-ranges input-shape))
+         (output-ranges (shape-ranges output-shape))
+         (start (mismatch input-ranges output-ranges :key #'range-size :from-end nil)))
+    (if (not start)
+        lazy-array
+        (let ((end (mismatch input-ranges output-ranges :key #'range-size :from-end t)))
+          (unflatten
+           (flatten lazy-array start end)
+           output-shape
+           start
+           (+ end (- output-rank input-rank)))))))
 
-(defun unflatten (lazy-array shape)
-  (if (zerop (rank shape))
-      (reshape lazy-array (τ (0) ()))
-      (multiple-value-bind (vector-of-prime-factors pivot)
-          (factorize-shape shape)
-        ;; Unflatten all ranges above PIVOT.
-        (loop for index from (1- (length vector-of-prime-factors)) above pivot
-              for prime-factors = (aref vector-of-prime-factors index) do
-                (setf lazy-array (insert-axis-after lazy-array 0 (first prime-factors)))
-                (loop for prime-factor in (rest prime-factors) do
-                  (setf lazy-array (insert-axis-after lazy-array 0 prime-factor))
-                  (setf lazy-array (remove-axis-before lazy-array 2))))
-        ;; Unflatten all ranges below PIVOT.
-        (loop for index from 0 below pivot
-              for prime-factors = (aref vector-of-prime-factors index) do
-                (setf lazy-array (insert-axis-before lazy-array index (first prime-factors)))
-                (loop for prime-factor in (rest prime-factors) do
-                  (setf lazy-array (insert-axis-before lazy-array (1+ index) prime-factor))
-                  (setf lazy-array (remove-axis-after lazy-array index))))
-        (make-reference
-         lazy-array
-         shape
-         (make-shape-transformation shape (shape lazy-array))))))
+(defun flatten (lazy-array start end)
+  (multiple-value-bind (vector-of-prime-factors pivot)
+      (factorize-shape (shape lazy-array) start end)
+    ;; Flatten all ranges above PIVOT.
+    (loop for index from (1+ pivot) below end
+          for prime-factors = (aref vector-of-prime-factors index) do
+            (loop for prime-factor in (rest prime-factors) do
+              (setf lazy-array (insert-axis-before lazy-array (1+ pivot) prime-factor))
+              (setf lazy-array (remove-axis-after lazy-array pivot)))
+            (setf lazy-array (remove-axis-after lazy-array pivot)))
+    ;; Flatten all ranges below PIVOT.
+    (loop for index from (1- pivot) downto start
+          for prime-factors = (aref vector-of-prime-factors index) do
+            (loop for prime-factor in (rest prime-factors) do
+              (setf lazy-array (insert-axis-after lazy-array index prime-factor))
+              (setf lazy-array (remove-axis-before lazy-array (1+ index))))
+            (setf lazy-array (remove-axis-before lazy-array (1+ index))))
+    lazy-array))
 
-(defun factorize-shape (shape)
-  (let ((vector-of-prime-factors (make-array (rank shape)))
-        (most-positive-prime-factor 1)
-        (most-positive-prime-factor-index 0))
-    (loop for range in (shape-ranges shape)
-          for index from 0 do
+(defun unflatten (lazy-array shape start end)
+  (multiple-value-bind (vector-of-prime-factors pivot)
+      (factorize-shape shape start end)
+    ;; Unflatten all ranges above PIVOT.
+    (loop for index from (1- end) above pivot
+          for prime-factors = (aref vector-of-prime-factors index) do
+            (setf lazy-array (insert-axis-after lazy-array 0 (first prime-factors)))
+            (loop for prime-factor in (rest prime-factors) do
+              (setf lazy-array (insert-axis-after lazy-array 0 prime-factor))
+              (setf lazy-array (remove-axis-before lazy-array 2))))
+    ;; Unflatten all ranges below PIVOT.
+    (loop for index from start below pivot
+          for prime-factors = (aref vector-of-prime-factors index) do
+            (setf lazy-array (insert-axis-before lazy-array index (first prime-factors)))
+            (loop for prime-factor in (rest prime-factors) do
+              (setf lazy-array (insert-axis-before lazy-array (1+ index) prime-factor))
+              (setf lazy-array (remove-axis-after lazy-array index))))
+    (make-reference
+     lazy-array
+     shape
+     (make-shape-transformation shape (shape lazy-array)))))
+
+(defun factorize-shape (shape start end)
+  (let* ((size (- end start))
+         (vector-of-prime-factors (make-array size))
+         (most-positive-prime-factor 1)
+         (most-positive-prime-factor-index start))
+    (loop for range in (nthcdr start (shape-ranges shape))
+          for index from 0 below size do
             (let* ((prime-factors (petalisp.utilities:prime-factors (range-size range)))
                    (max (apply #'max prime-factors)))
               (setf (aref vector-of-prime-factors index) prime-factors)
               (when (>= max most-positive-prime-factor)
                 (setf most-positive-prime-factor max)
                 (setf most-positive-prime-factor-index index))))
-    (values vector-of-prime-factors most-positive-prime-factor-index)))
+    (values
+     vector-of-prime-factors
+     (+ start most-positive-prime-factor-index))))
 
 ;; Turn the range at the supplied AXIS with size N into a range of size K,
 ;; followed by a range of size N / K.
