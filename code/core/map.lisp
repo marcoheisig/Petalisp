@@ -48,34 +48,3 @@
                   :inputs inputs
                   :shape shape
                   :ntype (petalisp.type-inference:ntype 't))))))))
-
-(defun β (function &rest arrays)
-  (multiple-value-bind (inputs input-shape)
-      (broadcast-list-of-arrays arrays)
-    (if (or (null input-shape)
-            (zerop (shape-rank input-shape)))
-        (empty-arrays (length inputs))
-        (let ((n-outputs (length inputs))
-              (shape (shrink-shape input-shape)))
-          (let* ((argument-ntypes (mapcar #'ntype inputs))
-                 (ntypes
-                   (multiple-value-list
-                    (petalisp.type-inference:infer-ntypes
-                     function
-                     (append argument-ntypes argument-ntypes)
-                     (lambda () (values)))))
-                 (operator function))
-            (labels ((next-ntype ()
-                       (if (null ntypes)
-                           (petalisp.type-inference:ntype 't)
-                           (pop ntypes)))
-                     (make-reduction (value-n)
-                       (make-instance 'reduction
-                         :operator operator
-                         :value-n value-n
-                         :inputs inputs
-                         :shape shape
-                         :ntype (next-ntype))))
-              (values-list
-               (loop for value-n below n-outputs
-                     collect (make-reduction value-n)))))))))

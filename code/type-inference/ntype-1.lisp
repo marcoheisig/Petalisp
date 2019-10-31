@@ -27,11 +27,6 @@
   (declare (ignore environment))
   `(svref *ntypes* ,(%ntype-id ntype)))
 
-(declaim (inline ntype=))
-(defun ntype= (ntype-1 ntype-2)
-  (= (%ntype-id ntype-1)
-     (%ntype-id ntype-2)))
-
 (defparameter *ntypes*
   (let ((type-specifiers
           ;; We remove duplicate types here, mostly to get rid of superfluous

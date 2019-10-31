@@ -40,6 +40,33 @@
 ;;;
 ;;; Reasoning About Ntypes
 
+(declaim (inline %ntype=))
+(defun %ntype= (ntype-1 ntype-2)
+  (declare (ntype ntype-1 ntype-2))
+  (= (%ntype-id ntype-1)
+     (%ntype-id ntype-2)))
+
+(declaim (inline ntype=))
+(defun ntype= (ntype-1 ntype-2)
+  ;; Checking for ntype equality is slightly complicated by the fact that
+  ;; NULL is a singleton type.
+  (let ((null-ntype (load-time-value (generalize-ntype (ntype 'null)))))
+    (cond ((null ntype-1)
+           (if (%ntypep ntype-2)
+               (%ntype= ntype-2 null-ntype)
+               (null ntype-2)))
+          ((null ntype-2)
+           (if (%ntypep ntype-1)
+               (%ntype= ntype-1 null-ntype)
+               (null ntype-1)))
+          ((%ntypep ntype-1)
+           (if (%ntypep ntype-2)
+               (%ntype= ntype-1 ntype-2)
+               nil))
+          ((%ntypep ntype-2)
+           nil)
+          (t (eql ntype-1 ntype-2)))))
+
 (defun empty-ntype-p (ntype)
   (and (%ntypep ntype)
        (ntype= ntype (ntype 'nil))))
@@ -54,11 +81,15 @@
   ;; directly as their value.
   (not (%ntypep ntype)))
 
-(defun ntype-union (ntype-1 ntype-2)
-  (with-ntype-caching (ntype-1 ntype-2)
-    (ntype
-     `(or ,(type-specifier ntype-1)
-          ,(type-specifier ntype-2)))))
+(defun ntype-union (&rest ntypes)
+  (flet ((two-argument-ntype-union (ntype-1 ntype-2)
+           (with-ntype-caching (ntype-1 ntype-2)
+             (ntype
+              `(or ,(type-specifier ntype-1)
+                   ,(type-specifier ntype-2))))))
+    (if (null ntypes)
+        (ntype 'nil)
+        (reduce #'two-argument-ntype-union ntypes))))
 
 (defun ntype-subtypep (ntype-1 ntype-2)
   (with-ntype-caching (ntype-1 ntype-2)

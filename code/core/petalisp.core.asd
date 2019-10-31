@@ -27,6 +27,7 @@
    (:file "broadcast")
    (:file "reshape")
    (:file "fuse")
-   (:file "map-reduce")
+   (:file "map")
+   (:file "reduce")
    (:file "backend")
    (:file "documentation")))

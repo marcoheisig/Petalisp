@@ -28,6 +28,7 @@
 
    ;; Ntype manipulation.
    #:ntype
+   #:ntype=
    #:type-specifier
    #:ntype-of
    #:generalize-ntype
