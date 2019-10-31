@@ -71,8 +71,8 @@
    #:coerce-to-lazy-array
    #:total-size
    #:element-type
+   #:element-ntype
    #:rank
-   #:ntype
    #:input
    #:inputs
    #:value-n

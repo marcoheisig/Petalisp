@@ -24,7 +24,7 @@
       (petalisp.type-inference:specialize
        function
        inputs
-       #'ntype
+       #'element-ntype
        (lambda (constant)
          (reshape constant shape))
        (lambda (ntypes function inputs)

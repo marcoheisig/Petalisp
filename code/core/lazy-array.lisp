@@ -18,7 +18,7 @@
 
 (defgeneric total-size (array))
 
-(defgeneric ntype (array))
+(defgeneric element-ntype (array))
 
 (defgeneric element-type (array))
 
@@ -54,7 +54,7 @@
 
 (defclass non-empty-array (lazy-array)
   ((%shape :initarg :shape :reader shape :reader shape)
-   (%ntype :initarg :ntype :reader ntype)))
+   (%ntype :initarg :ntype :reader element-ntype)))
 
 (defclass non-empty-immediate (non-empty-array immediate)
   ())
@@ -141,15 +141,15 @@
 
 (defmethod element-type ((object t))
   (petalisp.type-inference:type-specifier
-   (ntype object)))
+   (element-ntype object)))
 
-(defmethod ntype ((object t))
+(defmethod element-ntype ((object t))
   (petalisp.type-inference:ntype-of object))
 
-(defmethod ntype ((array array))
+(defmethod element-ntype ((array array))
   (petalisp.type-inference:array-element-ntype array))
 
-(defmethod ntype ((empty-array empty-array))
+(defmethod element-ntype ((empty-array empty-array))
   (petalisp.type-inference:ntype 'nil))
 
 (defmethod shape ((object t))

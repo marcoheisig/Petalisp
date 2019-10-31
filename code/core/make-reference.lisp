@@ -39,7 +39,7 @@
                            (shape shape)
                            (transformation transformation))
   (make-instance 'reference
-    :ntype (ntype lazy-array)
+    :ntype (element-ntype lazy-array)
     :inputs (list lazy-array)
     :shape shape
     :transformation transformation))

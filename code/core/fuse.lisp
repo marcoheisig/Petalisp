@@ -30,7 +30,7 @@
       (_ (make-instance 'fusion
            :ntype (reduce #'petalisp.type-inference:ntype-union
                           inputs
-                          :key #'ntype)
+                          :key #'element-ntype)
            :inputs inputs
            :shape shape)))))
 

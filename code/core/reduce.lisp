@@ -11,7 +11,7 @@
         (multiple-value-bind (output-shape reduction-range)
             (shrink-shape input-shape)
           (let* ((input-ntypes
-                   (mapcar #'ntype inputs))
+                   (mapcar #'element-ntype inputs))
                  (reduction-ntypes
                    (infer-reduction-ntypes
                     function
@@ -20,7 +20,7 @@
             (petalisp.type-inference:specialize
              function
              (append inputs inputs)
-             #'ntype
+             #'element-ntype
              ;; Wrapping of constants.
              (lambda (constant)
                (declare (ignore constant))
@@ -40,14 +40,15 @@
                               thereis
                               (not
                                (petalisp.type-inference:ntype=
-                                (ntype argument)
+                                (element-ntype argument)
                                 argument-ntype)))
                     (petalisp.type-inference:give-up-specialization))
                    (t
                     (incf n-invocations)
                     (values-list
                      (loop for reduction-ntype in reduction-ntypes
-                           for ntype = (or (pop ntypes) (ntype 'null))
+                           for ntype = (or (pop ntypes)
+                                           (petalisp.type-inference:ntype 'null))
                            for value-n from 0
                            collect
                            (make-instance 'reduction
@@ -69,8 +70,8 @@
                         :shape output-shape
                         :inputs inputs))))))))))
 
-;;; Type inference of reductions starts with a function F and a list of
-;;; ntypes (A1 ... Ak).  In a first iteration we infer the types of F
+;;; Type inference of reduction ntypes starts with a function F and a list
+;;; of ntypes (A1 ... Ak).  In a first iteration we infer the types of F
 ;;; applied to (A1 ... Ak A1 ... Ak) and obtain the types (B1 ... Bk).  In
 ;;; the second iteration, we have to distinguish three kinds of argument
 ;;; types: (A1 ... Ak B1 ... Bk), (A1 ... Ak B1 ... Bk) and (B1 ... Bk B1
@@ -79,7 +80,7 @@
 ;;; already have to check quite a number of cases.  The trick, however, is
 ;;; that many of these lists of argument types are identical.  This means
 ;;; we can employ dynamic programming to drastically reduce the number of
-;;; steps.
+;;; actual checks.
 
 (defun infer-reduction-ntypes (function ntypes maxdepth)
   (let ((k (length ntypes))
