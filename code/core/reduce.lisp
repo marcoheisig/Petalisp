@@ -10,71 +10,89 @@
         (empty-arrays (length inputs))
         (multiple-value-bind (output-shape reduction-range)
             (shrink-shape input-shape)
-          (let* ((input-ntypes
-                   (mapcar #'element-ntype inputs))
-                 (reduction-ntypes
-                   (infer-reduction-ntypes
-                    function
-                    input-ntypes
-                    (integer-length (range-size reduction-range)))))
-            (petalisp.type-inference:specialize
-             function
-             (append inputs inputs)
-             #'element-ntype
-             ;; Wrapping of constants.
-             (lambda (constant)
-               (declare (ignore constant))
-               (petalisp.type-inference:give-up-specialization))
-             ;; Wrapping of functions.
-             (let ((n-invocations 0))
-               (lambda (ntypes function arguments)
-                 (cond
-                   ;; Don't allow nested reduction functions.
-                   ((plusp n-invocations)
-                    (petalisp.type-inference:give-up-specialization))
-                   ;; Only specialize when the input and output types of
-                   ;; the reduction are the same.
-                   ((loop for argument in arguments
-                          for argument-ntype
-                            in (append reduction-ntypes reduction-ntypes)
-                              thereis
-                              (not
-                               (petalisp.type-inference:ntype=
-                                (element-ntype argument)
-                                argument-ntype)))
-                    (petalisp.type-inference:give-up-specialization))
-                   (t
-                    (incf n-invocations)
-                    (values-list
-                     (loop for reduction-ntype in reduction-ntypes
-                           for ntype = (or (pop ntypes)
-                                           (petalisp.type-inference:ntype 'null))
-                           for value-n from 0
-                           collect
-                           (make-instance 'reduction
-                             :value-n value-n
-                             :operator function
-                             :ntype (petalisp.type-inference:ntype-union ntype reduction-ntype)
-                             :shape output-shape
-                             :inputs inputs)))))))
-             ;; The default value returned by the specialization.
-             (lambda ()
-               (values-list
-                (loop for ntype in reduction-ntypes
-                      for value-n from 0
-                      collect
-                      (make-instance 'reduction
-                        :value-n value-n
-                        :operator function
-                        :ntype ntype
-                        :shape output-shape
-                        :inputs inputs))))))))))
+          (if (= 1 (range-size reduction-range))
+              (values-list (mapcar #'drop-first-axis inputs))
+              (make-full-reduction function inputs output-shape reduction-range))))))
+
+(defun drop-first-axis (lazy-array)
+  (let* ((first-range (first (shape-ranges (shape lazy-array))))
+         (input-rank (rank lazy-array))
+         (output-rank (1- input-rank))
+         (input-mask (make-array input-rank :initial-element nil))
+         (output-mask (make-array output-rank)))
+    (assert (size-one-range-p first-range))
+    (setf (svref input-mask 0) (range-start first-range))
+    (loop for index below output-rank do
+      (setf (svref output-mask index) (1+ index)))
+    (reshape lazy-array (make-transformation
+                         :input-mask input-mask
+                         :output-mask output-mask))))
+
+(defun make-full-reduction (function inputs output-shape reduction-range)
+  (let* ((input-ntypes (mapcar #'element-ntype inputs))
+         (reduction-ntypes
+           (infer-reduction-ntypes
+            function
+            input-ntypes
+            (integer-length (range-size reduction-range)))))
+    (petalisp.type-inference:specialize
+     function
+     (append inputs inputs)
+     #'element-ntype
+     ;; Wrapping of constants.
+     (lambda (constant)
+       (declare (ignore constant))
+       (petalisp.type-inference:give-up-specialization))
+     ;; Wrapping of functions.
+     (let ((n-invocations 0))
+       (lambda (ntypes function arguments)
+         (cond
+           ;; Don't allow nested reduction functions.
+           ((plusp n-invocations)
+            (petalisp.type-inference:give-up-specialization))
+           ;; Only specialize when the input and output types of
+           ;; the reduction are the same.
+           ((loop for argument in arguments
+                  for argument-ntype
+                    in (append reduction-ntypes reduction-ntypes)
+                      thereis
+                      (not
+                       (petalisp.type-inference:ntype=
+                        (element-ntype argument)
+                        argument-ntype)))
+            (petalisp.type-inference:give-up-specialization))
+           (t
+            (incf n-invocations)
+            (values-list
+             (loop for reduction-ntype in reduction-ntypes
+                   for ntype = (or (pop ntypes)
+                                   (petalisp.type-inference:ntype 'null))
+                   for value-n from 0
+                   collect
+                   (make-instance 'reduction
+                     :value-n value-n
+                     :operator function
+                     :ntype (petalisp.type-inference:ntype-union ntype reduction-ntype)
+                     :shape output-shape
+                     :inputs inputs)))))))
+     ;; The default value returned by the specialization.
+     (lambda ()
+       (values-list
+        (loop for ntype in reduction-ntypes
+              for value-n from 0
+              collect
+              (make-instance 'reduction
+                :value-n value-n
+                :operator function
+                :ntype ntype
+                :shape output-shape
+                :inputs inputs)))))))
 
 ;;; Type inference of reduction ntypes starts with a function F and a list
 ;;; of ntypes (A1 ... Ak).  In a first iteration we infer the types of F
 ;;; applied to (A1 ... Ak A1 ... Ak) and obtain the types (B1 ... Bk).  In
 ;;; the second iteration, we have to distinguish three kinds of argument
-;;; types: (A1 ... Ak B1 ... Bk), (A1 ... Ak B1 ... Bk) and (B1 ... Bk B1
+;;; types: (A1 ... Ak B1 ... Bk), (B1 ... Bk A1 ... Ak) and (B1 ... Bk B1
 ;;; ... Bk).  Consequently, we also obtain three different result types (C1
 ;;; ... Ck), (D1 ... Dk) and (E1 ... Ek).  For the third iteration, we
 ;;; already have to check quite a number of cases.  The trick, however, is

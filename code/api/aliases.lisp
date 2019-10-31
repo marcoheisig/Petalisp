@@ -9,8 +9,8 @@
                (macro-function ',function))
          (setf (fdefinition ',alias)
                (fdefinition ',function)))
-          (setf (documentation ',alias 'function)
-                (documentation ',function 'function))))
+     (setf (documentation ',alias 'function)
+           (documentation ',function 'function))))
 
 (defalias a α)
 
