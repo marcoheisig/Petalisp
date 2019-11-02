@@ -104,9 +104,22 @@
   (let ((k (length ntypes))
         (cache '()))
     (labels ((process (ntypes depth)
-               (assert (notany #'consp ntypes))
-               (unless (or (find ntypes cache :test #'ntypes=)
-                           (= depth maxdepth))
+               ;; Recursive processing ends once we reach the maximum
+               ;; depth, or if we have a cache hit.
+               (unless (or (= depth maxdepth)
+                           (find ntypes cache :test #'ntypes=))
+                 ;; To avoid exponential growth in the number of checks, we
+                 ;; compact the number of cache entries once the number of
+                 ;; cache entries exceeds a threshold.
+                 (when (> (length cache) 8)
+                   (return-from infer-reduction-ntypes
+                     (infer-reduction-ntypes
+                      function
+                      (apply #'mapcar #'petalisp.type-inference:ntype-union cache)
+                      (- maxdepth depth))))
+                 ;; The default is to add another cache entry, and to
+                 ;; recursively process all combinations of that entry and
+                 ;; the existing ones.
                  (push ntypes cache)
                  (flet ((descend-into (left right)
                           (process
