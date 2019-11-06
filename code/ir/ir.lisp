@@ -17,8 +17,13 @@
   (inputs '() :type list)
   ;; The list of kernels that load from this buffer.
   (outputs '() :type list)
+  ;; Whether the buffer has already been executed.
   (executedp nil :type boolean)
+  ;; Whether the buffer can be reused after its last use.
   (reusablep nil :type boolean)
+  ;; The device on which the buffer is allocated, or NIL.
+  (device nil :type (or device null))
+  ;; An opaque object, representing the allocated device memory.
   (storage nil))
 
 (defun make-buffer (lazy-array)

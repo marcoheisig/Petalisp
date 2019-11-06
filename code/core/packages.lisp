@@ -117,4 +117,15 @@
    #:overwrite-instance
    #:delete-backend
    #:compute
-   #:schedule))
+   #:schedule
+
+   ;; Devices
+   #:device
+   #:devicep
+   #:device-name
+   #:device-number-of-workers
+   #:device-memory-size
+   #:compile-blueprint
+   #:allocate-buffer
+   #:deallocate-buffer
+   #:move-buffer))

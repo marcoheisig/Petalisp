@@ -30,4 +30,5 @@
    (:file "map")
    (:file "reduce")
    (:file "backend")
+   (:file "device")
    (:file "documentation")))
