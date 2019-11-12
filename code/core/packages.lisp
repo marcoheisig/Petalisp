@@ -114,7 +114,7 @@
    #:lisp-datum-from-immediate
    #:backend
    #:asynchronous-backend
-   #:overwrite-instance
+   #:replace-lazy-array
    #:delete-backend
    #:compute
    #:schedule

@@ -18,8 +18,6 @@
 
 (defgeneric lisp-datum-from-immediate (lazy-array))
 
-(defgeneric overwrite-instance (instance replacement))
-
 (defgeneric delete-backend (backend))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -60,7 +58,7 @@
     (loop for lazy-array in lazy-arrays
           for collapsing-transformation in collapsing-transformations
           for immediate in immediates
-          do (overwrite-instance
+          do (replace-lazy-array
               lazy-array
               (make-reference immediate (shape lazy-array) collapsing-transformation)))
     (values-list
@@ -103,23 +101,6 @@
     (lparallel.queue:push-queue :quit queue)
     (bt:join-thread thread))
   (call-next-method))
-
-(defmethod overwrite-instance ((instance reference) (replacement reference))
-  (reinitialize-instance instance
-    :transformation (transformation replacement)
-    :inputs (inputs replacement)))
-
-(defmethod overwrite-instance ((instance lazy-array) (replacement reference))
-  (change-class instance (class-of replacement)
-    :transformation (transformation replacement)
-    :inputs (inputs replacement)))
-
-(defmethod overwrite-instance ((instance lazy-array) (replacement array-immediate))
-  (change-class instance (class-of replacement)
-    :storage (storage replacement)))
-
-(defmethod overwrite-instance ((instance lazy-array) (replacement range-immediate))
-  (change-class instance (class-of replacement)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

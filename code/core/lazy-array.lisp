@@ -14,8 +14,6 @@
 
 (defgeneric reusablep (object))
 
-(defgeneric coerce-to-lazy-array (array))
-
 (defgeneric total-size (array))
 
 (defgeneric element-ntype (array))
@@ -35,6 +33,10 @@
 (defgeneric refcount (array))
 
 (defgeneric increment-refcount (array))
+
+(defgeneric coerce-to-lazy-array (array))
+
+(defgeneric replace-lazy-array (lazy-array replacement))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -99,6 +101,23 @@
 
 (defmethod coerce-to-lazy-array ((object t))
   (make-scalar-immediate object))
+
+(defmethod replace-lazy-array ((instance reference) (replacement reference))
+  (reinitialize-instance instance
+    :transformation (transformation replacement)
+    :inputs (inputs replacement)))
+
+(defmethod replace-lazy-array ((instance lazy-array) (replacement reference))
+  (change-class instance (class-of replacement)
+    :transformation (transformation replacement)
+    :inputs (inputs replacement)))
+
+(defmethod replace-lazy-array ((instance lazy-array) (replacement array-immediate))
+  (change-class instance (class-of replacement)
+    :storage (storage replacement)))
+
+(defmethod replace-lazy-array ((instance lazy-array) (replacement range-immediate))
+  (change-class instance (class-of replacement)))
 
 (defmethod lazy-array-p ((object t))
   (declare (ignore object))

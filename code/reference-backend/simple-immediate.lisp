@@ -48,6 +48,6 @@
            shape)
           array))))
 
-(defmethod overwrite-instance ((instance lazy-array) (replacement simple-immediate))
+(defmethod replace-lazy-array ((instance lazy-array) (replacement simple-immediate))
   (change-class instance 'simple-immediate
     :table (table replacement)))
