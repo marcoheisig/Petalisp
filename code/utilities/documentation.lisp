@@ -22,15 +22,18 @@
   `(ensure-documentation ',name (progn ,@body) 'function))
 
 (defmacro document-method-combination (name &body body)
+  (assert (symbolp name))
   `(ensure-documentation ',name (progn ,@body) 'method-combination))
 
 (defmacro document-setf-expander (name &body body)
   `(ensure-documentation ',name (progn ,@body) 'setf))
 
 (defmacro document-structure (name &body body)
+  (assert (typep (find-class name) 'structure-class))
   `(ensure-documentation ',name (progn ,@body) 'structure))
 
 (defmacro document-type (name &body body)
+  (typep nil name)
   `(ensure-documentation ',name (progn ,@body) 'type))
 
 (defmacro document-variable (name &body body)

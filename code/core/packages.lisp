@@ -4,13 +4,20 @@
 
 (defpackage #:petalisp.core
   (:use #:common-lisp)
-  (:import-from #:petalisp.utilities #:document-variable #:document-function)
+  (:import-from
+   #:petalisp.utilities
+   #:document-compiler-macro
+   #:document-function
+   #:document-method-combination
+   #:document-setf-expander
+   #:document-structure
+   #:document-type
+   #:document-variable)
   (:export
 
    ;; Ranges
    #:range
    #:rangep
-   #:make-range
    #:size-one-range-p
    #:split-range
    #:map-range
@@ -63,12 +70,13 @@
    #:enlarge-transformation
    #:map-transformation-outputs
 
-   ;; Strided Arrays
+   ;; Lazy Arrays
    #:lazy-array-p
    #:empty-array-p
    #:immediatep
    #:reusablep
    #:coerce-to-lazy-array
+   #:replace-lazy-array
    #:total-size
    #:element-type
    #:element-ntype
@@ -114,7 +122,6 @@
    #:lisp-datum-from-immediate
    #:backend
    #:asynchronous-backend
-   #:replace-lazy-array
    #:delete-backend
    #:compute
    #:schedule

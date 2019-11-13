@@ -2,6 +2,210 @@
 
 (in-package #:petalisp.core)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Ranges
+
+(document-type range
+  "A range denotes a set of integers, starting from a lower bound START,
+by a fixed stride STEP, to an inclusive upper bound END.")
+
+(document-function range
+  "Returns a new, normalized range from the supplied parameters.  Can be
+invoked with one, two or three integers.  In the case of a single integer,
+it constructs the range with exactly that element.  In the case of two
+integers, it creates a contiguous range.  In the case of three arguments,
+the first and the third argument denote the interval, and the second
+argument denotes the step size.  If the first argument and the last
+argument are not congruent modulo the step size, the latter one is moved
+towards the former until they are.
+
+Examples:
+
+ (range 5)
+  => #<range 5>
+
+ (range 5 9)
+  => #<range 5 ... 9>
+
+ (range 5 2 13)
+  => #<range 5 7 ... 13>
+
+ (range 7 3 -3)
+  => #<range -2 1 4 7>
+")
+
+(document-function size-one-range-p
+  "Checks whether the supplied range has a size of one.")
+
+(document-function split-range
+  "Splits the supplied range R into a lower and an upper half and returns
+them as multiple values.  In case R has an odd number of element, the lower
+half will have one more element than the upper half.
+
+An error is signaled if the supplied range has only a single element.
+")
+
+(document-function map-range
+  "Takes a function and a range and applies the function to all integers of
+that range, in ascending order.")
+
+(document-function range-equal
+  "Check whether two supplied ranges describe the same set of integers.")
+
+(document-function range-contains
+  "Check whether the supplied range contains a particular integer.")
+
+(document-function range-intersection
+  "Returns the range containing exactly those elements that occur in both
+supplied ranges.  Returns NIL if there are no such elements.
+
+Examples:
+
+ (range-intersection (range 1 10) (range 2 20))
+  => #<range 2 ... 10>
+
+ (range-intersection (range 3 2 13) (range 1 3 13))
+  => #<range 7 13>
+")
+
+(document-function range-intersectionp
+  "Check whether two supplied ranges have at least one common element.")
+
+(document-function range-difference-list
+  "Compute the difference of two ranges R1 and R2.  Returns a list of
+disjoint subranges of R1 that describe exactly those integers appearing in
+R1 but not in R2.")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Shapes
+
+(document-variable ~
+  "The symbol ~ is self-evaluating.  Its only purpose is to separate range
+designators in the function named ~.")
+
+(document-function ~
+  "Construct a shape from zero or more tilde-separated range designators.
+
+Examples:
+
+ (~)
+  => (~)
+
+ (~ 1 2 3)
+  => (~ 1 2 3)
+
+ (~ 0 2 9 ~ 0 2 9)
+  => (~ 0 2 8 ~ 0 2 8)
+
+ (apply #'~ 1 9 (loop repeat 3 append '(~ 2 5)))
+  => (~ 1 9 ~ 2 5 ~ 2 5 ~ 2 5)
+")
+
+(document-type shape
+  "A shape is the cartesian product of zero or more ranges.  Shapes can be
+constructed by calling ~ or MAKE-SHAPE.  The elements of a shape are lists
+of integers.  The rank of a shape is the length of these lists.  For
+example, the shape (~ 0 ~ 1 2 ~ 3 4 7) has rank three and consists of the
+integer tuples (0 1 3), (0 1 7), (0 2 3), (0 2 7).")
+
+(document-function make-shape
+  "Constructs a shape from a supplied list of ranges.")
+
+(document-function shape-size
+  "Returns that number of integer tuples denoted by the supplied shape.")
+
+(document-function shape-equal
+  "Check whether two supplied shapes denote the same set of integer tuples.")
+
+(document-function shape-difference-list
+  "Compute the difference of two shapes S1 and S2.  Returns a list of
+disjoint subshapes of S1 that describe exactly those integer tuples
+appearing in S1 but not in S2.")
+
+(document-function shape-intersection
+  "Returns the shape containing exactly those integer tuples that occur in
+both supplied shapes.  Returns NIL if there are no such elements.
+
+Examples:
+
+ (shape-intersection (~ 1 10 ~ 3 2 13) (~ 1 5 ~ 1 3 13))
+  => (~ 1 5 ~ 7 6 13)
+
+ (shape-intersection (~ 1 5) (~ 6 10))
+  => nil
+")
+
+(document-function shape-intersectionp
+  "Check whether two supplied shapes have at least one common element.")
+
+(document-function map-shape
+  "Takes a function and a shape and applies the function to all integer
+tuples of that range, in ascending order.")
+
+(document-function shape-contains
+  "Check whether the supplied shape contains a particular integer tuple.
+
+Examples:
+
+ (shape-contains (~ 1 9) (list 4))
+  => t
+
+ (shape-contains (~ 1 2 9) (list 4))
+  => nil
+")
+
+(document-function enlarge-shape
+  "For a given shape S and range R, this function returns a shape whose
+  first range is R, and whose remaining ranges are those of S.
+
+Examples:
+ (enlarge-shape (~) (range 1 10))
+  => (~ 1 10)
+
+ (enlarge-shape (~ 1 3) (range 1 4))
+  => (~ 1 4 ~ 1 3)
+")
+
+(document-function shrink-shape
+  "This function expects a single shape with one or more ranges R1 to Rn.
+It returns a shape with the ranges R2 to R1, and, as a second value, the
+range R1 that has been peeled off.
+
+Examples:
+
+ (shrink-shape (~ 1 10))
+  => (~)
+  => #<range 1 ... 10>
+
+ (shrink-shape (~ 1 10 ~ 0 2))
+  => (~ 0 2)
+  => #<range 1 ... 10>
+")
+
+(document-function subdivision
+  "Returns a list of disjoint shapes. Each resulting shape is a proper
+subshape of one or more of the arguments and their fusion covers all
+arguments.
+
+Examples:
+
+ (subdivision (list (~ 1 2 ~ 1 2) (~ 1 ~ 1)))
+  => ((~ 1 ~ 1) (~ 2 ~ 1 2) (~ 1 ~ 2))
+
+ (subdivision (list (~ 1 10) (~ 2 20)))
+  => ((~ 11 20) (~ 2 10) (~ 1))
+")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Transformations
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Lazy Arrays
+
 (document-function broadcast-arrays
   "Returns as many lazy arrays as there are supplied arrays, but broadcast
 such that all resulting arrays have the same shape.  If there is no
@@ -16,7 +220,6 @@ Examples:
  (broadcast-arrays #(2 3 4) #2a((1 2 3) (4 5 6)))
   => #<reference t (~ 0 1 ~ 0 2)>
   => #<array-immediate #2A((1 2 3) (4 5 6))>
-
 ")
 
 (document-function broadcast-list-of-arrays
