@@ -96,7 +96,7 @@
                                 (mapcar (alexandria:curry #'cons range-1) black)
                                 (mapcar (alexandria:curry #'cons range-2) red))
                                (rest ranges)))))))))
-      (red-black-shapes '(()) '(()) (reverse (shape-ranges (shape lazy-array)))))))
+      (red-black-shapes '(()) '() (reverse (shape-ranges (shape lazy-array)))))))
 
 (defun rbgs (u f h &optional (iterations 1))
   "Iteratively solve the Poisson equation -Δu = f for a given uniform grid
