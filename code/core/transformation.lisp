@@ -444,7 +444,7 @@
                    (if (not input-index)
                        (make-range offset 1 offset)
                        (let ((input-range (elt input-ranges input-index)))
-                         (make-range
+                         (range
                           (+ offset (* scaling (range-start input-range)))
                           (* scaling (range-step input-range))
                           (+ offset (* scaling (range-end input-range)))))))))

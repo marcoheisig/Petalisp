@@ -121,9 +121,6 @@
              for range-2 in (shape-ranges shape-2)
              always (subrangep range-1 range-2))))
 
-;;; Return a list of disjoint shapes. Each resulting object is a proper
-;;; subspace of one or more of the arguments and their fusion covers all
-;;; arguments.
 (defun subdivision (shapes)
   (labels ((subtract (shapes what)
              (loop for shape in shapes

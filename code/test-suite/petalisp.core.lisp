@@ -8,9 +8,9 @@
 
 (test range-test
   ;; Range constructors
-  (is (rangep (make-range 1 0 1)))
+  (is (rangep (range 1 0 1)))
   (is (rangep (apply #'range (list 1 2 3))))
-  (signals error (make-range 1 0 99))
+  (signals error (range 1 0 99))
   ;; Range operations
   (labels ((test-range (range)
              (declare (notinline range-start-step-end size-one-range-p range-end))
@@ -28,7 +28,7 @@
                  (is (size-one-range-p range))
                  (is (not (size-one-range-p range))))
              (is (range-equal range range))
-             (is (range-equal range (multiple-value-call #'make-range (range-start-step-end range))))
+             (is (range-equal range (multiple-value-call #'range (range-start-step-end range))))
              (if (size-one-range-p range)
                  (is (= (range-start range)
                         (range-end range)))

@@ -62,37 +62,41 @@
 ;;;
 ;;; The Gauss-Seidel Method
 
-(defun red-black-coloring (array)
-  (let* ((lazy-array (coerce-to-lazy-array array))
-         (ranges (shape-ranges (shape lazy-array))))
-    (labels ((prepend-1 (list)
-               (cons 1 list))
-             (prepend-2 (list)
-               (cons 2 list))
-             (offsets (red black depth)
-               (if (= depth (rank lazy-array))
-                   (values red black)
-                   (offsets
-                    (append (mapcar #'prepend-1 red)
-                            (mapcar #'prepend-2 black))
-                    (append (mapcar #'prepend-1 black)
-                            (mapcar #'prepend-2 red))
-                    (1+ depth)))))
-      (multiple-value-bind (red-offsets black-offsets)
-          (offsets '((2)) '((1)) 1)
-        (flet ((offset-space (offsets)
-                 (make-shape
-                  (loop for offset in offsets
-                        for range in ranges
-                        collect
-                        (multiple-value-bind (start step end)
-                            (range-start-step-end range)
-                          (range (+ start (* step offset))
-                                 (* 2 step)
-                                 (- end step)))))))
-          (values
-           (mapcar #'offset-space red-offsets)
-           (mapcar #'offset-space black-offsets)))))))
+(defun red-black-coloring (array &key (boundary 0))
+  (let* ((lazy-array (coerce-to-lazy-array array)))
+    (labels ((red-black-shapes (red black ranges)
+               (if (null ranges)
+                   (values
+                    (mapcar #'make-shape red)
+                    (mapcar #'make-shape black))
+                   (with-accessors ((start range-start)
+                                    (step range-step)
+                                    (end range-end)
+                                    (size range-size))
+                       (first ranges)
+                     (cond ((<= size (* 2 boundary))
+                            (return-from red-black-coloring (values '() '())))
+                           ((= size (1+ (* 2 boundary)))
+                            (let ((range (range (+ start (* boundary step)))))
+                              (red-black-shapes
+                               (mapcar (alexandria:curry #'cons range) red)
+                               (mapcar (alexandria:curry #'cons range) black)
+                               (rest ranges))))
+                           (t
+                            (let* ((new-start (+ start (* boundary step)))
+                                   (new-step (* step 2))
+                                   (new-end (- end (* boundary step)))
+                                   (range-1 (range new-start new-step new-end))
+                                   (range-2 (range (+ new-start step) new-step new-end)))
+                              (red-black-shapes
+                               (nconc
+                                (mapcar (alexandria:curry #'cons range-1) red)
+                                (mapcar (alexandria:curry #'cons range-2) black))
+                               (nconc
+                                (mapcar (alexandria:curry #'cons range-1) black)
+                                (mapcar (alexandria:curry #'cons range-2) red))
+                               (rest ranges)))))))))
+      (red-black-shapes '(()) '(()) (reverse (shape-ranges (shape lazy-array)))))))
 
 (defun rbgs (u f h &optional (iterations 1))
   "Iteratively solve the Poisson equation -Δu = f for a given uniform grid
@@ -123,7 +127,7 @@
                               (reshape (reshape u (τ (i j k) (i j (1- k)))) space)
                               (reshape (α #'* (* h h) f) space))))))))
     (multiple-value-bind (red-spaces black-spaces)
-        (red-black-coloring u)
+        (red-black-coloring u :boundary 1)
       (flet ((update (spaces)
                (setf u (apply #'fuse* u (mapcar stencil spaces)))))
         (loop repeat iterations do
