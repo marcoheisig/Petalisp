@@ -202,6 +202,102 @@ Examples:
 ;;;
 ;;; Transformations
 
+(document-type transformation
+  "A transformation with input rank N and output rank M is a mapping
+from lists of length N to lists of rank M.")
+
+(document-type identity-transformation
+  "An identity transformation of rank N maps every list of length N to
+itself.  An identity transformation is its own inverse.")
+
+(document-type hairy-transformation
+  "A hairy transformation is a combination of any number of permutations,
+affine-linear mappings, and removal of insertions of one-element ranks.
+Furthermore, the inputs of a hairy transformation can be subject to integer
+constraints.")
+
+(document-function transformation-invertiblep
+  "Check whether a supplied transformation is invertible.")
+
+(document-function transformation-equal
+  "Check whether two supplied transformations describe the same mapping.")
+
+(document-function compose-transformations
+  "Returns a single transformation that is equivalent to consecutive
+invocations of the supplied transformations in right-to-left order.")
+
+(document-function invert-transformation
+  "Returns the inverse of the supplied transformation.
+
+An error is signaled if the supplied transformation is not invertible.")
+
+(document-function identity-transformation
+  "Returns an identity transformation of the specified rank.")
+
+(document-function make-transformation
+  "Returns a transformation according to the supplied keyword arguments.
+Valid keyword arguments are:
+
+:INPUT-RANK
+
+The length or rank of any valid transformation input.  A non-negative
+integer.
+
+:OUTPUT-RANK
+
+The length or rank of any transformation output.  A non-negative integer.
+
+:INPUT-MASK
+
+A sequence with as many elements as the input rank of the transformation.
+Each element must either be an integer, in which case only this integer may
+occur in the corresponding input position, or NIL, in which case any
+integer may occur in the corresponding input position.
+
+:OUTPUT-MASK
+
+A sequence with as many elements as the output rank of the transformation.
+Every element must either be an integer, in which case this integer denotes
+the input entry that is to be scaled, shifted and sent to the current
+position's output, or NIL, in which case only the corresponding offset
+value is sent to the current output.  This way, the output mask can encode
+both permutations of the input, as well as insertion and removal of axes.
+If this keyword argument is not supplied, it defaults to a sequence with up
+to input rank ascending integers, starting from zero, and followed by
+entries of NIL in case the output rank is larger than the input rank.
+
+:SCALINGS
+
+A sequence with as many elements as the output rank of the transformation.
+Each element must be a rational number.  Every transformation output is
+scaled with its corresponding entry in this sequence.  If this keyword
+argument is not supplied, it defaults to a sequence of ones.
+
+:OFFSETS
+
+A sequence with as many elements as the output rank of the transformation.
+Each element must be a rational number that is added to the corresponding
+output value after permutation and scaling has taken place. If this keyword
+argument is not supplied, it defaults to a sequence of zeros.
+
+Examples:
+
+ (make-transformation :input-rank 2)
+  => (τ (a b) (a b))
+
+ (make-transformation :input-rank 2 :output-rank 1)
+  => (τ (a b) (a))
+
+ (make-transformation :input-mask '(2 nil 3))
+  => (τ (2 b 3) (2 b 3))
+
+ (make-transformation :output-mask #(1 0 nil))
+  => (τ (a b c) (b a 0))
+
+ (make-transformation :offsets #(1 2 3) :scalings #(4 5 6))
+  => (τ (a b c) ((1+ (* 4 a)) (+ (* 5 b) 2) (+ (* 6 c) 3)))
+")
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Lazy Arrays

@@ -473,13 +473,20 @@
 ;;;
 ;;; PRINT-OBJECT
 
+(defparameter *alphabet*
+  #(:a :b :c :d :e :f :g :h :i :j :k :l :m :n :o :p :q :r :s :t :u :v :w :x :y :z))
+
 (defmethod print-object ((transformation transformation) stream)
   (let ((inputs '()))
     (map-transformation-inputs
      (lambda (input-index input-constraint)
-       (if (null input-constraint)
-           (push (alexandria:format-symbol :keyword "I~D" input-index) inputs)
-           (push input-constraint inputs)))
+       (let ((input
+               (if (not (null input-constraint))
+                   input-constraint
+                   (if (array-in-bounds-p *alphabet* input-index)
+                       (svref *alphabet* input-index)
+                       (alexandria:format-symbol :keyword "I~D" input-index)))))
+         (push input inputs)))
      transformation
      :from-end t)
     (princ `(τ ,inputs ,(transform inputs transformation)) stream)))

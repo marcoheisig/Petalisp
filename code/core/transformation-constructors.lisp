@@ -8,12 +8,12 @@
 
 (defun make-transformation
     (&key
+       (input-rank nil input-rank-supplied-p)
+       (output-rank nil output-rank-supplied-p)
        (input-mask nil input-mask-supplied-p)
        (output-mask nil output-mask-supplied-p)
-       (offsets nil offsets-supplied-p)
        (scalings nil scalings-supplied-p)
-       (input-rank nil input-rank-supplied-p)
-       (output-rank nil output-rank-supplied-p))
+       (offsets nil offsets-supplied-p))
   ;; Attempt to derive the input and output rank.
   (multiple-value-bind (input-rank output-rank)
       (labels ((two-value-fixpoint (f x1 x2)
