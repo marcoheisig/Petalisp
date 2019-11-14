@@ -495,3 +495,45 @@ Examples:
                  (reshape 0 (~ 2 3))))
   => #*1100
 ")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Backend
+
+(document-function compute
+  "Returns, as multiple values, the computed result of each supplied
+argument.  The computed result of a lazy array is a standard Common Lisp
+array with the same rank and dimensions.  The computed result of any other
+object is that object itself.
+
+Examples:
+
+ (compute (α #'+ 2 #(3 4 5)))
+  => #(5 6 7)
+
+ (compute (reshape nil (~ 0 10)))
+  => #(nil nil nil nil nil nil nil nil nil nil nil)
+
+ (compute (fuse (reshape 0 (~ 0 2 20)) (reshape 1 (~ 1 2 20))))
+  => #*010101010101010101010
+
+ (compute 2 #0A3 (α #'+ 2 2))
+  => 2
+  => 3
+  => 4
+")
+
+(document-function schedule
+  "Hint that it would be worthwhile to compute the supplied arguments
+asynchronously.  Semantically, this function does nothing.  But on certain
+backends, a program like
+
+ (progn (run-expensive-task)
+        (compute array-1 array-2))
+
+can be sped up by rewriting it as
+
+ (progn (schedule array-1 array-2)
+        (run-expensive-task)
+        (compute array-1 array-2)).
+")
