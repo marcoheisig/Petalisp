@@ -302,6 +302,35 @@ Examples:
 ;;;
 ;;; Lazy Arrays
 
+(document-type lazy-array
+  "A lazy array encapsulates some information that can be used to compute
+actual Common Lisp arrays.")
+
+(document-type immediate
+  "An immediate is a lazy array whose values do not depend on any other
+lazy array.")
+
+(document-type non-immediate
+  "A non-immediate is an array with one or more inputs, i.e., other lazy
+arrays upon which its values depend.")
+
+(document-type empty-array
+  "The empty array conveys no information except that it is empty.  Certain
+operations, for example, reductions of a scalar yield an empty array.  Most
+functions that work on lazy arrays will handle empty arrays in a sensible
+way.")
+
+(document-type non-empty-array
+  "A non-empty lazy array has a shape and knowledge about its element
+type.")
+
+(document-type array-immediate
+  "An array immediate is a lazy array whose shape, element type and
+contents are the those of a supplied Common Lisp array.")
+
+(document-type range-immediate
+  "A range immediate is a rank one array, whose values are equal to its indices.")
+
 (document-function broadcast-arrays
   "Returns as many lazy arrays as there are supplied arrays, but broadcast
 such that all resulting arrays have the same shape.  If there is no
@@ -354,12 +383,15 @@ Examples:
 ")
 
 (document-function α
-  "Returns one or more lazy arrays whose contents are the values returned
-by the supplied function, when applied element-wise to the contents of the
-supplied arrays.  If the supplied arrays don't agree in shape, they are
+  "Returns one or more lazy arrays, whose contents are the values returned
+by the supplied function when applied element-wise to the contents of the
+remaining argument arrays.  If the arguments don't agree in shape, they are
 first broadcast with the function BROADCAST-ARRAYS.
 
 Examples:
+
+ (α #'+ #(1 2) #(3 4))
+  => #<application number (~ 0 1)>
 
  (compute (α #'+ 2 3))
   => 5

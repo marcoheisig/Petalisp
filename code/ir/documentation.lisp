@@ -20,4 +20,5 @@ transforming all buffers to a zero-based coordinate system with minimal
 stride, and by arranging each buffer such that the kernels using it have
 optimal spatial locality.
 
-In any case, the IR normalization preserves semantics.")
+In any case, the IR normalization preserves semantics.
+")
