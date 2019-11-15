@@ -47,6 +47,12 @@
                    (loop-finish))))
            :name (format nil "~A scheduler thread" (class-name (class-of asynchronous-backend)))))))
 
+(defmethod compute-on-backend :before ((lazy-arrays list) (backend t))
+  (assert (every #'computablep lazy-arrays)))
+
+(defmethod schedule-on-backend :before ((lazy-arrays list) (backend t))
+  (assert (every #'computablep lazy-arrays)))
+
 (defmethod compute-on-backend ((lazy-arrays list) (backend backend))
   (let* ((collapsing-transformations
            (mapcar (alexandria:compose #'collapsing-transformation #'shape)

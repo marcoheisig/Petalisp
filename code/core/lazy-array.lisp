@@ -43,10 +43,11 @@
 ;;; Classes
 
 (defclass lazy-array ()
-  ())
+  ((%computable :initarg :computable :reader computablep :accessor %computablep)))
 
 (defclass immediate (lazy-array)
-  ())
+  ()
+  (:default-initargs :computable t))
 
 (defclass non-immediate (lazy-array)
   ((%inputs :initarg :inputs :reader inputs)))
@@ -62,7 +63,7 @@
   ())
 
 (defclass non-empty-non-immediate (non-empty-array non-immediate)
-  ((%refcount :initform 0 :accessor refcount)))
+  ((%refcount :initform 0 :reader refcount :accessor %refcount)))
 
 (defclass array-immediate (non-empty-immediate)
   ((%reusablep :initarg :reusablep :initform nil :reader reusablep)
@@ -70,6 +71,10 @@
 
 (defclass range-immediate (non-empty-immediate)
   ())
+
+(defclass abstract-immediate (non-empty-immediate)
+  ()
+  (:default-initargs :computable nil))
 
 (defclass application (non-empty-non-immediate)
   ((%operator :initarg :operator :reader operator)
@@ -91,7 +96,13 @@
 
 (defmethod initialize-instance :after
     ((non-immediate non-immediate) &key &allow-other-keys)
-  (mapc #'increment-refcount (inputs non-immediate)))
+  (let ((computablep t))
+    (loop for input in (inputs non-immediate) do
+      (increment-refcount input)
+      (unless (computablep input)
+        (setf computablep nil)))
+    (setf (%computablep non-immediate)
+          computablep)))
 
 (defmethod coerce-to-lazy-array ((lazy-array lazy-array))
   lazy-array)
@@ -215,7 +226,7 @@
   (values))
 
 (defmethod increment-refcount ((non-empty-non-immediate non-empty-non-immediate))
-  (incf (refcount non-empty-non-immediate)))
+  (incf (%refcount non-empty-non-immediate)))
 
 (defmethod print-object ((lazy-array lazy-array) stream)
   (print-unreadable-object (lazy-array stream :type t)
