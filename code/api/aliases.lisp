@@ -13,15 +13,13 @@
            (documentation ',function 'function))))
 
 (defalias a α)
+(defalias a* α*)
+(defalias alpha α)
+(defalias α* α*)
 
 (defalias b β)
-
 (defalias b* β*)
-
-(defalias alpha α)
-
 (defalias beta β)
-
 (defalias beta* β*)
 
 (defalias tau τ)

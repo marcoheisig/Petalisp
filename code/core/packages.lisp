@@ -112,6 +112,7 @@
    #:broadcast-arrays
    #:broadcast-list-of-arrays
    #:α
+   #:α*
    #:β
 
    ;; Backends
