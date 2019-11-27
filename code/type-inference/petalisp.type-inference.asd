@@ -18,10 +18,13 @@
    (:file "ntype-2")
    (:file "ntype-3")
    (:file "conditions")
-   (:file "special-functions")
-   (:file "define-rule")
+   (:file "wrap")
+   (:file "fndb")
+   (:file "define-specializer")
+   (:file "define-differentiator")
    (:file "define-instruction")
    (:file "specialize")
+   (:file "differentiate")
    (:module "common-lisp"
     :components
     ((:file "auxiliary")

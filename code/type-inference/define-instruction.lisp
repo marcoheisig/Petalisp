@@ -10,7 +10,9 @@
      (defun ,instruction-name ,arguments
        (the (values ,@result-types)
             (,base-name ,@arguments)))
-     (define-rule ,instruction-name ,arguments ,@body)))
+     (setf (parent ',instruction-name)
+           (ensure-fndb-record ',base-name))
+     (define-specializer ,instruction-name ,arguments ,@body)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -27,7 +29,7 @@
                      for ntype in ntypes
                      collect `(,ntype (wrapper-ntype ,argument))))
          (with-constant-folding (,base-name ,@(mapcar #'list ntypes argument-types))
-           (rewrite-default
+           (wrap-default
             ,@(loop for type in result-types
                     collect
                     `(ntype ',type))))))))

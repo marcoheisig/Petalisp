@@ -8,7 +8,7 @@
                    wrap-constant
                    wrap-function
                    default)
-  " Traverses a decomposition of FUNCTION into successive calls to more
+  "Traverses a decomposition of FUNCTION into successive calls to more
 specialized functions, using the supplied wrapping functions.  Returns the
 values returned by PROCESS-MULTIPLE-VALUE-FUNCTION.
 
@@ -39,7 +39,7 @@ supplied FUNCTION.
   (let ((*wrapper-ntype* wrapper-ntype)
         (*wrap-constant* wrap-constant)
         (*wrap-function* wrap-function))
-    (handler-case (apply (find-rule function) wrappers)
+    (handler-case (apply (specializer function) wrappers)
       ;; A program error is an indication that we had an argument
       ;; mismatch.
       (give-up-specialization ()

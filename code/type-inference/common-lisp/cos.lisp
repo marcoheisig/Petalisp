@@ -11,33 +11,33 @@
 (define-simple-instruction (cos complex-double-float-cos) (complex-double-float) (complex-double-float))
 (define-simple-instruction (cos complex-long-float-cos) (complex-long-float) (complex-long-float))
 
-(define-rule cos (x)
+(define-specializer cos (x)
   (ntype-subtypecase (wrapper-ntype x)
     ((not number)
      (abort-specialization))
     (short-float
-     (rewrite-as
+     (wrap
       (short-float-cos x)))
     (single-float
-     (rewrite-as
+     (wrap
       (single-float-cos x)))
     (double-float
-     (rewrite-as
+     (wrap
       (double-float-cos x)))
     (long-float
-     (rewrite-as
+     (wrap
       (long-float-cos x)))
     (complex-short-float
-     (rewrite-as
+     (wrap
       (complex-short-float-cos x)))
     (complex-single-float
-     (rewrite-as
+     (wrap
       (complex-single-float-cos x)))
     (complex-double-float
-     (rewrite-as
+     (wrap
       (complex-double-float-cos x)))
     (complex-long-float
-     (rewrite-as
+     (wrap
       (complex-long-float-cos x)))
     (t
-     (rewrite-default (ntype 'number)))))
+     (wrap-default (ntype 'number)))))

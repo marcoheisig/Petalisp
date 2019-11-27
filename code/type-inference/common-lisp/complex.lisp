@@ -11,7 +11,7 @@
 (define-simple-instruction (complex double-float-complex) (complex-double-float) (double-float double-float))
 (define-simple-instruction (complex long-float-complex) (complex-long-float) (long-float long-float))
 
-(define-rule complex (realpart &optional (imagpart nil imagpart-supplied-p))
+(define-specializer complex (realpart &optional (imagpart nil imagpart-supplied-p))
   (let* ((realpart-ntype (wrapper-ntype realpart))
          (imagpart-ntype (if imagpart-supplied-p
                              (wrapper-ntype imagpart)
@@ -19,32 +19,32 @@
     (with-constant-folding (complex (realpart-ntype real) (imagpart-ntype real))
       (if (and (eql-ntype-p imagpart)
                (eql imagpart 0))
-          (rewrite-as realpart)
+          (wrap realpart)
           (ntype-subtypecase (numeric-contagion realpart-ntype imagpart-ntype)
             (short-float
-             (rewrite-as
+             (wrap
               (short-float-complex
                (coerce-to-short-float realpart)
                (coerce-to-short-float imagpart))))
             (single-float
-             (rewrite-as
+             (wrap
               (single-float-complex
                (coerce-to-single-float realpart)
                (coerce-to-single-float imagpart))))
             (double-float
-             (rewrite-as
+             (wrap
               (double-float-complex
                (coerce-to-double-float realpart)
                (coerce-to-double-float imagpart))))
             (long-float
-             (rewrite-as
+             (wrap
               (long-float-complex
                (coerce-to-long-float realpart)
                (coerce-to-long-float imagpart))))
             (t
              (ntype-subtypecase imagpart-ntype
-               ((not rational) (rewrite-default 'complex))
-               (t (rewrite-default 'number)))))))))
+               ((not rational) (wrap-default 'complex))
+               (t (wrap-default 'number)))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -55,16 +55,16 @@
 (define-simple-instruction (realpart complex-double-float-realpart) (double-float) (complex-double-float))
 (define-simple-instruction (realpart complex-long-float-realpart) (long-float) (complex-long-float))
 
-(define-rule realpart (number)
+(define-specializer realpart (number)
   (let ((ntype (wrapper-ntype number)))
     (with-constant-folding (realpart (ntype number))
       (ntype-subtypecase ntype
-        (complex-short-float (rewrite-as (complex-short-float-realpart number)))
-        (complex-single-float (rewrite-as (complex-single-float-realpart number)))
-        (complex-double-float (rewrite-as (complex-double-float-realpart number)))
-        (complex-long-float (rewrite-as (complex-long-float-realpart number)))
-        (real (rewrite-as number))
-        (t (rewrite-default (ntype 'real)))))))
+        (complex-short-float (wrap (complex-short-float-realpart number)))
+        (complex-single-float (wrap (complex-single-float-realpart number)))
+        (complex-double-float (wrap (complex-double-float-realpart number)))
+        (complex-long-float (wrap (complex-long-float-realpart number)))
+        (real (wrap number))
+        (t (wrap-default (ntype 'real)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -75,22 +75,22 @@
 (define-simple-instruction (imagpart complex-double-float-imagpart) (double-float) (complex-double-float))
 (define-simple-instruction (imagpart complex-long-float-imagpart) (long-float) (complex-long-float))
 
-(define-rule imagpart (number)
+(define-specializer imagpart (number)
   (let ((ntype (wrapper-ntype number)))
     (with-constant-folding (imagpart (ntype number))
       (ntype-subtypecase ntype
-        (complex-short-float (rewrite-as (complex-short-float-imagpart number)))
-        (complex-single-float (rewrite-as (complex-single-float-imagpart number)))
-        (complex-double-float (rewrite-as (complex-double-float-imagpart number)))
-        (complex-long-float (rewrite-as (complex-long-float-imagpart number)))
-        (real (rewrite-as (* 0 number)))
-        (t (rewrite-default (ntype 'real)))))))
+        (complex-short-float (wrap (complex-short-float-imagpart number)))
+        (complex-single-float (wrap (complex-single-float-imagpart number)))
+        (complex-double-float (wrap (complex-double-float-imagpart number)))
+        (complex-long-float (wrap (complex-long-float-imagpart number)))
+        (real (wrap (* 0 number)))
+        (t (wrap-default (ntype 'real)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; CONJUGATE
 
-(define-rule conjugate (number)
+(define-specializer conjugate (number)
   (let ((ntype (wrapper-ntype number)))
     (if (and (eql-ntype-p number)
              (numberp number))
@@ -98,15 +98,15 @@
          (conjugate ntype))
         (ntype-subtypecase ntype
           ((not number) (abort-specialization))
-          (real (rewrite-as number))
-          (complex (rewrite-as (complex (realpart number) (- (imagpart number)))))
-          (t (rewrite-default (ntype 'number)))))))
+          (real (wrap number))
+          (complex (wrap (complex (realpart number) (- (imagpart number)))))
+          (t (wrap-default (ntype 'number)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; PHASE
 
-(define-rule phase (number)
+(define-specializer phase (number)
   (let ((ntype (wrapper-ntype number)))
     (if (and (eql-ntype-p ntype)
              (numberp ntype))
@@ -114,12 +114,12 @@
          (phase ntype))
         (ntype-subtypecase ntype
           ((not number) (abort-specialization))
-          ((float 0e0 *) (rewrite-as (float 0 number)))
-          ((rational 0 *) (rewrite-as 0))
-          ((float * (0e0)) (rewrite-as (float #.pi number)))
+          ((float 0e0 *) (wrap (float 0 number)))
+          ((rational 0 *) (wrap 0))
+          ((float * (0e0)) (wrap (float #.pi number)))
           ((rational * (0)) (wrap-constant (coerce pi 'single-float)))
-          ((complex float) (rewrite-default (complex-part-ntype ntype)))
-          (t (rewrite-default (ntype 'number)))))))
+          ((complex float) (wrap-default (complex-part-ntype ntype)))
+          (t (wrap-default (ntype 'number)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -130,22 +130,22 @@
 (define-simple-instruction (cis double-float-cis) (complex-double-float) (double-float))
 (define-simple-instruction (cis long-float-cis) (complex-long-float) (long-float))
 
-(define-rule cis (x)
+(define-specializer cis (x)
   (ntype-subtypecase (wrapper-ntype x)
     ((not real)
      (abort-specialization))
     (short-float
-     (rewrite-as
+     (wrap
       (short-float-cis x)))
     (single-float
-     (rewrite-as
+     (wrap
       (single-float-cis x)))
     (double-float
-     (rewrite-as
+     (wrap
       (double-float-cis x)))
     (long-float
-     (rewrite-as
+     (wrap
       (long-float-cis x)))
     (t
-     (rewrite-default
+     (wrap-default
       (ntype 'complex)))))

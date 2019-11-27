@@ -11,33 +11,33 @@
 (define-simple-instruction (tan complex-double-float-tan) (complex-double-float) (complex-double-float))
 (define-simple-instruction (tan complex-long-float-tan) (complex-long-float) (complex-long-float))
 
-(define-rule tan (x)
+(define-specializer tan (x)
   (ntype-subtypecase (wrapper-ntype x)
     ((not number)
      (abort-specialization))
     (short-float
-     (rewrite-as
+     (wrap
       (short-float-tan x)))
     (single-float
-     (rewrite-as
+     (wrap
       (single-float-tan x)))
     (double-float
-     (rewrite-as
+     (wrap
       (double-float-tan x)))
     (long-float
-     (rewrite-as
+     (wrap
       (long-float-tan x)))
     (complex-short-float
-     (rewrite-as
+     (wrap
       (complex-short-float-tan x)))
     (complex-single-float
-     (rewrite-as
+     (wrap
       (complex-single-float-tan x)))
     (complex-double-float
-     (rewrite-as
+     (wrap
       (complex-double-float-tan x)))
     (complex-long-float
-     (rewrite-as
+     (wrap
       (complex-long-float-tan x)))
     (t
-     (rewrite-default (ntype 'number)))))
+     (wrap-default (ntype 'number)))))

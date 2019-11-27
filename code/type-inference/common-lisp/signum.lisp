@@ -2,11 +2,11 @@
 
 (in-package #:petalisp.type-inference)
 
-(define-rule signum (number)
+(define-specializer signum (number)
   (let ((ntype (wrapper-ntype number)))
     (with-constant-folding (signum (ntype number))
       (ntype-subtypecase ntype
-        (rational (rewrite-default (ntype 'integer)))
-        ((or float (complex float)) (rewrite-default ntype))
-        (complex (rewrite-default (ntype 'complex)))
-        (t (rewrite-default 'number))))))
+        (rational (wrap-default (ntype 'integer)))
+        ((or float (complex float)) (wrap-default ntype))
+        (complex (wrap-default (ntype 'complex)))
+        (t (wrap-default 'number))))))

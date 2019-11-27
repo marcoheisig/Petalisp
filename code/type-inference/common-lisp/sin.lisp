@@ -11,33 +11,33 @@
 (define-simple-instruction (sin complex-double-float-sin) (complex-double-float) (complex-double-float))
 (define-simple-instruction (sin complex-long-float-sin) (complex-long-float) (complex-long-float))
 
-(define-rule sin (x)
+(define-specializer sin (x)
   (ntype-subtypecase (wrapper-ntype x)
     ((not number)
      (abort-specialization))
     (short-float
-     (rewrite-as
+     (wrap
       (short-float-sin x)))
     (single-float
-     (rewrite-as
+     (wrap
       (single-float-sin x)))
     (double-float
-     (rewrite-as
+     (wrap
       (double-float-sin x)))
     (long-float
-     (rewrite-as
+     (wrap
       (long-float-sin x)))
     (complex-short-float
-     (rewrite-as
+     (wrap
       (complex-short-float-sin x)))
     (complex-single-float
-     (rewrite-as
+     (wrap
       (complex-single-float-sin x)))
     (complex-double-float
-     (rewrite-as
+     (wrap
       (complex-double-float-sin x)))
     (complex-long-float
-     (rewrite-as
+     (wrap
       (complex-long-float-sin x)))
     (t
-     (rewrite-default (ntype 'number)))))
+     (wrap-default (ntype 'number)))))

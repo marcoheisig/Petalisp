@@ -11,9 +11,9 @@
        (define-simple-instruction (,name ,(mkname 'double-float)) (generalized-boolean) (double-float double-float))
        (define-simple-instruction (,name ,(mkname 'long-float)) (generalized-boolean) (long-float long-float))
 
-       (define-rule ,name (real &rest more-reals)
+       (define-specializer ,name (real &rest more-reals)
          (if (null more-reals)
-             (rewrite-as
+             (wrap
               (prog2-fn
                (the-real real)
                t))
@@ -24,32 +24,32 @@
                              (wrapper-ntype b))
                           ((not real) (abort-specialization))
                           (short-float
-                           (rewrite-as
+                           (wrap
                             (,(mkname 'short-float)
                              (coerce-to-short-float a)
                              (coerce-to-short-float b))))
                           (single-float
-                           (rewrite-as
+                           (wrap
                             (,(mkname 'single-float)
                              (coerce-to-single-float a)
                              (coerce-to-single-float b))))
                           (double-float
-                           (rewrite-as
+                           (wrap
                             (,(mkname 'double-float)
                              (coerce-to-double-float a)
                              (coerce-to-double-float b))))
                           (long-float
-                           (rewrite-as
+                           (wrap
                             (,(mkname 'long-float)
                              (coerce-to-long-float a)
                              (coerce-to-long-float b))))
                           (t
-                           (rewrite-default
+                           (wrap-default
                             (ntype 'generalized-boolean))))))
                (let ((a real)
-                     (value (rewrite-as t)))
+                     (value (wrap t)))
                  (loop for b in more-reals for boolean = (cmp a b) do
-                   (setf value (rewrite-as (and-fn value boolean)))
+                   (setf value (wrap (and-fn value boolean)))
                    (setf a b))
                  value)))))))
 

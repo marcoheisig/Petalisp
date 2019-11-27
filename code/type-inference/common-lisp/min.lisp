@@ -7,9 +7,9 @@
 (define-simple-instruction (min double-float-min) (double-float) (double-float double-float))
 (define-simple-instruction (min long-float-min) (long-float) (long-float long-float))
 
-(define-rule min (real &rest more-reals)
+(define-specializer min (real &rest more-reals)
   (cond ((null more-reals)
-         (rewrite-as (the-real real)))
+         (wrap (the-real real)))
         (t
          (reduce
           (lambda (a b)
@@ -20,23 +20,23 @@
                 (short-float
                  (ntype-subtypecase ntype-of-b
                    ((not real) (abort-specialization))
-                   (short-float (rewrite-as (short-float-min a b)))
-                   (t (rewrite-default (ntype-union ntype-of-a ntype-of-b)))))
+                   (short-float (wrap (short-float-min a b)))
+                   (t (wrap-default (ntype-union ntype-of-a ntype-of-b)))))
                 (single-float
                  (ntype-subtypecase ntype-of-b
                    ((not real) (abort-specialization))
-                   (single-float (rewrite-as (single-float-min a b)))
-                   (t (rewrite-default (ntype-union ntype-of-a ntype-of-b)))))
+                   (single-float (wrap (single-float-min a b)))
+                   (t (wrap-default (ntype-union ntype-of-a ntype-of-b)))))
                 (double-float
                  (ntype-subtypecase ntype-of-b
                    ((not real) (abort-specialization))
-                   (double-float (rewrite-as (double-float-min a b)))
-                   (t (rewrite-default (ntype-union ntype-of-a ntype-of-b)))))
+                   (double-float (wrap (double-float-min a b)))
+                   (t (wrap-default (ntype-union ntype-of-a ntype-of-b)))))
                 (long-float
                  (ntype-subtypecase ntype-of-b
                    ((not real) (abort-specialization))
-                   (long-float (rewrite-as (long-float-min a b)))
-                   (t (rewrite-default (ntype-union ntype-of-a ntype-of-b)))))
-                (t (rewrite-default (ntype 'real))))))
+                   (long-float (wrap (long-float-min a b)))
+                   (t (wrap-default (ntype-union ntype-of-a ntype-of-b)))))
+                (t (wrap-default (ntype 'real))))))
           more-reals
           :initial-value real))))

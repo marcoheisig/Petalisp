@@ -31,4 +31,5 @@
    (:file "reduce")
    (:file "backend")
    (:file "device")
+   (:file "network")
    (:file "documentation")))

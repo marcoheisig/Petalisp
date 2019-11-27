@@ -2,19 +2,19 @@
 
 (in-package #:petalisp.type-inference)
 
-(define-rule subtypep (type-1 type-2 &optional (environment nil environment-p))
+(define-specializer subtypep (type-1 type-2 &optional (environment nil environment-p))
   (with-constant-folding (subtypep ((wrapper-ntype type-1) type-specifier)
                                    ((wrapper-ntype type-2) type-specifier)
                                    ((if environment-p
                                         (wrapper-ntype environment)
                                         (ntype 'null))
                                     t))
-    (rewrite-default (ntype 'type-specifier))))
+    (wrap-default (ntype 'type-specifier))))
 
-(define-rule type-of (object)
-  (rewrite-default (ntype 'type-specifier)))
+(define-specializer type-of (object)
+  (wrap-default (ntype 'type-specifier)))
 
-(define-rule typep (object type-specifier &optional (environment nil environment-p))
+(define-specializer typep (object type-specifier &optional (environment nil environment-p))
   (let ((object-ntype (wrapper-ntype object))
         (type-specifier-ntype (wrapper-ntype type-specifier))
         (environment-ntype (if environment-p
@@ -26,8 +26,8 @@
       (if (eql-ntype-p type-specifier-ntype)
           (let ((ntype (ntype type-specifier-ntype)))
             (cond ((ntype-subtypep object-ntype ntype)
-                   (rewrite-default (ntype '(not null))))
+                   (wrap-default (ntype '(not null))))
                   ((ntype-subtypepc1 object-ntype ntype)
-                   (rewrite-as nil))
-                  (t (rewrite-default (ntype 'generalized-boolean)))))
-          (rewrite-default (ntype 'generalized-boolean))))))
+                   (wrap nil))
+                  (t (wrap-default (ntype 'generalized-boolean)))))
+          (wrap-default (ntype 'generalized-boolean))))))

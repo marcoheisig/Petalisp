@@ -22,3 +22,17 @@
 (define-special-function wrapper-ntype *wrapper-ntype* (wrapper))
 (define-special-function wrap-constant *wrap-constant* (constant))
 (define-special-function wrap-function *wrap-function* (ntypes function arguments))
+
+(defmacro wrap (form)
+  (expand-wrap form))
+
+(defun expand-wrap (form)
+  (cond ((consp form)
+         `(funcall
+           (specializer ',(first form))
+           ,@(mapcar #'expand-wrap (rest form))))
+        ((member form '(nil t))
+         `(wrap-constant ,form))
+        ((symbolp form)
+         form)
+        (t `(wrap-constant ,form))))

@@ -49,15 +49,17 @@
    #:abort-specialization
    #:give-up-specialization
    #:check-ntype
-   #:define-rule
-   #:rewrite-as
-   #:rewrite-default
+   #:define-specializer
+   #:define-differentiator
+   #:wrap
+   #:wrap-default
    #:wrapper-ntype
    #:wrap-constant
    #:wrap-function
    #:define-instruction
    #:define-simple-instruction
    #:specialize
+   #:differentiate
    #:infer-ntypes
 
    ;; Type checks.
