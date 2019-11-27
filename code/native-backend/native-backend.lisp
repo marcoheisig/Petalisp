@@ -4,10 +4,14 @@
 
 (defun number-of-processors ()
   (handler-case
-      (parse-integer
-       (with-output-to-string (*standard-output*)
-         (uiop:run-program "nproc" :output t)))
-    (uiop:subprocess-error () 1)))
+      (values
+       (parse-integer
+        (with-output-to-string (stream)
+          (uiop:run-program
+           (list "getconf" "_NPROCESSORS_ONLN")
+           :output stream))))
+    (uiop:subprocess-error () 1)
+    (parse-error () 1)))
 
 ;;; This is the default Petalisp backend.  It generates portable, highly
 ;;; optimized Lisp code and compiles it using CL:COMPILE.
