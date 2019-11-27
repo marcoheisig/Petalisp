@@ -21,9 +21,12 @@
 
 (defun number-of-processors ()
   (handler-case
-      (parse-integer
-       (with-output-to-string (*standard-output*)
-         (uiop:run-program "nproc" :output t)))
+      (values
+       (parse-integer
+        (with-output-to-string (stream)
+          (uiop:run-program
+           (list "getconf" "_NPROCESSORS_ONLN")
+           :output stream))))
     (uiop:subprocess-error () 1)))
 
 ;; TODO Make this function more accurate and portable.
