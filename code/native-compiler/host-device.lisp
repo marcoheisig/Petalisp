@@ -27,7 +27,8 @@
           (uiop:run-program
            (list "getconf" "_NPROCESSORS_ONLN")
            :output stream))))
-    (uiop:subprocess-error () 1)))
+    (uiop:subprocess-error () 1)
+    (parse-error () 1)))
 
 ;; TODO Make this function more accurate and portable.
 (defun host-memory-size ()
