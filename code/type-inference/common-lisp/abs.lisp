@@ -23,6 +23,9 @@
     (t
      (wrap-default (ntype '(real 0 *))))))
 
+(define-differentiator abs (x) _
+  (wrap (if (< 0 x) 1 -1)))
+
 (define-simple-instruction (abs short-float-abs) ((short-float 0S0 *)) (short-float))
 (define-simple-instruction (abs single-float-abs) ((single-float 0F0 *)) (single-float))
 (define-simple-instruction (abs double-float-abs) ((double-float 0D0 *)) (double-float))
@@ -31,6 +34,3 @@
 (define-simple-instruction (abs complex-single-float-abs) ((single-float 0F0 *)) (complex-single-float))
 (define-simple-instruction (abs complex-double-float-abs) ((double-float 0D0 *)) (complex-double-float))
 (define-simple-instruction (abs complex-long-float-abs) ((long-float 0L0 *)) (complex-long-float))
-
-(define-differentiator abs (x) _
-  (wrap (if (< x 0) 1 -1)))

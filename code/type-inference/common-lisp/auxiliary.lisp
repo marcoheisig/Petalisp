@@ -2,9 +2,8 @@
 
 (in-package #:petalisp.type-inference)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Number Types
+;;; This file contains auxiliary functions for working with Common Lisp
+;;; number types.
 
 (defun slow-numeric-contagion (&rest ntypes)
   (labels ((initial-state ()

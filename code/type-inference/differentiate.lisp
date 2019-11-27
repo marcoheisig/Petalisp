@@ -11,4 +11,9 @@
   (let ((*wrapper-ntype* wrapper-ntype)
         (*wrap-constant* wrap-constant)
         (*wrap-function* wrap-function))
+    (unless (< -1 index (length wrappers))
+      (error 'invalid-differentiation-index
+             :function function
+             :index index
+             :arguments wrappers))
     (apply (differentiator function) index wrappers)))

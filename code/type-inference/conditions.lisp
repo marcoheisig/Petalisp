@@ -37,17 +37,12 @@
 
 (define-condition invalid-differentiation-index (specialization-error)
   ((%index :initarg :index :reader specialization-error-index)
-   (%nargs :initarg :nargs :reader specialization-error-nargs))
+   (%arguments :initarg :arguments :reader specialization-error-arguments))
   (:report
    (lambda (condition stream)
      (format stream
              "~@<Invalid differentiation index ~D for a call to ~S with ~R argument~:P.~:@>"
              (specialization-error-index condition)
              (specialization-error-function condition)
-             (specialization-error-nargs condition)))))
-
-(defun invalid-differentiation-index (index nargs function)
-  (error 'invalid-differentiation-index
-         :function function
-         :index index
-         :nargs nargs))
+             (length
+              (specialization-error-arguments condition))))))

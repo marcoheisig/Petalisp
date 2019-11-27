@@ -29,34 +29,18 @@
   (multiple-value-bind (required optional rest keyword)
       (alexandria:parse-ordinary-lambda-list lambda-list)
     (unless (null keyword)
-      (error "Rule lambda lists must not contain keywords.~@
-              The differentiator ~S violates this constraint."
-             name))
+      (error "Rule lambda lists must not contain keywords. ~
+              The differentiator ~S ~
+              for the function ~S violates this constraint."
+             name function))
     (multiple-value-bind (remaining-forms declarations)
         (alexandria:parse-body body)
-      (let ((suppliedps
-              (loop for (name init suppliedp) in optional
-                    collect
-                    (if (null suppliedp)
-                        (gensym "SUPPLIEDP")
-                        suppliedp))))
-        (alexandria:with-gensyms (n nargs)
-          `(defun ,name ,(cons n lambda-list)
-             ,@declarations
-             ;; Insert a prologue that checks whether the differentiation
-             ;; index is valid.
-             (let ((,nargs (+ ,(length required)
-                              ,@(when rest `((length ,rest)))
-                              ,@(loop for suppliedp in suppliedps
-                                      collect
-                                      `(when suppliedp 1 0)))))
-               (unless (<= 0 ,n (1- ,nargs))
-                 (invalid-differentiation-index ,n ,nargs ',function)))
-             (let ((,index ,n))
-               ;; For convenience, add an ignorable declaration to the
-               ;; index if it can only be zero.
-               ,@(when (and (= 1 (length required))
-                            (null optional)
-                            (null rest))
-                   `((declare (ignorable ,index))))
-               ,@remaining-forms)))))))
+      `(defun ,name ,(cons index lambda-list)
+         ,@declarations
+         ;; For convenience, add an ignorable declaration to the
+         ;; index if it can only be zero.
+         ,@(when (and (= 1 (length required))
+                      (null optional)
+                      (null rest))
+             `((declare (ignorable ,index))))
+         ,@remaining-forms))))

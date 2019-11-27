@@ -61,6 +61,10 @@
                 (t (wrap-default (ntype 'number))))))
        (reduce #'two-arg-+ numbers)))))
 
+(define-differentiator + (&rest numbers) index
+  (declare (ignore numbers index))
+  (wrap 1))
+
 (define-simple-instruction (+ short-float+) (short-float) (short-float short-float))
 (define-simple-instruction (+ single-float+) (single-float) (single-float single-float))
 (define-simple-instruction (+ double-float+) (double-float) (double-float double-float))
@@ -72,3 +76,6 @@
 
 (define-specializer 1+ (number)
   (wrap (+ number 1)))
+
+(define-differentiator 1+ (number) _
+  (wrap 1))

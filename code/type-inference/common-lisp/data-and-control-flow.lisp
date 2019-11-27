@@ -93,8 +93,10 @@
 
 (define-instruction (if choose) (generalized-boolean) (boolean a b)
   (ntype-subtypecase (wrapper-ntype boolean)
-    (null (wrap b))
-    ((not null) (wrap a))
+    (null
+     (wrap b))
+    ((not null)
+     (wrap a))
     (t
      (wrap-default
       (ntype-union

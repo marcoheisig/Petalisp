@@ -2,15 +2,6 @@
 
 (in-package #:petalisp.type-inference)
 
-(define-simple-instruction (* short-float*) (short-float) (short-float short-float))
-(define-simple-instruction (* single-float*) (single-float) (single-float single-float))
-(define-simple-instruction (* double-float*) (double-float) (double-float double-float))
-(define-simple-instruction (* long-float*) (long-float) (long-float long-float))
-(define-simple-instruction (* complex-short-float*) (complex-short-float) (complex-short-float complex-short-float))
-(define-simple-instruction (* complex-single-float*) (complex-single-float) (complex-single-float complex-single-float))
-(define-simple-instruction (* complex-double-float*) (complex-double-float) (complex-double-float complex-double-float))
-(define-simple-instruction (* complex-long-float*) (complex-long-float) (complex-long-float complex-long-float))
-
 (define-specializer * (&rest numbers)
   (trivia:match numbers
     ((list)
@@ -69,4 +60,20 @@
           (t
            (wrap-default (ntype 'number)))))
       numbers))))
+
+(define-differentiator * (&rest numbers) index
+  (apply (specializer '*)
+         (loop for number in numbers
+               for position from 0
+               unless (= position index)
+                 collect number)))
+
+(define-simple-instruction (* short-float*) (short-float) (short-float short-float))
+(define-simple-instruction (* single-float*) (single-float) (single-float single-float))
+(define-simple-instruction (* double-float*) (double-float) (double-float double-float))
+(define-simple-instruction (* long-float*) (long-float) (long-float long-float))
+(define-simple-instruction (* complex-short-float*) (complex-short-float) (complex-short-float complex-short-float))
+(define-simple-instruction (* complex-single-float*) (complex-single-float) (complex-single-float complex-single-float))
+(define-simple-instruction (* complex-double-float*) (complex-double-float) (complex-double-float complex-double-float))
+(define-simple-instruction (* complex-long-float*) (complex-long-float) (complex-long-float complex-long-float))
 

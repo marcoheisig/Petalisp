@@ -2,15 +2,6 @@
 
 (in-package #:petalisp.type-inference)
 
-(define-simple-instruction (cos short-float-cos) (short-float) (short-float))
-(define-simple-instruction (cos single-float-cos) (single-float) (single-float))
-(define-simple-instruction (cos double-float-cos) (double-float) (double-float))
-(define-simple-instruction (cos long-float-cos) (long-float) (long-float))
-(define-simple-instruction (cos complex-short-float-cos) (complex-short-float) (complex-short-float))
-(define-simple-instruction (cos complex-single-float-cos) (complex-single-float) (complex-single-float))
-(define-simple-instruction (cos complex-double-float-cos) (complex-double-float) (complex-double-float))
-(define-simple-instruction (cos complex-long-float-cos) (complex-long-float) (complex-long-float))
-
 (define-specializer cos (x)
   (ntype-subtypecase (wrapper-ntype x)
     ((not number)
@@ -41,3 +32,15 @@
       (complex-long-float-cos x)))
     (t
      (wrap-default (ntype 'number)))))
+
+(define-differentiator cos (x) _
+  (wrap (sin x)))
+
+(define-simple-instruction (cos short-float-cos) (short-float) (short-float))
+(define-simple-instruction (cos single-float-cos) (single-float) (single-float))
+(define-simple-instruction (cos double-float-cos) (double-float) (double-float))
+(define-simple-instruction (cos long-float-cos) (long-float) (long-float))
+(define-simple-instruction (cos complex-short-float-cos) (complex-short-float) (complex-short-float))
+(define-simple-instruction (cos complex-single-float-cos) (complex-single-float) (complex-single-float))
+(define-simple-instruction (cos complex-double-float-cos) (complex-double-float) (complex-double-float))
+(define-simple-instruction (cos complex-long-float-cos) (complex-long-float) (complex-long-float))

@@ -2,24 +2,6 @@
 
 (in-package #:petalisp.type-inference)
 
-(define-simple-instruction (- short-float-) (short-float) (short-float short-float))
-(define-simple-instruction (- single-float-) (single-float) (single-float single-float))
-(define-simple-instruction (- double-float-) (double-float) (double-float double-float))
-(define-simple-instruction (- long-float-) (long-float) (long-float long-float))
-(define-simple-instruction (- complex-short-float-) (complex-short-float) (complex-short-float complex-short-float))
-(define-simple-instruction (- complex-single-float-) (complex-single-float) (complex-single-float complex-single-float))
-(define-simple-instruction (- complex-double-float-) (complex-double-float) (complex-double-float complex-double-float))
-(define-simple-instruction (- complex-long-float-) (complex-long-float) (complex-long-float complex-long-float))
-
-(define-simple-instruction (- short-float-unary-) (short-float) (short-float))
-(define-simple-instruction (- single-float-unary-) (single-float) (single-float))
-(define-simple-instruction (- double-float-unary-) (double-float) (double-float))
-(define-simple-instruction (- long-float-unary-) (long-float) (long-float))
-(define-simple-instruction (- complex-short-float-unary-) (complex-short-float) (complex-short-float))
-(define-simple-instruction (- complex-single-float-unary-) (complex-single-float) (complex-single-float))
-(define-simple-instruction (- complex-double-float-unary-) (complex-double-float) (complex-double-float))
-(define-simple-instruction (- complex-long-float-unary-) (complex-long-float) (complex-long-float))
-
 (define-specializer - (number &rest more-numbers)
   (cond ((null more-numbers)
          (let ((x number))
@@ -93,5 +75,30 @@
           more-numbers
           :initial-value number))))
 
+(define-differentiator - (number &rest more-numbers) index
+  (declare (ignore number more-numbers))
+  (if (zerop index) 1 -1))
+
+(define-simple-instruction (- short-float-) (short-float) (short-float short-float))
+(define-simple-instruction (- single-float-) (single-float) (single-float single-float))
+(define-simple-instruction (- double-float-) (double-float) (double-float double-float))
+(define-simple-instruction (- long-float-) (long-float) (long-float long-float))
+(define-simple-instruction (- complex-short-float-) (complex-short-float) (complex-short-float complex-short-float))
+(define-simple-instruction (- complex-single-float-) (complex-single-float) (complex-single-float complex-single-float))
+(define-simple-instruction (- complex-double-float-) (complex-double-float) (complex-double-float complex-double-float))
+(define-simple-instruction (- complex-long-float-) (complex-long-float) (complex-long-float complex-long-float))
+
+(define-simple-instruction (- short-float-unary-) (short-float) (short-float))
+(define-simple-instruction (- single-float-unary-) (single-float) (single-float))
+(define-simple-instruction (- double-float-unary-) (double-float) (double-float))
+(define-simple-instruction (- long-float-unary-) (long-float) (long-float))
+(define-simple-instruction (- complex-short-float-unary-) (complex-short-float) (complex-short-float))
+(define-simple-instruction (- complex-single-float-unary-) (complex-single-float) (complex-single-float))
+(define-simple-instruction (- complex-double-float-unary-) (complex-double-float) (complex-double-float))
+(define-simple-instruction (- complex-long-float-unary-) (complex-long-float) (complex-long-float))
+
 (define-specializer 1- (number)
   (wrap (- number 1)))
+
+(define-differentiator 1- (number) _
+  (wrap -1))
