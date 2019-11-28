@@ -39,6 +39,8 @@
      (:file "cmpneq")
      (:file "cmpx")
      (:file "complex")
+     (:file "exp")
+     (:file "log")
      (:file "cos")
      (:file "div")
      (:file "max")

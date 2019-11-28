@@ -2,18 +2,29 @@
 
 (in-package #:petalisp.type-inference)
 
+(define-differentiator abs (x) _
+  (wrap (if (< 0 x) 1 -1)))
+
 (define-specializer abs (x)
   (ntype-subtypecase (wrapper-ntype x)
     ((not number)
      (abort-specialization))
-    (short-float (wrap (short-float-abs x)))
-    (single-float (wrap (single-float-abs x)))
-    (double-float (wrap (double-float-abs x)))
-    (long-float (wrap (long-float-abs x)))
-    (complex-short-float (wrap (complex-short-float-abs x)))
-    (complex-single-float (wrap (complex-single-float-abs x)))
-    (complex-double-float (wrap (complex-double-float-abs x)))
-    (complex-long-float (wrap (complex-long-float-abs x)))
+    (short-float
+     (wrap (short-float-abs x)))
+    (single-float
+     (wrap (single-float-abs x)))
+    (double-float
+     (wrap (double-float-abs x)))
+    (long-float
+     (wrap (long-float-abs x)))
+    (complex-short-float
+     (wrap (complex-short-float-abs x)))
+    (complex-single-float
+     (wrap (complex-single-float-abs x)))
+    (complex-double-float
+     (wrap (complex-double-float-abs x)))
+    (complex-long-float
+     (wrap (complex-long-float-abs x)))
     (integer
      (wrap-default (ntype '(integer 0 *))))
     (real
@@ -22,9 +33,6 @@
      (wrap-default (ntype '(rational 0 *))))
     (t
      (wrap-default (ntype '(real 0 *))))))
-
-(define-differentiator abs (x) _
-  (wrap (if (< 0 x) 1 -1)))
 
 (define-simple-instruction (abs short-float-abs) ((short-float 0S0 *)) (short-float))
 (define-simple-instruction (abs single-float-abs) ((single-float 0F0 *)) (single-float))

@@ -92,10 +92,13 @@
                             (apply function args)))))
                    (is (<= (length predicted) (length values)))
                    (loop for value in values
-                         for type in predicted
-                         ;; TODO Kludge to get rid of negative floating point zero.
-                         unless (and (numberp value) (zerop value))
-                           do (is (typep value type))))
+                         for type in predicted do
+                           (if (typep type '(cons (eql eql) (cons number null)))
+                               ;; We compare numbers with =, because
+                               ;; otherwise we run into trouble with the
+                               ;; sign of floating-point zeros.
+                               (is (= value (second type)))
+                               (is (typep value type)))))
                (arithmetic-error ())))))
     (test 'apply '+ '(7 8))
     (signals error (test #'apply))

@@ -2,6 +2,10 @@
 
 (in-package #:petalisp.type-inference)
 
+(define-differentiator + (&rest numbers) index
+  (declare (ignore numbers index))
+  (wrap 1))
+
 (define-specializer + (&rest numbers)
   (trivia:match numbers
     ((list)
@@ -16,8 +20,7 @@
                    (wrapper-ntype a)
                    (wrapper-ntype b))
                 ((not number) (abort-specialization))
-                (integer
-                 (wrap-default (ntype 'integer)))
+                (integer (wrap-default (ntype 'integer)))
                 (short-float
                  (wrap
                   (short-float+
@@ -60,10 +63,6 @@
                    (coerce-to-complex-long-float b))))
                 (t (wrap-default (ntype 'number))))))
        (reduce #'two-arg-+ numbers)))))
-
-(define-differentiator + (&rest numbers) index
-  (declare (ignore numbers index))
-  (wrap 1))
 
 (define-simple-instruction (+ short-float+) (short-float) (short-float short-float))
 (define-simple-instruction (+ single-float+) (single-float) (single-float single-float))

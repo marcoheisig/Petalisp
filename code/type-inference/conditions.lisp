@@ -34,7 +34,6 @@
              (specialization-error-function condition)
              (specialization-error-argument-types condition)))))
 
-
 (define-condition invalid-differentiation-index (specialization-error)
   ((%index :initarg :index :reader specialization-error-index)
    (%arguments :initarg :arguments :reader specialization-error-arguments))
@@ -45,4 +44,18 @@
              (specialization-error-index condition)
              (specialization-error-function condition)
              (length
+              (specialization-error-arguments condition))))))
+
+(define-condition non-numeric-differentiation-argument (specialization-error)
+  ((%index :initarg :index :reader specialization-error-index)
+   (%arguments :initarg :arguments :reader specialization-error-arguments))
+  (:report
+   (lambda (condition stream)
+     (format stream
+             "~@<The ~:R argument of the function ~S, ~S, ~
+                 does not have a number type.~:@>"
+             (specialization-error-index condition)
+             (specialization-error-function condition)
+             (nth
+              (specialization-error-index condition)
               (specialization-error-arguments condition))))))

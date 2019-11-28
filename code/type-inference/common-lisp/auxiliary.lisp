@@ -5,6 +5,15 @@
 ;;; This file contains auxiliary functions for working with Common Lisp
 ;;; number types.
 
+(defconstant short-float-e (exp 1S0))
+(defconstant single-float-e (exp 1F0))
+(defconstant double-float-e (exp 1D0))
+(defconstant long-float-e (exp 1L0))
+(defconstant short-float-pi (float pi 1S0))
+(defconstant single-float-pi (float pi 1F0))
+(defconstant double-float-pi (float pi 1D0))
+(defconstant long-float-pi (float pi 1L0))
+
 (defun slow-numeric-contagion (&rest ntypes)
   (labels ((initial-state ()
              (ntype-subtypecase (pop ntypes)

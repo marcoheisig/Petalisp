@@ -66,7 +66,7 @@ supplied FUNCTION.
      (values-list ntypes))
    default))
 
-(defun expression-builder (function ntypes default)
+(defun expression-builder (function ntypes)
   (flet ((wrap-object (object)
            (cons (ntype-of object) object))
          (wrap-function (ntypes function arguments)
@@ -75,11 +75,14 @@ supplied FUNCTION.
               (loop for ntype in ntypes
                     collect
                     (cons ntype expression))))))
-    (specialize
-     function
-     (mapcar #'list ntypes)
-     #'first
-     #'wrap-object
-     #'wrap-function
-     default)))
+    (let ((result
+            (specialize
+             function
+             (mapcar #'list ntypes)
+             #'first
+             #'wrap-object
+             #'wrap-function
+             (lambda ()
+               (cons (ntype 't) (list* function ntypes))))))
+      (values (cdr result) (car result)))))
 

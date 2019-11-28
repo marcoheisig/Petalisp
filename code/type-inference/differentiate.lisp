@@ -16,4 +16,9 @@
              :function function
              :index index
              :arguments wrappers))
+    (unless (ntype-subtypep (wrapper-ntype (nth index wrappers)) (ntype 'number))
+      (error 'non-numeric-differentiation-argument
+             :function function
+             :index index
+             :arguments wrappers))
     (apply (differentiator function) index wrappers)))
