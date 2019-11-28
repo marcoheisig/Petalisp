@@ -88,30 +88,12 @@
 
 (defgeneric invert-transformation (transformation))
 
-;;; For each input of TRANSFORMATION, invoke FUNCTION with the input index
-;;; and the corresponding input constraint, or null, if there is no input
-;;; constraint for this input.
-;;;
-;;; If FROM-END is false, the input indices are traversed in ascending
-;;; order.  Otherwise, they are traversed in descending order.
 (defgeneric map-transformation-inputs (function transformation &key from-end))
 
-;;; For each output of TRANSFORMATION, invoke FUNCTION with the output
-;;; index, input index, the scaling and the offset of that output.
-;;;
-;;; An input index of NIL and a scaling of zero is used, if (and only if)
-;;; the output is constant.
-;;;
-;;; If FROM-END is false, the output indices are traversed in ascending
-;;; order.  Otherwise, they are traversed in descending order.
 (defgeneric map-transformation-outputs (function transformation &key from-end))
 
-;;; Given a transformation mapping from (i1 ... iN) to (j1 ... jM),
-;;; return a transformation mapping from (i0 i1 ... iN iN+1) to
-;;; ((+(* i0 SCALE) OFFSET) j1 ... jM).
 (defgeneric enlarge-transformation (transformation scale offset))
 
-;;; Reorder, scale and shift the given OBJECT according to TRANSFORMATION.
 (defgeneric transform (object transformation)
   (:argument-precedence-order transformation object))
 

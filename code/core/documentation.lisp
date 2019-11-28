@@ -231,6 +231,32 @@ invocations of the supplied transformations in right-to-left order.")
 
 An error is signaled if the supplied transformation is not invertible.")
 
+(document-function map-transformation-inputs
+  "For each input of TRANSFORMATION, invoke FUNCTION with the input index
+and the corresponding input constraint, or null, if there is no input
+constraint for this input.
+
+If FROM-END is false, the input indices are traversed in ascending order.
+Otherwise, they are traversed in descending order.")
+
+(document-function map-transformation-outputs
+  "For each output of TRANSFORMATION, invoke FUNCTION with the output
+index, input index, the scaling and the offset of that output.
+
+An input index of NIL and a scaling of zero is used, if (and only if) the
+output is constant.
+
+If FROM-END is false, the output indices are traversed in ascending order.
+Otherwise, they are traversed in descending order.")
+
+(document-function enlarge-transformation
+  "Given a transformation mapping from (i1 ... iN) to (j1 ... jM),
+return a transformation mapping from (i0 i1 ... iN iN+1) to
+((+(* i0 SCALE) OFFSET) j1 ... jM).")
+
+(document-function transform
+  "Reorder, scale and shift the given OBJECT according to TRANSFORMATION.")
+
 (document-function identity-transformation
   "Returns an identity transformation of the specified rank.")
 
