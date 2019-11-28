@@ -15,5 +15,9 @@
   (:export
    #:run-test-suite
    #:make-testing-backend
-   #:view))
-
+   #:define-test
+   #:is
+   #:signals
+   #:all-tests
+   #:check-package
+   #:run-tests))

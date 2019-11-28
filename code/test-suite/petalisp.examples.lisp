@@ -2,24 +2,24 @@
 
 (in-package #:petalisp.test-suite)
 
-(test jacobi-test
+(define-test jacobi-test
   (compute (jacobi (ndarray 1) 0.0 1.0 2))
   (compute (jacobi (ndarray 2) 0.0 1.0 2))
   (compute (jacobi (ndarray 3) 0.0 1.0 2))
   (compute (jacobi (ndarray 3) 0.0 1.0 5)))
 
-(test rbgs-test
+(define-test rbgs-test
   (compute (rbgs (ndarray 1) 0.0 1.0 2))
   (compute (rbgs (ndarray 2) 0.0 1.0 2))
   (compute (rbgs (ndarray 3) 0.0 1.0 2))
   (compute (rbgs (ndarray 3) 0.0 1.0 5)))
 
-(test v-cycle-test
+(define-test v-cycle-test
   (compute (v-cycle (reshape 1.0 (~ 0 32 ~ 0 32)) 0.0 1.0 2 1))
   (compute (v-cycle (reshape 1.0 (~ 0 64 ~ 0 64)) 0.0 1.0 3 3)))
 
 #+nil
-(test iterate-randomly
+(define-test iterate-randomly
   (flet ((act-randomly (array)
            (funcall
             (random-elt
@@ -33,7 +33,7 @@
           (setf array (act-randomly array)))
         (compute array)))))
 
-(test linear-algebra-test
+(define-test linear-algebra-test
   (compute (dot #(1 2 3) #(4 5 6)))
   (compute (norm #(1 2 3)))
   (compute (max* #(2 4 1 2 1)))

@@ -6,7 +6,7 @@
 ;;;
 ;;; Ranges
 
-(test range-test
+(define-test range-test
   ;; Range constructors
   (is (rangep (range 1 0 1)))
   (is (rangep (apply #'range (list 1 2 3))))
@@ -67,7 +67,7 @@
 ;;;
 ;;; Full Programs
 
-(test application-test
+(define-test application-test
   (compute
    (α #'+ 2 3))
   (compute
@@ -77,7 +77,7 @@
   (compute
    (α #'floor #(1 2.5 1/2) 2)))
 
-(test reduction-test
+(define-test reduction-test
   (compute
    (β #'+ #(1 2 3)))
   (compute
@@ -91,7 +91,7 @@
    (β (lambda (a b) (values a b)) #(3 2 1))
    (β (lambda (a b) (values b a)) #(3 2 1))))
 
-(test fusion-test
+(define-test fusion-test
   (compute
    (fuse (reshape (vector 4 5 6) (τ (i) ((+ i 3))))
          (vector 1 2 3)))
@@ -99,7 +99,7 @@
    (fuse* (reshape 0.0 (~ 2 4 ~ 2 4))
           (reshape 1.0 (~ 3 ~ 3)))))
 
-(test reshape-test
+(define-test reshape-test
   (compute (reshape 4 (~ 0 4)))
   (compute (reshape #(1 2 3) (τ (i) ((- i)))) #(3 2 1))
   (compute (reshape #(1 2 3 4) (~ 1 2)))
@@ -136,17 +136,17 @@
   (signals error
     (compute (reshape #(1 2 3 4) (~ -1 3)))))
 
-(test multiple-arguments
+(define-test multiple-arguments
   (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1))))
 
-(test indices-test
+(define-test indices-test
   (compute (indices #(5 6 7)))
   (let ((a (make-array '(2 3 4))))
     (compute (indices a 1))
     (compute (α #'+ (indices a 0) (indices a 1) (indices a 2)))))
 
 
-(test sum-of-pairs
+(define-test sum-of-pairs
   (let* ((size 10)
          (a (coerce-to-lazy-array (make-array size :initial-element 0))))
     (compute
@@ -155,7 +155,7 @@
                   (reshape a (~ 1 (- size 1))
                            (τ (i) (1 (1- i)))))))))
 
-(test reduction-of-fusions
+(define-test reduction-of-fusions
   (compute
    (β #'+ (fuse #(1 2 3)
                 (reshape #(4 5 6) (τ (i) ((+ i 3))))))))

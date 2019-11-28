@@ -27,7 +27,7 @@
     (push most-negative-long-float floats)
     (loop for base in (list -0.7L0 -0.1L0 -0.0L0 +0.0L0 +0.1L0 +0.7L0) do
       (loop for fp-type in '(short-float single-float double-float long-float) do
-        (loop for exponent in (list 1 2 3 5) do
+        (loop for exponent in '(1 2 3 5) do
           (push (scale-float (coerce base fp-type) exponent) floats))))
     (remove-duplicates floats)))
 
@@ -44,12 +44,12 @@
 (defparameter *test-numbers*
   (append *test-integers* *test-floats* *test-complex-numbers*))
 
-(test ntype-of-test
+(define-test ntype-of-test
   (loop for number in *test-numbers* do
     (is (typep number (petalisp.type-inference:type-specifier
                        (petalisp.type-inference:ntype-of number))))))
 
-(test ntype-test
+(define-test ntype-test
   (let ((type-specifiers (loop for number in *test-numbers*
                                collect (type-of number)
                                collect `(eql ,number))))
@@ -58,7 +58,7 @@
                     (petalisp.type-inference:type-specifier
                      (petalisp.type-inference:ntype type-specifier)))))))
 
-(test ntype-reasoning-test
+(define-test ntype-reasoning-test
   (loop for ntype-1 across petalisp.type-inference::*ntypes* do
     (loop for ntype-2 across petalisp.type-inference::*ntypes* do
       (let ((type-specifier-1
@@ -76,7 +76,7 @@
                  (explicit-union (cl:union set-1 set-2)))
             (is (subsetp explicit-union ntype-union :test #'equal))))))))
 
-(test type-inference-test
+(define-test type-inference-test
   (flet ((test (function &rest args)
            (let ((predicted
                    (mapcar #'petalisp.type-inference:type-specifier

@@ -57,8 +57,8 @@
    #:transform
    #:transform-axis
    #:identity-transformation-p
-   #:input-rank
-   #:output-rank
+   #:transformation-input-rank
+   #:transformation-output-rank
    #:transformation-invertiblep
    #:make-transformation
    #:identity-transformation

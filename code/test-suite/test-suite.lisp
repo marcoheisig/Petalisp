@@ -50,7 +50,7 @@
   (format t "~&Success: ~s test~:p, ~s check~:p.~%" test-count pass-count)
   (finish-output))
 
-(defmacro test (name &body body)
+(defmacro define-test (name &body body)
   "Define a test function and add it to *TESTS*."
   `(prog1 ',name
      (defun ,name ()
@@ -96,6 +96,20 @@
 
 (defun all-tests ()
   *tests*)
+
+;;; This function catches a source of particularly subtle bugs - exported
+;;; symbols with no attached definition.  In case some exported symbols are
+;;; intentionally without definition, they can be excluded via the SKIP
+;;; argument.
+(defun check-package (package &key skip)
+  (with-test-harness
+    (do-external-symbols (symbol package)
+      (unless (member symbol skip)
+        (flet ((symbol-defined-p (symbol)
+                 (or (find-class symbol nil)
+                     (boundp symbol)
+                     (fboundp symbol))))
+          (is (symbol-defined-p symbol)))))))
 
 (defun run-tests (&rest tests)
   (with-test-harness (mapc #'funcall (alexandria:shuffle tests)))
