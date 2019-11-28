@@ -14,6 +14,10 @@
 (defclass network-input (abstract-immediate network-parameter)
   ())
 
+(defgeneric network-input-p (object)
+  (:method ((object t)) nil)
+  (:method ((object network-input)) t))
+
 (defun make-network-input (shape ntype &key (name (gensym)))
   (if (null shape)
       (empty-array)
@@ -25,7 +29,11 @@
 (defclass network-weights (abstract-immediate network-parameter)
   ())
 
-(defun make-network-weigths (array &key (name (gensym)))
+(defgeneric network-weights-p (object)
+  (:method ((object t)) nil)
+  (:method ((object network-weights)) t))
+
+(defun make-network-weights (array &key (name (gensym)))
   (if (zerop (array-total-size array))
       (empty-array)
       (let ((lazy-array (coerce-to-lazy-array array)))
@@ -49,6 +57,8 @@
    (%compile-cache :initform '() :accessor network-compile-cache)))
 
 (defun make-network (inputs outputs)
+  (dolist (input inputs)
+    (assert (network-input-p input)))
   (multiple-value-bind (derived-inputs weights)
       (derive-network-inputs-and-weights outputs)
     (let ((extra-inputs (set-difference derived-inputs inputs))
@@ -197,7 +207,13 @@
   (reshape output-gradient (shape (nth index (inputs fusion)))))
 
 (defmethod input-gradient ((reference reference) (output-gradient lazy-array) (index (eql 0)))
-  (make-reference
-   output-gradient
-   (shape reference)
-   (invert-transformation (transformation reference))))
+  (with-accessors ((transformation transformation)
+                   (shape shape)) reference
+    (if (transformation-invertiblep transformation)
+        (make-reference
+         output-gradient
+         (shape reference)
+         (invert-transformation (transformation reference)))
+        (map-transformation-outputs
+         (lambda ())
+         transformation))))

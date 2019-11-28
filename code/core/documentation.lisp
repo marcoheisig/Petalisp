@@ -544,7 +544,7 @@ Examples:
 ")
 
 (document-function fuse*
-  "Combine ARRAYS into a single strided array.  When some of the supplied
+  "Combines ARRAYS into a single strided array.  When some of the supplied
 arguments overlap partially, the value of the rightmost object is used.
 
 Examples:
@@ -582,7 +582,7 @@ Examples:
 ")
 
 (document-function schedule
-  "Hint that it would be worthwhile to compute the supplied arguments
+  "Hints that it would be worthwhile to compute the supplied arguments
 asynchronously.  Semantically, this function does nothing.  But on certain
 backends, a program like
 
@@ -595,3 +595,33 @@ can be sped up by rewriting it as
         (run-expensive-task)
         (compute array-1 array-2)).
 ")
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Network
+
+(document-type network
+  "A network is an encapsulated data-flow graph that can be invoked with a
+set of inputs and weights to yield several outputs.
+
+Networks can also be differentiated, using the function NETWORK-GRADIENTS.")
+
+(document-function make-network-input
+  "Creates a lazy array that can serve as the input of a network.  In
+contrast to other lazy arrays, a network input, and all other arrays that
+depend on it cannot be computed.  Instead, network inputs can be bound to
+particular values when evaluating a corresponding network.")
+
+(document-function make-network-weights
+  "Creates a lazy array that can serve as the weights of a network.  Network
+weights have a value that changes over time, usually when a network is
+trained.")
+
+(document-function make-network
+  "Creates a network with the supplied inputs and outputs.
+
+An error is signaled of any of the inputs is not of type NETWORK-INPUT, or
+if additional network inputs are reachable from the network outputs.")
+
+(document-function network-gradients
+  "Returns a list ")
