@@ -200,13 +200,21 @@
               (setf (svref scalings output-index) (* a f-scaling))
               (setf (svref offsets output-index) (+ (* a f-offset) b))))))
        g)
-      (%make-transformation
-       input-rank output-rank
-       input-mask output-mask
-       scalings offsets
-       (and (transformation-inverse g)
-            (transformation-inverse f)
-            t)))))
+      (if (and (= input-rank output-rank)
+               (every #'null input-mask)
+               (loop for index from 0
+                     for input across output-mask
+                     always (eql index input))
+               (every (lambda (x) (eql x 1)) scalings)
+               (every (lambda (x) (eql x 0)) offsets))
+          (identity-transformation input-rank)
+          (%make-transformation
+           input-rank output-rank
+           input-mask output-mask
+           scalings offsets
+           (and (transformation-inverse g)
+                (transformation-inverse f)
+                t))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

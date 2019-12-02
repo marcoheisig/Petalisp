@@ -298,28 +298,33 @@
 ;;; Returns a non-permuting, affine transformation from a zero based array
 ;;; with step size one to the given SHAPE.
 (defun from-storage-transformation (shape)
-  (let* ((rank (shape-rank shape))
-         (ranges (shape-ranges shape))
-         (input-mask (make-array rank))
-         (output-mask (make-array rank))
-         (scalings (make-array rank))
-         (offsets (make-array rank)))
-    (loop for range in ranges
-          for index from 0 do
-            (if (size-one-range-p range)
-                (let ((value (range-start range)))
-                  (setf (aref input-mask index) 0)
-                  (setf (aref output-mask index) nil)
-                  (setf (aref scalings index) 0)
-                  (setf (aref offsets index) value))
-                (multiple-value-bind (start step end)
-                    (range-start-step-end range)
-                  (declare (ignore end))
-                  (setf (aref input-mask index) nil)
-                  (setf (aref output-mask index) index)
-                  (setf (aref scalings index) step)
-                  (setf (aref offsets index) start))))
-    (%make-transformation rank rank input-mask output-mask scalings offsets t)))
+  (if (loop for range in (shape-ranges shape)
+            always
+            (and (= 0 (range-start range))
+                 (= 1 (range-step range))))
+      (identity-transformation (shape-rank shape))
+      (let* ((rank (shape-rank shape))
+             (ranges (shape-ranges shape))
+             (input-mask (make-array rank))
+             (output-mask (make-array rank))
+             (scalings (make-array rank))
+             (offsets (make-array rank)))
+        (loop for range in ranges
+              for index from 0 do
+                (if (size-one-range-p range)
+                    (let ((value (range-start range)))
+                      (setf (aref input-mask index) 0)
+                      (setf (aref output-mask index) nil)
+                      (setf (aref scalings index) 0)
+                      (setf (aref offsets index) value))
+                    (multiple-value-bind (start step end)
+                        (range-start-step-end range)
+                      (declare (ignore end))
+                      (setf (aref input-mask index) nil)
+                      (setf (aref output-mask index) index)
+                      (setf (aref scalings index) step)
+                      (setf (aref offsets index) start))))
+        (%make-transformation rank rank input-mask output-mask scalings offsets t))))
 
 ;;; Returns an invertible transformation that eliminates all ranges with
 ;;; size one from a supplied SHAPE.
@@ -345,8 +350,13 @@
                       (progn
                         (setf (aref output-mask output-index) input-index)
                         (incf output-index))))
-          (%make-transformation
-           input-rank output-rank input-mask output-mask scalings offsets t)))))
+          (make-transformation
+           :input-rank input-rank
+           :output-rank output-rank
+           :input-mask input-mask
+           :output-mask output-mask
+           :scalings scalings
+           :offsets offsets)))))
 
 (defun normalizing-transformation (shape)
   (let* ((f (size-one-range-removing-transformation shape))
