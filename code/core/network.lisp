@@ -7,9 +7,7 @@
 ;;; Network Parameters
 
 (defclass network-parameter ()
-  ((%name :initarg :name :reader network-parameter-name)
-   (%value :initarg :value :reader network-parameter-value))
-  (:default-initargs :value nil))
+  ((%name :initarg :name :reader network-parameter-name)))
 
 (defclass network-input (abstract-immediate network-parameter)
   ())
@@ -18,29 +16,29 @@
   (:method ((object t)) nil)
   (:method ((object network-input)) t))
 
-(defun make-network-input (shape ntype &key (name (gensym)))
+(defun make-network-input (shape element-type &key (name (gensym)))
   (if (null shape)
       (empty-array)
       (make-instance 'network-input
         :name name
         :shape shape
-        :ntype ntype)))
+        :ntype (petalisp.type-inference:ntype element-type))))
 
-(defclass network-weights (abstract-immediate network-parameter)
-  ())
+(defclass network-weight (abstract-immediate network-parameter)
+  ((%value :initarg :value :reader network-parameter-value)))
 
-(defgeneric network-weights-p (object)
+(defgeneric network-weight-p (object)
   (:method ((object t)) nil)
-  (:method ((object network-weights)) t))
+  (:method ((object network-weight)) t))
 
-(defun make-network-weights (array &key (name (gensym)))
-  (if (zerop (array-total-size array))
+(defun make-network-weight (array &key (name (gensym)))
+  (if (zerop (total-size array))
       (empty-array)
       (let ((lazy-array (coerce-to-lazy-array array)))
-        (make-instance 'network-weights
+        (make-instance 'network-weight
           :name name
           :shape (shape lazy-array)
-          :ntype (element-ntype lazy-array)
+          :ntype (petalisp.type-inference:generalize-ntype (element-ntype lazy-array))
           :value lazy-array))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -56,7 +54,7 @@
    ;; backend.
    (%compile-cache :initform '() :accessor network-compile-cache)))
 
-(defun make-network (inputs outputs)
+(defun make-network (&key inputs outputs)
   (dolist (input inputs)
     (assert (network-input-p input)))
   (multiple-value-bind (derived-inputs weights)
@@ -91,9 +89,9 @@
                       (setf (gethash lazy-array table) t)
                       (process lazy-array))))
              (process (lazy-array)
-               (cond ((typep lazy-array 'network-input)
+               (cond ((network-input-p lazy-array)
                       (push lazy-array inputs))
-                     ((typep lazy-array 'network-weights)
+                     ((network-weight-p lazy-array)
                       (push lazy-array weights))
                      ((computablep lazy-array)
                       (push lazy-array computable))
@@ -151,9 +149,9 @@
       (setf (ad-record-output-gradient-cache (gethash output table))
             gradient))
     ;; Determine the gradients of all records reachable from the weights.
-    (loop for weights in (network-weights network)
+    (loop for weight in (network-weights network)
           collect
-          (ad-record-output-gradient (gethash weights table)))))
+          (ad-record-output-gradient (gethash weight table)))))
 
 (defun ad-record-output-gradient (ad-record)
   (let ((cached-value (ad-record-output-gradient-cache ad-record)))
@@ -165,7 +163,9 @@
                        collect
                        (ad-record-input-gradient record index))))
           (setf (ad-record-output-gradient-cache ad-record)
-                (apply #'α #'+ gradients))))))
+                (α #'*
+                   (ad-record-lazy-array ad-record)
+                   (apply #'α #'+ gradients)))))))
 
 (defun ad-record-input-gradient (ad-record index)
   (let ((cached-value (ad-record-input-gradient-cache ad-record index)))

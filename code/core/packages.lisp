@@ -115,7 +115,19 @@
    #:α*
    #:β
 
-   ;; Backends
+   ;; Network
+   #:network
+   #:network-inputs
+   #:network-outputs
+   #:network-weights
+   #:network-gradients
+   #:network-input
+   #:network-weight
+   #:make-network
+   #:make-network-input
+   #:make-network-weight
+
+   ;; Backend
    #:*backend*
    #:compute-on-backend
    #:schedule-on-backend
