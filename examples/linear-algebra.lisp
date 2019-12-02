@@ -51,6 +51,20 @@
   (with-gensyms (g)
     `(matrix (and ,m ,g) (= ,g))))
 
+(trivia:defun-match matrix-p (object)
+  ((matrix _ _) t)
+  (_ nil))
+
+(trivia:defun-match square-matrix-p (object)
+  ((square-matrix _) t)
+  (_ nil))
+
+(deftype matrix ()
+  '(satisfies matrix-p))
+
+(deftype square-matrix ()
+  '(satisfies square-matrix-p))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Linear Algebra Subroutines

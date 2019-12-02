@@ -97,19 +97,26 @@
 (defun all-tests ()
   *tests*)
 
-;;; This function catches a source of particularly subtle bugs - exported
-;;; symbols with no attached definition.  In case some exported symbols are
+;;; This function catches particularly hideous bugs - exported symbols with
+;;; no attached definition.  In case some exported symbols are
 ;;; intentionally without definition, they can be excluded via the SKIP
 ;;; argument.
 (defun check-package (package &key skip)
   (with-test-harness
     (do-external-symbols (symbol package)
       (unless (member symbol skip)
-        (flet ((symbol-defined-p (symbol)
-                 (or (find-class symbol nil)
-                     (boundp symbol)
-                     (fboundp symbol))))
-          (is (symbol-defined-p symbol)))))))
+        (unless (symbol-defined-p symbol)
+          (error "~@<The package ~A exports the symbol ~A, ~
+                       which does not have an attached definition.~:@>"
+                 package (symbol-name symbol)))))))
+
+(defun symbol-defined-p (symbol)
+  (or (find-class symbol nil)
+      (boundp symbol)
+      (fboundp symbol)
+      (macro-function symbol)
+      (special-operator-p symbol)
+      (ignore-errors (typep 42 symbol) t)))
 
 (defun run-tests (&rest tests)
   (with-test-harness (mapc #'funcall (alexandria:shuffle tests)))

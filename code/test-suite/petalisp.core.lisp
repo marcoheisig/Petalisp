@@ -2,6 +2,8 @@
 
 (in-package #:petalisp.test-suite)
 
+(check-package '#:petalisp.core)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Ranges

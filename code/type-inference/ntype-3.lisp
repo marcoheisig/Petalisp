@@ -71,7 +71,7 @@
   (and (%ntypep ntype)
        (ntype= ntype (ntype 'nil))))
 
-(defun universal-ntypep-p (ntype)
+(defun universal-ntype-p (ntype)
   (and (%ntypep ntype)
        (ntype= ntype (ntype 't))))
 

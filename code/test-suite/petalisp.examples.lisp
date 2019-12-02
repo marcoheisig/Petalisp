@@ -2,6 +2,9 @@
 
 (in-package #:petalisp.test-suite)
 
+(check-package '#:petalisp.examples.iterative-methods)
+(check-package '#:petalisp.examples.linear-algebra)
+
 (define-test jacobi-test
   (compute (jacobi (ndarray 1) 0.0 1.0 2))
   (compute (jacobi (ndarray 2) 0.0 1.0 2))

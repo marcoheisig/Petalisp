@@ -42,7 +42,6 @@
    #:ntype-union
    #:ntype-subtypep
    #:ntype-subtypepc1
-   #:coerce-to-ntype
    #:list-ntypes
 
    ;; Type inference.
@@ -158,34 +157,18 @@
    #:single-float<
    #:double-float<
    #:long-float<
-   #:complex-short-float<
-   #:complex-single-float<
-   #:complex-double-float<
-   #:complex-long-float<
    #:short-float>
    #:single-float>
    #:double-float>
    #:long-float>
-   #:complex-short-float>
-   #:complex-single-float>
-   #:complex-double-float>
-   #:complex-long-float>
    #:short-float<=
    #:single-float<=
    #:double-float<=
    #:long-float<=
-   #:complex-short-float<=
-   #:complex-single-float<=
-   #:complex-double-float<=
-   #:complex-long-float<=
    #:short-float>=
    #:single-float>=
    #:double-float>=
    #:long-float>=
-   #:complex-short-float>=
-   #:complex-single-float>=
-   #:complex-double-float>=
-   #:complex-long-float>=
    ;; complex.lisp
    #:short-float-complex
    #:single-float-complex
@@ -268,10 +251,10 @@
    #:complex-long-float-unary-
    ;; tan.lisp
    #:short-float-tan
-   #:tangle-float-tan
+   #:single-float-tan
    #:double-float-tan
    #:long-float-tan
    #:complex-short-float-tan
-   #:complex-tangle-float-tan
+   #:complex-single-float-tan
    #:complex-double-float-tan
    #:complex-long-float-tan))

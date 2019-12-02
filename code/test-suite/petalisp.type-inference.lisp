@@ -2,6 +2,8 @@
 
 (in-package #:petalisp.test-suite)
 
+(check-package '#:petalisp.type-inference)
+
 (defparameter *test-integers*
   (let ((integers '()))
     (loop for integer in (list -1338 -1337 -19 -3 0 3 19 1337 1338) do
