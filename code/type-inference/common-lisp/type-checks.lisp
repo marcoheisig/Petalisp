@@ -10,6 +10,9 @@
        (defun ,name (object)
          (check-type object ,type)
          object)
+       (define-differentiator ,name (object) _
+         (declare (ignore object))
+         1)
        (define-specializer ,name (object)
          (ntype-subtypecase (wrapper-ntype object)
            ((not ,type) (abort-specialization))

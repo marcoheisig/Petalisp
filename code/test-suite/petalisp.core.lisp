@@ -71,14 +71,16 @@
 
 (define-test network-test
   (let* ((shape (~ 0 9))
-         (input (make-network-input shape 'double-float))
-         (weight (make-network-weight (reshape 0.5d0 shape)))
+         (x1 (make-network-input shape :element-type 'double-float))
+         (x2 (make-network-input shape :element-type 'double-float))
          (network
            (make-network
-            :inputs (list input)
-            :outputs (list (α #'* (α #'* (α #'sin input) (α #'cos weight)))))))
-    (loop for gradient in (network-gradients network (list (reshape 1d0 shape))) do
-      (is (lazy-array-p gradient)))))
+            :inputs (list x1 x2)
+            :outputs (list (α #'+
+                              (α #'coerce (α #'log x1) 'double-float)
+                              (α #'* x1 x2)
+                              (α #'sin x2))))))
+    (is (gradient-network network))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

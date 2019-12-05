@@ -4,19 +4,16 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Network Parameters
+;;; Network Inputs
 
-(defclass network-parameter ()
-  ((%name :initarg :name :reader network-parameter-name)))
-
-(defclass network-input (abstract-immediate network-parameter)
-  ())
+(defclass network-input (abstract-immediate)
+  ((%name :initarg :name :reader network-input-name)))
 
 (defgeneric network-input-p (object)
   (:method ((object t)) nil)
   (:method ((object network-input)) t))
 
-(defun make-network-input (shape element-type &key (name (gensym)))
+(defun make-network-input (shape &key element-type (name (gensym)))
   (if (null shape)
       (empty-array)
       (make-instance 'network-input
@@ -24,30 +21,12 @@
         :shape shape
         :ntype (petalisp.type-inference:ntype element-type))))
 
-(defclass network-weight (abstract-immediate network-parameter)
-  ((%value :initarg :value :reader network-parameter-value)))
-
-(defgeneric network-weight-p (object)
-  (:method ((object t)) nil)
-  (:method ((object network-weight)) t))
-
-(defun make-network-weight (array &key (name (gensym)))
-  (if (zerop (total-size array))
-      (empty-array)
-      (let ((lazy-array (coerce-to-lazy-array array)))
-        (make-instance 'network-weight
-          :name name
-          :shape (shape lazy-array)
-          :ntype (petalisp.type-inference:generalize-ntype (element-ntype lazy-array))
-          :value lazy-array))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; The Network Class
 
 (defclass network ()
-  ((%weights :initarg :weights :reader network-weights)
-   (%inputs :initarg :inputs :reader network-inputs)
+  ((%inputs :initarg :inputs :reader network-inputs)
    (%outputs :initarg :outputs :reader network-outputs)
    ;; An alist whose keys are backends and whose values are functions that
    ;; encapsulate the execution of that network on the corresponding
@@ -57,8 +36,7 @@
 (defun make-network (&key inputs outputs)
   (dolist (input inputs)
     (assert (network-input-p input)))
-  (multiple-value-bind (derived-inputs weights)
-      (derive-network-inputs-and-weights outputs)
+  (multiple-value-bind (derived-inputs) (derive-network-inputs outputs)
     (let ((extra-inputs (set-difference derived-inputs inputs))
           (unused-inputs (set-difference inputs derived-inputs)))
       (cond (extra-inputs
@@ -68,20 +46,20 @@
                     (length extra-inputs)
                     extra-inputs))
             (unused-inputs
-             (warn "~@<The network has ~R inputs that are never ~
-                       used.  The unused inputs are:~%~{ ~S~%~}~:@>"
-                   (length unused-inputs)
-                   unused-inputs))))
+             (loop for unused-input in unused-inputs do
+               (warn "~@<The ~:R input of the network is never used.~:@>"
+                     (1+ (position unused-input inputs)))))))
     (make-instance 'network
       :inputs inputs
-      :outputs outputs
-      :weights weights)))
+      :outputs outputs)))
 
-(defun derive-network-inputs-and-weights (outputs)
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Automatic Differentiation.
+
+(defun derive-network-inputs (outputs)
   (let ((table (make-hash-table :test #'eq))
-        (weights '())
-        (inputs '())
-        (computable '()))
+        (inputs '()))
     (labels ((scan (lazy-array)
                (cond ((= 1 (refcount lazy-array))
                       (process lazy-array))
@@ -91,15 +69,10 @@
              (process (lazy-array)
                (cond ((network-input-p lazy-array)
                       (push lazy-array inputs))
-                     ((network-weight-p lazy-array)
-                      (push lazy-array weights))
-                     ((computablep lazy-array)
-                      (push lazy-array computable))
                      (t
                       (mapc #'scan (inputs lazy-array))))))
       (mapc #'scan outputs))
-    (apply #'compute computable)
-    (values inputs weights)))
+    inputs))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -108,9 +81,11 @@
 (defstruct (ad-record
             (:constructor make-ad-record
                 (lazy-array
-                 &aux (input-gradient-caches (make-array (length (inputs lazy-array))))))
+                 &aux (input-gradient-caches
+                       (make-array (length (inputs lazy-array)) :initial-element nil))))
             (:copier nil)
             (:predicate nil))
+  (name (gensym))
   (lazy-array nil :type lazy-array :read-only t)
   ;; An alist with one (argument-index . a-d-record) entry per reference to
   ;; this record's lazy array.
@@ -124,34 +99,44 @@
 (defmacro ad-record-input-gradient-cache (ad-record index)
   `(svref (ad-record-input-gradient-caches ,ad-record) ,index))
 
-(defun network-gradients (network output-gradients)
+(defun gradient-network (network)
   (let ((table (make-hash-table :test #'eq)))
     ;; Populate the automatic differentiation table.
-    (let ((worklist (network-outputs network)))
-      (loop while worklist do
-        (let ((lazy-array (pop worklist)))
-          (unless (gethash lazy-array table)
-            (setf (gethash lazy-array table)
-                  (make-ad-record lazy-array))
-            (loop for input in (inputs lazy-array) do
-              (push input worklist))))))
+    (labels ((ensure-ad-record (lazy-array)
+               (unless (gethash lazy-array table)
+                 (setf (gethash lazy-array table)
+                       (make-ad-record lazy-array))
+                 (mapc #'ensure-ad-record (inputs lazy-array)))))
+      (mapc #'ensure-ad-record (network-outputs network))
+      (mapc #'ensure-ad-record (network-inputs network)))
     ;; Determine the outputs of each automatic differentiation record.
     (maphash
      (lambda (lazy-array record)
        (loop for input in (inputs lazy-array)
+             for input-ad-record = (gethash input table)
              for index from 0 do
-               (push (cons index (gethash input table))
-                     (ad-record-alist record))))
+               (push (cons index record)
+                     (ad-record-alist input-ad-record))))
      table)
-    ;; Set the output gradients of all network outputs.
-    (loop for output in (network-outputs network)
-          for gradient in output-gradients do
-      (setf (ad-record-output-gradient-cache (gethash output table))
-            gradient))
-    ;; Determine the gradients of all records reachable from the weights.
-    (loop for weight in (network-weights network)
-          collect
-          (ad-record-output-gradient (gethash weight table)))))
+    (let ((training-outputs
+            (loop for output in (network-outputs network)
+                  collect
+                  (make-network-input
+                   (shape output)
+                   :element-type
+                   (petalisp.type-inference:type-specifier
+                    (petalisp.type-inference:generalize-ntype
+                     (element-ntype output)))))))
+      ;; Set the output gradients of all network outputs.
+      (loop for network-output in (network-outputs network)
+            for training-output in training-outputs do
+              (setf (ad-record-output-gradient-cache (gethash network-output table))
+                    (α #'- network-output training-output)))
+      ;; Create a new network that will map inputs and outputs to gradients.
+      (make-network
+       :inputs (append (network-inputs network) training-outputs)
+       :outputs (loop for input in (network-inputs network)
+                      collect (ad-record-output-gradient (gethash input table)))))))
 
 (defun ad-record-output-gradient (ad-record)
   (let ((cached-value (ad-record-output-gradient-cache ad-record)))
@@ -184,7 +169,7 @@
                    (operator operator)
                    (shape shape)) application
     (α #'*
-       (nth index inputs)
+       output-gradient
        (petalisp.type-inference:differentiate
         operator
         inputs

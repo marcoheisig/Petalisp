@@ -16,9 +16,30 @@
              :function function
              :index index
              :arguments wrappers))
-    (unless (ntype-subtypep (wrapper-ntype (nth index wrappers)) (ntype 'number))
-      (error 'non-numeric-differentiation-argument
-             :function function
-             :index index
-             :arguments wrappers))
-    (apply (differentiator function) index wrappers)))
+    (ntype-subtypecase (wrapper-ntype (nth index wrappers))
+      ((not number)
+       (error 'non-numeric-differentiation-argument
+              :function function
+              :index index
+              :arguments wrappers))
+      (t
+       (apply (differentiator function) index wrappers)))))
+
+(defun diff (function arguments n)
+  (flet ((wrap-constant (object)
+           (cons (ntype-of object) object))
+         (wrap-function (ntypes function arguments)
+           (let ((expression (cons function (mapcar #'cdr arguments))))
+             (values-list
+              (loop for ntype in ntypes
+                    collect
+                    (cons ntype expression))))))
+    (let ((result
+            (differentiate
+             function
+             arguments
+             #'first
+             #'wrap-constant
+             #'wrap-function
+             n)))
+      (values (cdr result) (car result)))))

@@ -612,16 +612,12 @@ contrast to other lazy arrays, a network input, and all other arrays that
 depend on it cannot be computed.  Instead, network inputs can be bound to
 particular values when evaluating a corresponding network.")
 
-(document-function make-network-weight
-  "Creates a lazy array that can serve as the weight of a network.  A
-network weight has a value that changes over time, usually when a network
-is trained.")
-
 (document-function make-network
   "Creates a network with the supplied inputs and outputs.
 
 An error is signaled of any of the inputs is not of type NETWORK-INPUT, or
 if additional network inputs are reachable from the network outputs.")
 
-(document-function network-gradients
-  "Returns a list ")
+(document-function gradient-network
+  "Returns a network that maps given inputs and outputs for the supplied
+network to gradients with respect to each input of the supplied network.")

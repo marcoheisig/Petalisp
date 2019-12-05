@@ -10,6 +10,10 @@
 (defun coerce-to-short-float (number)
   (coerce number 'short-float))
 
+(define-differentiator coerce-to-short-float (x) _
+  (declare (ignore x))
+  1S0)
+
 (define-simple-instruction (coerce-to-short-float short-float-from-single-float) (short-float) (single-float))
 (define-simple-instruction (coerce-to-short-float short-float-from-double-float) (short-float) (double-float))
 (define-simple-instruction (coerce-to-short-float short-float-from-long-float) (short-float) (long-float))
@@ -35,6 +39,10 @@
 (declaim (inline coerce-to-single-float))
 (defun coerce-to-single-float (number)
   (coerce number 'single-float))
+
+(define-differentiator coerce-to-single-float (x) _
+  (declare (ignore x))
+  1F0)
 
 (define-simple-instruction (coerce-to-single-float single-float-from-short-float) (single-float) (short-float))
 (define-simple-instruction (coerce-to-single-float single-float-from-double-float) (single-float) (double-float))
@@ -62,6 +70,10 @@
 (defun coerce-to-double-float (number)
   (coerce number 'double-float))
 
+(define-differentiator coerce-to-double-float (x) _
+  (declare (ignore x))
+  1D0)
+
 (define-simple-instruction (coerce-to-double-float double-float-from-short-float) (double-float) (short-float))
 (define-simple-instruction (coerce-to-double-float double-float-from-single-float) (double-float) (single-float))
 (define-simple-instruction (coerce-to-double-float double-float-from-long-float) (double-float) (long-float))
@@ -87,6 +99,10 @@
 (declaim (inline coerce-to-long-float))
 (defun coerce-to-long-float (number)
   (coerce number 'long-float))
+
+(define-differentiator coerce-to-long-float (x) _
+  (declare (ignore x))
+  1L0)
 
 (define-simple-instruction (coerce-to-long-float long-float-from-short-float) (long-float) (short-float))
 (define-simple-instruction (coerce-to-long-float long-float-from-single-float) (long-float) (single-float))

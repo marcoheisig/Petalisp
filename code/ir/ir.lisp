@@ -41,7 +41,7 @@
      (%make-buffer
       :shape (shape lazy-array)
       :reusablep t
-      :ntype (element-ntype lazy-array)))))
+      :ntype (petalisp.type-inference:generalize-ntype (element-ntype lazy-array))))))
 
 ;;; A kernel represents a computation that, for each element in its
 ;;; iteration space, reads from some buffers and writes to some buffers.

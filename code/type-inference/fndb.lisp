@@ -29,8 +29,10 @@
           record))))
 
 (define-compiler-macro ensure-fndb-record (&whole form function-name)
-  (if (constantp form)
-      `(load-time-value (ensure-fndb-record ,function-name))
+  (if (typep function-name '(cons (eql quote) (cons function-name null)))
+      `(load-time-value
+        (locally (declare (notinline ensure-fndb-record))
+          (ensure-fndb-record ,function-name)))
       form))
 
 (defmacro define-fndb-accessor (name accessor-name &optional (default nil))

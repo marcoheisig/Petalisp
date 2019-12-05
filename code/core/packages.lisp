@@ -116,16 +116,14 @@
    #:β
 
    ;; Network
+   #:network-input
+   #:network-input-p
+   #:make-network-input
    #:network
    #:network-inputs
    #:network-outputs
-   #:network-weights
-   #:network-gradients
-   #:network-input
-   #:network-weight
    #:make-network
-   #:make-network-input
-   #:make-network-weight
+   #:gradient-network
 
    ;; Backend
    #:*backend*

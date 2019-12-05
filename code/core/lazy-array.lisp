@@ -229,7 +229,7 @@
   (incf (%refcount non-empty-non-immediate)))
 
 (defmethod print-object ((lazy-array lazy-array) stream)
-  (print-unreadable-object (lazy-array stream :type t)
+  (print-unreadable-object (lazy-array stream :type t :identity t)
     (format stream "~S ~S" (element-type lazy-array) (shape lazy-array))))
 
 (defmethod print-object ((array-immediate array-immediate) stream)
