@@ -77,4 +77,5 @@
   (wrap (+ number 1)))
 
 (define-differentiator 1+ (number) _
+  (declare (ignore number))
   (wrap 1))
