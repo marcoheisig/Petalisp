@@ -8,8 +8,8 @@
 
 (in-package #:petalisp.examples.getting-started)
 
-(defun present (expression)
-  (petalisp.graphviz:view expression)
+(defun present (expression &optional (view-graph nil))
+  (when view-graph (petalisp.graphviz:view expression))
   (format t "~%=> ~A~%~%" (compute expression)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
