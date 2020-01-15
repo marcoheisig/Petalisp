@@ -340,9 +340,6 @@
         (setf (gethash lazy-array *substitutions*)
               (call-next-method)))))
 
-(defmethod substitute-array ((lazy-array lazy-array))
-  (error "Don't know how to copy the lazy array ~S." lazy-array))
-
 (defmethod substitute-array ((application application))
   (make-instance 'application
     :operator (operator application)
@@ -370,6 +367,10 @@
     :shape (shape reference)
     :transformation (transformation reference)
     :inputs (list (substitute-array (input reference)))))
+
+(defmethod substitute-array ((lazy-array lazy-array))
+  ;; All other kinds of lazy arrays (mostly immediates) are not copied.
+  lazy-array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

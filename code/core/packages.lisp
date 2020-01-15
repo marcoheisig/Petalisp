@@ -111,6 +111,8 @@
    #:broadcast
    #:broadcast-arrays
    #:broadcast-list-of-arrays
+   #:copy-arrays
+   #:substitute-arrays
    #:α
    #:α*
    #:β
@@ -123,12 +125,14 @@
    #:network-inputs
    #:network-outputs
    #:make-network
+   #:call-network
    #:gradient-network
 
    ;; Backend
    #:*backend*
    #:compute-on-backend
    #:schedule-on-backend
+   #:compile-network-on-backend
    #:compute-immediates
    #:lisp-datum-from-immediate
    #:backend
