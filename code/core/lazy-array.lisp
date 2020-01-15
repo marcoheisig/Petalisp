@@ -373,6 +373,7 @@
 
 (defmethod substitute-array ((reference reference))
   (make-instance 'reference
+    :ntype (element-ntype reference)
     :shape (shape reference)
     :transformation (transformation reference)
     :inputs (list (substitute-array (input reference)))))

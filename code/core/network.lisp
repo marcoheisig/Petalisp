@@ -99,11 +99,15 @@
 (defmacro ad-record-input-gradient-cache (ad-record index)
   `(svref (ad-record-input-gradient-caches ,ad-record) ,index))
 
-(defun nth-gradient-name-default (n)
+(defun default-gradient-name (n)
   (values (intern (format nil "GRADIENT-~D" n) :keyword)))
 
-(defun gradient-network (network &key (nth-gradient-name #'nth-gradient-name-default))
-  (let ((table (make-hash-table :test #'eq)))
+(defun gradient-network (network &key (gradient-names #'default-gradient-name))
+  (let ((table (make-hash-table :test #'eq))
+        (nth-gradient-name
+          (if (listp gradient-names)
+              (lambda (n) (elt n gradient-names))
+              gradient-names)))
     ;; Populate the automatic differentiation table.
     (labels ((ensure-ad-record (lazy-array)
                (unless (gethash lazy-array table)
