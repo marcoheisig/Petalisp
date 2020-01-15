@@ -408,6 +408,12 @@ Examples:
   => #(0 1 2)
 ")
 
+(document-function make-parameter
+  "Creates a lazy array that can serve as the input of a network.  In
+contrast to other lazy arrays, a parameter, and all other arrays that
+depend on it cannot be computed.  Instead, parameters can be bound to
+particular values when evaluating a network.")
+
 (document-function α
   "Returns one or more lazy arrays, whose contents are the values returned
 by the supplied function when applied element-wise to the contents of the
@@ -605,12 +611,6 @@ can be sped up by rewriting it as
 set of inputs and weights to yield several outputs.
 
 Networks can also be differentiated, using the function NETWORK-GRADIENTS.")
-
-(document-function make-network-input
-  "Creates a lazy array that can serve as the input of a network.  In
-contrast to other lazy arrays, a network input, and all other arrays that
-depend on it cannot be computed.  Instead, network inputs can be bound to
-particular values when evaluating a corresponding network.")
 
 (document-function make-network
   "Creates a network with the supplied inputs and outputs.

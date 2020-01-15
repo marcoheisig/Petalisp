@@ -113,16 +113,14 @@
    #:broadcast-list-of-arrays
    #:copy-arrays
    #:substitute-arrays
+   #:make-parameter
    #:α
    #:α*
    #:β
 
    ;; Network
-   #:network-input
-   #:network-input-p
-   #:make-network-input
    #:network
-   #:network-inputs
+   #:network-parameters
    #:network-outputs
    #:make-network
    #:call-network

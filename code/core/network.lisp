@@ -6,57 +6,37 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Network Inputs
-
-(defclass network-input (abstract-immediate)
-  ((%name :initarg :name :reader network-input-name :type symbol)))
-
-(defgeneric network-input-p (object)
-  (:method ((object t)) nil)
-  (:method ((object network-input)) t))
-
-(defun make-network-input (shape &key element-type (name (gensym)))
-  (check-type name symbol)
-  (if (null shape)
-      (empty-array)
-      (make-instance 'network-input
-        :name name
-        :shape shape
-        :ntype (petalisp.type-inference:ntype element-type))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
 ;;; The Network Class
 
 (defclass network ()
-  ((%inputs :initarg :inputs :reader network-inputs)
+  ((%parameters :initarg :parameters :reader network-parameters)
    (%outputs :initarg :outputs :reader network-outputs)))
 
-(defun make-network (&key inputs outputs)
-  (loop for (input . more-inputs) on inputs do
-    (loop for other-input in more-inputs do
-      (assert (not (eq (network-input-name input)
-                       (network-input-name other-input))))))
-  (multiple-value-bind (derived-inputs) (derive-network-inputs outputs)
-    (let ((extra-inputs (set-difference derived-inputs inputs))
-          (unused-inputs (set-difference inputs derived-inputs)))
-      (cond (extra-inputs
-             (error "~@<The network contains ~R inputs ~
+(defun make-network (&key parameters outputs)
+  (loop for (parameter . more-parameters) on parameters do
+    (loop for other-parameter in more-parameters do
+      (assert (not (eq (parameter-name parameter)
+                       (parameter-name other-parameter))))))
+  (multiple-value-bind (derived-parameters) (derive-parameters outputs)
+    (let ((extra-parameters (set-difference derived-parameters parameters))
+          (unused-parameters (set-difference parameters derived-parameters)))
+      (cond (extra-parameters
+             (error "~@<The network contains ~R parameters ~
                         that have not been explicitly specified. ~
-                        The erroneous inputs are:~%~{ ~S~%~}~:@>"
-                    (length extra-inputs)
-                    extra-inputs))
-            (unused-inputs
-             (loop for unused-input in unused-inputs do
+                        The erroneous parameters are:~%~{ ~S~%~}~:@>"
+                    (length extra-parameters)
+                    extra-parameters))
+            (unused-parameters
+             (loop for unused-input in unused-parameters do
                (warn "~@<The ~:R input of the network is never used.~:@>"
-                     (1+ (position unused-input inputs)))))))
+                     (1+ (position unused-input parameters)))))))
     (make-instance 'network
-      :inputs inputs
+      :parameters parameters
       :outputs outputs)))
 
-(defun derive-network-inputs (outputs)
+(defun derive-parameters (outputs)
   (let ((table (make-hash-table :test #'eq))
-        (inputs '()))
+        (parameters '()))
     (labels ((scan (lazy-array)
                (cond ((= 1 (refcount lazy-array))
                       (process lazy-array))
@@ -64,17 +44,17 @@
                       (setf (gethash lazy-array table) t)
                       (process lazy-array))))
              (process (lazy-array)
-               (cond ((network-input-p lazy-array)
-                      (push lazy-array inputs))
+               (cond ((typep lazy-array 'parameter)
+                      (push lazy-array parameters))
                      (t
                       (mapc #'scan (inputs lazy-array))))))
       (mapc #'scan outputs))
-    inputs))
+    parameters))
 
 (defun call-network (network &rest plist &key &allow-other-keys)
   (let ((args
-          (loop for input in (network-inputs network)
-                for name = (network-input-name input)
+          (loop for parameter in (network-parameters network)
+                for name = (parameter-name parameter)
                 for value = (getf plist name '.missing.)
                 collect (if (eq value '.missing.)
                             (error "Missing input: ~S." name)
@@ -82,7 +62,7 @@
     (apply (compile-network-on-backend network *backend*) args)))
 
 ;;; This is a simple, albeit slow way of compiling a network.  We simply
-;;; return a closure that substitutes all networks inputs with the provided
+;;; return a closure that substitutes all networks parameters with the provided
 ;;; values and then computes that new graph.
 (defmethod compile-network-on-backend
     ((network network) (backend backend))
@@ -91,7 +71,7 @@
      (substitute-arrays
       (network-outputs network)
       args
-      (network-inputs network))
+      (network-parameters network))
      backend)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -119,7 +99,10 @@
 (defmacro ad-record-input-gradient-cache (ad-record index)
   `(svref (ad-record-input-gradient-caches ,ad-record) ,index))
 
-(defun gradient-network (network)
+(defun nth-gradient-name-default (n)
+  (values (intern (format nil "GRADIENT-~D" n) :keyword)))
+
+(defun gradient-network (network &key (nth-gradient-name #'nth-gradient-name-default))
   (let ((table (make-hash-table :test #'eq)))
     ;; Populate the automatic differentiation table.
     (labels ((ensure-ad-record (lazy-array)
@@ -128,7 +111,7 @@
                        (make-ad-record lazy-array))
                  (mapc #'ensure-ad-record (inputs lazy-array)))))
       (mapc #'ensure-ad-record (network-outputs network))
-      (mapc #'ensure-ad-record (network-inputs network)))
+      (mapc #'ensure-ad-record (network-parameters network)))
     ;; Determine the outputs of each automatic differentiation record.
     (maphash
      (lambda (lazy-array record)
@@ -140,9 +123,11 @@
      table)
     (let ((training-outputs
             (loop for output in (network-outputs network)
+                  for n from 0
                   collect
-                  (make-network-input
-                   (shape output)
+                  (make-parameter
+                   (funcall nth-gradient-name n)
+                   :shape (shape output)
                    :element-type
                    (petalisp.type-inference:type-specifier
                     (petalisp.type-inference:generalize-ntype
@@ -154,9 +139,9 @@
                     (α #'- network-output training-output)))
       ;; Create a new network that will map inputs and outputs to gradients.
       (make-network
-       :inputs (append (network-inputs network) training-outputs)
-       :outputs (loop for input in (network-inputs network)
-                      collect (ad-record-output-gradient (gethash input table)))))))
+       :parameters (append (network-parameters network) training-outputs)
+       :outputs (loop for parameter in (network-parameters network)
+                      collect (ad-record-output-gradient (gethash parameter table)))))))
 
 (defun ad-record-output-gradient (ad-record)
   (let ((cached-value (ad-record-output-gradient-cache ad-record)))
@@ -219,6 +204,8 @@
          output-gradient
          (shape reference)
          (invert-transformation (transformation reference)))
+        (break "TODO")
+        #+(or)
         (let ((gradient 0))
           (map-transformation-outputs
            (lambda (output-index input-index scaling offset)

@@ -71,11 +71,11 @@
 
 (define-test network-test
   (let* ((shape (~ 0 9))
-         (x1 (make-network-input shape :element-type 'double-float))
-         (x2 (make-network-input shape :element-type 'double-float))
+         (x1 (make-parameter :a :shape shape :element-type 'double-float))
+         (x2 (make-parameter :b :shape shape :element-type 'double-float))
          (network
            (make-network
-            :inputs (list x1 x2)
+            :parameters (list x1 x2)
             :outputs (list (α #'+
                               (α #'coerce (α #'log x1) 'double-float)
                               (α #'* x1 x2)

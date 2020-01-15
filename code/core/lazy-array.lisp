@@ -72,8 +72,8 @@
 (defclass range-immediate (non-empty-immediate)
   ())
 
-(defclass abstract-immediate (non-empty-immediate)
-  ()
+(defclass parameter (non-empty-immediate)
+  ((%name :initarg :name :reader parameter-name :type symbol))
   (:default-initargs :computable nil))
 
 (defclass application (non-empty-non-immediate)
@@ -284,6 +284,15 @@
     (petalisp.type-inference:ntype-union
      (petalisp.type-inference:ntype-of (range-start range))
      (petalisp.type-inference:ntype-of (range-end range)))))
+
+(defun make-parameter (name &key (shape (~)) (element-type 't))
+  (check-type name symbol)
+  (if (null shape)
+      (empty-array)
+      (make-instance 'parameter
+        :name name
+        :shape shape
+        :ntype (petalisp.type-inference:ntype element-type))))
 
 (defun indices (array-or-shape &optional (axis 0))
   (cond ((null array-or-shape)
