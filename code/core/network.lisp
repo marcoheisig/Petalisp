@@ -2,18 +2,21 @@
 
 (in-package #:petalisp.core)
 
+(defgeneric compile-network-on-backend (network backend))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Network Inputs
 
 (defclass network-input (abstract-immediate)
-  ((%name :initarg :name :reader network-input-name)))
+  ((%name :initarg :name :reader network-input-name :type symbol)))
 
 (defgeneric network-input-p (object)
   (:method ((object t)) nil)
   (:method ((object network-input)) t))
 
 (defun make-network-input (shape &key element-type (name (gensym)))
+  (check-type name symbol)
   (if (null shape)
       (empty-array)
       (make-instance 'network-input
@@ -27,15 +30,13 @@
 
 (defclass network ()
   ((%inputs :initarg :inputs :reader network-inputs)
-   (%outputs :initarg :outputs :reader network-outputs)
-   ;; An alist whose keys are backends and whose values are functions that
-   ;; encapsulate the execution of that network on the corresponding
-   ;; backend.
-   (%compile-cache :initform '() :accessor network-compile-cache)))
+   (%outputs :initarg :outputs :reader network-outputs)))
 
 (defun make-network (&key inputs outputs)
-  (dolist (input inputs)
-    (assert (network-input-p input)))
+  (loop for (input . more-inputs) on inputs do
+    (loop for other-input in more-inputs do
+      (assert (not (eq (network-input-name input)
+                       (network-input-name other-input))))))
   (multiple-value-bind (derived-inputs) (derive-network-inputs outputs)
     (let ((extra-inputs (set-difference derived-inputs inputs))
           (unused-inputs (set-difference inputs derived-inputs)))
@@ -52,10 +53,6 @@
     (make-instance 'network
       :inputs inputs
       :outputs outputs)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Automatic Differentiation.
 
 (defun derive-network-inputs (outputs)
   (let ((table (make-hash-table :test #'eq))
@@ -74,9 +71,32 @@
       (mapc #'scan outputs))
     inputs))
 
+(defun call-network (network &rest plist &key &allow-other-keys)
+  (let ((args
+          (loop for input in (network-inputs network)
+                for name = (network-input-name input)
+                for value = (getf plist name '.missing.)
+                collect (if (eq value '.missing.)
+                            (error "Missing input: ~S." name)
+                            value))))
+    (apply (compile-network-on-backend network *backend*) args)))
+
+;;; This is a simple, albeit slow way of compiling a network.  We simply
+;;; return a closure that substitutes all networks inputs with the provided
+;;; values and then computes that new graph.
+(defmethod compile-network-on-backend
+    ((network network) (backend backend))
+  (lambda (&rest args)
+    (compute-on-backend
+     (substitute-arrays
+      (network-outputs network)
+      args
+      (network-inputs network))
+     backend)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Automatic Differentiation
+;;; Network Differentiation
 
 (defstruct (ad-record
             (:constructor make-ad-record
@@ -199,6 +219,10 @@
          output-gradient
          (shape reference)
          (invert-transformation (transformation reference)))
-        (map-transformation-outputs
-         (lambda ())
-         transformation))))
+        (let ((gradient 0))
+          (map-transformation-outputs
+           (lambda (output-index input-index scaling offset)
+             (declare (ignore offset))
+             (if (zerop scaling)
+                 (setf gradient (β #'+ output-gradient))))
+           transformation)))))

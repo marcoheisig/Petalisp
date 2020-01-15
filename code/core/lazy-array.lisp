@@ -232,6 +232,16 @@
   (print-unreadable-object (lazy-array stream :type t :identity t)
     (format stream "~S ~S" (element-type lazy-array) (shape lazy-array))))
 
+(defmethod print-object ((application application) stream)
+  (print-unreadable-object (application stream :identity t)
+    (format stream "α ~S ~S ~S"
+            (operator application) (element-type application) (shape application))))
+
+(defmethod print-object ((reduction reduction) stream)
+  (print-unreadable-object (reduction stream :identity t)
+    (format stream "β ~S ~S ~S"
+            (operator reduction) (element-type reduction) (shape reduction))))
+
 (defmethod print-object ((array-immediate array-immediate) stream)
   (print-unreadable-object (array-immediate stream :type t)
     (princ (storage array-immediate) stream)))
@@ -300,6 +310,66 @@
     (1 (values (empty-array)))
     (2 (values (empty-array) (empty-array)))
     (otherwise (values-list (make-list n :initial-element (empty-array))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Graph Substitution
+
+(defvar *substitutions*)
+
+(defun copy-arrays (arrays)
+  (substitute-arrays arrays '() '()))
+
+(defun substitute-arrays (roots new-arrays old-arrays)
+  (let ((*substitutions* (make-hash-table :test #'eq)))
+    (loop for new-array in new-arrays
+          for old-array in old-arrays do
+            (setf (gethash old-array *substitutions*)
+                  (reshape
+                   (α #'coerce new-array (element-type old-array))
+                   (shape old-array))))
+    (mapcar #'substitute-array roots)))
+
+(defgeneric substitute-array (array))
+
+(defmethod substitute-array :around ((lazy-array lazy-array))
+  (multiple-value-bind (substitution present-p)
+      (gethash lazy-array *substitutions*)
+    (if present-p
+        substitution
+        (setf (gethash lazy-array *substitutions*)
+              (call-next-method)))))
+
+(defmethod substitute-array ((lazy-array lazy-array))
+  (error "Don't know how to copy the lazy array ~S." lazy-array))
+
+(defmethod substitute-array ((application application))
+  (make-instance 'application
+    :operator (operator application)
+    :value-n (value-n application)
+    :shape (shape application)
+    :ntype (element-ntype application)
+    :inputs (mapcar #'substitute-array (inputs application))))
+
+(defmethod substitute-array ((reduction reduction))
+  (make-instance 'reduction
+    :operator (operator reduction)
+    :value-n (value-n reduction)
+    :shape (shape reduction)
+    :ntype (element-ntype reduction)
+    :inputs (mapcar #'substitute-array (inputs reduction))))
+
+(defmethod substitute-array ((fusion fusion))
+  (make-instance 'fusion
+    :shape (shape fusion)
+    :ntype (element-ntype fusion)
+    :inputs (mapcar #'substitute-array (inputs fusion))))
+
+(defmethod substitute-array ((reference reference))
+  (make-instance 'reference
+    :shape (shape reference)
+    :transformation (transformation reference)
+    :inputs (list (substitute-array (input reference)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
