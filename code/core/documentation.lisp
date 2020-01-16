@@ -618,6 +618,10 @@ Networks can also be differentiated, using the function NETWORK-GRADIENTS.")
 An error is signaled of any of the inputs is not of type NETWORK-INPUT, or
 if additional network inputs are reachable from the network outputs.")
 
-(document-function gradient-network
-  "Returns a network that maps given inputs and outputs for the supplied
-network to gradients with respect to each input of the supplied network.")
+(document-function differentiate
+  "Returns a function that, for each node in a network whose roots are the
+supplied OUTPUTS will return the gradient at that node.
+
+GRADIENTS must be a sequence of the same length as OUTPUTS, and whose
+elements are either arrays with or symbols that will be used as the name of
+such a parameter.")

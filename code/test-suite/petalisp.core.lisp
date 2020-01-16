@@ -73,17 +73,15 @@
   (let* ((shape (~ 0 9))
          (x1 (make-parameter :x1 :shape shape :element-type 'double-float))
          (x2 (make-parameter :x2 :shape shape :element-type 'double-float))
-         (network
-           (make-network
-            :parameters (list x1 x2)
-            :outputs (list (α #'+
-                              (α #'coerce (α #'log x1) 'double-float)
-                              (α #'* x1 x2)
-                              (α #'sin x2)))))
-         (gradient-network
-           (gradient-network network)))
+         (v1 (α #'+
+                (α #'coerce (α #'log x1) 'double-float)
+                (α #'* x1 x2)
+                (α #'sin x2)))
+         (gradient-fn (differentiate (list v1) (list :g1)))
+         (network (make-network v1))
+         (gradient-network (make-network (gradient-fn x1 x2))))
     (call-network network :x1 5d0 :x2 1d0)
-    (call-network gradient-network :x1 1d0 :x2 1d0 :gradient-0 1d0)))
+    (call-network gradient-network :x1 1d0 :x2 1d0 :g1 1d0)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
