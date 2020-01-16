@@ -26,4 +26,4 @@
 (define-specializer log (number &optional (base nil base-supplied-p))
   (if (not base-supplied-p)
       (wrap (ln number))
-      (wrap (/ (ln base) (ln base)))))
+      (wrap (/ (ln number) (ln base)))))
