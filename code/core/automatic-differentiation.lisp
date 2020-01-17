@@ -48,10 +48,10 @@
             (setf (ad-record-output-gradient-cache (gethash output table))
                   (typecase gradient
                     (symbol
-                     (make-parameter
-                      gradient
-                      :shape (shape output)
-                      :element-type (element-ntype output)))
+                     (make-instance 'parameter
+                       :name gradient
+                       :shape (shape output)
+                       :ntype (element-ntype output)))
                     (t
                      (reshape
                       (α 'coerce gradient

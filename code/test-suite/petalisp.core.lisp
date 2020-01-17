@@ -79,7 +79,9 @@
                 (α #'sin x2)))
          (gradient-fn (differentiate (list v1) (list :g1)))
          (network (make-network v1))
-         (gradient-network (make-network (gradient-fn x1 x2))))
+         (gradient-network (make-network
+                            (funcall gradient-fn x1)
+                            (funcall gradient-fn x2))))
     (call-network network :x1 5d0 :x2 1d0)
     (call-network gradient-network :x1 1d0 :x2 1d0 :g1 1d0)))
 
