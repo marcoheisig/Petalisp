@@ -53,10 +53,12 @@
      ((not ,ntype) (abort-specialization))
      (t (values))))
 
-(defmacro abort-specialization ()
+(defmacro abort-specialization (&rest args)
+  (declare (ignore args))
   (error "ABORT-SPECIALIZATION can only be called from within specializers."))
 
-(defmacro wrap-default ()
+(defmacro wrap-default (&rest args)
+  (declare (ignore args))
   (error "WRAP-DEFAULT can only be called from within specializers."))
 
 (declaim (notinline %abort-specialization))

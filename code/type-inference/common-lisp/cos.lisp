@@ -34,7 +34,7 @@
      (wrap-default (ntype 'number)))))
 
 (define-differentiator cos (x) _
-  (wrap (sin x)))
+  (wrap (- (sin x))))
 
 (define-simple-instruction (cos short-float-cos) (short-float) (short-float))
 (define-simple-instruction (cos single-float-cos) (single-float) (single-float))

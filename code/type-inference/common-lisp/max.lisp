@@ -37,6 +37,29 @@
                    ((not real) (abort-specialization))
                    (long-float (wrap (long-float-max a b)))
                    (t (wrap-default (ntype-union ntype-of-a ntype-of-b)))))
-                (t (wrap-default (ntype 'real))))))
+                (t
+                 (ntype-subtypecase ntype-of-b
+                   ((not real) (abort-specialization))
+                   (t (wrap-default (ntype-union ntype-of-a ntype-of-b))))))))
           more-reals
           :initial-value real))))
+
+(defun argmax (real &rest more-reals)
+  (labels ((argmax-aux (max max-index index reals)
+             (declare (real max) ((and fixnum unsigned-byte) max-index index))
+             (cond ((null reals)
+                    max-index)
+                   ((>= max (first reals))
+                    (argmax-aux max max-index (1+ index) (rest reals)))
+                   (t
+                    (argmax-aux (first reals) (1+ index) (1+ index) (rest reals))))))
+    (check-type real real)
+    (argmax-aux real 0 0 more-reals)))
+
+(define-differentiator max (real &rest more-reals) index
+  (funcall (specializer 'if)
+           (funcall (specializer '=)
+                    (wrap-constant index)
+                    (apply (specializer 'argmax) real more-reals))
+           (wrap-constant 1)
+           (wrap-constant 0)))

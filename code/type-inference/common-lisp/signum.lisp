@@ -10,3 +10,7 @@
         ((or float (complex float)) (wrap-default ntype))
         (complex (wrap-default (ntype 'complex)))
         (t (wrap-default 'number))))))
+
+(define-differentiator signum (number) index
+  ;; Should I care about the discontinuity at zero?  Nah.
+  0)

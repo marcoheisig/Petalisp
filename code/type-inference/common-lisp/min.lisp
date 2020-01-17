@@ -40,3 +40,23 @@
                 (t (wrap-default (ntype 'real))))))
           more-reals
           :initial-value real))))
+
+(defun argmin (real &rest more-reals)
+  (labels ((argmin-aux (min min-index index reals)
+             (declare (real min) ((and fixnum unsigned-byte) min-index index))
+             (cond ((null reals)
+                    min-index)
+                   ((< min (first reals))
+                    (argmin-aux min min-index (1+ index) (rest reals)))
+                   (t
+                    (argmin-aux (first reals) (1+ index) (1+ index) (rest reals))))))
+    (check-type real real)
+    (argmin-aux real 0 0 more-reals)))
+
+(define-differentiator min (real &rest more-reals) index
+  (funcall (specializer 'if)
+           (funcall (specializer '=)
+                    (wrap-constant index)
+                    (apply (specializer 'argmin) real more-reals))
+           (wrap-constant 1)
+           (wrap-constant 0)))
