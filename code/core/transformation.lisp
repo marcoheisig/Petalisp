@@ -161,7 +161,8 @@
           (scalings (make-array output-rank :initial-element 0))
           (offsets (make-array output-rank :initial-element 0)))
       (map-transformation-inputs
-       (lambda (input-index g-constraint)
+       (lambda (input-index g-constraint output-index)
+           (declare (ignore output-index))
          (when (integerp g-constraint)
            (let ((f-mask (svref f-output-mask input-index))
                  (f-offset (svref f-offsets input-index))
@@ -262,19 +263,24 @@
                                       &key from-end)
   (if (not from-end)
       (loop for input-index below (transformation-input-rank transformation) do
-        (funcall function input-index nil))
+        (funcall function input-index nil input-index))
       (loop for input-index downfrom (1- (transformation-input-rank transformation)) to 0 do
-        (funcall function input-index nil))))
+        (funcall function input-index nil input-index))))
 
 (defmethod map-transformation-inputs ((function function)
                                       (transformation hairy-transformation)
                                       &key from-end)
-  (let ((input-mask (transformation-input-mask transformation)))
+  (let ((input-mask (transformation-input-mask transformation))
+        (output-mask (transformation-output-mask transformation)))
     (if (not from-end)
         (loop for input-index below (transformation-input-rank transformation) do
-          (funcall function input-index (aref input-mask input-index)))
+          (funcall function input-index
+                   (aref input-mask input-index)
+                   (position input-index output-mask)))
         (loop for input-index downfrom (1- (transformation-input-rank transformation)) to 0 do
-          (funcall function input-index (aref input-mask input-index))))))
+          (funcall function input-index
+                   (aref input-mask input-index)
+                   (position input-index output-mask))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -469,7 +475,8 @@
 (defmethod print-object ((transformation transformation) stream)
   (let ((inputs '()))
     (map-transformation-inputs
-     (lambda (input-index input-constraint)
+     (lambda (input-index input-constraint output-index)
+       (declare (ignore output-index))
        (let ((input
                (if (not (null input-constraint))
                    input-constraint

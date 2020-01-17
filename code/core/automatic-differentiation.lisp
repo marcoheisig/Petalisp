@@ -26,14 +26,14 @@
 
 (defun differentiate (outputs gradients)
   (let ((table (make-hash-table :test #'eq)))
-    ;; Populate the automatic differentiation table.
+    ;; Populate the table with ad-records.
     (labels ((ensure-ad-record (lazy-array)
                (unless (gethash lazy-array table)
                  (setf (gethash lazy-array table)
                        (make-ad-record lazy-array))
                  (mapc #'ensure-ad-record (inputs lazy-array)))))
       (mapc #'ensure-ad-record outputs))
-    ;; Determine the outputs of each automatic differentiation record.
+    ;; Connect all ad-records.
     (maphash
      (lambda (lazy-array record)
        (loop for input in (inputs lazy-array)
@@ -59,6 +59,7 @@
                           (petalisp.type-inference:generalize-ntype
                            (element-ntype output))))
                       (shape output))))))
+    ;; Return the two differentiating closures.
     (labels ((ad-record (lazy-array)
                (check-type lazy-array lazy-array)
                (multiple-value-bind (ad-record present-p)
@@ -130,6 +131,18 @@
 (defmethod input-gradient ((fusion fusion) (output-gradient lazy-array) index)
   (reshape output-gradient (shape (nth index (inputs fusion)))))
 
+(defun move-axis-to-front (array axis)
+  (check-type axis rank)
+  (reshape array
+           (make-transformation
+            :output-mask
+            (loop for index below (rank array)
+                  collect
+                  (cond
+                    ((= index 0) axis)
+                    ((<= index axis) (1- index))
+                    ((> index axis) index))))))
+
 (defmethod input-gradient ((reference reference) (output-gradient lazy-array) (index (eql 0)))
   (with-accessors ((transformation transformation)
                    (shape shape)) reference
@@ -138,12 +151,22 @@
          output-gradient
          (shape reference)
          (invert-transformation (transformation reference)))
-        (break "TODO")
-        #+(or)
-        (let ((gradient 0))
-          (map-transformation-outputs
-           (lambda (output-index input-index scaling offset)
-             (declare (ignore offset))
-             (if (zerop scaling)
-                 (setf gradient (β #'+ output-gradient))))
-           transformation)))))
+        ;; The input gradient of a broadcasting reference is the average of
+        ;; all incoming gradients.
+        (let ((axes '()))
+          (map-transformation-inputs
+           (lambda (input-index input-constraint output-index)
+             (declare (ignore input-constraint))
+             (when (null output-index)
+               (push input-index axes)))
+           transformation)
+          (labels ((average (array axes)
+                     (if (null axes)
+                         array
+                         (let ((array (move-axis-to-front array (first axes))))
+                           (average
+                            (α #'/
+                               (β #'+ array)
+                               (range-size (first (shape-ranges (shape array)))))
+                            (rest axes))))))
+            (average output-gradient axes))))))

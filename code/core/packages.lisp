@@ -101,6 +101,7 @@
    #:fusion
    #:reference
    #:make-reference
+   #:move-axis-to-front
    #:reshape
    #:fuse
    #:fuse*
