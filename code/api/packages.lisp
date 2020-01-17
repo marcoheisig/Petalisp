@@ -36,6 +36,7 @@
    #:schedule
    #:indices
    #:define-parallel-aliases
+   #:vectorize
 
    ;; Backends
    #:*backend*

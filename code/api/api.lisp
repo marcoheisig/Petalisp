@@ -13,3 +13,8 @@
                do (setf x (β f x))
                finally (return x)))
         (t (error "Not a valid axis: ~S" axis))))
+
+(declaim (inline vectorize))
+(defun vectorize (function &optional (arity 1))
+  (lambda (&rest args)
+    (apply #'α* arity function args)))
