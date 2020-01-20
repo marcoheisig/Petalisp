@@ -114,7 +114,6 @@
    #:broadcast-list-of-arrays
    #:copy-arrays
    #:substitute-arrays
-   #:make-parameter
    #:α
    #:α*
    #:β
@@ -122,6 +121,7 @@
    ;; Network
    #:network
    #:network-parameters
+   #:make-parameter
    #:network-outputs
    #:make-network
    #:call-network

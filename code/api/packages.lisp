@@ -121,7 +121,16 @@
    #:array-immediate
    #:range-immediate
    #:make-range-immediate
-   #:lisp-datum-from-immediate)
+   #:lisp-datum-from-immediate
+
+   ;; Network
+   #:network
+   #:network-parameters
+   #:make-parameter
+   #:network-outputs
+   #:make-network
+   #:call-network
+   #:differentiate)
 
   (:shadowing-import-from :petalisp.reference-backend #:make-reference-backend)
   (:shadowing-import-from :petalisp.ir-backend #:make-ir-backend)
