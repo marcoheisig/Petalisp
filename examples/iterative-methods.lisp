@@ -63,7 +63,7 @@
 ;;; The Gauss-Seidel Method
 
 (defun red-black-coloring (array &key (boundary 0))
-  (let* ((lazy-array (coerce-to-lazy-array array)))
+  (let* ((lazy-array (lazy-array array)))
     (labels ((red-black-shapes (red black ranges)
                (if (null ranges)
                    (values
@@ -140,7 +140,7 @@
 ;;; The Multigrid Method
 
 (defun scale-array (array factor)
-  (let* ((lazy-array (coerce-to-lazy-array array)))
+  (let* ((lazy-array (lazy-array array)))
     (reshape
      array
      (make-transformation

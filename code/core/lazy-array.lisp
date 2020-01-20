@@ -34,7 +34,7 @@
 
 (defgeneric increment-refcount (array))
 
-(defgeneric coerce-to-lazy-array (array))
+(defgeneric lazy-array (array))
 
 (defgeneric replace-lazy-array (lazy-array replacement))
 
@@ -104,13 +104,13 @@
     (setf (%computablep non-immediate)
           computablep)))
 
-(defmethod coerce-to-lazy-array ((lazy-array lazy-array))
+(defmethod lazy-array ((lazy-array lazy-array))
   lazy-array)
 
-(defmethod coerce-to-lazy-array ((array array))
+(defmethod lazy-array ((array array))
   (make-array-immediate array))
 
-(defmethod coerce-to-lazy-array ((object t))
+(defmethod lazy-array ((object t))
   (make-scalar-immediate object))
 
 (defmethod replace-lazy-array ((instance reference) (replacement reference))

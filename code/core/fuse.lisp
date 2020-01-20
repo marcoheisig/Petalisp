@@ -3,16 +3,16 @@
 (in-package #:petalisp.core)
 
 (defun fuse (&rest inputs)
-  (make-fusion (mapcar #'coerce-to-lazy-array inputs)))
+  (make-fusion (mapcar #'lazy-array inputs)))
 
 (defun fuse* (&rest inputs)
-  (let ((lazy-arrays (mapcar #'coerce-to-lazy-array inputs)))
+  (let ((lazy-arrays (mapcar #'lazy-array inputs)))
     (unless (petalisp.utilities:identical lazy-arrays :test #'= :key #'rank)
       (error "~@<Can only fuse arrays with equal rank.  The arrays ~
                  ~{~#[~;and ~S~;~S ~:;~S, ~]~} violate this ~
                  requirement.~:@>"
              inputs)))
-  (let* ((lazy-arrays (mapcar #'coerce-to-lazy-array inputs))
+  (let* ((lazy-arrays (mapcar #'lazy-array inputs))
          (shapes (subdivision (mapcar #'shape lazy-arrays)))
          (identity (identity-transformation (rank (first lazy-arrays)))))
     (flet ((reference-origin (shape)

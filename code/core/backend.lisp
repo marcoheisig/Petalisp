@@ -114,11 +114,11 @@
 
 (defun compute (&rest arguments)
   (compute-on-backend
-   (mapcar #'coerce-to-lazy-array arguments)
+   (mapcar #'lazy-array arguments)
    *backend*))
 
 (defun schedule (&rest arguments)
   (schedule-on-backend
-   (mapcar #'coerce-to-lazy-array arguments)
+   (mapcar #'lazy-array arguments)
    *backend*))
 

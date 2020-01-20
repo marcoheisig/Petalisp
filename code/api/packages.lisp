@@ -102,7 +102,6 @@
    #:lazy-array
    #:lazy-array-p
    #:empty-array-p
-   #:coerce-to-lazy-array
    #:element-type
    #:rank
    #:total-size

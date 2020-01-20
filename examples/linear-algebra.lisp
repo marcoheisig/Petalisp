@@ -22,7 +22,7 @@
 ;;; Matrix Utilities
 
 (defun coerce-to-matrix (x)
-  (setf x (coerce-to-lazy-array x))
+  (setf x (lazy-array x))
   (trivia:ematch (shape x)
     ((shape)
      (reshape x (~ 1 ~ 1)))
@@ -32,7 +32,7 @@
      (reshape x (~ 1 (range-size range-1) ~ 1 (range-size range-2))))))
 
 (defun coerce-to-scalar (x)
-  (setf x (coerce-to-lazy-array x))
+  (setf x (lazy-array x))
   (trivia:ematch (shape x)
     ((shape) x)
     ((shape (range i)) (reshape x (make-transformation

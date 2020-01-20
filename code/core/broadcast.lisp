@@ -3,7 +3,7 @@
 (in-package #:petalisp.core)
 
 (defun broadcast (array shape)
-  (let* ((lazy-array (coerce-to-lazy-array array))
+  (let* ((lazy-array (lazy-array array))
          (array-shape (shape lazy-array))
          (shape (shape shape)))
     ;; Pick off the trivial case immediately.
@@ -34,7 +34,7 @@
    (broadcast-list-of-arrays arrays)))
 
 (defun broadcast-list-of-arrays (list-of-arrays)
-  (let* ((lazy-arrays (mapcar #'coerce-to-lazy-array list-of-arrays))
+  (let* ((lazy-arrays (mapcar #'lazy-array list-of-arrays))
          (shapes (mapcar #'shape lazy-arrays))
          (rank (loop for shape in shapes maximize (shape-rank shape)))
          (broadcast-ranges '()))

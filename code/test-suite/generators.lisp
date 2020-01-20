@@ -92,7 +92,7 @@
      :size-generator size-generator))))
 
 (defun reshape-randomly (array)
-  (let* ((lazy-array (coerce-to-lazy-array array))
+  (let* ((lazy-array (lazy-array array))
          (rank (rank lazy-array))
          (generator (make-integer-generator :min -20 :max 21)))
     (reshape lazy-array

@@ -32,7 +32,7 @@
               lazy-array
               (let ((storage (petalisp.ir:buffer-storage root-buffer)))
                 (assert (arrayp storage))
-                (coerce-to-lazy-array storage))))))
+                (lazy-array storage))))))
 
 ;;; Return a suitable next slice, or NIL, if all work is done.
 (defun compute-next-slice (slice)

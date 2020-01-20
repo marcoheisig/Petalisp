@@ -8,7 +8,7 @@
                 (reshape-using-transformation lazy-array modifier)
                 (reshape-using-shape lazy-array (shape modifier))))
           modifiers
-          :initial-value (coerce-to-lazy-array array)))
+          :initial-value (lazy-array array)))
 
 (defun reshape-using-transformation (lazy-array transformation)
   (make-reference
