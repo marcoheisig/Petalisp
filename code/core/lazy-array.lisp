@@ -229,26 +229,8 @@
   (incf (%refcount non-empty-non-immediate)))
 
 (defmethod print-object ((lazy-array lazy-array) stream)
-  (print-unreadable-object (lazy-array stream :type t :identity t)
-    (format stream "~S ~S" (element-type lazy-array) (shape lazy-array))))
-
-(defmethod print-object ((application application) stream)
-  (print-unreadable-object (application stream :identity t)
-    (format stream "α ~S ~S ~S"
-            (operator application) (element-type application) (shape application))))
-
-(defmethod print-object ((reduction reduction) stream)
-  (print-unreadable-object (reduction stream :identity t)
-    (format stream "β ~S ~S ~S"
-            (operator reduction) (element-type reduction) (shape reduction))))
-
-(defmethod print-object ((array-immediate array-immediate) stream)
-  (print-unreadable-object (array-immediate stream :type t)
-    (princ (storage array-immediate) stream)))
-
-(defmethod print-object ((range-immediate range-immediate) stream)
-  (print-unreadable-object (range-immediate stream :type t)
-    (format stream ":SHAPE ~A" (shape range-immediate))))
+  (print-unreadable-object (lazy-array stream)
+    (format stream "~S ~S ~S" 'lazy-array (element-type lazy-array) (shape lazy-array))))
 
 ;; TODO remove this function?
 (defmethod transform ((lazy-array lazy-array) (transformation transformation))
