@@ -16,7 +16,7 @@
        (define-specializer ,name (object)
          (ntype-subtypecase (wrapper-ntype object)
            ((not ,type) (abort-specialization))
-           (,type (wrap object))
+           (,type object)
            (t (wrap-default (ntype ',type))))))))
 
 (define-type-check number)

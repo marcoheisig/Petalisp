@@ -86,6 +86,9 @@
 ;;; Type Specifier Ntypes
 
 (defun %ntype (type-specifier)
+  ;; Check that we are dealing with a valid type specifier.
+  (unless (ignore-errors (prog1 t (typep 42 type-specifier)))
+    (error "~@<~S is not a valid type specifier.~:@>" type-specifier))
   (if (and (consp type-specifier)
            (eq (first type-specifier) 'eql)
            (consp (rest type-specifier))

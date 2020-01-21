@@ -331,6 +331,7 @@
             (if (ntype-subtypep object-ntype result-ntype)
                 (wrap object)
                 (ntype-subtypecase result-ntype
+                  (nil (abort-specialization))
                   (short-float
                    (wrap
                     (coerce-to-short-float object)))

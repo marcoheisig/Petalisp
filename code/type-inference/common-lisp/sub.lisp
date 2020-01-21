@@ -100,5 +100,6 @@
 (define-specializer 1- (number)
   (wrap (- number 1)))
 
-(define-differentiator 1- (number) _
+(define-differentiator 1- (number) index
+  (declare (ignore number))
   (wrap -1))

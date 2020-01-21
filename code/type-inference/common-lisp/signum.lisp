@@ -12,5 +12,6 @@
         (t (wrap-default 'number))))))
 
 (define-differentiator signum (number) index
+  (declare (ignore number))
   ;; Should I care about the discontinuity at zero?  Nah.
   0)
