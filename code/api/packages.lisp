@@ -122,6 +122,8 @@
    #:range-immediate
    #:make-range-immediate
    #:lisp-datum-from-immediate
+   #:move-axis-to-front
+   #:collapse
 
    ;; Network
    #:network

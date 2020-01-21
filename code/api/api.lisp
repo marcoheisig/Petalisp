@@ -18,3 +18,7 @@
 (defun vectorize (function &optional (arity 1))
   (lambda (&rest args)
     (apply #'α* arity function args)))
+
+(defun collapse (array)
+  (let ((lazy-array (lazy-array array)))
+    (reshape lazy-array (collapsing-transformation (shape lazy-array)))))
