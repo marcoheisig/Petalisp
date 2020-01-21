@@ -126,7 +126,13 @@
         index))))
 
 (defmethod input-gradient ((reduction reduction) (output-gradient lazy-array) index)
-  (break "TODO"))
+  (cond ((eql (operator reduction) #'+)
+         (α #'* output-gradient (reshape 1 (shape (input reduction)))))
+        (t
+         (error "~@<Don't know how to compute the gradient of a reduction ~
+                    of ~R arguments with the operator ~S.~:@>"
+                (length (inputs reduction))
+                (operator reduction)))))
 
 (defmethod input-gradient ((fusion fusion) (output-gradient lazy-array) index)
   (reshape output-gradient (shape (nth index (inputs fusion)))))
