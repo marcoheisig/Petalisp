@@ -169,22 +169,16 @@
                    (shape shape)) reference
     (if (transformation-invertiblep transformation)
         (reshape output-gradient (transformation reference))
-        ;; The input gradient of a broadcasting reference is the average of
-        ;; all incoming gradients.
-        (let ((axes '()))
-          (map-transformation-inputs
-           (lambda (input-index input-constraint output-index)
-             (declare (ignore input-constraint))
-             (when (null output-index)
-               (push input-index axes)))
-           transformation)
-          (labels ((average (array axes)
-                     (if (null axes)
-                         array
-                         (let ((array (move-axis-to-front array (first axes))))
-                           (average
-                            (α #'/
-                               (β #'+ array)
-                               (range-size (first (shape-ranges (shape array)))))
-                            (rest axes))))))
-            (average output-gradient axes))))))
+        ;; The input gradient of a broadcasting reference is the sum of all
+        ;; incoming gradients.
+        (map-transformation-inputs
+         (lambda (input-index input-constraint output-index)
+           (declare (ignore input-constraint))
+           (when (null output-index)
+             (setf output-gradient
+                   (β #'+ (move-axis-to-front output-gradient input-index)))))
+         transformation
+         ;; Note: The order in which the axes are processed matters.  By
+         ;; working from the highest axis to the lowest, we ensure that
+         ;; each axis refers to the right range.
+         :from-end t))))
