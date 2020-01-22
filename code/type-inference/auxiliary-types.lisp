@@ -32,6 +32,9 @@
 (deftype arity ()
   '(integer 0 (#.call-arguments-limit)))
 
+(deftype argument-index ()
+  '(integer 0 (#.(1- call-arguments-limit))))
+
 ;; The representation of byte specifiers is implementation-dependent.
 ;; However, under the not-so-bold assumption that each implementation
 ;; consistently uses a uniform representation, we can get surprisingly far.

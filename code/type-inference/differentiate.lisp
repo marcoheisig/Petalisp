@@ -8,6 +8,7 @@
                       wrap-constant
                       wrap-function
                       index)
+  (check-type index argument-index)
   (let ((*wrapper-ntype* wrapper-ntype)
         (*wrap-constant* wrap-constant)
         (*wrap-function* wrap-function))

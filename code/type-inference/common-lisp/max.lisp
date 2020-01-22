@@ -56,6 +56,9 @@
     (check-type real real)
     (argmax-aux real 0 0 more-reals)))
 
+(define-specializer argmax (real &rest more-reals)
+  (wrap-default (ntype 'argument-index)))
+
 (define-differentiator max (real &rest more-reals) index
   (funcall (specializer 'if)
            (funcall (specializer '=)
