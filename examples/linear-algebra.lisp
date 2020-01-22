@@ -1,7 +1,9 @@
 (in-package :common-lisp-user)
 
 (defpackage #:petalisp.examples.linear-algebra
-  (:use #:common-lisp #:alexandria #:petalisp)
+  (:use
+   #:common-lisp
+   #:petalisp)
   (:export
    #:matrix
    #:square-matrix
@@ -43,12 +45,12 @@
                                              :output-rank 0)))))
 
 (trivia:defpattern matrix (m n)
-  (with-gensyms (it)
+  (alexandria:with-gensyms (it)
     `(trivia:guard1 ,it (lazy-array-p ,it)
                     (shape ,it) (shape (range 1 ,m) (range 1 ,n)))))
 
 (trivia:defpattern square-matrix (m)
-  (with-gensyms (g)
+  (alexandria:with-gensyms (g)
     `(matrix (and ,m ,g) (= ,g))))
 
 (trivia:defun-match matrix-p (object)

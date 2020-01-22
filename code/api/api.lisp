@@ -22,3 +22,6 @@
 (defun collapse (array)
   (let ((lazy-array (lazy-array array)))
     (reshape lazy-array (collapsing-transformation (shape lazy-array)))))
+
+(defun flatten (array)
+  (reshape array (~ 0 (1- (shape-size (shape array))))))
