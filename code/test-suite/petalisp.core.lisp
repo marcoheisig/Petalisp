@@ -67,7 +67,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Networks
+;;; Networks and Automatic Differentiation
 
 (define-test network-test
   (let* ((shape (~ 0 9))

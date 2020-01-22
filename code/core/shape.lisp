@@ -140,7 +140,7 @@
       ((list) '())
       ((list _) shapes)
       ((list* _ _ _)
-       (reduce #'shatter shapes :initial-value nil)))))
+       (reduce #'shatter shapes :initial-value '())))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

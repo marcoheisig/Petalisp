@@ -83,13 +83,6 @@
                 (wrap-default (ntype 'number))))))))
       numbers))))
 
-(define-differentiator * (&rest numbers) index
-  (apply (specializer '*)
-         (loop for number in numbers
-               for position from 0
-               unless (= position index)
-                 collect number)))
-
 (define-simple-instruction (* short-float*) (short-float) (short-float short-float))
 (define-simple-instruction (* single-float*) (single-float) (single-float single-float))
 (define-simple-instruction (* double-float*) (double-float) (double-float double-float))
@@ -99,3 +92,9 @@
 (define-simple-instruction (* complex-double-float*) (complex-double-float) (complex-double-float complex-double-float))
 (define-simple-instruction (* complex-long-float*) (complex-long-float) (complex-long-float complex-long-float))
 
+(define-differentiator * (&rest numbers) index
+  (apply (specializer '*)
+         (loop for number in numbers
+               for position from 0
+               unless (= position index)
+                 collect number)))
