@@ -27,7 +27,7 @@
 (defmacro ad-record-input-gradient-cache (ad-record index)
   `(svref (ad-record-input-gradient-caches ,ad-record) ,index))
 
-(defun differentiate (outputs gradients)
+(defun differentiator (outputs gradients)
   (let ((table (make-hash-table :test #'eq)))
     ;; Populate the table with ad-records.
     (labels ((ensure-ad-record (lazy-array)
@@ -109,6 +109,15 @@
                index)))))
 
 (defgeneric input-gradient (lazy-array output-gradient index))
+
+(defmethod input-gradient :around (lazy-array output-gradient index)
+  (let ((input (nth index (inputs lazy-array)))
+        (value (call-next-method)))
+    (if (petalisp.type-inference:ntype=
+         (element-ntype value)
+         (element-ntype input))
+        value
+        (α #'coerce value (element-type input)))))
 
 (defmethod input-gradient ((application application) (output-gradient lazy-array) index)
   (with-accessors ((inputs inputs)

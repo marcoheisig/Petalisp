@@ -130,7 +130,7 @@
    #:network-outputs
    #:make-network
    #:call-network
-   #:differentiate
+   #:differentiator
 
    ;; Utilities
    #:move-axis-to-front

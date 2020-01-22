@@ -125,7 +125,7 @@
    #:network-outputs
    #:make-network
    #:call-network
-   #:differentiate
+   #:differentiator
 
    ;; Backend
    #:*backend*

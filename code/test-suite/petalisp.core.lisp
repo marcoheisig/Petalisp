@@ -77,7 +77,7 @@
                 (α #'coerce (α #'log x1) 'double-float)
                 (α #'* x1 x2)
                 (α #'sin x2)))
-         (gradient-fn (differentiate (list v1) (list :g1)))
+         (gradient-fn (differentiator (list v1) (list :g1)))
          (network (make-network v1))
          (gradient-network (make-network
                             (funcall gradient-fn x1)
