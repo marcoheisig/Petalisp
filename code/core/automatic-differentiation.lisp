@@ -9,7 +9,6 @@
                        (make-array (length (inputs lazy-array)) :initial-element nil))))
             (:copier nil)
             (:predicate nil))
-  (name (gensym))
   (lazy-array nil :type lazy-array :read-only t)
   ;; An alist with one (argument-index . a-d-record) entry per reference to
   ;; this record's lazy array.
@@ -20,6 +19,10 @@
   ;; describes the gradient at the corresponding input of this record's
   ;; lazy array.
   (input-gradient-caches nil :type vector))
+
+(defmethod print-object ((ad-record ad-record) stream)
+  (print-unreadable-object (ad-record stream :type t :identity t)
+    (format stream "~S" (ad-record-lazy-array ad-record))))
 
 (defmacro ad-record-input-gradient-cache (ad-record index)
   `(svref (ad-record-input-gradient-caches ,ad-record) ,index))
@@ -79,14 +82,17 @@
           index))))))
 
 (defun ad-record-output-gradient (ad-record)
-  (let ((cached-value (ad-record-output-gradient-cache ad-record)))
+  (let* ((cached-value (ad-record-output-gradient-cache ad-record)))
     (if (not (null cached-value))
         cached-value
-        (let* ((alist (ad-record-alist ad-record))
+        (let* ((lazy-array (ad-record-lazy-array ad-record))
+               (zero (coerce 0 (element-type lazy-array)))
+               (zeros (reshape zero (shape lazy-array)))
+               (alist (ad-record-alist ad-record))
                (gradients
                  (loop for (index . record) in alist
                        collect
-                       (ad-record-input-gradient record index))))
+                       (fuse* zeros (ad-record-input-gradient record index)))))
           (setf (ad-record-output-gradient-cache ad-record)
                 (α #'*
                    (ad-record-lazy-array ad-record)
@@ -126,11 +132,11 @@
         index))))
 
 (defmethod input-gradient ((reduction reduction) (output-gradient lazy-array) index)
-  (cond ((eql (operator reduction) #'+)
+  (cond ((member (operator reduction) (list '+ 'petalisp.type-inference:short-float+))
          (α #'* output-gradient (reshape 1 (shape (input reduction)))))
         (t
          (error "~@<Don't know how to compute the gradient of a reduction ~
-                    of ~R arguments with the operator ~S.~:@>"
+                    of ~R argument~:P with the operator ~S.~:@>"
                 (length (inputs reduction))
                 (operator reduction)))))
 
@@ -153,10 +159,7 @@
   (with-accessors ((transformation transformation)
                    (shape shape)) reference
     (if (transformation-invertiblep transformation)
-        (make-reference
-         output-gradient
-         (shape reference)
-         (invert-transformation (transformation reference)))
+        (reshape output-gradient (transformation reference))
         ;; The input gradient of a broadcasting reference is the average of
         ;; all incoming gradients.
         (let ((axes '()))
