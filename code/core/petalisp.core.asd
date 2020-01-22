@@ -29,6 +29,7 @@
    (:file "fuse")
    (:file "map")
    (:file "reduce")
+   (:file "substitute-array")
    (:file "backend")
    (:file "device")
    (:file "network")
