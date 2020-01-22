@@ -215,7 +215,7 @@
                      (when strategy-1-ub-p
                        (push-range strategy-1-ub 1 end-1)))
             ;; Strategy 2
-            (let ((block-size (1- step-2)))
+            (let ((block-size (- step-2 2)))
               (loop for start from (1+ start-2) by step-2 below end-2
                     for end = (+ start block-size)
                     do (push-range start 1 end)
