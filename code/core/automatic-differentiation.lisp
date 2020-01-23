@@ -86,17 +86,26 @@
     (if (not (null cached-value))
         cached-value
         (let* ((lazy-array (ad-record-lazy-array ad-record))
-               (zero (coerce 0 (element-type lazy-array)))
-               (zeros (reshape zero (shape lazy-array)))
                (alist (ad-record-alist ad-record))
                (gradients
-                 (loop for (index . record) in alist
-                       collect
-                       (fuse* zeros (ad-record-input-gradient record index)))))
+                 (list*
+                  (reshape (coerce 0 (element-type lazy-array)) (shape lazy-array))
+                  (loop for (index . record) in alist
+                        collect
+                        (ad-record-input-gradient record index)))))
           (setf (ad-record-output-gradient-cache ad-record)
                 (α #'*
                    (ad-record-lazy-array ad-record)
-                   (apply #'α #'+ gradients)))))))
+                   (apply
+                    #'fuse
+                    (loop for (shape . bitmask) in (subdivide gradients #'shape)
+                          collect
+                          (apply
+                           #'α #'+
+                           (loop for gradient in gradients
+                                 for index from 0
+                                 when (logbitp index bitmask)
+                                   collect (reshape gradient shape)))))))))))
 
 (defun ad-record-input-gradient (ad-record index)
   (let ((cached-value (ad-record-input-gradient-cache ad-record index)))
