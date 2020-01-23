@@ -121,27 +121,6 @@
              for range-2 in (shape-ranges shape-2)
              always (subrangep range-1 range-2))))
 
-(defun subdivision (shapes)
-  (labels ((subtract (shapes what)
-             (loop for shape in shapes
-                   append (shape-difference-list shape what)))
-           (shatter (dust object) ; dust is a list of disjoint shapes
-             (let* ((object-w/o-dust (list object))
-                    (new-dust '()))
-               (loop for particle in dust do
-                 (setf object-w/o-dust (subtract object-w/o-dust particle))
-                 (loop for shape in (shape-difference-list particle object) do
-                   (push shape new-dust))
-                 (let ((it (shape-intersection particle object)))
-                   (unless (null it)
-                     (push it new-dust))))
-               (append object-w/o-dust new-dust))))
-    (trivia:ematch shapes
-      ((list) '())
-      ((list _) shapes)
-      ((list* _ _ _)
-       (reduce #'shatter shapes :initial-value '())))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Convenient Notation for Shapes
@@ -223,3 +202,53 @@
         `(shape
           ,@(loop for range-designator in range-designators
                   collect `(range ,@range-designator))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Subdivide
+
+(defun subdivide (objects shape-fn)
+  (reduce #'subdivide-aux
+          (loop for object in objects
+                for bitmask = 1 then (ash bitmask 1)
+                collect (cons (funcall shape-fn object) bitmask))
+          :initial-value '()))
+
+;; A fragment is a cons whose car is a shape and whose cdr is the
+;; corresponding bitmask. This function takes a list of disjoint fragments
+;; (fragments whose shapes are disjoint) and a new fragment and returns a
+;; list of disjoint fragments that partition both the old fragments and the
+;; new fragment.
+(defun subdivide-aux (old-fragments new-fragment)
+  (let ((intersections
+          (loop for old-fragment in old-fragments
+                append (fragment-intersections old-fragment new-fragment))))
+    (append
+     intersections
+     (loop for old-fragment in old-fragments
+           append
+           (fragment-difference-list old-fragment new-fragment))
+     (labels ((subtract (list-1 list-2)
+                (if (null list-2)
+                    list-1
+                    (subtract
+                     (loop for fragment in list-1
+                           append
+                           (fragment-difference-list fragment (first list-2)))
+                     (rest list-2)))))
+       (subtract (list new-fragment) intersections)))))
+
+(defun fragment-intersections (fragment-1 fragment-2)
+  (destructuring-bind (shape-1 . mask-1) fragment-1
+    (destructuring-bind (shape-2 . mask-2) fragment-2
+      (let ((intersection (shape-intersection shape-1 shape-2)))
+        (if (null intersection)
+            '()
+            (list (cons intersection (logior mask-1 mask-2))))))))
+
+(defun fragment-difference-list (fragment-1 fragment-2)
+  (destructuring-bind (shape-1 . mask-1) fragment-1
+    (destructuring-bind (shape-2 . mask-2) fragment-2
+      (declare (ignore mask-2))
+      (loop for shape in (shape-difference-list shape-1 shape-2)
+            collect (cons shape mask-1)))))

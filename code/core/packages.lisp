@@ -48,7 +48,7 @@
    #:shape-contains
    #:shrink-shape
    #:enlarge-shape
-   #:subdivision
+   #:subdivide
 
    ;; Transformations
    #:τ

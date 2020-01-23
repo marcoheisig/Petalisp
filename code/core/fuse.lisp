@@ -13,13 +13,13 @@
                  requirement.~:@>"
              inputs)))
   (let* ((lazy-arrays (mapcar #'lazy-array inputs))
-         (shapes (subdivision (mapcar #'shape lazy-arrays)))
          (identity (identity-transformation (rank (first lazy-arrays)))))
-    (flet ((reference-origin (shape)
-             (let ((origin (find shape lazy-arrays :from-end t :key #'shape :test #'subshapep)))
-               (assert origin)
-               (make-reference origin shape identity))))
-      (make-fusion (mapcar #'reference-origin shapes)))))
+    (make-fusion
+     (mapcar
+      (lambda (fragment)
+        (destructuring-bind (shape . bitmask) fragment
+          (make-reference (nth (1- (integer-length bitmask)) lazy-arrays) shape identity)))
+      (subdivide lazy-arrays #'shape)))))
 
 ;; Create a fusion, assuming INPUTS are non-empty, non-overlapping lazy-arrays.
 (defun make-fusion (inputs)

@@ -184,18 +184,23 @@ Examples:
   => #<range 1 ... 10>
 ")
 
-(document-function subdivision
-  "Returns a list of disjoint shapes. Each resulting shape is a proper
-subshape of one or more of the arguments and their fusion covers all
-arguments.
+(document-function subdivide
+  "Returns a list of (shape . bitmask) conses.  Each shape is a proper
+subshape of one or more of the supplied shapes and their fusion covers all
+supplied shapes.  The bitmask indicates which of the supplied shapes are
+supersets of the corresponding resulting shape.
 
 Examples:
 
- (subdivision (list (~ 1 2 ~ 1 2) (~ 1 ~ 1)))
-  => ((~ 1 ~ 1) (~ 2 ~ 1 2) (~ 1 ~ 2))
+ (subdivide (list (~ 1 2 ~ 1 2) (~ 1 ~ 1)) #'identity)
+  => (((~ 2 ~ 1 2) . 1)
+      ((~ 1 ~ 2) . 1)
+      ((~ 1 ~ 1) . 3))
 
- (subdivision (list (~ 1 10) (~ 2 20)))
-  => ((~ 11 20) (~ 2 10) (~ 1))
+ (subdivide (list (~ 1 10) (~ 2 20)) #'identity)
+  => (((~ 11 20) . 2)
+      ((~ 1) . 1)
+      ((~ 2 10) . 3))
 ")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

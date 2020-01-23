@@ -80,7 +80,7 @@
    #:shrink-shape
    #:enlarge-shape
    #:shape-union
-   #:subdivision
+   #:subdivide
 
    ;; Transformations
    #:transformation
