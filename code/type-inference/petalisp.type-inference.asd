@@ -49,4 +49,5 @@
      (:file "signum")
      (:file "sin")
      (:file "sub")
+     (:file "sqrt")
      (:file "tan")))))

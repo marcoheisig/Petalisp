@@ -34,7 +34,7 @@
     (0 (wrap (* (expt base (1- power)) power)))
     (1 (wrap (* (expt base power) (log base))))))
 
-(define-specializer expt  (base power)
+(define-specializer expt (base power)
   (let ((base-ntype (wrapper-ntype base))
         (power-ntype (wrapper-ntype power)))
     (case power-ntype
@@ -63,16 +63,18 @@
       (1/2 (wrap (sqrt base)))
       (-1/2 (wrap (/ (sqrt base))))
       (otherwise
-       (ntype-subtypecase power-ntype
-         ((not number) (abort-specialization))
-         (integer
-          (ntype-subtypecase base-ntype
-            ((not number) (abort-specialization))
-            (rational (wrap-default (ntype 'rational)))
-            (short-float (wrap-default (ntype 'short-float)))
-            (single-float (wrap-default (ntype 'single-float)))
-            (double-float (wrap-default (ntype 'double-float)))
-            (long-float (wrap-default (ntype 'long-float)))
-            (t (wrap-default (ntype 'number)))))
-         (t
-          (wrap-default (ntype 'number))))))))
+       (if (eql-ntype-p base-ntype)
+           (wrap (exp (* power (ln base))))
+           (ntype-subtypecase power-ntype
+             ((not number) (abort-specialization))
+             (integer
+              (ntype-subtypecase base-ntype
+                ((not number) (abort-specialization))
+                (rational (wrap-default (ntype 'rational)))
+                (short-float (wrap-default (ntype 'short-float)))
+                (single-float (wrap-default (ntype 'single-float)))
+                (double-float (wrap-default (ntype 'double-float)))
+                (long-float (wrap-default (ntype 'long-float)))
+                (t (wrap-default (ntype 'number)))))
+             (t
+              (wrap-default (ntype 'number)))))))))
