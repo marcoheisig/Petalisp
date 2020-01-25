@@ -150,13 +150,29 @@
         index))))
 
 (defmethod input-gradient ((reduction reduction) (output-gradient lazy-array) index)
-  (cond ((member (operator reduction) (list '+ 'petalisp.type-inference:short-float+))
-         (α #'* output-gradient (reshape 1 (shape (input reduction)))))
-        (t
-         (error "~@<Don't know how to compute the gradient of a reduction ~
+  (with-accessors ((inputs inputs)
+                   (operator operator)
+                   (shape shape)) reduction
+    (let* ((input-ntypes (mapcar (alexandria:compose #'list #'element-ntype) inputs))
+           (result-ntypes
+             (petalisp.type-inference:differentiate
+              operator
+              (append input-ntypes input-ntypes)
+              #'first
+              #'list
+              (lambda (ntypes function inputs)
+                (declare (ignore function inputs))
+                ntypes)
+              index)))
+      (if (every #'petalisp.type-inference:eql-ntype-p result-ntypes)
+          (α #'* output-gradient
+             (α #'coerce
+                (reshape (first result-ntypes) (shape (first inputs)))
+                (element-type (first inputs))))
+          (error "~@<Don't know how to compute the gradient of a reduction ~
                     of ~R argument~:P with the operator ~S.~:@>"
                 (length (inputs reduction))
-                (operator reduction)))))
+                (operator reduction))))))
 
 (defmethod input-gradient ((fusion fusion) (output-gradient lazy-array) index)
   (reshape output-gradient (shape (nth index (inputs fusion)))))
@@ -180,14 +196,16 @@
         (reshape output-gradient (transformation reference))
         ;; The input gradient of a broadcasting reference is the sum of all
         ;; incoming gradients.
-        (map-transformation-inputs
-         (lambda (input-index input-constraint output-index)
-           (declare (ignore input-constraint))
-           (when (null output-index)
-             (setf output-gradient
-                   (β #'+ (move-axis-to-front output-gradient input-index)))))
-         transformation
-         ;; Note: The order in which the axes are processed matters.  By
-         ;; working from the highest axis to the lowest, we ensure that
-         ;; each axis refers to the right range.
-         :from-end t))))
+        (progn
+          (map-transformation-inputs
+           (lambda (input-index input-constraint output-index)
+             (declare (ignore input-constraint))
+             (when (null output-index)
+               (setf output-gradient
+                     (β #'+ (move-axis-to-front output-gradient input-index)))))
+           transformation
+           ;; Note: The order in which the axes are processed matters.  By
+           ;; working from the highest axis to the lowest, we ensure that
+           ;; each axis refers to the right range.
+           :from-end t)
+          output-gradient))))

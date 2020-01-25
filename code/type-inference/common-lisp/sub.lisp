@@ -87,8 +87,11 @@
           :initial-value number))))
 
 (define-differentiator - (number &rest more-numbers) index
-  (declare (ignore number more-numbers))
-  (if (zerop index) 1 -1))
+  (declare (ignore number))
+  (if (and (zerop index)
+           (not (null more-numbers)))
+      (wrap 1)
+      (wrap -1)))
 
 (define-simple-instruction (- short-float-) (short-float) (short-float short-float))
 (define-simple-instruction (- single-float-) (single-float) (single-float single-float))
