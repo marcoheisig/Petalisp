@@ -19,7 +19,7 @@
       (lambda (fragment)
         (destructuring-bind (shape . bitmask) fragment
           (make-reference (nth (1- (integer-length bitmask)) lazy-arrays) shape identity)))
-      (subdivide lazy-arrays #'shape)))))
+      (subdivide lazy-arrays)))))
 
 ;; Create a fusion, assuming INPUTS are non-empty, non-overlapping lazy-arrays.
 (defun make-fusion (inputs)

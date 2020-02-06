@@ -207,11 +207,11 @@
 ;;;
 ;;; Subdivide
 
-(defun subdivide (objects shape-fn)
+(defun subdivide (arrays)
   (reduce #'subdivide-aux
-          (loop for object in objects
+          (loop for array in arrays
                 for bitmask = 1 then (ash bitmask 1)
-                collect (cons (funcall shape-fn object) bitmask))
+                collect (cons (shape array) bitmask))
           :initial-value '()))
 
 ;; A fragment is a cons whose car is a shape and whose cdr is the

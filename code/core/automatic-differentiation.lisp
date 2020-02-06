@@ -98,7 +98,7 @@
                    (ad-record-lazy-array ad-record)
                    (apply
                     #'fuse
-                    (loop for (shape . bitmask) in (subdivide gradients #'shape)
+                    (loop for (shape . bitmask) in (subdivide gradients)
                           collect
                           (apply
                            #'α #'+
@@ -208,4 +208,8 @@
            ;; working from the highest axis to the lowest, we ensure that
            ;; each axis refers to the right range.
            :from-end t)
-          output-gradient))))
+          (reshape output-gradient
+                   (make-transformation
+                    :input-rank (rank output-gradient)
+                    :output-mask (transformation-output-mask transformation)
+                    :offsets (transformation-offsets transformation)))))))
