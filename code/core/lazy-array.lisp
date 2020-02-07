@@ -71,7 +71,8 @@
                (member '%ntype slot-names)))
       (apply #'call-next-method instance slot-names
              :ntype (petalisp.type-inference:ntype element-type)
-             args)))
+             args)
+      (call-next-method)))
 
 (defclass non-empty-immediate (non-empty-array immediate)
   ())
