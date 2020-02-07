@@ -413,12 +413,6 @@ Examples:
   => #(0 1 2)
 ")
 
-(document-function make-parameter
-  "Creates a lazy array that can serve as the input of a network.  In
-contrast to other lazy arrays, a parameter, and all other arrays that
-depend on it cannot be computed.  Instead, parameters can be bound to
-particular values when evaluating a network.")
-
 (document-function α
   "Returns one or more lazy arrays, whose contents are the values returned
 by the supplied function when applied element-wise to the contents of the

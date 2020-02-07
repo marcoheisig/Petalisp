@@ -101,6 +101,7 @@
    ;; Strided Arrays
    #:lazy-array
    #:lazy-array-p
+   #:parameter
    #:empty-array-p
    #:element-type
    #:rank
@@ -126,7 +127,6 @@
    ;; Network
    #:network
    #:network-parameters
-   #:make-parameter
    #:network-outputs
    #:make-network
    #:call-network

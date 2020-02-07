@@ -57,7 +57,21 @@
 
 (defclass non-empty-array (lazy-array)
   ((%shape :initarg :shape :reader shape :reader shape)
-   (%ntype :initarg :ntype :reader element-ntype)))
+   (%ntype :initarg :ntype :reader element-ntype))
+  (:default-initargs
+   :shape (~)
+   :ntype (petalisp.type-inference:ntype 't)))
+
+(defmethod shared-initialize
+    ((instance non-empty-array) slot-names
+     &rest args
+     &key (element-type nil element-type-supplied-p))
+  (if (and element-type-supplied-p
+           (or (eql slot-names 't)
+               (member '%ntype slot-names)))
+      (apply #'call-next-method instance slot-names
+             :ntype (petalisp.type-inference:ntype element-type)
+             args)))
 
 (defclass non-empty-immediate (non-empty-array immediate)
   ())
@@ -73,8 +87,8 @@
   ())
 
 (defclass parameter (non-empty-immediate)
-  ((%name :initarg :name :reader parameter-name :type symbol))
-  (:default-initargs :computable nil))
+  ()
+  (:default-initargs :computable nil :shape (~)))
 
 (defclass application (non-empty-non-immediate)
   ((%operator :initarg :operator :reader operator)
@@ -266,15 +280,6 @@
     (petalisp.type-inference:ntype-union
      (petalisp.type-inference:ntype-of (range-start range))
      (petalisp.type-inference:ntype-of (range-end range)))))
-
-(defun make-parameter (name &key (shape (~)) (element-type 't))
-  (check-type name symbol)
-  (if (null shape)
-      (empty-array)
-      (make-instance 'parameter
-        :name name
-        :shape shape
-        :ntype (petalisp.type-inference:ntype element-type))))
 
 (defun indices (array-or-shape &optional (axis 0))
   (cond ((null array-or-shape)

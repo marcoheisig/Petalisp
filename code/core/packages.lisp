@@ -76,6 +76,7 @@
    #:immediatep
    #:reusablep
    #:lazy-array
+   #:parameter
    #:replace-lazy-array
    #:total-size
    #:element-type
@@ -121,7 +122,6 @@
    ;; Network
    #:network
    #:network-parameters
-   #:make-parameter
    #:network-outputs
    #:make-network
    #:call-network

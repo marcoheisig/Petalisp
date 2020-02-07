@@ -421,13 +421,12 @@
     (loop for range in (shape-ranges shape)
           for constraint across input-mask
           for index from 0 do
-            (unless (not constraint)
-              (assert (and (= constraint (range-start range))
+            (when constraint
+              (unless (and (= constraint (range-start range))
                            (= constraint (range-end range)))
-                      ()
-                      "~@<The ~:R rank of the shape ~W violates ~
-                          the input constraint ~W of the transformation ~W.~:@>"
-                index shape constraint transformation)))))
+                (error "~@<The ~:R axis of the shape ~W violates ~
+                           the input constraint ~W of the transformation ~W.~:@>"
+                 (1+ index) shape constraint transformation))))))
 
 (defmethod transform ((shape shape) (operator identity-transformation))
   shape)

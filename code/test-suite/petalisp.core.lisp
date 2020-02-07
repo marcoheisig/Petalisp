@@ -71,19 +71,24 @@
 
 (define-test network-test
   (let* ((shape (~ 0 9))
-         (x1 (make-parameter :x1 :shape shape :element-type 'double-float))
-         (x2 (make-parameter :x2 :shape shape :element-type 'double-float))
+         (x1 (make-instance 'parameter :shape shape :element-type 'double-float))
+         (x2 (make-instance 'parameter :shape shape :element-type 'double-float))
          (v1 (α #'+
                 (α #'coerce (α #'log x1) 'double-float)
                 (α #'* x1 x2)
                 (α #'sin x2)))
-         (gradient-fn (differentiator (list v1) (list :g1)))
-         (network (make-network v1))
-         (gradient-network (make-network
-                            (funcall gradient-fn x1)
-                            (funcall gradient-fn x2))))
-    (call-network network :x1 5d0 :x2 1d0)
-    (call-network gradient-network :x1 1d0 :x2 1d0 :g1 1d0)))
+         (network
+           (make-network v1))
+         (g1 (make-instance 'parameter
+               :shape (shape v1)
+               :element-type (element-type v1)))
+         (gradient-fn (differentiator (list v1) (list g1)))
+         (gradient-network
+           (make-network
+            (funcall gradient-fn x1)
+            (funcall gradient-fn x2))))
+    (call-network network x1 5d0 x2 1d0)
+    (call-network gradient-network x1 1d0 x2 1d0 g1 1d0)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
