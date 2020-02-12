@@ -12,3 +12,5 @@
 !*.asd
 # scripts
 !*.sh
+# NumPy Data (for the machine learning example)
+!*.npy
