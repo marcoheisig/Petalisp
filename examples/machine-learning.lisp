@@ -36,6 +36,11 @@
 ;;;
 ;;; Machine Learning Building Blocks
 
+(defun average (array)
+  (α #'/
+     (β* #'+ 0 array)
+     (total-size array)))
+
 (defun make-random-array (dimensions &key (element-type 't))
   (let ((array (make-array dimensions :element-type element-type)))
     (loop for index below (array-total-size array) do
@@ -51,14 +56,18 @@
   (α #'max (coerce 0 (element-type array)) array))
 
 (defun make-fully-connected-layer (array output-shape)
-  (let* ((m (total-size output-shape))
+  (let* ((m (shape-size output-shape))
          (n (total-size array))
          (weights
            (make-trainable-parameter
-            (α #'/ (make-random-array (list m n) :element-type (element-type array)) m)))
+            (α #'/
+               (make-random-array (list m n) :element-type (element-type array))
+               n)))
          (biases
            (make-trainable-parameter
-            (α #'/ (make-random-array m :element-type (element-type array)) m))))
+            (α #'/
+               (make-random-array m :element-type (element-type array))
+               m))))
     (reshape
      (α #'+
         (β #'+
@@ -77,7 +86,9 @@
          (upper-bounds (make-array k :initial-element 0))
          (filters
            (make-trainable-parameter
-            (make-random-array n-filters :element-type (element-type array))))
+            (make-random-array
+             (list n-filters (length stencil))
+             :element-type (element-type array))))
          (d nil))
     ;; Determine the dimension of the stencil.
     (loop for offsets in stencil do
@@ -171,7 +182,8 @@
                   (loop for trainable-parameter in trainable-parameters
                         collect
                         (α #'+ trainable-parameter
-                           (α #'* learning-rate (funcall gradient trainable-parameter))))))
+                           (α #'* (- learning-rate)
+                              (funcall gradient trainable-parameter))))))
          (n nil))
     ;; Determine the training data size.
     (dolist (data output-training-data)
@@ -204,7 +216,9 @@
               for value in (multiple-value-list
                             (apply #'call-network training-network (reverse args)))
               do (setf (trainable-parameter-value trainable-parameter)
-                       value))))))
+                       value))))
+    ;; Return the trained network.
+    network))
 
 (defun nth-datum (index data)
   (reshape
@@ -238,26 +252,39 @@
 (defparameter *test-images* (load-array "mnist-data" "test-images.npy"))
 (defparameter *test-labels* (load-array "mnist-data" "test-labels.npy"))
 
-(defun main ()
+(defun make-trained-network ()
   (let* ((input (make-instance 'parameter
-                  :shape (~ 1 28 ~ 1 28)
-                  :element-type 'single-float))
-         (output
-           (make-fully-connected-layer
-            (make-maxpool-layer
-             (relu
-              (make-convolutional-layer
-               input
-               :stencil '((0 0) (1 0) (0 1) (-1 0) (0 -1))
-               :n-filters 12))
-             '(1 2 2))
-            (~ 0 9))))
-    (train (make-network output)
-           (list
-            (α 'coerce
-               (α (lambda (n i) (if (= n i) 1.0 0.0))
-                  (reshape *train-labels* (τ (i) (i 0)))
-                  #(0 1 2 3 4 5 6 7 8 9))
-               'single-float))
-           :learning-rate 0.02
-           input (α #'/ *train-images* 255.0))))
+                  :shape (~ 0 27 ~ 0 27)
+                  :element-type 'single-float)))
+    (train
+     (make-network
+      (make-fully-connected-layer
+       (make-maxpool-layer
+        (relu
+         (make-convolutional-layer
+          input
+          :stencil '((0 0) (1 0) (0 1) (-1 0) (0 -1))
+          :n-filters 12))
+        '(1 2 2))
+       (~ 0 9)))
+     (list
+      (α 'coerce
+         (α (lambda (n i) (if (= n i) 1.0 0.0))
+            (reshape *train-labels* (τ (i) (i 0)))
+            #(0 1 2 3 4 5 6 7 8 9))
+         'single-float))
+     :learning-rate 0.2
+     input (α #'/ *train-images* 255.0))))
+
+(defun check-test-data (network index)
+  (format t "Label: ~S Prediction:~{ ~,2F~}~%"
+          (compute (nth-datum index *test-labels*))
+          (coerce
+           (apply #'call-network
+                  network
+                  (loop for parameter in (network-parameters network)
+                        collect parameter
+                        collect (if (trainable-parameter-p parameter)
+                                    (trainable-parameter-value parameter)
+                                    (nth-datum index *train-images*))))
+           'list)))
