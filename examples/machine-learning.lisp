@@ -149,11 +149,23 @@
 ;;;
 ;;; Training
 
-(defun train (network &rest training-data-plist &key learning-rate &allow-other-keys)
-  (let* ((outputs (network-outputs network))
-         (parameters (network-parameters network))
-         (trainable-parameters (remove-if-not #'trainable-parameter-p parameters))
-         (gradient (differentiator outputs trainable-parameters))
+(defun train (network output-training-data
+              &rest training-data-plist
+              &key learning-rate &allow-other-keys)
+  (let* ((trainable-parameters
+           (remove-if-not #'trainable-parameter-p (network-parameters network)))
+         (output-parameters
+           (loop for output in (network-outputs network)
+                 collect (make-instance 'parameter
+                           :element-type (element-type output)
+                           :shape (shape output))))
+         (gradient
+           (differentiator
+            (network-outputs network)
+            (loop for output in (network-outputs network)
+                  for output-parameter in output-parameters
+                  collect
+                  (α #'- output output-parameter))))
          (training-network
            (apply #'make-network
                   (loop for trainable-parameter in trainable-parameters
@@ -162,37 +174,48 @@
                            (α #'* learning-rate (funcall gradient trainable-parameter))))))
          (n nil))
     ;; Determine the training data size.
+    (dolist (data output-training-data)
+      (if (null n)
+          (setf n (range-size (first (shape-ranges (shape data)))))
+          (assert (= n (range-size (first (shape-ranges (shape data))))))))
     (alexandria:doplist (parameter data training-data-plist) ()
       (unless (symbolp parameter)
-        (if (null n)
-            (setf n (range-size (first (shape-ranges (shape data)))))
-            (assert (= n (range-size (first (shape-ranges (shape data)))))))))
+        (assert (= n (range-size (first (shape-ranges (shape data))))))))
     ;; Iterate over the training data.
     (loop for index below n do
       ;; Assemble the arguments.
       (let ((args '()))
-        ;; Training data.
+        ;; Inputs.
         (alexandria:doplist (parameter data training-data-plist)
             (unless (symbolp parameter)
-              (push (reshape
-                     data
-                     (make-shape
-                      (list*
-                       (range index)
-                       (rest (shape-ranges (shape data)))))
-                     (make-transformation
-                      :input-mask (list* index (make-list (1- (rank data))))
-                      :output-mask (alexandria:iota (1- (rank data)) :start 1)))
-                    args)
-              (push parameter args)))
+              (push parameter args)
+              (push (nth-datum index data) args)))
+        ;; Outputs.
+        (loop for data in output-training-data
+              for output-parameter in output-parameters do
+                (push output-parameter args)
+                (push (nth-datum index data) args))
+        ;; Trainable parameters.
         (dolist (trainable-parameter trainable-parameters)
-          (push (trainable-parameter-value trainable-parameter) args)
-          (push trainable-parameter args))
+          (push trainable-parameter args)
+          (push (trainable-parameter-value trainable-parameter) args))
         ;; Update all trainable parameters.
         (loop for trainable-parameter in trainable-parameters
-              for value in (apply #'call-network training-network (reverse args))
+              for value in (multiple-value-list
+                            (apply #'call-network training-network (reverse args)))
               do (setf (trainable-parameter-value trainable-parameter)
                        value))))))
+
+(defun nth-datum (index data)
+  (reshape
+   data
+   (make-shape
+    (list*
+     (range index)
+     (rest (shape-ranges (shape data)))))
+   (make-transformation
+    :input-mask (list* index (make-list (1- (rank data))))
+    :output-mask (alexandria:iota (1- (rank data)) :start 1))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -230,10 +253,11 @@
              '(1 2 2))
             (~ 0 9))))
     (train (make-network output)
+           (list
+            (α 'coerce
+               (α (lambda (n i) (if (= n i) 1.0 0.0))
+                  (reshape *train-labels* (τ (i) (i 0)))
+                  #(0 1 2 3 4 5 6 7 8 9))
+               'single-float))
            :learning-rate 0.02
-           input (α #'/ *train-images* 255.0)
-           output (α 'coerce
-                     (α (lambda (n i) (if (= n i) 1.0 0.0))
-                        (reshape *train-labels* (τ (i) (i 0)))
-                        #(0 1 2 3 4 5 6 7 8 9))
-                     'single-float))))
+           input (α #'/ *train-images* 255.0))))
