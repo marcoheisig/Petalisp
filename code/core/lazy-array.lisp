@@ -244,8 +244,10 @@
   (incf (%refcount non-empty-non-immediate)))
 
 (defmethod print-object ((lazy-array lazy-array) stream)
-  (print-unreadable-object (lazy-array stream)
-    (format stream "~S ~S ~S" 'lazy-array (element-type lazy-array) (shape lazy-array))))
+  (print-unreadable-object (lazy-array stream :type t :identity t)
+    (format stream "~S ~S"
+            (element-type lazy-array)
+            (shape lazy-array))))
 
 ;; TODO remove this function?
 (defmethod transform ((lazy-array lazy-array) (transformation transformation))
