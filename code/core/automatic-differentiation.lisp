@@ -94,18 +94,16 @@
                         collect
                         (ad-record-input-gradient record index)))))
           (setf (ad-record-output-gradient-cache ad-record)
-                (α #'*
-                   (ad-record-lazy-array ad-record)
-                   (apply
-                    #'fuse
-                    (loop for (shape . bitmask) in (subdivide gradients)
-                          collect
-                          (apply
-                           #'α #'+
-                           (loop for gradient in gradients
-                                 for index from 0
-                                 when (logbitp index bitmask)
-                                   collect (reshape gradient shape)))))))))))
+                (apply
+                 #'fuse
+                 (loop for (shape . bitmask) in (subdivide gradients)
+                       collect
+                       (apply
+                        #'α #'+
+                        (loop for gradient in gradients
+                              for index from 0
+                              when (logbitp index bitmask)
+                                collect (reshape gradient shape))))))))))
 
 (defun ad-record-input-gradient (ad-record index)
   (let ((cached-value (ad-record-input-gradient-cache ad-record index)))
