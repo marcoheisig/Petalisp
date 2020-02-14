@@ -25,3 +25,34 @@
 
 (defun flatten (array)
   (reshape array (~ 0 (1- (shape-size (shape array))))))
+
+(defun slice (array index &optional (axis 0))
+  (setf array (lazy-array array))
+  (let ((rank (rank array))
+        (ranges (shape-ranges (shape array))))
+    (unless (< -1 axis rank)
+      (error "~@<Invalid slice axis ~S for the array ~S.~:@>"
+             axis array))
+    (unless (range-contains (first ranges) index)
+      (error "~@<Invalid slice index ~S for the array ~S~:@>"
+             index array))
+    (make-reference
+     array
+     (make-shape
+      (petalisp.utilities:with-collectors ((ranges collect-range))
+        (do ((rest ranges (cdr rest))
+             (pos 0 (1+ pos)))
+            ((= pos axis) (ranges (cdr rest)))
+          (collect-range (car rest)))))
+     (make-transformation
+      :input-rank (1- rank)
+      :output-mask
+      (loop for pos below rank
+            collect
+            (cond ((< pos axis) pos)
+                  ((= pos axis) nil)
+                  ((> pos axis) (1- pos))))
+      :offsets
+      (loop for pos below rank
+            collect
+            (if (= pos axis) index 0))))))
