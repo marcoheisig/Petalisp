@@ -120,7 +120,7 @@
            (multiple-value-bind (start step end)
                (range-start-step-end range)
              (range (+ start step) step (- end step)))))
-    (make-shape (mapcar #'range-interior (ranges (shape array))))))
+    (make-shape (mapcar #'range-interior (shape-ranges (shape array))))))
 
 (defun jacobi-2d (grid)
   (let ((interior (interior grid)))
@@ -154,5 +154,4 @@
   (petalisp.ir:ir-from-lazy-arrays
    (list
     (jacobi-2d
-     (jacobi-2d domain)))
-   (petalisp.ir-backend:make-ir-backend))))
+     (jacobi-2d domain))))))
