@@ -62,7 +62,7 @@
            (make-trainable-parameter
             (α #'/
                (make-random-array (list m n) :element-type (element-type array))
-               n)))
+               (* m n))))
          (biases
            (make-trainable-parameter
             (α #'/
@@ -247,8 +247,7 @@
 (defun load-array (&rest path)
   (numpy-file-format:load-array
    (asdf:component-pathname
-    (asdf:find-component *mnist*
-     path))))
+    (asdf:find-component *mnist* path))))
 
 (defparameter *train-images* (load-array "train-images.npy"))
 (defparameter *train-labels* (load-array "train-labels.npy"))
@@ -261,7 +260,7 @@
                   :element-type 'single-float)))
     (values
      (make-network
-      (softmax
+      (relu
        (make-fully-connected-layer
         (relu
          (make-maxpool-layer
@@ -279,20 +278,30 @@
         (~ 0 9))))
      input)))
 
-(defun main ()
+(defun main (&key (n 100) (batch-size 100))
   (multiple-value-bind (network input)
       (make-mnist-classification-network)
-    (let ((input-data
-            (α #'/ *train-images* 255.0))
-          (output-data
-            (α 'coerce
-               (α (lambda (n i) (if (= n i) 1.0 0.0))
-                  (reshape *train-labels* (τ (i) (i 0)))
-                  #(0 1 2 3 4 5 6 7 8 9))
-               'single-float)))
-      (train network (list output-data)
-             :learning-rate 0.02
-             input input-data))))
+    (loop for offset below n by batch-size do
+      (let* ((batch-range (range offset (+ offset 99)))
+             (batch-data (slices *train-images* batch-range))
+             (batch-labels (slices *train-labels* batch-range))
+             (input-data
+               (compute
+                (collapse
+                 (α #'/ batch-data 255.0))))
+             (output-data
+               (compute
+                (collapse
+                 (α 'coerce
+                    (α (lambda (n i) (if (= n i) 1.0 0.0))
+                       (reshape batch-labels (τ (i) (i 0)))
+                       #(0 1 2 3 4 5 6 7 8 9))
+                    'single-float)))))
+        (format t "Training batch ~S.~%" batch-range)
+        (train network (list output-data)
+               :learning-rate 0.02
+               input input-data)))
+    network))
 
 (defun check-test-data (network index)
   (format t "Label: ~S Prediction: ~S~%"
