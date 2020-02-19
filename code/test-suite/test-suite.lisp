@@ -115,7 +115,10 @@
       (fboundp symbol)
       (macro-function symbol)
       (special-operator-p symbol)
-      (ignore-errors (typep 42 symbol) t)))
+      (type-specifier-p symbol)))
+
+(defun type-specifier-p (object)
+  (ignore-errors (typep 42 object) t))
 
 (defun run-tests (&rest tests)
   (with-test-harness (mapc #'funcall (alexandria:shuffle tests)))
