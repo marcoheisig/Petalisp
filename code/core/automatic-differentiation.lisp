@@ -176,8 +176,8 @@
                 (operator reduction))))))
 
 (defmethod input-gradient
-    ((fusion fusion) (output-gradient lazy-array) index)
-  (reshape output-gradient (shape (nth index (inputs fusion)))))
+    ((lazy-fuse lazy-fuse) (output-gradient lazy-array) index)
+  (reshape output-gradient (shape (nth index (inputs lazy-fuse)))))
 
 (defun move-axis-to-front (array axis)
   (check-type axis rank)

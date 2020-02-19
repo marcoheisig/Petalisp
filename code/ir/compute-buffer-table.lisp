@@ -107,14 +107,14 @@
                nil
                (transform-axis reduction-axis transformation)))))))
 
-(defmethod visit-node ((fusion fusion) reduction-axis)
+(defmethod visit-node ((lazy-fuse lazy-fuse) reduction-axis)
   (multiple-value-bind (traverse-inputs-p inputs-special-p reduction-axis)
       (call-next-method)
     (cond ((not traverse-inputs-p)
            (values nil nil nil))
           ;; Rule 6.
-          ((breaking-fusion-p fusion reduction-axis)
-           (setf (node-value fusion) :special)
+          ((breaking-fusion-p lazy-fuse reduction-axis)
+           (setf (node-value lazy-fuse) :special)
            (values t inputs-special-p nil))
           (t
            (values t inputs-special-p reduction-axis)))))

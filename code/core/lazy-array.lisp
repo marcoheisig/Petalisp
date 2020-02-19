@@ -99,7 +99,7 @@
   ((%operator :initarg :operator :reader operator)
    (%value-n :initarg :value-n :reader value-n :type (integer 0 #.multiple-values-limit))))
 
-(defclass fusion (non-empty-non-immediate)
+(defclass lazy-fuse (non-empty-non-immediate)
   ())
 
 (defclass lazy-reference (non-empty-non-immediate)

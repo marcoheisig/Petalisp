@@ -51,7 +51,7 @@
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (node petalisp.core:fusion))
+     (node petalisp.core:lazy-fuse))
   `(:fillcolor "cyan3"))
 
 (defmethod graphviz-node-attributes

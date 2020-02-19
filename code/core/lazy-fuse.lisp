@@ -27,7 +27,7 @@
     (trivia:match inputs
       ((list) (empty-array))
       ((list x) x)
-      (_ (make-instance 'fusion
+      (_ (make-instance 'lazy-fuse
            :ntype (reduce #'petalisp.type-inference:ntype-union
                           inputs
                           :key #'element-ntype)

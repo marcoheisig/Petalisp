@@ -43,11 +43,11 @@
     :ntype (element-ntype lazy-reduce)
     :inputs (mapcar #'substitute-array (inputs lazy-reduce))))
 
-(defmethod substitute-array ((fusion fusion))
-  (make-instance 'fusion
-    :shape (shape fusion)
-    :ntype (element-ntype fusion)
-    :inputs (mapcar #'substitute-array (inputs fusion))))
+(defmethod substitute-array ((lazy-fuse lazy-fuse))
+  (make-instance 'lazy-fuse
+    :shape (shape lazy-fuse)
+    :ntype (element-ntype lazy-fuse)
+    :inputs (mapcar #'substitute-array (inputs lazy-fuse))))
 
 (defmethod substitute-array ((lazy-reference lazy-reference))
   (make-instance 'lazy-reference

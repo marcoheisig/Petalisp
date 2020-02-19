@@ -58,12 +58,12 @@
           (call-next-method))))
 
 (defmethod map-iteration-spaces-aux
-    ((fusion fusion)
+    ((lazy-fuse lazy-fuse)
      (iteration-space shape)
      (transformation transformation))
   ;; Check whether any inputs are free of fusion nodes.  If so, process
   ;; their iteration space.
-  (loop for input in (inputs fusion) do
+  (loop for input in (inputs lazy-fuse) do
     (let ((subspace (shape-intersection iteration-space (shape input))))
       ;; If the input is unreachable, we do nothing.
       (unless (null subspace)

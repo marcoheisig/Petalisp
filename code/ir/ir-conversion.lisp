@@ -179,10 +179,10 @@
     transformation)))
 
 (defmethod compute-value
-    ((fusion fusion)
+    ((lazy-fuse lazy-fuse)
      (iteration-space shape)
      (transformation transformation))
-  (let ((input (find iteration-space (inputs fusion)
+  (let ((input (find iteration-space (inputs lazy-fuse)
                      :key #'shape
                      :test #'shape-intersectionp)))
     (compute-value

@@ -104,11 +104,11 @@
           (multiple-value-list
            (divide-and-conquer (first (shape-ranges (shape (first inputs))))))))))))
 
-(defmethod evaluate ((fusion fusion))
-  (let ((inputs (mapcar #'evaluate (inputs fusion))))
+(defmethod evaluate ((lazy-fuse lazy-fuse))
+  (let ((inputs (mapcar #'evaluate (inputs lazy-fuse))))
     (make-simple-immediate
-     (shape fusion)
-     (element-type fusion)
+     (shape lazy-fuse)
+     (element-type lazy-fuse)
      (lambda (index)
        (let ((input (find-if (lambda (input) (shape-contains (shape input) index)) inputs)))
          (assert input)

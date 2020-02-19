@@ -89,6 +89,10 @@
    #:storage
    #:refcount
    #:lazy-array
+   #:lazy-map
+   #:lazy-reduce
+   #:lazy-reference
+   #:lazy-fuse
    #:immediate
    #:non-immediate
    #:empty-array
@@ -97,10 +101,6 @@
    #:non-empty-non-immediate
    #:array-immediate
    #:range-immediate
-   #:lazy-map
-   #:lazy-reduce
-   #:lazy-reference
-   #:fusion
    #:move-axis-to-front
    #:reshape
    #:fuse
