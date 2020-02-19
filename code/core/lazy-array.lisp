@@ -102,7 +102,7 @@
 (defclass fusion (non-empty-non-immediate)
   ())
 
-(defclass reference (non-empty-non-immediate)
+(defclass lazy-reference (non-empty-non-immediate)
   ((%transformation :initarg :transformation :reader transformation)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -128,12 +128,12 @@
 (defmethod lazy-array ((object t))
   (make-scalar-immediate object))
 
-(defmethod replace-lazy-array ((instance reference) (replacement reference))
+(defmethod replace-lazy-array ((instance lazy-reference) (replacement lazy-reference))
   (reinitialize-instance instance
     :transformation (transformation replacement)
     :inputs (inputs replacement)))
 
-(defmethod replace-lazy-array ((instance lazy-array) (replacement reference))
+(defmethod replace-lazy-array ((instance lazy-array) (replacement lazy-reference))
   (change-class instance (class-of replacement)
     :transformation (transformation replacement)
     :inputs (inputs replacement)))
@@ -251,7 +251,7 @@
 
 ;; TODO remove this function?
 (defmethod transform ((lazy-array lazy-array) (transformation transformation))
-  (make-reference
+  (lazy-reference
    lazy-array
    (transform (shape lazy-array) transformation)
    (invert-transformation transformation)))
@@ -291,7 +291,7 @@
          (let ((rank (shape-rank array-or-shape)))
            (unless (<= 0 axis (1- rank))
              (error "~@<Invalid axis ~A for a shape with rank ~D.~:@>" axis rank))
-           (make-reference
+           (lazy-reference
             (make-range-immediate (nth axis (shape-ranges array-or-shape)))
             array-or-shape
             (make-transformation

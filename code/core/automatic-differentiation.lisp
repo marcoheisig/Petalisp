@@ -192,11 +192,13 @@
                     ((> index axis) index))))))
 
 (defmethod input-gradient
-    ((reference reference) (output-gradient lazy-array) (index (eql 0)))
+    ((lazy-reference lazy-reference)
+     (output-gradient lazy-array)
+     (index (eql 0)))
   (with-accessors ((transformation transformation)
-                   (shape shape)) reference
+                   (shape shape)) lazy-reference
     (if (transformation-invertiblep transformation)
-        (reshape output-gradient (transformation reference))
+        (reshape output-gradient (transformation lazy-reference))
         ;; The input gradient of a broadcasting reference is the sum of all
         ;; incoming gradients.  We do so by summing the gradients along
         ;; each broadcast axis, and by replacing each corresponding input

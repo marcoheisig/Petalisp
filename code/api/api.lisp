@@ -36,7 +36,7 @@
     (unless (range-contains (nth axis ranges) index)
       (error "~@<Invalid slice index ~S for the axis ~S of the array ~S~:@>"
              index axis array))
-    (make-reference
+    (lazy-reference
      array
      (make-shape
       (petalisp.utilities:with-collectors ((ranges collect-range))

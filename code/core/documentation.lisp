@@ -371,10 +371,10 @@ Examples:
 
  (broadcast-arrays #(1 2 3) 5)
   => #<array-immediate #(1 2 3)>
-  => #<reference (unsigned-byte 4) (~ 0 2)>
+  => #<lazy-reference (unsigned-byte 4) (~ 0 2)>
 
  (broadcast-arrays #(2 3 4) #2a((1 2 3) (4 5 6)))
-  => #<reference t (~ 0 1 ~ 0 2)>
+  => #<lazy-reference t (~ 0 1 ~ 0 2)>
   => #<array-immediate #2A((1 2 3) (4 5 6))>
 ")
 
@@ -387,10 +387,10 @@ supplied arrays, an error is signaled.
 Examples:
 
  (petalisp.core::broadcast-list-of-arrays (list #(1 2 3) 5))
-  => (#<array-immediate #(1 2 3)> #<reference (unsigned-byte 4) (~ 0 2)>)
+  => (#<array-immediate #(1 2 3)> #<lazy-reference (unsigned-byte 4) (~ 0 2)>)
 
  (broadcast-list-of-arrays (list #(2 3 4) #2a((1 2 3) (4 5 6))))
-  => (#<reference t (~ 0 1 ~ 0 2)> #<array-immediate #2A((1 2 3) (4 5 6))>)
+  => (#<lazy-reference t (~ 0 1 ~ 0 2)> #<array-immediate #2A((1 2 3) (4 5 6))>)
 ")
 
 (document-function indices

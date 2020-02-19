@@ -99,9 +99,8 @@
    #:range-immediate
    #:lazy-map
    #:lazy-reduce
+   #:lazy-reference
    #:fusion
-   #:reference
-   #:make-reference
    #:move-axis-to-front
    #:reshape
    #:fuse

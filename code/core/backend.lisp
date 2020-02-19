@@ -66,7 +66,7 @@
           for immediate in immediates
           do (replace-lazy-array
               lazy-array
-              (make-reference immediate (shape lazy-array) collapsing-transformation)))
+              (lazy-reference immediate (shape lazy-array) collapsing-transformation)))
     (values-list
      (mapcar #'lisp-datum-from-immediate immediates))))
 

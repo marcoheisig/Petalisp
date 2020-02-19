@@ -2,22 +2,22 @@
 
 (in-package #:petalisp.core)
 
-(defgeneric make-reference (input shape transformation)
+(defgeneric lazy-reference (input shape transformation)
   (:argument-precedence-order transformation shape input))
 
 ;;; Optimization:  Compose consecutive references.
-(defmethod make-reference ((reference reference)
+(defmethod lazy-reference ((lazy-reference lazy-reference)
                            (shape shape)
                            (transformation transformation))
-  (make-reference
-   (input reference)
+  (lazy-reference
+   (input lazy-reference)
    shape
    (compose-transformations
-    (transformation reference)
+    (transformation lazy-reference)
     transformation)))
 
 ;;; Optimization:  Drop references with no effect.
-(defmethod make-reference ((lazy-array lazy-array)
+(defmethod lazy-reference ((lazy-array lazy-array)
                            (shape shape)
                            (identity-transformation identity-transformation))
   (if (and (shape-equal (shape lazy-array) shape)
@@ -29,23 +29,23 @@
       (call-next-method)))
 
 ;;; Handle empty shapes.
-(defmethod make-reference ((lazy-array lazy-array)
+(defmethod lazy-reference ((lazy-array lazy-array)
                            (null null)
                            (transformation transformation))
   (empty-array))
 
 ;;; Default:  Construct a new reference.
-(defmethod make-reference ((lazy-array lazy-array)
+(defmethod lazy-reference ((lazy-array lazy-array)
                            (shape shape)
                            (transformation transformation))
-  (make-instance 'reference
+  (make-instance 'lazy-reference
     :ntype (element-ntype lazy-array)
     :inputs (list lazy-array)
     :shape shape
     :transformation transformation))
 
 ;;; Error handling.
-(defmethod make-reference :before
+(defmethod lazy-reference :before
     ((lazy-array lazy-array) (shape shape) (transformation transformation))
   (let ((relevant-shape (transform shape transformation))
         (input-shape (shape lazy-array)))

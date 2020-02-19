@@ -92,12 +92,12 @@
   (setf (node-value immediate) :special)
   (values nil nil nil))
 
-(defmethod visit-node ((reference reference) reduction-axis)
+(defmethod visit-node ((lazy-reference lazy-reference) reduction-axis)
   (multiple-value-bind (traverse-inputs-p inputs-special-p reduction-axis)
       (call-next-method)
     (if (not traverse-inputs-p)
         (values nil nil nil)
-        (let ((transformation (transformation reference)))
+        (let ((transformation (transformation lazy-reference)))
           (values
            traverse-inputs-p
            ;; Rule 3.
