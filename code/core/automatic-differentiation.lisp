@@ -117,7 +117,8 @@
 
 (defgeneric input-gradient (lazy-array output-gradient index))
 
-(defmethod input-gradient :around (lazy-array output-gradient index)
+(defmethod input-gradient :around
+    (lazy-array output-gradient index)
   (let ((input (nth index (inputs lazy-array)))
         (value (call-next-method)))
     (if (petalisp.type-inference:ntype=
@@ -126,10 +127,11 @@
         value
         (α #'coerce value (element-type input)))))
 
-(defmethod input-gradient ((application application) (output-gradient lazy-array) index)
+(defmethod input-gradient
+    ((lazy-map lazy-map) (output-gradient lazy-array) index)
   (with-accessors ((inputs inputs)
                    (operator operator)
-                   (shape shape)) application
+                   (shape shape)) lazy-map
     (α #'*
        output-gradient
        (petalisp.type-inference:differentiate
@@ -139,7 +141,7 @@
         (lambda (constant)
           (reshape constant shape))
         (lambda (ntypes function inputs)
-          (make-instance 'application
+          (make-instance 'lazy-map
             :operator function
             :value-n 0
             :inputs inputs
@@ -147,7 +149,8 @@
             :ntype (elt ntypes 0)))
         index))))
 
-(defmethod input-gradient ((reduction reduction) (output-gradient lazy-array) index)
+(defmethod input-gradient
+    ((reduction reduction) (output-gradient lazy-array) index)
   (with-accessors ((inputs inputs)
                    (operator operator)
                    (shape shape)) reduction
@@ -172,7 +175,8 @@
                 (length (inputs reduction))
                 (operator reduction))))))
 
-(defmethod input-gradient ((fusion fusion) (output-gradient lazy-array) index)
+(defmethod input-gradient
+    ((fusion fusion) (output-gradient lazy-array) index)
   (reshape output-gradient (shape (nth index (inputs fusion)))))
 
 (defun move-axis-to-front (array axis)
@@ -187,7 +191,8 @@
                     ((<= index axis) (1- index))
                     ((> index axis) index))))))
 
-(defmethod input-gradient ((reference reference) (output-gradient lazy-array) (index (eql 0)))
+(defmethod input-gradient
+    ((reference reference) (output-gradient lazy-array) (index (eql 0)))
   (with-accessors ((transformation transformation)
                    (shape shape)) reference
     (if (transformation-invertiblep transformation)

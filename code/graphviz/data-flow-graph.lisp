@@ -41,7 +41,7 @@
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (immediate petalisp.core:application))
+     (immediate petalisp.core:lazy-map))
   `(:fillcolor "burlywood1"))
 
 (defmethod graphviz-node-attributes
@@ -81,7 +81,7 @@
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (node petalisp.core:application))
+     (node petalisp.core:lazy-map))
   `(("operator" . ,(stringify (petalisp.core:operator node)))))
 
 (defmethod graphviz-node-properties append

@@ -422,7 +422,7 @@ first broadcast with the function BROADCAST-ARRAYS.
 Examples:
 
  (α #'+ #(1 2) #(3 4))
-  => #<application number (~ 0 1)>
+  => #<lazy-map number (~ 0 1)>
 
  (compute (α #'+ 2 3))
   => 5

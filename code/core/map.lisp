@@ -32,7 +32,7 @@
           (loop for ntype in ntypes
                 for value-n from 0
                 collect
-                (make-instance 'application
+                (make-instance 'lazy-map
                   :operator function
                   :value-n value-n
                   :inputs inputs
@@ -42,7 +42,7 @@
          (values-list
           (loop for value-n below n-outputs
                 collect
-                (make-instance 'application
+                (make-instance 'lazy-map
                   :operator function
                   :value-n value-n
                   :inputs inputs

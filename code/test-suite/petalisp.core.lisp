@@ -94,7 +94,7 @@
 ;;;
 ;;; Full Programs
 
-(define-test application-test
+(define-test lazy-map-test
   (compute
    (α #'+ 2 3))
   (compute

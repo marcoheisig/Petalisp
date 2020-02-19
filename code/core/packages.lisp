@@ -97,7 +97,7 @@
    #:non-empty-non-immediate
    #:array-immediate
    #:range-immediate
-   #:application
+   #:lazy-map
    #:reduction
    #:fusion
    #:reference

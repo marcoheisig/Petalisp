@@ -139,13 +139,13 @@
         (t operator)))
 
 (defmethod compute-value
-    ((application application)
+    ((lazy-map lazy-map)
      (iteration-space shape)
      (transformation transformation))
-  (cons (value-n application)
+  (cons (value-n lazy-map)
         (make-call-instruction
-         (simplify-operator (operator application))
-         (loop for input in (inputs application)
+         (simplify-operator (operator lazy-map))
+         (loop for input in (inputs lazy-map)
                collect
                (compute-value input iteration-space transformation)))))
 

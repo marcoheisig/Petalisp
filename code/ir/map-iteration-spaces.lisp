@@ -101,10 +101,10 @@
            (enlarge-transformation transformation 1 0))))
 
 (defmethod map-iteration-spaces-aux
-    ((application application)
+    ((lazy-map lazy-map)
      (iteration-space shape)
      (transformation transformation))
-  (loop for input in (inputs application)
+  (loop for input in (inputs lazy-map)
           thereis
           (map-iteration-spaces-aux input iteration-space transformation)))
 

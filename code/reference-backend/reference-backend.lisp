@@ -65,16 +65,16 @@
    (element-type range-immediate)
    #'first))
 
-(defmethod evaluate ((application application))
-  (let ((inputs (mapcar #'evaluate (inputs application))))
+(defmethod evaluate ((lazy-map lazy-map))
+  (let ((inputs (mapcar #'evaluate (inputs lazy-map))))
     (make-simple-immediate
-     (shape application)
-     (element-type application)
+     (shape lazy-map)
+     (element-type lazy-map)
      (lambda (index)
        (nth
-        (value-n application)
+        (value-n lazy-map)
         (multiple-value-list
-         (apply (operator application)
+         (apply (operator lazy-map)
                 (mapcar (lambda (input) (iref input index)) inputs))))))))
 
 (defmethod evaluate ((reduction reduction))
