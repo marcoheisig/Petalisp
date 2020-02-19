@@ -109,14 +109,9 @@
    #:refcount
    #:input
    #:inputs
-   #:application
    #:value-n
    #:operator
-   #:reduction
    #:reduction-range
-   #:fusion
-   #:reference
-   #:immediate
    #:immediatep
    #:storage
    #:array-immediate
