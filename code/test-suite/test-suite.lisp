@@ -102,13 +102,12 @@
 ;;; intentionally without definition, they can be excluded via the SKIP
 ;;; argument.
 (defun check-package (package &key skip)
-  (with-test-harness
-    (do-external-symbols (symbol package)
-      (unless (member symbol skip)
-        (unless (symbol-defined-p symbol)
-          (error "~@<The package ~A exports the symbol ~A, ~
-                       which does not have an attached definition.~:@>"
-                 package (symbol-name symbol)))))))
+  (do-external-symbols (symbol package)
+    (unless (member symbol skip)
+      (unless (symbol-defined-p symbol)
+        (error "~@<The package ~A exports the symbol ~A, ~
+                     which does not have an attached definition.~:@>"
+               package (symbol-name symbol))))))
 
 (defun symbol-defined-p (symbol)
   (or (find-class symbol nil)
