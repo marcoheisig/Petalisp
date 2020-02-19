@@ -75,10 +75,10 @@
       (values
        (lambda (lazy-array)
          (ad-record-output-gradient
-          (ad-record lazy-array)))
+          (ad-record (lazy-array lazy-array))))
        (lambda (lazy-array index)
          (ad-record-input-gradient
-          (ad-record lazy-array)
+          (ad-record (lazy-array lazy-array))
           index))))))
 
 (defun ad-record-output-gradient (ad-record)
