@@ -25,7 +25,7 @@
   (let ((value (lazy-array initial-value)))
     (make-instance 'trainable-parameter
       :shape (shape initial-value)
-      :element-type (element-type value)
+      :element-type (upgraded-array-element-type (element-type value))
       :value value)))
 
 (declaim (inline trainable-parameter-p))
@@ -81,14 +81,10 @@
 (define-modify-macro maxf (&rest numbers) max)
 
 (defun make-convolutional-layer (array &key (stencil '()) (n-filters 1))
-  (let* ((k (rank array))
-         (lower-bounds (make-array k :initial-element 0))
-         (upper-bounds (make-array k :initial-element 0))
-         (filters
-           (make-trainable-parameter
-            (make-random-array
-             (list n-filters (length stencil))
-             :element-type (element-type array))))
+  (let* ((rank (rank array))
+         (n-weights (length stencil))
+         (lower-bounds (make-array rank :initial-element 0))
+         (upper-bounds (make-array rank :initial-element 0))
          (d nil))
     ;; Determine the dimension of the stencil.
     (loop for offsets in stencil do
@@ -98,7 +94,7 @@
     ;; Determine the bounding box of the stencil.
     (loop for offsets in stencil do
       (loop for offset in offsets
-            for index from (- k d) do
+            for index from (- rank d) do
               (minf (aref lower-bounds index) offset)
               (maxf (aref upper-bounds index) offset)))
     ;; Use the bounding box to compute the shape of the result.
@@ -116,19 +112,29 @@
                               (hi (- (range-end range) ub)))
                           (assert (< lo hi))
                           (range lo hi))
-                        range))))))
+                        range)))))
+          (filters
+            (make-trainable-parameter
+             (make-random-array
+              (list* n-weights
+                     n-filters
+                     (make-list rank :initial-element 1))
+              :element-type (element-type array)))))
       ;; Compute the result.
       (collapse
        (apply #'α #'+
               (loop for offsets in stencil
+                    for index from 0
                     collect
                     (α #'*
-                       (reshape
-                        filters
-                        (make-transformation :input-rank 1 :output-rank (1+ k)))
+                       (slice filters index)
                        (reshape
                         array
-                        (make-transformation :offsets (mapcar #'- offsets))
+                        (make-transformation
+                         :offsets
+                         (append
+                          (make-list (- rank d) :initial-element 0)
+                          (mapcar #'- offsets)))
                         result-shape))))))))
 
 (defun make-maxpool-layer (array pooling-factors)
@@ -181,8 +187,8 @@
            (apply #'make-network
                   (loop for trainable-parameter in trainable-parameters
                         collect
-                        (α #'+ trainable-parameter
-                           (α #'* (- learning-rate)
+                        (α #'- trainable-parameter
+                           (α #'* learning-rate
                               (funcall gradient trainable-parameter))))))
          (n nil))
     ;; Determine the training data size.
@@ -195,96 +201,106 @@
         (assert (= n (range-size (first (shape-ranges (shape data))))))))
     ;; Iterate over the training data.
     (loop for index below n do
+      (when (and (plusp index)
+                 (zerop (mod index 100)))
+        (format t "Processed ~D slices of training data~%" index))
       ;; Assemble the arguments.
       (let ((args '()))
         ;; Inputs.
         (alexandria:doplist (parameter data training-data-plist)
             (unless (symbolp parameter)
               (push parameter args)
-              (push (nth-datum index data) args)))
+              (push (slice data index) args)))
         ;; Outputs.
         (loop for data in output-training-data
               for output-parameter in output-parameters do
                 (push output-parameter args)
-                (push (nth-datum index data) args))
+                (push (slice data index) args))
         ;; Trainable parameters.
         (dolist (trainable-parameter trainable-parameters)
           (push trainable-parameter args)
           (push (trainable-parameter-value trainable-parameter) args))
         ;; Update all trainable parameters.
-        (loop for trainable-parameter in trainable-parameters
-              for value in (multiple-value-list
-                            (apply #'call-network training-network (reverse args)))
-              do (setf (trainable-parameter-value trainable-parameter)
-                       value))))
+        (let ((new-values
+                (multiple-value-list
+                 (apply #'call-network training-network (reverse args)))))
+          (loop for trainable-parameter in trainable-parameters
+                for new-value in new-values
+                do (setf (trainable-parameter-value trainable-parameter)
+                         new-value)))))
     ;; Return the trained network.
     network))
-
-(defun nth-datum (index data)
-  (reshape
-   data
-   (make-shape
-    (list*
-     (range index)
-     (rest (shape-ranges (shape data)))))
-   (make-transformation
-    :input-mask (list* index (make-list (1- (rank data))))
-    :output-mask (alexandria:iota (1- (rank data)) :start 1))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classification of MNIST Data
 
 ;;; Note: We only ship a very small sample of the MNIST data with Petalisp,
-;;; so learning efforts will not be too good.  If you want to run serious
-;;; tests, you should replace these paths with paths to the full MNIST
-;;; data.
+;;; so learning will not be too good.  If you want to run serious tests,
+;;; you should replace these paths with paths to the full MNIST data set.
+
+(defparameter *mnist*
+  (asdf:find-component
+   (asdf:find-system "petalisp.examples")
+   "mnist-data"))
 
 (defun load-array (&rest path)
   (numpy-file-format:load-array
    (asdf:component-pathname
-    (asdf:find-component
-     (asdf:find-system "petalisp.examples")
+    (asdf:find-component *mnist*
      path))))
 
-(defparameter *train-images* (load-array "mnist-data" "train-images.npy"))
-(defparameter *train-labels* (load-array "mnist-data" "train-labels.npy"))
-(defparameter *test-images* (load-array "mnist-data" "test-images.npy"))
-(defparameter *test-labels* (load-array "mnist-data" "test-labels.npy"))
+(defparameter *train-images* (load-array "train-images.npy"))
+(defparameter *train-labels* (load-array "train-labels.npy"))
+(defparameter *test-images* (load-array "test-images.npy"))
+(defparameter *test-labels* (load-array "test-labels.npy"))
 
-(defun make-trained-network ()
+(defun make-mnist-classification-network ()
   (let* ((input (make-instance 'parameter
                   :shape (~ 0 27 ~ 0 27)
                   :element-type 'single-float)))
-    (train
+    (values
      (make-network
-      (make-fully-connected-layer
-       (make-maxpool-layer
+      (softmax
+       (make-fully-connected-layer
         (relu
-         (make-convolutional-layer
-          input
-          :stencil '((0 0) (1 0) (0 1) (-1 0) (0 -1))
-          :n-filters 12))
-        '(1 2 2))
-       (~ 0 9)))
-     (list
-      (α 'coerce
-         (α (lambda (n i) (if (= n i) 1.0 0.0))
-            (reshape *train-labels* (τ (i) (i 0)))
-            #(0 1 2 3 4 5 6 7 8 9))
-         'single-float))
-     :learning-rate 0.2
-     input (α #'/ *train-images* 255.0))))
+         (make-maxpool-layer
+          (make-convolutional-layer
+           (relu
+            (make-maxpool-layer
+             (make-convolutional-layer
+              input
+              :stencil '((0 0) (1 0) (0 1) (-1 0) (0 -1))
+              :n-filters 12)
+             '(1 2 2)))
+           :stencil '((0 0) (2 0) (0 2) (-2 0) (0 -2))
+           :n-filters 2)
+          '(1 1 3 3)))
+        (~ 0 9))))
+     input)))
+
+(defun main ()
+  (multiple-value-bind (network input)
+      (make-mnist-classification-network)
+    (let ((input-data
+            (α #'/ *train-images* 255.0))
+          (output-data
+            (α 'coerce
+               (α (lambda (n i) (if (= n i) 1.0 0.0))
+                  (reshape *train-labels* (τ (i) (i 0)))
+                  #(0 1 2 3 4 5 6 7 8 9))
+               'single-float)))
+      (train network (list output-data)
+             :learning-rate 0.02
+             input input-data))))
 
 (defun check-test-data (network index)
-  (format t "Label: ~S Prediction:~{ ~,2F~}~%"
-          (compute (nth-datum index *test-labels*))
-          (coerce
-           (apply #'call-network
-                  network
-                  (loop for parameter in (network-parameters network)
-                        collect parameter
-                        collect (if (trainable-parameter-p parameter)
-                                    (trainable-parameter-value parameter)
-                                    (nth-datum index *train-images*))))
-           'list)))
+  (format t "Label: ~S Prediction: ~S~%"
+          (compute (slice *test-labels* index))
+          (apply #'call-network
+                 network
+                 (loop for parameter in (network-parameters network)
+                       collect parameter
+                       collect (if (trainable-parameter-p parameter)
+                                   (trainable-parameter-value parameter)
+                                   (slice *train-images* index))))))
