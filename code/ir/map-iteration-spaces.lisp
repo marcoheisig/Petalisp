@@ -38,7 +38,7 @@
   (funcall *function* (enlarge-shape iteration-space *reduction-range*)))
 
 (defun reduction-range (lazy-array)
-  (if (typep lazy-array 'reduction)
+  (if (typep lazy-array 'lazy-reduce)
       (first (shape-ranges (shape (first (inputs lazy-array)))))
       (range 0)))
 
@@ -90,7 +90,7 @@
     transformation)))
 
 (defmethod map-iteration-spaces-aux
-    ((reduction reduction)
+    ((reduction lazy-reduce)
      (iteration-space shape)
      (transformation transformation))
   (loop for input in (inputs reduction)

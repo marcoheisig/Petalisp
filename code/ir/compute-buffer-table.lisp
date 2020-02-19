@@ -79,7 +79,7 @@
              ((eq value :special)
               (values nil nil nil)))))))
 
-(defmethod visit-node ((reduction reduction) reduction-axis)
+(defmethod visit-node ((reduction lazy-reduce) reduction-axis)
   (multiple-value-bind (value present-p) (node-value reduction)
     (cond ((not present-p)
            (unless (eq value :special)

@@ -46,7 +46,7 @@
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (immediate petalisp.core:reduction))
+     (immediate petalisp.core:lazy-reduce))
   `(:fillcolor "beige"))
 
 (defmethod graphviz-node-attributes
@@ -86,7 +86,7 @@
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (node petalisp.core:reduction))
+     (node petalisp.core:lazy-reduce))
   `(("operator" . ,(stringify (petalisp.core:operator node)))))
 
 (defmethod graphviz-node-properties append

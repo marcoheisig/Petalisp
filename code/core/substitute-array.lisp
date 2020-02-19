@@ -35,13 +35,13 @@
     :ntype (element-ntype lazy-map)
     :inputs (mapcar #'substitute-array (inputs lazy-map))))
 
-(defmethod substitute-array ((reduction reduction))
-  (make-instance 'reduction
-    :operator (operator reduction)
-    :value-n (value-n reduction)
-    :shape (shape reduction)
-    :ntype (element-ntype reduction)
-    :inputs (mapcar #'substitute-array (inputs reduction))))
+(defmethod substitute-array ((lazy-reduce lazy-reduce))
+  (make-instance 'lazy-reduce
+    :operator (operator lazy-reduce)
+    :value-n (value-n lazy-reduce)
+    :shape (shape lazy-reduce)
+    :ntype (element-ntype lazy-reduce)
+    :inputs (mapcar #'substitute-array (inputs lazy-reduce))))
 
 (defmethod substitute-array ((fusion fusion))
   (make-instance 'fusion

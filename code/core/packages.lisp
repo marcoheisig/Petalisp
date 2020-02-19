@@ -98,7 +98,7 @@
    #:array-immediate
    #:range-immediate
    #:lazy-map
-   #:reduction
+   #:lazy-reduce
    #:fusion
    #:reference
    #:make-reference

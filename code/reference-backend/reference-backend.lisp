@@ -77,7 +77,7 @@
          (apply (operator lazy-map)
                 (mapcar (lambda (input) (iref input index)) inputs))))))))
 
-(defmethod evaluate ((reduction reduction))
+(defmethod evaluate ((reduction lazy-reduce))
   (let* ((inputs (mapcar #'evaluate (inputs reduction)))
          (k (length inputs)))
     (make-simple-immediate

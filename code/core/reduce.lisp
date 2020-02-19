@@ -69,7 +69,7 @@
                                    (petalisp.type-inference:ntype 'null))
                    for value-n from 0
                    collect
-                   (make-instance 'reduction
+                   (make-instance 'lazy-reduce
                      :value-n value-n
                      :operator function
                      :ntype (petalisp.type-inference:ntype-union ntype reduction-ntype)
@@ -81,7 +81,7 @@
         (loop for ntype in reduction-ntypes
               for value-n from 0
               collect
-              (make-instance 'reduction
+              (make-instance 'lazy-reduce
                 :value-n value-n
                 :operator function
                 :ntype ntype

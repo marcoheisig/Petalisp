@@ -87,7 +87,7 @@
          (outer-transformation (outer-transformation rank)))
     (values
      (make-store-instruction
-      (if (typep root 'reduction)
+      (if (typep root 'lazy-reduce)
           (compute-value root iteration-space inner-transformation)
           (cons 0 (make-reduce-instruction
                    'values
@@ -150,7 +150,7 @@
                (compute-value input iteration-space transformation)))))
 
 (defmethod compute-value
-    ((reduction reduction)
+    ((reduction lazy-reduce)
      (iteration-space shape)
      (transformation transformation))
   (let* ((inputs (inputs reduction))

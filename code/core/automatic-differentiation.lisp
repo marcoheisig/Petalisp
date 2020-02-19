@@ -150,7 +150,7 @@
         index))))
 
 (defmethod input-gradient
-    ((reduction reduction) (output-gradient lazy-array) index)
+    ((reduction lazy-reduce) (output-gradient lazy-array) index)
   (with-accessors ((inputs inputs)
                    (operator operator)
                    (shape shape)) reduction
