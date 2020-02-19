@@ -193,21 +193,35 @@
     (if (transformation-invertiblep transformation)
         (reshape output-gradient (transformation reference))
         ;; The input gradient of a broadcasting reference is the sum of all
-        ;; incoming gradients.
-        (progn
+        ;; incoming gradients.  We do so by summing the gradients along
+        ;; each broadcast axis, and by replacing each corresponding input
+        ;; mask entry of the broadcast transformation by zero.  This way,
+        ;; we turn the non-invertible broadcast transformation into an
+        ;; invertible transformation that we can use to reshape the summed
+        ;; up gradients to the desired shape.
+        (let ((input-mask (copy-seq (transformation-input-mask transformation))))
           (map-transformation-inputs
            (lambda (input-index input-constraint output-index)
              (declare (ignore input-constraint))
              (when (null output-index)
-               (setf output-gradient
-                     (β #'+ (move-axis-to-front output-gradient input-index)))))
-           transformation
-           ;; Note: The order in which the axes are processed matters.  By
-           ;; working from the highest axis to the lowest, we ensure that
-           ;; each axis refers to the right range.
-           :from-end t)
-          (reshape output-gradient
-                   (make-transformation
-                    :input-rank (rank output-gradient)
-                    :output-mask (transformation-output-mask transformation)
-                    :offsets (transformation-offsets transformation)))))))
+               (setf output-gradient (sum-axis output-gradient input-index))
+               (setf (elt input-mask input-index) 0)))
+           transformation)
+          (reshape
+           output-gradient
+           (make-transformation
+            :input-mask input-mask
+            :output-mask (transformation-output-mask transformation)
+            :offsets (transformation-offsets transformation)))))))
+
+(defun sum-axis (array axis)
+  (reshape
+   (β #'+ (move-axis-to-front array axis))
+   (make-transformation
+    :input-rank (1- (rank array))
+    :output-mask
+    (loop for index below (rank array)
+          collect
+          (cond ((< index axis) index)
+                ((= index axis) nil)
+                ((> index axis) (1- index)))))))
