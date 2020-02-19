@@ -33,9 +33,9 @@
     (unless (< -1 axis rank)
       (error "~@<Invalid slice axis ~S for the array ~S.~:@>"
              axis array))
-    (unless (range-contains (first ranges) index)
-      (error "~@<Invalid slice index ~S for the array ~S~:@>"
-             index array))
+    (unless (range-contains (nth axis ranges) index)
+      (error "~@<Invalid slice index ~S for the axis ~S of the array ~S~:@>"
+             index axis array))
     (make-reference
      array
      (make-shape
@@ -56,3 +56,24 @@
       (loop for pos below rank
             collect
             (if (= pos axis) index 0))))))
+
+(defun slices (array range &optional (axis 0))
+  (setf array (lazy-array array))
+  (let ((rank (rank array))
+        (ranges (shape-ranges (shape array))))
+    (unless (< -1 axis rank)
+      (error "~@<Invalid slices axis ~S for the array ~S.~:@>"
+             axis array))
+    (unless (null (range-difference-list range (nth axis ranges)))
+      (error "~@<Invalid slices range ~S for the axis ~S of the array ~S~:@>"
+             range axis array))
+    (reshape
+     array
+     (make-shape
+      (petalisp.utilities:with-collectors ((ranges collect-range))
+        (do ((rest ranges (cdr rest))
+             (pos 0 (1+ pos)))
+            ((= pos axis)
+             (collect-range range)
+             (ranges (cdr rest)))
+          (collect-range (car rest))))))))

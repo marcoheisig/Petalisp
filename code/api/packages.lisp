@@ -136,7 +136,8 @@
    #:move-axis-to-front
    #:collapse
    #:flatten
-   #:slice)
+   #:slice
+   #:slices)
 
   (:shadowing-import-from :petalisp.reference-backend #:make-reference-backend)
   (:shadowing-import-from :petalisp.ir-backend #:make-ir-backend)
