@@ -28,6 +28,9 @@
   `(svref (ad-record-input-gradient-caches ,ad-record) ,index))
 
 (defun differentiator (outputs gradients)
+  (unless (= (length outputs) (length gradients))
+    (error "~@<Differentiation requires exactly as many gradients ~
+               as there are outputs.~:@>"))
   (let ((table (make-hash-table :test #'eq)))
     ;; Populate the table with ad-records.
     (labels ((ensure-ad-record (lazy-array)
