@@ -102,6 +102,8 @@
    #:lazy-array
    #:lazy-array-p
    #:parameter
+   #:optional-parameter
+   #:optional-parameter-value
    #:empty-array-p
    #:element-type
    #:rank

@@ -87,10 +87,6 @@
 (defclass range-immediate (non-empty-immediate)
   ())
 
-(defclass parameter (non-empty-immediate)
-  ()
-  (:default-initargs :computable nil :shape (~)))
-
 (defclass lazy-map (non-empty-non-immediate)
   ((%operator :initarg :operator :reader operator)
    (%value-n :initarg :value-n :reader value-n :type (integer 0 #.multiple-values-limit))))
@@ -104,6 +100,13 @@
 
 (defclass lazy-reference (non-empty-non-immediate)
   ((%transformation :initarg :transformation :reader transformation)))
+
+(defclass parameter (non-empty-immediate)
+  ()
+  (:default-initargs :computable nil :shape (~)))
+
+(defclass optional-parameter (parameter)
+  ((%value :initarg :value :initform nil :accessor optional-parameter-value)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

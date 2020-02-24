@@ -33,9 +33,12 @@
 (defun call-network (network &rest plist &key &allow-other-keys)
   (let ((args (loop for parameter in (network-parameters network)
                     for value = (getf plist parameter '.missing.)
-                    collect (if (eq value '.missing.)
-                                (error "Missing parameter: ~S." parameter)
-                                value))))
+                    collect
+                    (if (eq value '.missing.)
+                        (if (typep parameter 'optional-parameter)
+                            (optional-parameter-value parameter)
+                            (error "Missing parameter: ~S." parameter))
+                        value))))
     (apply (compile-network-on-backend network *backend*) args)))
 
 ;;; This is a simple, albeit slow way of compiling a network.  We simply

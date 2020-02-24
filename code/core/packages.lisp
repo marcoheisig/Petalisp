@@ -77,6 +77,8 @@
    #:reusablep
    #:lazy-array
    #:parameter
+   #:optional-parameter
+   #:optional-parameter-value
    #:replace-lazy-array
    #:total-size
    #:element-type
