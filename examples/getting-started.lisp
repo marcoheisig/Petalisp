@@ -26,7 +26,7 @@
  (zeros (~ 0 9))) ; ten zeros
 
 (present
- (indices (zeros (~ 10)))) ; the numbers from 0 to 9 (inclusive)
+ (indices (zeros (~ 0 9)))) ; the numbers from 0 to 9 (inclusive)
 
 (present
  (reshape #2a((1 2 3 4) (5 6 7 8)) (~ 0 1 ~ 1 2))) ; selecting values
@@ -101,8 +101,8 @@
 (present (matmul MA MA))
 
 (present
- (matmul (reshape 3.0 (~ 10 ~  8))
-         (reshape 2.0 (~  8 ~ 10))))
+ (matmul (reshape 3.0 (~ 0 3 ~ 0 7))
+         (reshape 2.0 (~ 0 7 ~ 0 3))))
 
 (defparameter M (reshape #(1 2 3 4 5 6) (~ 0 5 ~ 0 5)))
 
