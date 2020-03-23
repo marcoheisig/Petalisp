@@ -3,7 +3,7 @@
 (in-package #:petalisp.core)
 
 (defun fuse (&rest inputs)
-  (make-fusion (mapcar #'lazy-array inputs)))
+  (fuse-lazy-arrays (mapcar #'lazy-array inputs)))
 
 (defun fuse* (&rest inputs)
   (let ((lazy-arrays (mapcar #'lazy-array inputs)))
@@ -14,7 +14,7 @@
              inputs)))
   (let* ((lazy-arrays (mapcar #'lazy-array inputs))
          (identity (identity-transformation (rank (first lazy-arrays)))))
-    (make-fusion
+    (fuse-lazy-arrays
      (mapcar
       (lambda (fragment)
         (destructuring-bind (shape . bitmask) fragment
@@ -25,17 +25,21 @@
       (subdivide lazy-arrays)))))
 
 ;; Create a fusion, assuming INPUTS are non-empty, non-overlapping lazy-arrays.
-(defun make-fusion (inputs)
+(defun fuse-lazy-arrays (inputs)
   (let ((shape (fuse-shapes (mapcar #'shape inputs))))
     (trivia:match inputs
       ((list) (empty-array))
       ((list x) x)
-      (_ (make-instance 'lazy-fuse
-           :ntype (reduce #'petalisp.type-inference:ntype-union
-                          inputs
-                          :key #'element-ntype)
-           :inputs inputs
-           :shape shape)))))
+      (_
+       (let ((ntype (reduce #'petalisp.type-inference:ntype-union
+                            inputs
+                            :key #'element-ntype)))
+         (if (petalisp.type-inference:eql-ntype-p ntype)
+             (reshape ntype shape)
+             (make-instance 'lazy-fuse
+               :ntype ntype
+               :inputs inputs
+               :shape shape)))))))
 
 (defun fuse-shapes (shapes)
   (trivia:match shapes
