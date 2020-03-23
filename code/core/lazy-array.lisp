@@ -280,12 +280,14 @@
         :ntype (petalisp.type-inference:array-element-ntype array))))
 
 (defun make-range-immediate (range)
-  (make-instance 'range-immediate
-    :shape (make-shape (list range))
-    :ntype
-    (petalisp.type-inference:ntype-union
-     (petalisp.type-inference:ntype-of (range-start range))
-     (petalisp.type-inference:ntype-of (range-end range)))))
+  (if (size-one-range-p range)
+      (reshape (range-start range) (make-shape (list range)))
+      (make-instance 'range-immediate
+        :shape (make-shape (list range))
+        :ntype
+        (petalisp.type-inference:ntype-union
+         (petalisp.type-inference:ntype-of (range-start range))
+         (petalisp.type-inference:ntype-of (range-end range))))))
 
 (defun indices (array-or-shape &optional (axis 0))
   (cond ((null array-or-shape)
