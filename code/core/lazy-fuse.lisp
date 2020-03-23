@@ -18,7 +18,10 @@
      (mapcar
       (lambda (fragment)
         (destructuring-bind (shape . bitmask) fragment
-          (lazy-reference (nth (1- (integer-length bitmask)) lazy-arrays) shape identity)))
+          (lazy-rehape
+           (nth (1- (integer-length bitmask)) lazy-arrays)
+           shape
+           identity)))
       (subdivide lazy-arrays)))))
 
 ;; Create a fusion, assuming INPUTS are non-empty, non-overlapping lazy-arrays.

@@ -23,7 +23,7 @@
    (:file "transformation")
    (:file "transformation-constructors")
    (:file "lazy-array")
-   (:file "lazy-reference")
+   (:file "lazy-reshape")
    (:file "broadcast")
    (:file "reshape")
    (:file "lazy-fuse")

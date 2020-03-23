@@ -114,10 +114,10 @@
          (assert input)
          (iref input index))))))
 
-(defmethod evaluate ((lazy-reference lazy-reference))
-  (let ((input (evaluate (input lazy-reference))))
+(defmethod evaluate ((lazy-rehape lazy-rehape))
+  (let ((input (evaluate (input lazy-rehape))))
     (make-simple-immediate
-     (shape lazy-reference)
-     (element-type lazy-reference)
+     (shape lazy-rehape)
+     (element-type lazy-rehape)
      (lambda (index)
-       (iref input (transform index (transformation lazy-reference)))))))
+       (iref input (transform index (transformation lazy-rehape)))))))

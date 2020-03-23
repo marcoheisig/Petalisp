@@ -166,16 +166,16 @@
                  (compute-value input shape transformation))))))
 
 (defmethod compute-value
-    ((lazy-reference lazy-reference)
+    ((lazy-rehape lazy-rehape)
      (iteration-space shape)
      (transformation transformation))
   (compute-value
-   (input lazy-reference)
+   (input lazy-rehape)
    (transform
-    (shape-intersection iteration-space (shape lazy-reference))
-    (transformation lazy-reference))
+    (shape-intersection iteration-space (shape lazy-rehape))
+    (transformation lazy-rehape))
    (compose-transformations
-    (transformation lazy-reference)
+    (transformation lazy-rehape)
     transformation)))
 
 (defmethod compute-value

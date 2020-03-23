@@ -49,6 +49,7 @@
    #:shrink-shape
    #:enlarge-shape
    #:subdivide
+   #:subshapep
 
    ;; Transformations
    #:τ
@@ -93,7 +94,7 @@
    #:lazy-array
    #:lazy-map
    #:lazy-reduce
-   #:lazy-reference
+   #:lazy-rehape
    #:lazy-fuse
    #:immediate
    #:non-immediate

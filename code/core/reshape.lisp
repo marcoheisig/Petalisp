@@ -11,7 +11,7 @@
           :initial-value (lazy-array array)))
 
 (defun reshape-using-transformation (lazy-array transformation)
-  (lazy-reference
+  (lazy-rehape
    lazy-array
    (transform (shape lazy-array) transformation)
    (invert-transformation transformation)))
@@ -31,7 +31,7 @@
             (error "~@<Cannot reshape the array ~S ~
                  to the shape ~S.~:@>"
                    lazy-array shape))
-          (lazy-reference lazy-array shape transformation)))))
+          (lazy-rehape lazy-array shape transformation)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -102,7 +102,7 @@
             (loop for prime-factor in (rest prime-factors) do
               (setf lazy-array (insert-axis-before lazy-array (1+ index) prime-factor))
               (setf lazy-array (remove-axis-after lazy-array index))))
-    (lazy-reference
+    (lazy-rehape
      lazy-array
      shape
      (make-shape-transformation shape (shape lazy-array)))))
@@ -139,7 +139,7 @@
     (apply #'fuse
            (loop for offset below k
                  collect
-                 (lazy-reference
+                 (lazy-rehape
                   lazy-array
                   (make-shape
                    (append prefix (list (range offset) range-2) suffix))
@@ -171,7 +171,7 @@
     (apply #'fuse
            (loop for offset below k
                  collect
-                 (lazy-reference
+                 (lazy-rehape
                   lazy-array
                   (make-shape
                    (append prefix (list range-1 (range offset)) suffix))
@@ -206,7 +206,7 @@
     (apply #'fuse
            (loop for offset below size-1
                  collect
-                 (lazy-reference
+                 (lazy-rehape
                   lazy-array
                   (make-shape
                    (append prefix (list (range (* offset size-2) (1- (* (1+ offset) size-2)))) suffix))
@@ -239,7 +239,7 @@
     (apply #'fuse
            (loop for offset below size-2
                  collect
-                 (lazy-reference
+                 (lazy-rehape
                   lazy-array
                   (make-shape
                    (append prefix (list (range offset size-2 (1- (* size-1 size-2)))) suffix))
