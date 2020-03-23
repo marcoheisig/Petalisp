@@ -83,10 +83,14 @@
 
 (defun ntype-union (&rest ntypes)
   (flet ((two-argument-ntype-union (ntype-1 ntype-2)
-           (with-ntype-caching (ntype-1 ntype-2)
-             (ntype
-              `(or ,(type-specifier ntype-1)
-                   ,(type-specifier ntype-2))))))
+           (if (and (eql-ntype-p ntype-1)
+                    (eql-ntype-p ntype-2)
+                    (eql ntype-1 ntype-2))
+               ntype-1
+               (with-ntype-caching (ntype-1 ntype-2)
+                 (ntype
+                  `(or ,(type-specifier ntype-1)
+                       ,(type-specifier ntype-2)))))))
     (if (null ntypes)
         (ntype 'nil)
         (reduce #'two-argument-ntype-union ntypes))))
