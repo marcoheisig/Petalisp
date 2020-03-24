@@ -18,59 +18,59 @@ integers, it creates a contiguous range.  In the case of three arguments,
 the first and the third argument denote the interval, and the second
 argument denotes the step size.  If the first argument and the last
 argument are not congruent modulo the step size, the latter one is moved
-towards the former until they are.
-
-Examples:
-
- (range 5)
-  => #<range 5>
-
- (range 5 9)
-  => #<range 5 ... 9>
-
- (range 5 2 13)
-  => #<range 5 7 ... 13>
-
- (range 7 3 -3)
-  => #<range -2 1 4 7>
-")
+towards the former until they are."
+  (range 5)
+  (range 5 9)
+  (range 5 2 13)
+  (range 7 3 -3))
 
 (document-function size-one-range-p
-  "Checks whether the supplied range has a size of one.")
+  "Checks whether the supplied range has a size of one."
+  (size-one-range-p (range 5))
+  (size-one-range-p (range 5 2 7))
+  (size-one-range-p (range 5 3 7)))
 
 (document-function split-range
   "Splits the supplied range R into a lower and an upper half and returns
 them as multiple values.  In case R has an odd number of element, the lower
 half will have one more element than the upper half.
 
-An error is signaled if the supplied range has only a single element.
-")
+An error is signaled if the supplied range has only a single element."
+  (split-range (range 1))
+  (split-range (range 1 10))
+  (split-range (range 1 9))
+  (split-range (range 2 2 9)))
 
 (document-function map-range
   "Takes a function and a range and applies the function to all integers of
-that range, in ascending order.")
+that range, in ascending order."
+  (let ((l '()))
+    (map-range (lambda (i) (push i l)) (range 1 2 9))
+    (nreverse l)))
 
 (document-function range-equal
-  "Check whether two supplied ranges describe the same set of integers.")
+  "Check whether two supplied ranges describe the same set of integers."
+  (range-equal (range 1) (range 2))
+  (range-equal (range 2) (range 2))
+  (range-equal (range 0 2 8) (range 0 2 9))
+  (range-equal (range 0 3 8) (range 0 3 9)))
 
 (document-function range-contains
-  "Check whether the supplied range contains a particular integer.")
+  "Check whether the supplied range contains a particular integer."
+  (range-contains (range 1 10) 5)
+  (range-contains (range 1 10) -5)
+  (range-contains (range 1 3 10) 4))
 
 (document-function range-intersection
   "Returns the range containing exactly those elements that occur in both
-supplied ranges.  Returns NIL if there are no such elements.
-
-Examples:
-
- (range-intersection (range 1 10) (range 2 20))
-  => #<range 2 ... 10>
-
- (range-intersection (range 3 2 13) (range 1 3 13))
-  => #<range 7 13>
-")
+supplied ranges.  Returns NIL if there are no such elements."
+  (range-intersection (range 1 10) (range 2 20))
+  (range-intersection (range 3 2 13) (range 1 3 13)))
 
 (document-function range-intersectionp
-  "Check whether two supplied ranges have at least one common element.")
+  "Check whether two supplied ranges have at least one common element."
+  (range-intersectionp (range 1 10) (range 2 20))
+  (range-intersectionp (range 0 2 8) (range 1 2 9)))
 
 (document-function range-difference-list
   "Compute the difference of two ranges R1 and R2.  Returns a list of
@@ -86,22 +86,11 @@ R1 but not in R2.")
 designators in the function named ~.")
 
 (document-function ~
-  "Construct a shape from zero or more tilde-separated range designators.
-
-Examples:
-
- (~)
-  => (~)
-
- (~ 1 2 3)
-  => (~ 1 2 3)
-
- (~ 0 2 9 ~ 0 2 9)
-  => (~ 0 2 8 ~ 0 2 8)
-
- (apply #'~ 1 9 (loop repeat 3 append '(~ 2 5)))
-  => (~ 1 9 ~ 2 5 ~ 2 5 ~ 2 5)
-")
+  "Construct a shape from zero or more tilde-separated range designators."
+  (~)
+  (~ 1 2 3)
+  (~ 0 2 9 ~ 0 2 9)
+  (apply #'~ 1 9 (loop repeat 3 append '(~ 2 5))))
 
 (document-type shape
   "A shape is the cartesian product of zero or more ranges.  Shapes can be
@@ -111,97 +100,75 @@ example, the shape (~ 0 ~ 1 2 ~ 3 4 7) has rank three and consists of the
 integer tuples (0 1 3), (0 1 7), (0 2 3), (0 2 7).")
 
 (document-function make-shape
-  "Constructs a shape from a supplied list of ranges.")
+  "Constructs a shape from a supplied list of ranges."
+  (make-shape (list (range 5 9) (range 2 3))))
 
 (document-function shape-size
-  "Returns that number of integer tuples denoted by the supplied shape.")
+  "Returns that number of integer tuples denoted by the supplied shape."
+  (shape-size (~))
+  (shape-size (~ 2 9))
+  (shape-size (~ 1 10 ~ 1 8)))
 
 (document-function shape-equal
-  "Check whether two supplied shapes denote the same set of integer tuples.")
+  "Check whether two supplied shapes denote the same set of integer tuples."
+  (shape-equal (~) (~))
+  (shape-equal (~ 42) (~ 42))
+  (shape-equal (~ 1 42) (~ 1 42))
+  (shape-equal (~ 1 42) (~ 2 42)))
 
 (document-function shape-difference-list
   "Compute the difference of two shapes S1 and S2.  Returns a list of
 disjoint subshapes of S1 that describe exactly those integer tuples
-appearing in S1 but not in S2.")
+appearing in S1 but not in S2."
+  (shape-difference-list (~ 1 10) (~ 2 9))
+  (shape-difference-list (~ 1 10) (~ 4 7))
+  (shape-difference-list (~ 1 10) (~ 2 2 8))
+  (shape-difference-list (~ 1 10) (~ 2 20))
+  (shape-difference-list (~ 1 2 20) (~ 1 3 20)))
 
 (document-function shape-intersection
   "Returns the shape containing exactly those integer tuples that occur in
-both supplied shapes.  Returns NIL if there are no such elements.
-
-Examples:
-
- (shape-intersection (~ 1 10 ~ 3 2 13) (~ 1 5 ~ 1 3 13))
-  => (~ 1 5 ~ 7 6 13)
-
- (shape-intersection (~ 1 5) (~ 6 10))
-  => nil
-")
+both supplied shapes.  Returns NIL if there are no such elements."
+  (shape-intersection (~ 1 10 ~ 3 2 13) (~ 1 5 ~ 1 3 13))
+  (shape-intersection (~ 1 5) (~ 6 10)))
 
 (document-function shape-intersectionp
-  "Check whether two supplied shapes have at least one common element.")
+  "Check whether two supplied shapes have at least one common element."
+  (shape-intersectionp (~ 1 6) (~ 6 10))
+  (shape-intersectionp (~ 1 5) (~ 6 10)))
 
 (document-function map-shape
   "Takes a function and a shape and applies the function to all integer
-tuples of that range, in ascending order.")
+tuples of that range, in ascending order."
+  (let ((l '()))
+    (map-shape (lambda (i) (push i l)) (~ 1 2 ~ 3 4))
+    (nreverse l)))
 
 (document-function shape-contains
-  "Check whether the supplied shape contains a particular integer tuple.
-
-Examples:
-
- (shape-contains (~ 1 9) (list 4))
-  => t
-
- (shape-contains (~ 1 2 9) (list 4))
-  => nil
-")
+  "Check whether the supplied shape contains a particular integer tuple."
+  (shape-contains (~ 1 9) (list 4))
+  (shape-contains (~ 1 2 9) (list 4)))
 
 (document-function enlarge-shape
   "For a given shape S and range R, this function returns a shape whose
-  first range is R, and whose remaining ranges are those of S.
-
-Examples:
- (enlarge-shape (~) (range 1 10))
-  => (~ 1 10)
-
- (enlarge-shape (~ 1 3) (range 1 4))
-  => (~ 1 4 ~ 1 3)
-")
+  first range is R, and whose remaining ranges are those of S."
+  (enlarge-shape (~) (range 1 10))
+  (enlarge-shape (~ 1 3) (range 1 4)))
 
 (document-function shrink-shape
   "This function expects a single shape with one or more ranges R1 to Rn.
 It returns a shape with the ranges R2 to R1, and, as a second value, the
-range R1 that has been peeled off.
-
-Examples:
-
- (shrink-shape (~ 1 10))
-  => (~)
-  => #<range 1 ... 10>
-
- (shrink-shape (~ 1 10 ~ 0 2))
-  => (~ 0 2)
-  => #<range 1 ... 10>
-")
+range R1 that has been peeled off."
+  (shrink-shape (~ 1 10))
+  (shrink-shape (~ 1 10 ~ 0 2)))
 
 (document-function subdivide
   "Returns a list of (shape . bitmask) conses.  Each shape is a proper
 subshape of one or more of the supplied shapes and their fusion covers all
 supplied shapes.  The bitmask indicates which of the supplied shapes are
-supersets of the corresponding resulting shape.
-
-Examples:
-
- (subdivide (list (~ 1 2 ~ 1 2) (~ 1 ~ 1)) #'identity)
-  => (((~ 2 ~ 1 2) . 1)
-      ((~ 1 ~ 2) . 1)
-      ((~ 1 ~ 1) . 3))
-
- (subdivide (list (~ 1 10) (~ 2 20)) #'identity)
-  => (((~ 11 20) . 2)
-      ((~ 1) . 1)
-      ((~ 2 10) . 3))
-")
+supersets of the corresponding resulting shape."
+  (subdivide (list (~ 1 2 ~ 1 2) (~ 1 ~ 1)))
+  (subdivide (list (~ 1 10) (~ 2 20))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -309,25 +276,12 @@ argument is not supplied, it defaults to a sequence of ones.
 A sequence with as many elements as the output rank of the transformation.
 Each element must be a rational number that is added to the corresponding
 output value after permutation and scaling has taken place. If this keyword
-argument is not supplied, it defaults to a sequence of zeros.
-
-Examples:
-
- (make-transformation :input-rank 2)
-  => (τ (a b) (a b))
-
- (make-transformation :input-rank 2 :output-rank 1)
-  => (τ (a b) (a))
-
- (make-transformation :input-mask '(2 nil 3))
-  => (τ (2 b 3) (2 b 3))
-
- (make-transformation :output-mask #(1 0 nil))
-  => (τ (a b c) (b a 0))
-
- (make-transformation :offsets #(1 2 3) :scalings #(4 5 6))
-  => (τ (a b c) ((1+ (* 4 a)) (+ (* 5 b) 2) (+ (* 6 c) 3)))
-")
+argument is not supplied, it defaults to a sequence of zeros."
+  (make-transformation :input-rank 2)
+  (make-transformation :input-rank 2 :output-rank 1)
+  (make-transformation :input-mask '(2 nil 3))
+  (make-transformation :output-mask #(1 0 nil))
+  (make-transformation :offsets #(1 2 3) :scalings #(4 5 6)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -365,86 +319,38 @@ contents are the those of a supplied Common Lisp array.")
 (document-function broadcast-arrays
   "Returns as many lazy arrays as there are supplied arrays, but broadcast
 such that all resulting arrays have the same shape.  If there is no
-suitable broadcast shape for all supplied arrays, an error is signaled.
-
-Examples:
-
- (broadcast-arrays #(1 2 3) 5)
-  => #<array-immediate #(1 2 3)>
-  => #<lazy-rehape (unsigned-byte 4) (~ 0 2)>
-
- (broadcast-arrays #(2 3 4) #2a((1 2 3) (4 5 6)))
-  => #<lazy-rehape t (~ 0 1 ~ 0 2)>
-  => #<array-immediate #2A((1 2 3) (4 5 6))>
-")
+suitable broadcast shape for all supplied arrays, an error is signaled."
+  (broadcast-arrays #(1 2 3) 5)
+  (broadcast-arrays #(2 3 4) #2a((1 2 3) (4 5 6))))
 
 (document-function broadcast-list-of-arrays
   "Returns a list of lazy arrays of the same length as the list of supplied
 arrays, but where each element is broadcast such that all resulting arrays
 have the same shape.  If there is no suitable broadcast shape for all
-supplied arrays, an error is signaled.
-
-Examples:
-
- (petalisp.core::broadcast-list-of-arrays (list #(1 2 3) 5))
-  => (#<array-immediate #(1 2 3)> #<lazy-rehape (unsigned-byte 4) (~ 0 2)>)
-
- (broadcast-list-of-arrays (list #(2 3 4) #2a((1 2 3) (4 5 6))))
-  => (#<lazy-rehape t (~ 0 1 ~ 0 2)> #<array-immediate #2A((1 2 3) (4 5 6))>)
-")
+supplied arrays, an error is signaled."
+  (broadcast-list-of-arrays (list #(1 2 3) 5))
+  (broadcast-list-of-arrays (list #(2 3 4) #2a((1 2 3) (4 5 6)))))
 
 (document-function indices
   "Returns a lazy array of integers of the shape indicated by the first
 argument ARRAY-OR-SHAPE , where each array element at index (i_0 ... i_N)
-has the value i_AXIS.  If AXIS is not supplied, it defaults to zero.
-
-Examples:
-
- (compute (indices #2a((1 2) (3 4))))
-  => #2a((0 0) (1 1))
-
- (compute (indices #2a((1 2) (3 4)) 1))
-  => #2a((0 1) (0 1))
-
- (compute (indices (reshape #2a((1 2) (3 4)) (τ (i j) (i (1+ j)))) 1))
-  => #2a((1 2) (1 2))
-
- (compute (indices \"abc\"))
-  => #(0 1 2)
-")
+has the value i_AXIS.  If AXIS is not supplied, it defaults to zero."
+  (compute (indices #2a((1 2) (3 4))))
+  (compute (indices #2a((1 2) (3 4)) 1))
+  (compute (indices (reshape #2a((1 2) (3 4)) (τ (i j) (i (1+ j)))) 1))
+  (compute (indices "abc")))
 
 (document-function α
   "Returns one or more lazy arrays, whose contents are the values returned
 by the supplied function when applied element-wise to the contents of the
 remaining argument arrays.  If the arguments don't agree in shape, they are
-first broadcast with the function BROADCAST-ARRAYS.
-
-Examples:
-
- (α #'+ #(1 2) #(3 4))
-  => #<lazy-map number (~ 0 1)>
-
- (compute (α #'+ 2 3))
-  => 5
-
- (compute (α #'+ 2 #(1 2 3 4 5)))
-  => #(3 4 5 6 7)
-
- (compute (α #'* #(2 3) #2a((1 2) (3 4))))
-  => #2A((2 4) (9 12))
-
- (compute (α #'floor 7.5))
-  => 1
-
- (compute (α #'floor 7.5 #(1 2 3 4 5)))
-  => #(7 3 2 1 1)
-
- (multiple-value-bind (quot rem)
-   (α #'floor 7.5 #(1 2 3 4 5))
-   (compute quot rem))
-  => #(7 3 2 1 1)
-  => #(0.5 1.5 1.5 3.5 2.5)
-")
+first broadcast with the function BROADCAST-ARRAYS."
+  (α #'+ #(1 2) #(3 4))
+  (compute (α #'+ 2 3))
+  (compute (α #'+ 2 #(1 2 3 4 5)))
+  (compute (α #'* #(2 3) #2a((1 2) (3 4))))
+  (compute (α #'floor 7.5))
+  (compute (α #'floor 7.5 #(1 2 3 4 5))))
 
 (document-function β
   "Returns one or more lazy arrays whose contents are the multiple value
@@ -472,26 +378,17 @@ the following rules:
    with shape u x s.  Recursively process the lower and the upper halves of
    each array independently to obtain 2k new arrays of shape s.  Finally,
    combine these 2k arrays element-wise with f to obtain k new arrays with
-   all values returned by f. Return these arrays.
-
-Examples:
- (compute (β #'+ #(1 2 3 4)))
-  => 10
-
- (compute (β #'+ #2a((1 2) (3 4))))
-  => #(4 6)
-
- (let ((a #(5 2 7 1 9)))
+   all values returned by f. Return these arrays."
+  (compute (β #'+ #(1 2 3 4)))
+  (compute (β #'+ #2a((1 2) (3 4))))
+  (let ((a #(5 2 7 1 9)))
    (multiple-value-bind (max index)
        (β (lambda (lv li rv ri)
             (if (> lv rv)
                 (values lv li)
                 (values rv ri)))
           a (indices a 0))
-     (compute max index)))
-  => 9
-  => 4
-")
+     (compute max index))))
 
 (document-function reshape
   "Returns a lazy array with the contents of ARRAY, but after applying the
@@ -507,57 +404,27 @@ same number of elements, it denotes a lexicographic reordering operation.
 
 In case the modifier is a transformation, the new array is obtained by
 taking each index and corresponding value of the original array and
-applying the transformation to the index while retaining the value.
-
-Examples:
-
- ;; Broadcasting.
- (compute (reshape 4 (~ 0 4)))
-  => #(4 4 4 4 4)
-
- ;; Selection.
- (compute (reshape #(1 2 3 4) (~ 1 2)))
-  => #(2 3)
-
- ;; Lexicographic reordering.
- (compute (reshape (indices (~ 1 9)) (~ 0 2 ~ 0 2)))
-  => #2A((1 2 3) (4 5 6) (7 8 9))
-
- ;; Element-wise transformation.
- (compute (reshape #2A((1 2) (3 4)) (τ (i j) (j i))))
-  => #2A((1 3) (2 4))
-
- ;; Multiple modifications at once.
- (compute (reshape #(1 2 3 4) (~ 1 2) (~ 0 1 ~ 0 1)))
-  => #2A((2 3) (2 3))
-")
+applying the transformation to the index while retaining the value."
+  (compute (reshape 4 (~ 0 4)))
+  (compute (reshape #(1 2 3 4) (~ 1 2)))
+  (compute (reshape (indices (~ 1 9)) (~ 0 2 ~ 0 2)))
+  (compute (reshape #2A((1 2) (3 4)) (τ (i j) (j i))))
+  (compute (reshape #(1 2 3 4) (~ 1 2) (~ 0 1 ~ 0 1))))
 
 (document-function fuse
   "Combine ARRAYS into a single strided array.  It is an error if some of
 the supplied arrays overlap, or if there exists no suitable strided array
-to represent the fusion.
-
-Examples:
-
- (compute (fuse (reshape 1 (~ 0 1))
-                (reshape 0 (~ 2 3))))
-  => #*1100
-
- (compute (fuse (reshape 1 (~ 0 2 6))
-                (reshape 0 (~ 1 2 6))))
-  => #*1010101
-")
+to represent the fusion."
+  (compute (fuse (reshape 1 (~ 0 1))
+                 (reshape 0 (~ 2 3))))
+  (compute (fuse (reshape 1 (~ 0 2 6))
+                 (reshape 0 (~ 1 2 6)))))
 
 (document-function fuse*
   "Combines ARRAYS into a single strided array.  When some of the supplied
-arguments overlap partially, the value of the rightmost object is used.
-
-Examples:
-
- (compute (fuse* (reshape 1 (~ 0 3))
-                 (reshape 0 (~ 2 3))))
-  => #*1100
-")
+arguments overlap partially, the value of the rightmost object is used."
+  (compute (fuse* (reshape 1 (~ 0 3))
+                 (reshape 0 (~ 2 3)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -567,24 +434,11 @@ Examples:
   "Returns, as multiple values, the computed result of each supplied
 argument.  The computed result of a lazy array is a standard Common Lisp
 array with the same rank and dimensions.  The computed result of any other
-object is that object itself.
-
-Examples:
-
- (compute (α #'+ 2 #(3 4 5)))
-  => #(5 6 7)
-
- (compute (reshape nil (~ 0 10)))
-  => #(nil nil nil nil nil nil nil nil nil nil nil)
-
- (compute (fuse (reshape 0 (~ 0 2 20)) (reshape 1 (~ 1 2 20))))
-  => #*010101010101010101010
-
- (compute 2 #0A3 (α #'+ 2 2))
-  => 2
-  => 3
-  => 4
-")
+object is that object itself."
+  (compute (α #'+ 2 #(3 4 5)))
+  (compute (reshape nil (~ 0 10)))
+  (compute (fuse (reshape 0 (~ 0 2 20)) (reshape 1 (~ 1 2 20))))
+  (compute 2 #0A3 (α #'+ 2 2)))
 
 (document-function schedule
   "Hints that it would be worthwhile to compute the supplied arguments

@@ -18,4 +18,5 @@
   :components
   ((:file "packages")
    (:file "api")
+   (:file "documentation")
    (:file "aliases")))

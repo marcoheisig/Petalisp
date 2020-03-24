@@ -13,34 +13,53 @@
            (warn "Changing the ~(~A~) documentation of ~A." kind name)
            (setf documentation new-value)))))
 
+(defun build-documentation (docstring example-forms example-thunks)
+  (assert (= (length example-forms)
+             (length example-thunks)))
+  (with-output-to-string (stream)
+    (write-string docstring stream)
+    (unless (null example-forms)
+      (format stream "~&~%Example~P:" (length example-forms))
+      (loop for example-form in example-forms
+            for example-thunk in example-thunks do
+              (format stream "~&~% ~A~%" example-form)
+              (handler-case
+                  (format stream "~{  => ~A~%~}"
+                          (multiple-value-list
+                           (funcall example-thunk)))
+                (error (e)
+                  (format stream "  >> ~A" (class-name (class-of e)))))))))
+
+(defmacro expand-documentation (form &rest examples)
+  `(build-documentation
+    ,form
+    ',examples
+    (list
+     ,@(mapcar (lambda (form) `(lambda () ,form)) examples))))
+
 (defmacro document-compiler-macro (name &body body)
   (assert (compiler-macro-function name))
-  `(ensure-documentation ',name (progn ,@body) 'compiler-macro))
+  `(ensure-documentation ',name (expand-documentation ,@body) 'compiler-macro))
 
 (defmacro document-function (name &body body)
   (assert (fboundp name))
-  `(ensure-documentation ',name (progn ,@body) 'function))
+  `(ensure-documentation ',name (expand-documentation ,@body) 'function))
 
 (defmacro document-method-combination (name &body body)
   (assert (symbolp name))
-  `(ensure-documentation ',name (progn ,@body) 'method-combination))
+  `(ensure-documentation ',name (expand-documentation ,@body) 'method-combination))
 
 (defmacro document-setf-expander (name &body body)
-  `(ensure-documentation ',name (progn ,@body) 'setf))
+  `(ensure-documentation ',name (expand-documentation ,@body) 'setf))
 
 (defmacro document-structure (name &body body)
   (assert (typep (find-class name) 'structure-class))
-  `(ensure-documentation ',name (progn ,@body) 'structure))
+  `(ensure-documentation ',name (expand-documentation ,@body) 'structure))
 
 (defmacro document-type (name &body body)
   (typep nil name)
-  `(ensure-documentation ',name (progn ,@body) 'type))
+  `(ensure-documentation ',name (expand-documentation ,@body) 'type))
 
 (defmacro document-variable (name &body body)
-  `(ensure-documentation ',name (progn ,@body) 'variable))
+  `(ensure-documentation ',name (expand-documentation ,@body) 'variable))
 
-(defun pprint-example (stream form colon-p at-sign-p &rest parameters)
-  (declare (ignore colon-p at-sign-p parameters))
-  (format stream "~& ~A~%~{  => ~A~%~}"
-          form
-          (multiple-value-list (eval form))))
