@@ -4,6 +4,7 @@
 
 (defpackage #:petalisp.core
   (:use #:common-lisp)
+
   (:import-from
    #:petalisp.utilities
    #:document-compiler-macro
@@ -13,6 +14,7 @@
    #:document-structure
    #:document-type
    #:document-variable)
+
   (:export
 
    ;; Ranges

@@ -4,9 +4,21 @@
 
 (defpackage #:petalisp.api
   (:nicknames #:petalisp)
+
   (:use
    #:common-lisp
    #:petalisp.core)
+
+  (:import-from
+   #:petalisp.utilities
+   #:document-compiler-macro
+   #:document-function
+   #:document-method-combination
+   #:document-setf-expander
+   #:document-structure
+   #:document-type
+   #:document-variable)
+
   (:export
 
    ;; High-level API

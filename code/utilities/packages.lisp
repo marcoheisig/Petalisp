@@ -7,16 +7,41 @@
    #:common-lisp
    #:alexandria)
   (:export
+
+   ;; define-class-predicate.lisp
+   #:define-class-predicate
+
+   ;; define-method-pair.lisp
+   #:define-method-pair
+
+   ;; documentation.lisp
+   #:document-compiler-macro
+   #:document-function
+   #:document-method-combination
+   #:document-setf-expander
+   #:document-structure
+   #:document-variable
+   #:pprint-example
+
+   ;; extended-euclid.lisp
+   #:extended-euclid
+
+   ;; identical.lisp
+   #:float-bits
+
+   ;; identical.lisp
+   #:identical
+
+   ;; memoization.lisp
    #:with-memoization
    #:with-multiple-value-memoization
    #:with-hash-table-memoization
    #:with-multiple-value-hash-table-memoization
    #:with-vector-memoization
    #:with-multiple-value-vector-memoization
-   #:with-collectors
-   #:identical
-   #:symmetric-function
-   #:define-method-pair
-   #:define-class-predicate
-   #:extended-euclid
-   #:prime-factors))
+
+   ;; prime-factors.lisp
+   #:prime-factors
+
+   ;; with-collectors.lisp
+   #:with-collectors))
