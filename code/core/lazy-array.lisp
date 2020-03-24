@@ -246,6 +246,9 @@
 (defmethod increment-refcount ((non-empty-non-immediate non-empty-non-immediate))
   (incf (%refcount non-empty-non-immediate)))
 
+(defmethod print-object ((empty-array empty-array) stream)
+  (print-unreadable-object (empty-array stream :type t :identity t)))
+
 (defmethod print-object ((lazy-array lazy-array) stream)
   (print-unreadable-object (lazy-array stream :type t :identity t)
     (format stream "~S ~S"
