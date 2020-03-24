@@ -38,3 +38,9 @@
 
 (defmacro document-variable (name &body body)
   `(ensure-documentation ',name (progn ,@body) 'variable))
+
+(defun pprint-example (stream form colon-p at-sign-p &rest parameters)
+  (declare (ignore colon-p at-sign-p parameters))
+  (format stream "~& ~A~%~{  => ~A~%~}"
+          form
+          (multiple-value-list (eval form))))
