@@ -36,6 +36,7 @@
 
    ;; Shapes
    #:~
+   #:~@
    #:shape
    #:shapep
    #:make-shape

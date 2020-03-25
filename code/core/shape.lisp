@@ -123,7 +123,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Convenient Notation for Shapes
+;;; The ~ Notation for Shapes
 
 (defmethod print-object ((shape shape) stream)
   (flet ((listify-shape (shape)
@@ -146,62 +146,89 @@
 
 (defconstant ~ '~)
 
-(defun ~ (&rest tilde-separated-range-designators)
-  (if (null tilde-separated-range-designators)
-      (make-shape '())
-      (let ((range-designators
-              (split-sequence:split-sequence '~ tilde-separated-range-designators)))
-        (make-shape
-         (loop for range-designator in range-designators
-               collect (apply #'range range-designator))))))
+(defconstant ~@ '~@)
 
-(define-compiler-macro ~ (&whole form &rest tilde-separated-range-designators)
-  (if (null tilde-separated-range-designators)
-      `(make-shape '())
-      (let* ((bindings '())
-             (values
-               (reverse
-                (mapcar
-                 (lambda (form)
-                   (if (constantp form)
-                       form
-                       (let ((g (gensym)))
-                         (push (list g form) bindings)
-                         g)))
-                 (reverse tilde-separated-range-designators))))
-             (subsequences (split-sequence:split-sequence '~ values)))
-        (alexandria:with-gensyms (ranges)
-          `(,(if (null bindings) 'load-time-value 'progn)
-            (let (,@bindings (,ranges '()))
-              ,@(mapcar
-                 (trivia:lambda-match
-                   ((list start)
-                    `(push (range ,start) ,ranges))
-                   ((list start end)
-                    `(push (range ,start ,end) ,ranges))
-                   ((list start step end)
-                    `(if (eq ,step '~)
-                         (progn
-                           (push (range ,end) ,ranges)
-                           (push (range ,start) ,ranges))
-                         (push (range ,start ,step ,end) ,ranges)))
-                   (_ (return-from ~ form)))
-                 (reverse subsequences))
-              (make-shape ,ranges)))))))
+(declaim (inline ~))
+(defun ~ (&rest range-designators &aux (whole (cons ~ range-designators)))
+  (declare (dynamic-extent range-designators whole))
+  (build-shape whole))
+
+(declaim (inline ~@))
+(defun ~@ (&rest range-designators &aux (whole (cons ~@ range-designators)))
+  (declare (dynamic-extent range-designators whole))
+  (build-shape whole))
+
+(defun build-shape (range-designators)
+  (petalisp.utilities:with-collectors ((ranges collect))
+    (labels ((process (range-designators rank)
+               (trivia:match range-designators
+                 ((or (list) (list ~))
+                  (%make-shape (ranges) rank))
+                 ((list* ~ (and start (type integer)) (and step (type integer)) (and end (type integer)) rest)
+                  (collect (range start step end))
+                  (process rest (1+ rank)))
+                 ((list* ~ (and start (type integer)) (and end (type integer)) rest)
+                  (collect (range start end))
+                  (process rest (1+ rank)))
+                 ((list* ~ (and start (type integer)) rest)
+                  (collect (range start))
+                  (process rest (1+ rank)))
+                 ((list* ~@ (and ranges (type list)) rest)
+                  (let ((counter 0))
+                    (dolist (range ranges (process rest (+ rank counter)))
+                      (check-type range range)
+                      (collect range)
+                      (incf counter))))
+                 (_
+                  (error "Invalid range designator~P: ~A"
+                         (count-if (lambda (elt) (member elt '(~ ~@))) range-designators)
+                         range-designators)))))
+      (process range-designators 0))))
 
 (trivia:defpattern shape (&rest ranges)
   (alexandria:with-gensyms (it)
     `(trivia:guard1 ,it (shapep ,it)
                     (shape-ranges ,it) (list ,@ranges))))
 
-(trivia:defpattern ~ (&rest tilde-separated-range-designators)
-  (if (null tilde-separated-range-designators)
-      `(shape)
-      (let ((range-designators
-              (split-sequence:split-sequence '~ tilde-separated-range-designators)))
-        `(shape
-          ,@(loop for range-designator in range-designators
-                  collect `(range ,@range-designator))))))
+(trivia:defpattern ~@ (&rest range-designators)
+  (build-shape-pattern (cons ~@ range-designators)))
+
+(trivia:defpattern ~ (&rest range-designators)
+  (build-shape-pattern (cons ~ range-designators)))
+
+(defun range-designator-separator-p (x)
+  (or (eql x ~) (eql x ~@)))
+
+(trivia:defpattern non-~ ()
+  `(not (satisfies range-designator-separator-p)))
+
+(defun build-shape-pattern (range-designators)
+  (petalisp.utilities:with-collectors ((range-patterns collect))
+    (labels ((process (range-designators)
+               (trivia:match range-designators
+                 ((or (list) (list ~))
+                  `(list ,@(range-patterns)))
+                 ((list* ~ (and start (non-~)) (and step (non-~)) (and end (non-~)) rest)
+                  (collect `(range ,start ,step ,end))
+                  (process rest))
+                 ((list* ~ (and start (non-~)) (and end (non-~)) rest)
+                  (collect `(range ,start ,end))
+                  (process rest))
+                 ((list* ~ (and start (non-~)) rest)
+                  (collect `(range ,start))
+                  (process rest))
+                 ((list* ~@ ranges rest)
+                  (unless (null rest)
+                    (error "~~@ must only appear at the last clause of a shape pattern."))
+                  `(list* ,@(range-patterns) ,ranges))
+                 (_
+                  (error "Invalid range designator~P: ~A"
+                         (count-if (lambda (elt) (member elt '(~ ~@))) range-designators)
+                         range-designators)))))
+      (alexandria:with-gensyms (it)
+        `(trivia:guard1
+          ,it (shapep ,it)
+          (shape-ranges ,it) ,(process range-designators))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
