@@ -24,6 +24,11 @@ towards the former until they are."
   (range 5 2 13)
   (range 7 3 -3))
 
+(document-function rangep
+  "Checks whether a supplied object is a range."
+  (rangep 42)
+  (rangep (range 1 2 3)))
+
 (document-function size-one-range-p
   "Checks whether the supplied range has a size of one."
   (size-one-range-p (range 5))
@@ -77,6 +82,10 @@ supplied ranges.  Returns NIL if there are no such elements."
 disjoint subranges of R1 that describe exactly those integers appearing in
 R1 but not in R2.")
 
+(document-function range-start-step-end
+  "Returns the start, step and (inclusive) end of the range, respectively."
+  (range-start-step-end (range 0 2 8)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Shapes
@@ -99,9 +108,27 @@ of integers.  The rank of a shape is the length of these lists.  For
 example, the shape (~ 0 ~ 1 2 ~ 3 4 7) has rank three and consists of the
 integer tuples (0 1 3), (0 1 7), (0 2 3), (0 2 7).")
 
+(document-function shapep
+  "Checks whether a supplied object is a shape."
+  (shapep 42)
+  (shapep (~ 1 ~ 2 ~ 3 4)))
+
 (document-function make-shape
   "Constructs a shape from a supplied list of ranges."
   (make-shape (list (range 5 9) (range 2 3))))
+
+(document-function shape-rank
+  "Returns the rank of the supplied shape, i.e., the number of ranges it
+contains."
+  (shape-rank (~))
+  (shape-rank (~ 1 ~ 2 ~ 3))
+  (shape-rank (~ 0 9 ~ 0 9)))
+
+(document-function shape-ranges
+  "Returns a list of all ranges contained in the supplied shape."
+  (shape-ranges (~))
+  (shape-ranges (~ 1 ~ 2 ~ 3))
+  (shape-ranges (~ 0 9 ~ 0 9)))
 
 (document-function shape-size
   "Returns that number of integer tuples denoted by the supplied shape."
@@ -110,14 +137,14 @@ integer tuples (0 1 3), (0 1 7), (0 2 3), (0 2 7).")
   (shape-size (~ 1 10 ~ 1 8)))
 
 (document-function shape-equal
-  "Check whether two supplied shapes denote the same set of integer tuples."
+  "Checks whether two supplied shapes denote the same set of integer tuples."
   (shape-equal (~) (~))
   (shape-equal (~ 42) (~ 42))
   (shape-equal (~ 1 42) (~ 1 42))
   (shape-equal (~ 1 42) (~ 2 42)))
 
 (document-function shape-difference-list
-  "Compute the difference of two shapes S1 and S2.  Returns a list of
+  "Computes the difference of two shapes S1 and S2.  Returns a list of
 disjoint subshapes of S1 that describe exactly those integer tuples
 appearing in S1 but not in S2."
   (shape-difference-list (~ 1 10) (~ 2 9))
@@ -149,18 +176,18 @@ tuples of that range, in ascending order."
   (shape-contains (~ 1 9) (list 4))
   (shape-contains (~ 1 2 9) (list 4)))
 
-(document-function enlarge-shape
-  "For a given shape S and range R, this function returns a shape whose
-  first range is R, and whose remaining ranges are those of S."
-  (enlarge-shape (~) (range 1 10))
-  (enlarge-shape (~ 1 3) (range 1 4)))
-
 (document-function shrink-shape
   "This function expects a single shape with one or more ranges R1 to Rn.
 It returns a shape with the ranges R2 to R1, and, as a second value, the
 range R1 that has been peeled off."
   (shrink-shape (~ 1 10))
   (shrink-shape (~ 1 10 ~ 0 2)))
+
+(document-function enlarge-shape
+  "For a given shape S and range R, this function returns a shape whose
+  first range is R, and whose remaining ranges are those of S."
+  (enlarge-shape (~) (range 1 10))
+  (enlarge-shape (~ 1 3) (range 1 4)))
 
 (document-function subdivide
   "Returns a list of (shape . bitmask) conses.  Each shape is a proper
@@ -169,6 +196,14 @@ supplied shapes.  The bitmask indicates which of the supplied shapes are
 supersets of the corresponding resulting shape."
   (subdivide (list (~ 1 2 ~ 1 2) (~ 1 ~ 1)))
   (subdivide (list (~ 1 10) (~ 2 20))))
+
+(document-function subshapep
+  "Checks for two shapes whether the former is fully contained in the
+latter."
+  (subshapep (~) (~))
+  (subshapep (~ 0 9) (~ 0 9))
+  (subshapep (~ 0 3) (~ 1 9))
+  (subshapep (~ 0 3 ~ 0 3) (~ 0 9 ~ 0 9)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -189,19 +224,41 @@ Furthermore, the inputs of a hairy transformation can be subject to integer
 constraints.")
 
 (document-function transformation-invertiblep
-  "Check whether a supplied transformation is invertible.")
+  "Check whether a supplied transformation is invertible."
+  (transformation-invertiblep (τ (i j) (j i)))
+  (transformation-invertiblep (τ (i j) (i))))
 
 (document-function transformation-equal
-  "Check whether two supplied transformations describe the same mapping.")
+  "Check whether two supplied transformations describe the same mapping."
+  (transformation-equal
+   (τ (i) ((* 2 (1+ i))))
+   (τ (i) ((+ 2 (* 2 i)))))
+  (transformation-equal
+   (τ (i j) (i j))
+   (τ (i j) (j i))))
 
 (document-function compose-transformations
   "Returns a single transformation that is equivalent to consecutive
-invocations of the supplied transformations in right-to-left order.")
+invocations of the supplied transformations in right-to-left order."
+  (compose-transformations
+   (τ (i) ((* 2 (1+ i))))
+   (τ (i) ((1- (/ i 2)))))
+  (compose-transformations
+   (τ (i j) ((+ i 5) (+ j 7)))
+   (τ (i j) ((* j 2) (* i 3)))))
 
 (document-function invert-transformation
   "Returns the inverse of the supplied transformation.
 
-An error is signaled if the supplied transformation is not invertible.")
+An error is signaled if the supplied transformation is not invertible."
+  (invert-transformation
+   (τ (i) ((+ 2 i))))
+  (invert-transformation
+   (τ (a b) ((+ (* 2 b) 5) (+ (* 3 a) 7))))
+  (invert-transformation
+   (τ (a 0) (a)))
+  (invert-transformation
+   (τ (a b) (a))))
 
 (document-function map-transformation-inputs
   "For each input of TRANSFORMATION, invoke FUNCTION with the input index
@@ -452,8 +509,7 @@ can be sped up by rewriting it as
 
  (progn (schedule array-1 array-2)
         (run-expensive-task)
-        (compute array-1 array-2)).
-")
+        (compute array-1 array-2)).")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
