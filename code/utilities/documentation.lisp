@@ -63,3 +63,17 @@
 (defmacro document-variable (name &body body)
   `(ensure-documentation ',name (expand-documentation ,@body) 'variable))
 
+(macrolet ((define-multi-documenter (name documenter)
+             `(defmacro ,name (names &body body)
+                (alexandria:with-gensyms (documentation)
+                  `(let ((,documentation (expand-documentation ,@body)))
+                     ,@(loop for name in names
+                             collect
+                             `(,',documenter ,name ,documentation)))))))
+  (define-multi-documenter document-compiler-macros document-compiler-macro)
+  (define-multi-documenter document-functions document-function)
+  (define-multi-documenter document-method-combinations document-method-combination)
+  (define-multi-documenter document-setf-expanders document-setf-expander)
+  (define-multi-documenter documet-structures document-structure)
+  (define-multi-documenter document-types document-type)
+  (define-multi-documenter document-variables document-variable))

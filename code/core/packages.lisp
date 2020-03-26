@@ -9,11 +9,13 @@
    #:petalisp.utilities
    #:document-compiler-macro
    #:document-function
+   #:document-functions
    #:document-method-combination
    #:document-setf-expander
    #:document-structure
    #:document-type
-   #:document-variable)
+   #:document-variable
+   #:document-variables)
 
   (:export
 

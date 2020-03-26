@@ -16,12 +16,17 @@
 
    ;; documentation.lisp
    #:document-compiler-macro
+   #:document-compiler-macros
    #:document-function
+   #:document-functions
    #:document-method-combination
+   #:document-method-combinations
    #:document-setf-expander
+   #:document-setf-expanders
    #:document-structure
+   #:document-structures
    #:document-variable
-   #:pprint-example
+   #:document-variables
 
    ;; extended-euclid.lisp
    #:extended-euclid

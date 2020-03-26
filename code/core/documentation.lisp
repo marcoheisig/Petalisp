@@ -90,15 +90,21 @@ R1 but not in R2.")
 ;;;
 ;;; Shapes
 
-(document-variable ~
-  "The symbol ~ is self-evaluating.  Its only purpose is to separate range
-designators in the function named ~.")
+(document-variables (~ ~l ~s ~r)
+  "The symbols ~, ~l, ~s and ~r are self-evaluating.  Their only purpose is
+to separate range designators in the functions named ~, ~l, ~s and ~r.")
 
-(document-function ~
-  "Construct a shape from zero or more tilde-separated range designators."
+(document-functions (~ ~l ~s ~r)
+  "The functions ~, ~l, ~s and ~r can be used to construct new shapes from
+some given range designators, from lists of ranges, from shapes, or from a
+single range, respectively.  Each of these patterns can be used repeatedly
+in a single call."
   (~)
-  (~ 1 2 3)
+  (~ 7)
+  (~ 1 9)
   (~ 0 2 9 ~ 0 2 9)
+  (~ 5 ~s (~ 1 2 3 ~ 4 5 9) ~ 5)
+  (~r (range 1 9) ~l (list (range 2 8)) ~ 42)
   (apply #'~ 1 9 (loop repeat 3 append '(~ 2 5))))
 
 (document-type shape
