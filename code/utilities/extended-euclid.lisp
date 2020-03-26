@@ -47,6 +47,6 @@ that u*u1 + v*u2 = u3 = gcd(u,v)."
     ;; product of U and V as a conservative estimate.  To see why (* u v)
     ;; is unconditionally greater than (lcm u v), consider the prime
     ;; factors of both numbers.
-    (if (typep (* u v) 'non-negative-fixnum)
+    (if (typep (* u v) 'small-non-negative-fixnum)
         (fixnum-euclid 1 u 0 v)
         (bignum-euclid 1 u 0 v))))
