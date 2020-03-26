@@ -28,9 +28,9 @@
   (trivia:ematch (shape x)
     ((~)
      (reshape x (~ 1 ~ 1)))
-    ((~@ (list range))
+    ((~l (list range))
      (reshape x (~ 1 (range-size range) ~ 1)))
-    ((~@ (list range-1 range-2))
+    ((~l (list range-1 range-2))
      (reshape x (~ 1 (range-size range-1) ~ 1 (range-size range-2))))))
 
 (defun coerce-to-scalar (x)

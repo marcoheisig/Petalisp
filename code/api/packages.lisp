@@ -35,7 +35,9 @@
    #:b*
    #:beta*
    #:~
-   #:~@
+   #:~l
+   #:~s
+   #:~r
    #:broadcast
    #:broadcast-arrays
    #:broadcast-list-of-arrays

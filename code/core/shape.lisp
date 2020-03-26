@@ -144,19 +144,20 @@
           (t (print-unreadable-object (shape stream :type t)
                (format stream "~{~S~^ ~}" (shape-ranges shape)))))))
 
-(defconstant ~ '~)
+(macrolet ((define-shape-builder-function (name)
+             `(progn
+                (defconstant ,name ',name)
+                (declaim (inline ,name))
+                (defun ,name (&rest range-designators &aux (whole (cons ,name range-designators)))
+                  (declare (dynamic-extent range-designators whole))
+                  (build-shape whole)))))
+  (define-shape-builder-function ~)
+  (define-shape-builder-function ~l)
+  (define-shape-builder-function ~r)
+  (define-shape-builder-function ~s))
 
-(defconstant ~@ '~@)
-
-(declaim (inline ~))
-(defun ~ (&rest range-designators &aux (whole (cons ~ range-designators)))
-  (declare (dynamic-extent range-designators whole))
-  (build-shape whole))
-
-(declaim (inline ~@))
-(defun ~@ (&rest range-designators &aux (whole (cons ~@ range-designators)))
-  (declare (dynamic-extent range-designators whole))
-  (build-shape whole))
+(defun range-designator-separator-p (x)
+  (member x '(~ ~l ~r ~s)))
 
 (defun build-shape (range-designators)
   (petalisp.utilities:with-collectors ((ranges collect))
@@ -173,15 +174,21 @@
                  ((list* ~ (and start (type integer)) rest)
                   (collect (range start))
                   (process rest (1+ rank)))
-                 ((list* ~@ (and ranges (type list)) rest)
+                 ((list* ~l (and ranges (type list)) rest)
                   (let ((counter 0))
                     (dolist (range ranges (process rest (+ rank counter)))
                       (check-type range range)
                       (collect range)
                       (incf counter))))
+                 ((list* ~r (and range (type range)) rest)
+                  (collect range)
+                  (process rest (1+ rank)))
+                 ((list* ~s (and shape (type shape)) rest)
+                  (mapc #'collect (shape-ranges shape))
+                  (process rest (+ rank (shape-rank shape))))
                  (_
                   (error "Invalid range designator~P: ~A"
-                         (count-if (lambda (elt) (member elt '(~ ~@))) range-designators)
+                         (count-if #'range-designator-separator-p (butlast range-designators))
                          range-designators)))))
       (process range-designators 0))))
 
@@ -190,14 +197,11 @@
     `(trivia:guard1 ,it (shapep ,it)
                     (shape-ranges ,it) (list ,@ranges))))
 
-(trivia:defpattern ~@ (&rest range-designators)
-  (build-shape-pattern (cons ~@ range-designators)))
+(trivia:defpattern ~l (&rest range-designators)
+  (build-shape-pattern (cons ~l range-designators)))
 
 (trivia:defpattern ~ (&rest range-designators)
   (build-shape-pattern (cons ~ range-designators)))
-
-(defun range-designator-separator-p (x)
-  (or (eql x ~) (eql x ~@)))
 
 (trivia:defpattern non-~ ()
   `(not (satisfies range-designator-separator-p)))
@@ -217,13 +221,20 @@
                  ((list* ~ (and start (non-~)) rest)
                   (collect `(range ,start))
                   (process rest))
-                 ((list* ~@ ranges rest)
+                 ((list* ~l ranges rest)
                   (unless (null rest)
-                    (error "~~@ must only appear at the last clause of a shape pattern."))
+                    (error "~S must only appear at the last clause of a shape pattern."
+                           ~l))
                   `(list* ,@(range-patterns) ,ranges))
+                 ((list* ~s _ _)
+                  (error "~S must not appear in a shape pattern."
+                         ~s))
+                 ((list* ~r range rest)
+                  (collect range)
+                  (process rest))
                  (_
                   (error "Invalid range designator~P: ~A"
-                         (count-if (lambda (elt) (member elt '(~ ~@))) range-designators)
+                         (count-if #'range-designator-separator-p (butlast range-designators))
                          range-designators)))))
       (alexandria:with-gensyms (it)
         `(trivia:guard1
