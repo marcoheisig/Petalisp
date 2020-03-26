@@ -119,10 +119,6 @@ integer tuples (0 1 3), (0 1 7), (0 2 3), (0 2 7).")
   (shapep 42)
   (shapep (~ 1 ~ 2 ~ 3 4)))
 
-(document-function make-shape
-  "Constructs a shape from a supplied list of ranges."
-  (make-shape (list (range 5 9) (range 2 3))))
-
 (document-function shape-rank
   "Returns the rank of the supplied shape, i.e., the number of ranges it
 contains."
