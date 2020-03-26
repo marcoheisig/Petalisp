@@ -16,7 +16,7 @@
            (multiple-value-bind (start step end)
                (range-start-step-end range)
              (range (+ start step) step (- end step)))))
-    (make-shape (mapcar #'range-interior (shape-ranges (shape array))))))
+    (~l (mapcar #'range-interior (shape-ranges (shape array))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -67,8 +67,8 @@
     (labels ((red-black-shapes (red black ranges)
                (if (null ranges)
                    (values
-                    (mapcar #'make-shape red)
-                    (mapcar #'make-shape black))
+                    (mapcar #'~l red)
+                    (mapcar #'~l black))
                    (with-accessors ((start range-start)
                                     (step range-step)
                                     (end range-end)

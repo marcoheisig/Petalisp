@@ -18,13 +18,6 @@
   (rank nil :type array-rank :read-only t)
   (ranges nil :type list :read-only t))
 
-(defun make-shape (ranges)
-  (let ((rank 0))
-    (declare (rank rank))
-    (dolist (range ranges (%make-shape ranges rank))
-      (check-type range range)
-      (incf rank))))
-
 (defun shape-size (shape)
   (declare (shape shape))
   (reduce #'* (shape-ranges shape) :key #'range-size))

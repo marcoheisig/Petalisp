@@ -44,7 +44,7 @@
           (let ((other-range (nth-broadcast-range shape rank axis)))
             (broadcast-ranges-f broadcast-range other-range)))
         (push broadcast-range broadcast-ranges)))
-    (let ((broadcast-shape (make-shape broadcast-ranges)))
+    (let ((broadcast-shape (~l broadcast-ranges)))
       (values
        (loop for lazy-array in lazy-arrays
              for shape in shapes

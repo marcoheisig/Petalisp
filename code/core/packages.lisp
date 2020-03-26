@@ -43,7 +43,6 @@
    #:~r
    #:shape
    #:shapep
-   #:make-shape
    #:shape-rank
    #:shape-ranges
    #:shape-size

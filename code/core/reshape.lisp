@@ -141,8 +141,7 @@
                  collect
                  (lazy-rehape
                   lazy-array
-                  (make-shape
-                   (append prefix (list (range offset) range-2) suffix))
+                  (~l prefix ~ offset ~r range-2 ~l suffix)
                   (let ((input-mask (make-array (1+ rank) :initial-element nil))
                         (output-mask (make-array rank :initial-element nil))
                         (offsets (make-array rank :initial-element 0)))
@@ -173,8 +172,7 @@
                  collect
                  (lazy-rehape
                   lazy-array
-                  (make-shape
-                   (append prefix (list range-1 (range offset)) suffix))
+                  (~l prefix ~r range-1 ~ offset ~l suffix)
                   (let ((input-mask (make-array (1+ rank) :initial-element nil))
                         (output-mask (make-array rank :initial-element nil))
                         (offsets (make-array rank :initial-element 0))
@@ -208,8 +206,7 @@
                  collect
                  (lazy-rehape
                   lazy-array
-                  (make-shape
-                   (append prefix (list (range (* offset size-2) (1- (* (1+ offset) size-2)))) suffix))
+                  (~l prefix ~ (* offset size-2) (1- (* (1+ offset) size-2)) ~l suffix)
                   (let ((input-mask (make-array (1- rank) :initial-element nil))
                         (output-mask (make-array rank :initial-element nil))
                         (offsets (make-array rank :initial-element 0)))
@@ -241,8 +238,7 @@
                  collect
                  (lazy-rehape
                   lazy-array
-                  (make-shape
-                   (append prefix (list (range offset size-2 (1- (* size-1 size-2)))) suffix))
+                  (~l prefix ~ offset size-2 (1- (* size-1 size-2)) ~l suffix)
                   (let ((input-mask (make-array (1- rank) :initial-element nil))
                         (output-mask (make-array rank :initial-element nil))
                         (scalings (make-array rank :initial-element 1))

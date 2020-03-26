@@ -444,7 +444,7 @@
                           (* scaling (range-step input-range))
                           (+ offset (* scaling (range-end input-range)))))))))
       (map-transformation-outputs #'store-output-range transformation))
-    (make-shape output-ranges)))
+    (~l output-ranges)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

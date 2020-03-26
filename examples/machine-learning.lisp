@@ -99,20 +99,18 @@
               (maxf (aref upper-bounds index) offset)))
     ;; Use the bounding box to compute the shape of the result.
     (let ((result-shape
-            (make-shape
-             (list*
-              (range 0)
-              (loop for lb across lower-bounds
-                    for ub across upper-bounds
-                    for range in (shape-ranges (shape array))
-                    collect
-                    (if (and (integerp lb)
-                             (integerp ub))
-                        (let ((lo (- (range-start range) lb))
-                              (hi (- (range-end range) ub)))
-                          (assert (< lo hi))
-                          (range lo hi))
-                        range)))))
+            (~ 0 ~l
+               (loop for lb across lower-bounds
+                     for ub across upper-bounds
+                     for range in (shape-ranges (shape array))
+                     collect
+                     (if (and (integerp lb)
+                              (integerp ub))
+                         (let ((lo (- (range-start range) lb))
+                               (hi (- (range-end range) ub)))
+                           (assert (< lo hi))
+                           (range lo hi))
+                         range))))
           (filters
             (make-trainable-parameter
              (make-random-array
@@ -159,7 +157,7 @@
      (apply #'α #'max
             (apply #'alexandria:map-product
                    (lambda (&rest ranges)
-                     (reshape array (make-shape ranges)))
+                     (reshape array (~l ranges)))
                    pooling-ranges)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -201,7 +201,7 @@
   (petalisp.type-inference:ntype 'nil))
 
 (defmethod shape ((object t))
-  (load-time-value (make-shape '())))
+  (~))
 
 (defmethod shape ((array array))
   (if (zerop (array-total-size array))
@@ -284,9 +284,9 @@
 
 (defun make-range-immediate (range)
   (if (size-one-range-p range)
-      (reshape (range-start range) (make-shape (list range)))
+      (reshape (range-start range) (~r range))
       (make-instance 'range-immediate
-        :shape (make-shape (list range))
+        :shape (~r range)
         :ntype
         (petalisp.type-inference:ntype-union
          (petalisp.type-inference:ntype-of (range-start range))
