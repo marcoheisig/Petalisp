@@ -105,6 +105,7 @@
    #:immediate
    #:non-immediate
    #:empty-array
+   #:empty-arrays
    #:non-empty-array
    #:non-empty-immediate
    #:non-empty-non-immediate

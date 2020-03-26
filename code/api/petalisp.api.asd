@@ -18,6 +18,7 @@
   :components
   ((:file "packages")
    (:file "collapse")
+   (:file "drop-axes")
    (:file "flatten")
    (:file "slice")
    (:file "slices")
