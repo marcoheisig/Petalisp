@@ -17,6 +17,12 @@
   :serial t
   :components
   ((:file "packages")
-   (:file "api")
+   (:file "collapse")
+   (:file "flatten")
+   (:file "slice")
+   (:file "slices")
+   (:file "stack")
+   (:file "beta")
+   (:file "vectorize")
    (:file "documentation")
    (:file "aliases")))

@@ -154,3 +154,7 @@
   (:shadowing-import-from :petalisp.reference-backend #:make-reference-backend)
   (:shadowing-import-from :petalisp.ir-backend #:make-ir-backend)
   (:shadowing-import-from :petalisp.native-backend #:make-native-backend))
+
+(in-package #:petalisp.api)
+
+(defvar *backend* (make-native-backend))
