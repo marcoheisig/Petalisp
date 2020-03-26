@@ -35,7 +35,10 @@
 
 (defun broadcast-list-of-arrays (list-of-arrays)
   (let* ((lazy-arrays (mapcar #'lazy-array list-of-arrays))
-         (shapes (mapcar #'shape lazy-arrays))
+         (shapes
+           (let ((acc '()))
+             (dolist (lazy-array lazy-arrays acc)
+               (push (shape lazy-array) acc))))
          (rank (loop for shape in shapes maximize (shape-rank shape)))
          (broadcast-ranges '()))
     (loop for axis from (1- rank) downto 0 do
