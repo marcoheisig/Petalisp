@@ -25,8 +25,8 @@
         (let ((range (nth axis (shape-ranges shape))))
           (unless (size-one-range-p range)
             (cond ((null stack-width)
-                   (setf stack-width (range-size range)))
-                  ((= stack-width (range-size range))
+                   (setf stack-width (range-step range)))
+                  ((= stack-width (range-step range))
                    (values))
                   (t
                    (error "~@<Cannot stack arrays with varying step sizes.~:@>")))))))
