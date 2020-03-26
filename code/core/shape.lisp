@@ -137,20 +137,30 @@
           (t (print-unreadable-object (shape stream :type t)
                (format stream "~{~S~^ ~}" (shape-ranges shape)))))))
 
-(macrolet ((define-shape-builder-function (name)
+(trivia:defpattern shape (&rest ranges)
+  (alexandria:with-gensyms (it)
+    `(trivia:guard1 ,it (shapep ,it)
+                    (shape-ranges ,it) (list ,@ranges))))
+
+(macrolet ((define-shape-syntax-1 (name)
              `(progn
                 (defconstant ,name ',name)
                 (declaim (inline ,name))
                 (defun ,name (&rest range-designators &aux (whole (cons ,name range-designators)))
                   (declare (dynamic-extent range-designators whole))
-                  (build-shape whole)))))
-  (define-shape-builder-function ~)
-  (define-shape-builder-function ~l)
-  (define-shape-builder-function ~r)
-  (define-shape-builder-function ~s))
-
-(defun range-designator-separator-p (x)
-  (member x '(~ ~l ~r ~s)))
+                  (build-shape whole))
+                (trivia:defpattern ,name (&rest range-designators)
+                  (build-shape-pattern (cons ,name range-designators)))))
+           (define-shape-syntax (&rest names)
+             `(progn
+                (defun range-designator-separator-p (x)
+                  (member x '(,@names)))
+                (trivia:defpattern non-~ ()
+                  '(not (satisfies range-designator-separator-p)))
+                ,@(loop for name in names
+                        collect
+                        `(define-shape-syntax-1 ,name)))))
+  (define-shape-syntax ~ ~l ~r ~s))
 
 (defun build-shape (range-designators)
   (petalisp.utilities:with-collectors ((ranges collect))
@@ -184,20 +194,6 @@
                          (count-if #'range-designator-separator-p (butlast range-designators))
                          range-designators)))))
       (process range-designators 0))))
-
-(trivia:defpattern shape (&rest ranges)
-  (alexandria:with-gensyms (it)
-    `(trivia:guard1 ,it (shapep ,it)
-                    (shape-ranges ,it) (list ,@ranges))))
-
-(trivia:defpattern ~l (&rest range-designators)
-  (build-shape-pattern (cons ~l range-designators)))
-
-(trivia:defpattern ~ (&rest range-designators)
-  (build-shape-pattern (cons ~ range-designators)))
-
-(trivia:defpattern non-~ ()
-  `(not (satisfies range-designator-separator-p)))
 
 (defun build-shape-pattern (range-designators)
   (petalisp.utilities:with-collectors ((range-patterns collect))
