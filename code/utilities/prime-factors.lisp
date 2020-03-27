@@ -2,34 +2,46 @@
 
 (in-package #:petalisp.utilities)
 
-(defun make-table-of-primes (size)
-  (let ((table (make-array size))
-        (index 0))
-    (flet ((register (n)
-             (cond ((not (array-in-bounds-p table index))
-                    (return-from make-table-of-primes table))
-                   (t
-                    (setf (aref table index) n)
-                    (incf index))))
-           (primep (n)
-             (let ((limit (isqrt n)))
-               (loop for prime across table do
-                 (cond ((> prime limit)
-                        (return t))
-                       ((zerop (mod n prime))
-                        (return nil)))))))
-      (register 2)
-      (loop for number from 3 by 2 do
-        (when (primep number)
-          (register number))))))
+(eval-when (:compile-toplevel :load-toplevel :execute)
+  (defun nth-prime-upper-bound (n)
+    (* n (+ (log n) (log (log n)))))
 
-(defparameter *table-of-primes* (make-table-of-primes 25000))
+  (defun nth-prime-max-bits (n)
+    (ceiling (log (nth-prime-upper-bound n) 2)))
+
+  (defun make-table-of-primes (size)
+    (let ((table (make-array size :element-type `(unsigned-byte ,(nth-prime-max-bits size))))
+          (index 0))
+      (flet ((register (n)
+               (unless (array-in-bounds-p table index)
+                 (return-from make-table-of-primes table))
+               (setf (aref table index) n)
+               (incf index))
+             (primep (n)
+               (let ((limit (isqrt n)))
+                 (loop for prime across table do
+                   (cond ((> prime limit)
+                          (return t))
+                         ((zerop (mod n prime))
+                          (return nil)))))))
+        (register 2)
+        (loop for number from 3 by 2 do
+          (when (primep number)
+            (register number))))))
+
+  ;; Memory is cheap these days, so instead of implementing a second
+  ;; algorithm for factoring large integers, we simply make the table large
+  ;; enough.
+  (defconstant +table-of-primes+
+    (if (boundp '+table-of-primes+)
+        (symbol-value '+table-of-primes+)
+        (make-table-of-primes 90000))))
 
 (defun prime-factors (integer)
   "Return the list of prime factors of INTEGER in ascending order."
   (declare (integer integer))
   (let ((factors '()))
-    (loop for prime across *table-of-primes* do
+    (loop for prime across +table-of-primes+ do
       (tagbody retry
          (if (> (* prime prime) integer)
              (return-from prime-factors
@@ -40,7 +52,14 @@
                  (setf integer mod)
                  (push prime factors)
                  (go retry))))))
-    ;; TODO: Use a fallback algorithm.  Not that we are likely to end up
-    ;; here, given that our table of primes is large enough to factorize
-    ;; numbers up to 2^36.
+    ;; We aren't very likely to end up here, given that our table of primes
+    ;; is large enough to factorize numbers up to 2^40.
     (error "The integer ~S is too large for factorization." integer)))
+
+(defun primep (n)
+  (let* ((imax (1- (array-total-size +table-of-primes+)))
+         (pmax (aref +table-of-primes+ imax)))
+    (if (< n (* pmax pmax))
+        (find n +table-of-primes+)
+        (error "The integer ~S is too large for checking prime-ness."
+               n))))

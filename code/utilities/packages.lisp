@@ -47,6 +47,7 @@
 
    ;; prime-factors.lisp
    #:prime-factors
+   #:primep
 
    ;; with-collectors.lisp
    #:with-collectors))
