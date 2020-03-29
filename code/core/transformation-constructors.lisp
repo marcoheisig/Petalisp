@@ -4,7 +4,23 @@
 
 (defun identity-transformation (rank)
   (petalisp.utilities:with-vector-memoization (rank)
-    (%make-identity-transformation rank)))
+    (let ((input-mask (make-array rank :initial-element nil))
+          (output-mask (make-array rank))
+          (scalings (make-array rank :initial-element 1))
+          (offsets (make-array rank :initial-element 0)))
+      (loop for index below rank do
+        (setf (svref output-mask index) index))
+      (let ((result
+              (%make-identity-transformation
+               rank
+               rank
+               input-mask
+               output-mask
+               scalings
+               offsets
+               nil)))
+        (setf (transformation-inverse result) result)
+        result))))
 
 (defun make-transformation
     (&key
@@ -50,7 +66,7 @@
         (declare (simple-vector output-mask scalings offsets))
         (if (and (= input-rank output-rank) identity-inputs-p identity-outputs-p)
             (identity-transformation input-rank)
-            (%make-transformation
+            (%make-hairy-transformation
              input-rank output-rank
              input-mask output-mask
              scalings offsets
@@ -324,7 +340,7 @@
                       (setf (aref output-mask index) index)
                       (setf (aref scalings index) step)
                       (setf (aref offsets index) start))))
-        (%make-transformation rank rank input-mask output-mask scalings offsets t))))
+        (%make-hairy-transformation rank rank input-mask output-mask scalings offsets t))))
 
 ;;; Returns an invertible transformation that eliminates all ranges with
 ;;; size one from a supplied SHAPE.

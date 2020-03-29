@@ -16,22 +16,7 @@
             (:copier nil)
             (:constructor nil))
   (input-rank nil :type rank :read-only t)
-  (output-rank nil :type rank :read-only t))
-
-(defstruct (identity-transformation
-            (:include transformation)
-            (:predicate identity-transformation-p)
-            (:copier nil)
-            (:constructor %make-identity-transformation
-                (rank &aux (input-rank rank) (output-rank rank)))))
-
-(defstruct (hairy-transformation
-            (:include transformation)
-            (:predicate hairy-transformation-p)
-            (:copier nil)
-            (:conc-name transformation-)
-            (:constructor %make-transformation
-                (input-rank output-rank input-mask output-mask scalings offsets inverse)))
+  (output-rank nil :type rank :read-only t)
   ;; The input mask is a simple vector with as many entries as the input
   ;; rank of the transformation.  Each element is either an integer,
   ;; meaning the corresponding input must be of this value, or NIL, meaning
@@ -62,8 +47,22 @@
   ;; invertible, and to cache that inverse.
   (inverse nil :type (or boolean transformation) :read-only nil))
 
+(defstruct (identity-transformation
+            (:include transformation)
+            (:predicate identity-transformation-p)
+            (:copier nil)
+            (:constructor %make-identity-transformation
+              (input-rank output-rank input-mask output-mask scalings offsets inverse))))
+
+(defstruct (hairy-transformation
+            (:include transformation)
+            (:predicate hairy-transformation-p)
+            (:copier nil)
+            (:constructor %make-hairy-transformation
+                (input-rank output-rank input-mask output-mask scalings offsets inverse))))
+
 ;; Forward declaration of the primary transformation constructors, because
-;; it will be referenced before being defined.
+;; they will be referenced before being defined.
 (declaim (ftype (function (&key (:input-rank rank)
                                 (:output-rank rank)
                                 (:input-mask sequence)
@@ -71,7 +70,7 @@
                                 (:offsets sequence)
                                 (:scalings sequence)))
                 make-transformation)
-         (ftype (function (alexandria:array-length))
+         (ftype (function (rank))
                 identity-transformation))
 
 (defun transformation-invertiblep (transformation)
@@ -209,7 +208,7 @@
                (every (lambda (x) (eql x 1)) scalings)
                (every (lambda (x) (eql x 0)) offsets))
           (identity-transformation input-rank)
-          (%make-transformation
+          (%make-hairy-transformation
            input-rank output-rank
            input-mask output-mask
            scalings offsets
@@ -248,7 +247,7 @@
                         (setf (aref offsets input-index) (- (/ b a))))))
            transformation)
           (setf (transformation-inverse transformation)
-                (%make-transformation
+                (%make-hairy-transformation
                  input-rank output-rank
                  input-mask output-mask
                  scalings offsets
@@ -351,7 +350,7 @@
       (replace scalings (transformation-scalings transformation) :start1 1)
       (replace offsets (transformation-offsets transformation) :start1 1)
       (setf (aref input-mask 0) nil)
-      (%make-transformation
+      (%make-hairy-transformation
        input-rank output-rank
        input-mask output-mask
        scalings offsets
