@@ -29,14 +29,13 @@
              (format stream "(~D ~D)" start end))
             ((= size 3)
              (format stream "(~D ~D ~D)" start (+ start step) end))
-            ((= step 1)
-             (format stream "(~D ... ~D)" start end))
             ((= size 4)
              (format stream "(~D ~D ~D ~D)" start (+ start step) (+ start step step) end))
+            ((= step 1)
+             (format stream "(~D ... ~D)" start end))
             (t
              (format stream "(~D ~D ... ~D)" start (+ start step) end))))))
 
-;; TODO This is a compatibility function that can be removed.
 (declaim (inline range-start-step-end))
 (defun range-start-step-end (range)
   (declare (range range))
