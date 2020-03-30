@@ -49,12 +49,12 @@
     :ntype (element-ntype lazy-fuse)
     :inputs (mapcar #'substitute-array (inputs lazy-fuse))))
 
-(defmethod substitute-array ((lazy-rehape lazy-rehape))
-  (make-instance 'lazy-rehape
-    :ntype (element-ntype lazy-rehape)
-    :shape (shape lazy-rehape)
-    :transformation (transformation lazy-rehape)
-    :inputs (list (substitute-array (input lazy-rehape)))))
+(defmethod substitute-array ((lazy-reshape lazy-reshape))
+  (make-instance 'lazy-reshape
+    :ntype (element-ntype lazy-reshape)
+    :shape (shape lazy-reshape)
+    :transformation (transformation lazy-reshape)
+    :inputs (list (substitute-array (input lazy-reshape)))))
 
 (defmethod substitute-array ((lazy-array lazy-array))
   ;; All other kinds of lazy arrays (mostly immediates) are not copied.

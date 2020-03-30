@@ -18,7 +18,7 @@
      (mapcar
       (lambda (fragment)
         (destructuring-bind (shape . bitmask) fragment
-          (lazy-rehape
+          (lazy-reshape
            (nth (1- (integer-length bitmask)) lazy-arrays)
            shape
            identity)))

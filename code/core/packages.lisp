@@ -100,7 +100,7 @@
    #:lazy-array
    #:lazy-map
    #:lazy-reduce
-   #:lazy-rehape
+   #:lazy-reshape
    #:lazy-fuse
    #:immediate
    #:non-immediate

@@ -11,7 +11,7 @@
           :initial-value (lazy-array array)))
 
 (defun reshape-using-transformation (lazy-array transformation)
-  (lazy-rehape
+  (lazy-reshape
    lazy-array
    (transform (shape lazy-array) transformation)
    (invert-transformation transformation)))
@@ -31,7 +31,7 @@
             (error "~@<Cannot reshape the array ~S ~
                  to the shape ~S.~:@>"
                    lazy-array shape))
-          (lazy-rehape lazy-array shape transformation)))))
+          (lazy-reshape lazy-array shape transformation)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -102,7 +102,7 @@
             (loop for prime-factor in (rest prime-factors) do
               (setf lazy-array (insert-axis-before lazy-array (1+ index) prime-factor))
               (setf lazy-array (remove-axis-after lazy-array index))))
-    (lazy-rehape
+    (lazy-reshape
      lazy-array
      shape
      (make-shape-transformation shape (shape lazy-array)))))
@@ -139,7 +139,7 @@
     (apply #'fuse
            (loop for offset below k
                  collect
-                 (lazy-rehape
+                 (lazy-reshape
                   lazy-array
                   (~l prefix ~ offset ~r range-2 ~l suffix)
                   (let ((input-mask (make-array (1+ rank) :initial-element nil))
@@ -170,7 +170,7 @@
     (apply #'fuse
            (loop for offset below k
                  collect
-                 (lazy-rehape
+                 (lazy-reshape
                   lazy-array
                   (~l prefix ~r range-1 ~ offset ~l suffix)
                   (let ((input-mask (make-array (1+ rank) :initial-element nil))
@@ -204,7 +204,7 @@
     (apply #'fuse
            (loop for offset below size-1
                  collect
-                 (lazy-rehape
+                 (lazy-reshape
                   lazy-array
                   (~l prefix ~ (* offset size-2) (1- (* (1+ offset) size-2)) ~l suffix)
                   (let ((input-mask (make-array (1- rank) :initial-element nil))
@@ -236,7 +236,7 @@
     (apply #'fuse
            (loop for offset below size-2
                  collect
-                 (lazy-rehape
+                 (lazy-reshape
                   lazy-array
                   (~l prefix ~ offset size-2 (1- (* size-1 size-2)) ~l suffix)
                   (let ((input-mask (make-array (1- rank) :initial-element nil))

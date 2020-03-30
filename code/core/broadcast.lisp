@@ -13,7 +13,7 @@
             (make-shape-transformation shape array-shape)
           (declare (ignore broadcast-p))
           (assert (not select-p))
-          (lazy-rehape lazy-array shape transformation)))))
+          (lazy-reshape lazy-array shape transformation)))))
 
 (defun broadcast-ranges (range-1 range-2)
   (cond ((size-one-range-p range-1) range-2)

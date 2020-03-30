@@ -77,16 +77,16 @@
   t)
 
 (defmethod map-iteration-spaces-aux
-    ((lazy-rehape lazy-rehape)
+    ((lazy-reshape lazy-reshape)
      (iteration-space shape)
      (transformation transformation))
   (map-iteration-spaces-aux
-   (input lazy-rehape)
+   (input lazy-reshape)
    (transform
-    (shape-intersection iteration-space (shape lazy-rehape))
-    (transformation lazy-rehape))
+    (shape-intersection iteration-space (shape lazy-reshape))
+    (transformation lazy-reshape))
    (compose-transformations
-    (transformation lazy-rehape)
+    (transformation lazy-reshape)
     transformation)))
 
 (defmethod map-iteration-spaces-aux

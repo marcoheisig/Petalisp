@@ -2,22 +2,22 @@
 
 (in-package #:petalisp.core)
 
-(defgeneric lazy-rehape (input shape transformation)
+(defgeneric lazy-reshape (input shape transformation)
   (:argument-precedence-order transformation shape input))
 
 ;;; Optimization:  Compose consecutive references.
-(defmethod lazy-rehape ((lazy-rehape lazy-rehape)
+(defmethod lazy-reshape ((lazy-reshape lazy-reshape)
                         (shape shape)
                         (transformation transformation))
-  (lazy-rehape
-   (input lazy-rehape)
+  (lazy-reshape
+   (input lazy-reshape)
    shape
    (compose-transformations
-    (transformation lazy-rehape)
+    (transformation lazy-reshape)
     transformation)))
 
 ;;; Optimization:  Drop references with no effect.
-(defmethod lazy-rehape
+(defmethod lazy-reshape
     ((lazy-array lazy-array)
      (shape shape)
      (identity-transformation identity-transformation))
@@ -30,14 +30,14 @@
       (call-next-method)))
 
 ;;; Handle empty shapes.
-(defmethod lazy-rehape
+(defmethod lazy-reshape
     ((lazy-array lazy-array)
      (null null)
      (transformation transformation))
   (empty-array))
 
 ;;; Error handling.
-(defmethod lazy-rehape :before
+(defmethod lazy-reshape :before
     ((lazy-array lazy-array)
      (shape shape)
      (transformation transformation))
@@ -49,10 +49,10 @@
              lazy-array shape transformation))))
 
 ;;; Default:  Construct a new reference.
-(defmethod lazy-rehape ((lazy-array lazy-array)
+(defmethod lazy-reshape ((lazy-array lazy-array)
                         (shape shape)
                         (transformation transformation))
-  (make-instance 'lazy-rehape
+  (make-instance 'lazy-reshape
     :ntype (element-ntype lazy-array)
     :inputs (list lazy-array)
     :shape shape

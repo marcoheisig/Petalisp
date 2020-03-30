@@ -56,7 +56,7 @@
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (node petalisp.core:lazy-rehape))
+     (node petalisp.core:lazy-reshape))
   `(:fillcolor "gray"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -91,5 +91,5 @@
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (node petalisp.core:lazy-rehape))
+     (node petalisp.core:lazy-reshape))
   `(("transformation" . ,(stringify (petalisp.core:transformation node)))))
