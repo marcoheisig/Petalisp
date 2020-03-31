@@ -5,4 +5,4 @@ find . \
      -type f \
      -name '*.lisp' \
      -print \
-     -exec sed -i 's/^;.*©.*/;;;; © 2016-2019 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-/' {} +
+     -exec sed -i 's/^;.*©.*/;;;; © 2016-2020 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-/' {} +
