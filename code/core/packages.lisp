@@ -66,6 +66,10 @@
    #:identity-transformation-p
    #:transformation-input-rank
    #:transformation-output-rank
+   #:transformation-input-mask
+   #:transformation-output-mask
+   #:transformation-offsets
+   #:transformation-scalings
    #:transformation-invertiblep
    #:make-transformation
    #:identity-transformation
@@ -75,6 +79,7 @@
    #:collapsing-transformation
    #:normalizing-transformation
    #:enlarge-transformation
+   #:map-transformation-inputs
    #:map-transformation-outputs
 
    ;; Lazy Arrays
@@ -134,7 +139,6 @@
    #:network-outputs
    #:make-network
    #:call-network
-   #:differentiator
 
    ;; Backend
    #:*backend*

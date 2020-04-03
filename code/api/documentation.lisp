@@ -72,3 +72,11 @@ are contained in the supplied RANGE."
   (compute (stack 0 #(1 2) #(3 4) #(5 6)))
   (compute (stack 0 #2A((1 2) (3 4)) #2A((5 6) (7 8))))
   (compute (stack 1 #2A((1 2) (3 4)) #2A((5 6) (7 8)))))
+
+(document-function differentiator
+  "Returns a function that, for each node in a network whose roots are the
+supplied OUTPUTS will return the gradient at that node.
+
+GRADIENTS must be a sequence of the same length as OUTPUTS, and whose
+elements are either arrays with or symbols that will be used as the name of
+such a parameter.")

@@ -33,5 +33,4 @@
    (:file "backend")
    (:file "device")
    (:file "network")
-   (:file "automatic-differentiation")
    (:file "documentation")))

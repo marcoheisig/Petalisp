@@ -1,6 +1,6 @@
 ;;;; © 2016-2020 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package #:petalisp.core)
+(in-package #:petalisp.api)
 
 (defstruct (ad-record
             (:constructor make-ad-record
@@ -209,8 +209,8 @@
         ;; we turn the non-invertible broadcast transformation into an
         ;; invertible transformation that we can use to reshape the summed
         ;; up gradients to the desired shape.
-        (let ((input-mask (copy-seq (transformation-input-mask transformation))))
-          (map-transformation-inputs
+        (let ((input-mask (copy-seq (petalisp.core:transformation-input-mask transformation))))
+          (petalisp.core:map-transformation-inputs
            (lambda (input-index input-constraint output-index)
              (declare (ignore input-constraint))
              (when (null output-index)
@@ -221,8 +221,8 @@
            output-gradient
            (make-transformation
             :input-mask input-mask
-            :output-mask (transformation-output-mask transformation)
-            :offsets (transformation-offsets transformation)))))))
+            :output-mask (petalisp.core:transformation-output-mask transformation)
+            :offsets (petalisp.core:transformation-offsets transformation)))))))
 
 (defun sum-axis (array axis)
   (reshape

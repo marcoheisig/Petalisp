@@ -25,5 +25,6 @@
    (:file "stack")
    (:file "beta")
    (:file "vectorize")
+   (:file "differentiator")
    (:file "documentation")
    (:file "aliases")))
