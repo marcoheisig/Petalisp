@@ -432,21 +432,6 @@ applying the transformation to the index while retaining the value."
   (compute (reshape #2A((1 2) (3 4)) (τ (i j) (j i))))
   (compute (reshape #(1 2 3 4) (~ 1 2) (~ 0 1 ~ 0 1))))
 
-(document-function fuse
-  "Combine ARRAYS into a single strided array.  It is an error if some of
-the supplied arrays overlap, or if there exists no suitable strided array
-to represent the fusion."
-  (compute (fuse (reshape 1 (~ 0 1))
-                 (reshape 0 (~ 2 3))))
-  (compute (fuse (reshape 1 (~ 0 2 6))
-                 (reshape 0 (~ 1 2 6)))))
-
-(document-function fuse*
-  "Combines ARRAYS into a single strided array.  When some of the supplied
-arguments overlap partially, the value of the rightmost object is used."
-  (compute (fuse* (reshape 1 (~ 0 3))
-                 (reshape 0 (~ 2 3)))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Backend
@@ -458,7 +443,6 @@ array with the same rank and dimensions.  The computed result of any other
 object is that object itself."
   (compute (α #'+ 2 #(3 4 5)))
   (compute (reshape nil (~ 0 10)))
-  (compute (fuse (reshape 0 (~ 0 2 20)) (reshape 1 (~ 1 2 20))))
   (compute 2 #0A3 (α #'+ 2 2)))
 
 (document-function schedule

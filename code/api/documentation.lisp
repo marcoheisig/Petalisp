@@ -7,6 +7,21 @@
 but where all ranges start from zero and have a step size of one."
   (collapse (reshape 42 (~ 1 3 99 ~ 1 8 99))))
 
+(document-function fuse
+  "Combine ARRAYS into a single strided array.  It is an error if some of
+the supplied arrays overlap, or if there exists no suitable strided array
+to represent the fusion."
+  (compute (fuse (reshape 1 (~ 0 1))
+                 (reshape 0 (~ 2 3))))
+  (compute (fuse (reshape 1 (~ 0 2 6))
+                 (reshape 0 (~ 1 2 6)))))
+
+(document-function fuse*
+  "Combines ARRAYS into a single strided array.  When some of the supplied
+arguments overlap partially, the value of the rightmost object is used."
+  (compute (fuse* (reshape 1 (~ 0 3))
+                 (reshape 0 (~ 2 3)))))
+
 (document-function drop-axes
   "Removes zero or more axes whose corresponding range has only a single
 element from a supplied array."

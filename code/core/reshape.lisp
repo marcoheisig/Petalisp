@@ -136,26 +136,26 @@
          (range (nth axis ranges))
          (suffix (subseq ranges (1+ axis)))
          (range-2 (range 0 (1- (/ (range-size range) k)))))
-    (apply #'fuse
-           (loop for offset below k
-                 collect
-                 (lazy-reshape
-                  lazy-array
-                  (~l prefix ~ offset ~r range-2 ~l suffix)
-                  (let ((input-mask (make-array (1+ rank) :initial-element nil))
-                        (output-mask (make-array rank :initial-element nil))
-                        (offsets (make-array rank :initial-element 0)))
-                    (loop for index below axis do
-                      (setf (aref output-mask index) index))
-                    (setf (aref input-mask axis) offset)
-                    (setf (aref output-mask axis) (1+ axis))
-                    (setf (aref offsets axis) (* offset (range-size range-2)))
-                    (loop for index from (1+ axis) below rank do
-                      (setf (aref output-mask index) (1+ index)))
-                    (make-transformation
-                     :input-mask input-mask
-                     :output-mask output-mask
-                     :offsets offsets)))))))
+    (lazy-fuse
+     (loop for offset below k
+           collect
+           (lazy-reshape
+            lazy-array
+            (~l prefix ~ offset ~r range-2 ~l suffix)
+            (let ((input-mask (make-array (1+ rank) :initial-element nil))
+                  (output-mask (make-array rank :initial-element nil))
+                  (offsets (make-array rank :initial-element 0)))
+              (loop for index below axis do
+                (setf (aref output-mask index) index))
+              (setf (aref input-mask axis) offset)
+              (setf (aref output-mask axis) (1+ axis))
+              (setf (aref offsets axis) (* offset (range-size range-2)))
+              (loop for index from (1+ axis) below rank do
+                (setf (aref output-mask index) (1+ index)))
+              (make-transformation
+               :input-mask input-mask
+               :output-mask output-mask
+               :offsets offsets)))))))
 
 ;; Turn the range at axis I with size N into a range of size N / K,
 ;; followed by a range of size K.
@@ -167,29 +167,29 @@
          (suffix (subseq ranges (1+ axis)))
          (n (range-size (nth axis ranges)))
          (range-1 (range 0 (1- (/ n k)))))
-    (apply #'fuse
-           (loop for offset below k
-                 collect
-                 (lazy-reshape
-                  lazy-array
-                  (~l prefix ~r range-1 ~ offset ~l suffix)
-                  (let ((input-mask (make-array (1+ rank) :initial-element nil))
-                        (output-mask (make-array rank :initial-element nil))
-                        (offsets (make-array rank :initial-element 0))
-                        (scalings (make-array rank :initial-element 1)))
-                    (loop for index below axis do
-                      (setf (aref output-mask index) index))
-                    (setf (aref output-mask axis) axis)
-                    (setf (aref offsets axis) offset)
-                    (setf (aref scalings axis) k)
-                    (setf (aref input-mask (1+ axis)) offset)
-                    (loop for index from (1+ axis) below rank do
-                      (setf (aref output-mask index) (1+ index)))
-                    (make-transformation
-                     :input-mask input-mask
-                     :output-mask output-mask
-                     :offsets offsets
-                     :scalings scalings)))))))
+    (lazy-fuse
+     (loop for offset below k
+           collect
+           (lazy-reshape
+            lazy-array
+            (~l prefix ~r range-1 ~ offset ~l suffix)
+            (let ((input-mask (make-array (1+ rank) :initial-element nil))
+                  (output-mask (make-array rank :initial-element nil))
+                  (offsets (make-array rank :initial-element 0))
+                  (scalings (make-array rank :initial-element 1)))
+              (loop for index below axis do
+                (setf (aref output-mask index) index))
+              (setf (aref output-mask axis) axis)
+              (setf (aref offsets axis) offset)
+              (setf (aref scalings axis) k)
+              (setf (aref input-mask (1+ axis)) offset)
+              (loop for index from (1+ axis) below rank do
+                (setf (aref output-mask index) (1+ index)))
+              (make-transformation
+               :input-mask input-mask
+               :output-mask output-mask
+               :offsets offsets
+               :scalings scalings)))))))
 
 (defun remove-axis-before (lazy-array axis)
   (let* ((shape (shape lazy-array))
@@ -201,27 +201,27 @@
          (range-2 (nth axis ranges))
          (size-1 (range-size range-1))
          (size-2 (range-size range-2)))
-    (apply #'fuse
-           (loop for offset below size-1
-                 collect
-                 (lazy-reshape
-                  lazy-array
-                  (~l prefix ~ (* offset size-2) (1- (* (1+ offset) size-2)) ~l suffix)
-                  (let ((input-mask (make-array (1- rank) :initial-element nil))
-                        (output-mask (make-array rank :initial-element nil))
-                        (offsets (make-array rank :initial-element 0)))
-                    (loop for index below (1- axis) do
-                      (setf (aref output-mask index) index))
-                    (setf (aref output-mask (1- axis)) nil)
-                    (setf (aref offsets (1- axis)) offset)
-                    (setf (aref output-mask axis) (1- axis))
-                    (setf (aref offsets axis) (- (* offset size-2)))
-                    (loop for index from (1+ axis) below rank do
-                      (setf (aref output-mask index) (1- index)))
-                    (make-transformation
-                     :input-mask input-mask
-                     :output-mask output-mask
-                     :offsets offsets)))))))
+    (lazy-fuse
+     (loop for offset below size-1
+           collect
+           (lazy-reshape
+            lazy-array
+            (~l prefix ~ (* offset size-2) (1- (* (1+ offset) size-2)) ~l suffix)
+            (let ((input-mask (make-array (1- rank) :initial-element nil))
+                  (output-mask (make-array rank :initial-element nil))
+                  (offsets (make-array rank :initial-element 0)))
+              (loop for index below (1- axis) do
+                (setf (aref output-mask index) index))
+              (setf (aref output-mask (1- axis)) nil)
+              (setf (aref offsets (1- axis)) offset)
+              (setf (aref output-mask axis) (1- axis))
+              (setf (aref offsets axis) (- (* offset size-2)))
+              (loop for index from (1+ axis) below rank do
+                (setf (aref output-mask index) (1- index)))
+              (make-transformation
+               :input-mask input-mask
+               :output-mask output-mask
+               :offsets offsets)))))))
 
 (defun remove-axis-after (lazy-array axis)
   (let* ((shape (shape lazy-array))
@@ -233,27 +233,27 @@
          (range-2 (nth (1+ axis) ranges))
          (size-1 (range-size range-1))
          (size-2 (range-size range-2)))
-    (apply #'fuse
-           (loop for offset below size-2
-                 collect
-                 (lazy-reshape
-                  lazy-array
-                  (~l prefix ~ offset size-2 (1- (* size-1 size-2)) ~l suffix)
-                  (let ((input-mask (make-array (1- rank) :initial-element nil))
-                        (output-mask (make-array rank :initial-element nil))
-                        (scalings (make-array rank :initial-element 1))
-                        (offsets (make-array rank :initial-element 0)))
-                    (loop for index below axis do
-                      (setf (aref output-mask index) index))
-                    (setf (aref output-mask axis) axis)
-                    (setf (aref offsets axis) (- (/ offset size-2)))
-                    (setf (aref scalings axis) (/ size-2))
-                    (setf (aref output-mask (1+ axis)) nil)
-                    (setf (aref offsets (1+ axis)) offset)
-                    (loop for index from (+ axis 2) below rank do
-                      (setf (aref output-mask index) (1- index)))
-                    (make-transformation
-                     :input-mask input-mask
-                     :output-mask output-mask
-                     :offsets offsets
-                     :scalings scalings)))))))
+    (lazy-fuse
+     (loop for offset below size-2
+           collect
+           (lazy-reshape
+            lazy-array
+            (~l prefix ~ offset size-2 (1- (* size-1 size-2)) ~l suffix)
+            (let ((input-mask (make-array (1- rank) :initial-element nil))
+                  (output-mask (make-array rank :initial-element nil))
+                  (scalings (make-array rank :initial-element 1))
+                  (offsets (make-array rank :initial-element 0)))
+              (loop for index below axis do
+                (setf (aref output-mask index) index))
+              (setf (aref output-mask axis) axis)
+              (setf (aref offsets axis) (- (/ offset size-2)))
+              (setf (aref scalings axis) (/ size-2))
+              (setf (aref output-mask (1+ axis)) nil)
+              (setf (aref offsets (1+ axis)) offset)
+              (loop for index from (+ axis 2) below rank do
+                (setf (aref output-mask index) (1- index)))
+              (make-transformation
+               :input-mask input-mask
+               :output-mask output-mask
+               :offsets offsets
+               :scalings scalings)))))))

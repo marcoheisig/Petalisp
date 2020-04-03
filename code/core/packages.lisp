@@ -118,8 +118,6 @@
    #:range-immediate
    #:move-axis-to-front
    #:reshape
-   #:fuse
-   #:fuse*
    #:empty-array
    #:make-array-immediate
    #:make-range-immediate
