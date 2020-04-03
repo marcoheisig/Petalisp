@@ -411,44 +411,6 @@ first broadcast with the function BROADCAST-ARRAYS."
   (compute (α #'floor 7.5))
   (compute (α #'floor 7.5 #(1 2 3 4 5))))
 
-(document-function β
-  "Returns one or more lazy arrays whose contents are the multiple value
-reduction with the supplied function, when applied pairwise to the elements
-of the first axis of each of the supplied arrays.  If the supplied arrays
-don't agree in shape, they are first broadcast with the function
-BROADCAST-ARRAYS.
-
-The supplied function F must accept 2k arguments and return k values, where
-k is the number of supplied arrays.  All supplied arrays must have the same
-shape S, which is the cartesian product of some ranges, i.e., S = r_1 x
-... r_n, where each range r_k is a set of integers, e.g., {0, 1, ..., m}.
-Then β returns k arrays of shape s = r_2 x ... x r_n, whose elements are a
-combination of the elements along the first axis of each array according to
-the following rules:
-
-1. If the given arrays are empty, return k empty arrays.
-
-2. If the first axis of each given array contains exactly one element, drop
-   that axis and return arrays with the same content, but with shape s.
-
-3. If the first axis of each given array contains more than one element,
-   partition the indices of this axis into a lower half l and an upper half
-   u.  Then split each given array into a part with shape l x s and a part
-   with shape u x s.  Recursively process the lower and the upper halves of
-   each array independently to obtain 2k new arrays of shape s.  Finally,
-   combine these 2k arrays element-wise with f to obtain k new arrays with
-   all values returned by f. Return these arrays."
-  (compute (β #'+ #(1 2 3 4)))
-  (compute (β #'+ #2a((1 2) (3 4))))
-  (let ((a #(5 2 7 1 9)))
-   (multiple-value-bind (max index)
-       (β (lambda (lv li rv ri)
-            (if (> lv rv)
-                (values lv li)
-                (values rv ri)))
-          a (indices a 0))
-     (compute max index))))
-
 (document-function reshape
   "Returns a lazy array with the contents of ARRAY, but after applying the
 supplied MODIFIERS in left-to-right order.  A modifier must either be a

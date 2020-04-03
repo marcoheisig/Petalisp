@@ -28,7 +28,6 @@
    (:file "reshape")
    (:file "lazy-fuse")
    (:file "lazy-map")
-   (:file "lazy-reduce")
    (:file "substitute-array")
    (:file "backend")
    (:file "device")

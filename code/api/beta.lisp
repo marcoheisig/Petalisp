@@ -2,7 +2,6 @@
 
 (in-package #:petalisp.api)
 
-#+(or)
 (defun β (function &rest arrays &aux (n-values (length arrays)))
   (multiple-value-bind (inputs input-shape)
       (broadcast-list-of-arrays arrays)
