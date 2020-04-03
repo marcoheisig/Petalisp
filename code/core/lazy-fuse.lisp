@@ -3,7 +3,7 @@
 (in-package #:petalisp.core)
 
 (defun fuse (&rest inputs)
-  (fuse-lazy-arrays (mapcar #'lazy-array inputs)))
+  (lazy-fuse (mapcar #'lazy-array inputs)))
 
 (defun fuse* (&rest inputs)
   (let ((lazy-arrays (mapcar #'lazy-array inputs)))
@@ -14,7 +14,7 @@
              inputs)))
   (let* ((lazy-arrays (mapcar #'lazy-array inputs))
          (identity (identity-transformation (rank (first lazy-arrays)))))
-    (fuse-lazy-arrays
+    (lazy-fuse
      (mapcar
       (lambda (fragment)
         (destructuring-bind (shape . bitmask) fragment
@@ -24,82 +24,89 @@
            identity)))
       (subdivide lazy-arrays)))))
 
-;; Create a fusion, assuming INPUTS are non-empty, non-overlapping lazy-arrays.
-(defun fuse-lazy-arrays (inputs)
-  (let ((shape (fuse-shapes (mapcar #'shape inputs))))
-    (trivia:match inputs
-      ((list) (empty-array))
-      ((list x) x)
-      (_
-       (let ((ntype (reduce #'petalisp.type-inference:ntype-union
-                            inputs
-                            :key #'element-ntype)))
-         (if (petalisp.type-inference:eql-ntype-p ntype)
-             (reshape ntype shape)
-             (make-instance 'lazy-fuse
-               :ntype ntype
-               :inputs inputs
-               :shape shape)))))))
-
-(defun fuse-shapes (shapes)
-  (trivia:match shapes
-    ((list) nil)
-    ((list shape) shape)
-    (_
-     ;; Ensure that all shapes have the same rank.
-     (let* ((first-shape (first shapes))
-            (rank (shape-rank first-shape)))
-       (loop for shape in (rest shapes) do
-         (unless (= (shape-rank shape) rank)
-           (error "~@<Can only fuse shapes with ~
-                       equal rank. The shapes ~{~#[~;and ~S~;~S ~:;~S, ~]~} ~
+(defun lazy-fuse (lazy-arrays)
+  ;; Handle the case of zero supplied lazy arrays.
+  (if (null lazy-arrays)
+      (empty-array)
+      (let ((first (first lazy-arrays))
+            (rest (rest lazy-arrays)))
+        (check-type first lazy-array)
+        ;; Optimize the case of fusing exactly one lazy array.
+        (if (null rest)
+            first
+            (let ((rank (rank first)))
+              ;; Check that all lazy arrays have the same rank.
+              (dolist (lazy-array rest)
+                (check-type lazy-array lazy-array)
+                (unless (= (rank lazy-array) rank)
+                  (error
+                   "~@<Can only fuse arrays with ~
+                       equal rank. The arrays ~A and ~A ~
                        violate this requirement.~:@>"
-                  shapes)))
-       ;; Ensure that all shapes are disjoint.
-       (alexandria:map-combinations
-        (lambda (two-shapes)
-          (destructuring-bind (shape-1 shape-2) two-shapes
-            (when (shape-intersectionp shape-1 shape-2)
-              (error "~@<Can only fuse disjoint shapes, ~
-                         but the shape ~S and the shape ~S have the ~
+                   first lazy-array)))
+              ;; Check that all lazy arrays have a pairwise disjoint shape.
+              (alexandria:map-combinations
+               (lambda (lazy-arrays)
+                 (destructuring-bind (lazy-array-1 lazy-array-2) lazy-arrays
+                   (when (shape-intersectionp
+                          (shape lazy-array-1)
+                          (shape lazy-array-2))
+                     (error "~@<Can only fuse disjoint shapes, ~
+                         but the arrays ~S and the shape ~S have the ~
                          common subshape ~S.~:@>"
-                     shape-1
-                     shape-2
-                     (shape-intersection shape-1 shape-2)))))
-        shapes :length 2 :copy nil)
-       ;; Guess the only plausible union shape.
-       (let ((union (%make-shape
-                     (apply #'mapcar #'fuse-shapes/range-oracle
-                            (mapcar #'shape-ranges shapes))
-                     rank)))
-         ;; The union shape is only valid if it has exactly as many
-         ;; elements as all the inputs combined.
-         (unless (= (reduce #'+ shapes :key #'shape-size)
-                    (shape-size union))
-           (error "~@<Cannot fuse the shapes ~
-                      ~{~#[~;and ~S~;~S ~:;~S, ~]~}.~:@>"
-                  shapes))
-         union)))))
+                            lazy-array-1
+                            lazy-array-2
+                            (shape-intersection
+                             (shape lazy-array-1)
+                             (shape lazy-array-2))))))
+               lazy-arrays :length 2 :copy nil)
+              (let ((shape (%make-shape
+                            (apply #'mapcar #'fuse-ranges
+                                   (mapcar (alexandria:compose #'shape-ranges #'shape)
+                                           lazy-arrays))
+                            rank))
+                    (ntype (reduce #'petalisp.type-inference:ntype-union
+                                   lazy-arrays
+                                   :key #'element-ntype)))
+                ;; Check that the predicted result shape is valid.
+                (unless (= (reduce #'+ lazy-arrays :key #'total-size)
+                           (shape-size shape))
+                  (error "~@<Cannot fuse the arrays ~
+                             ~{~#[~;and ~S~;~S ~:;~S, ~]~}.~:@>"
+                         lazy-arrays))
+                ;; If the content of the fusion is predicted to be a
+                ;; constant, we replace the entire fusion by a reference to
+                ;; that constant.  Otherwise, we create a regular lazy-fuse
+                ;; object.
+                (if (petalisp.type-inference:eql-ntype-p ntype)
+                    (lazy-reshape
+                     (make-scalar-immediate ntype)
+                     shape
+                     (make-transformation
+                      :input-rank (shape-rank shape)
+                      :output-rank 0))
+                    (make-instance 'lazy-fuse
+                      :ntype ntype
+                      :inputs lazy-arrays
+                      :shape shape))))))))
 
-;;; Determine the 'bounding box' of the supplied RANGES.
-(defun fuse-shapes/range-oracle (&rest ranges)
+(defun fuse-ranges (&rest ranges)
   (loop for range in ranges
-        minimize (range-start range) into global-start
-        maximize (range-end range) into global-end
+        minimize (range-start range) into start
+        maximize (range-end range) into end
         finally
-           (return
-             (if (= global-start global-end)
-                 (first ranges)
-                 ;; now determine the step size
-                 (let ((step-size (- global-end global-start)))
-                   (dolist (range ranges)
-                     (flet ((probe (n)
-                              (setf step-size
-                                    (min step-size
-                                         (- n global-start)))))
-                       (if (> (range-start range) global-start)
-                           (probe (range-start range))
-                           (unless (size-one-range-p range)
-                             (probe (+ (range-start range)
-                                       (range-step range)))))))
-                   (make-range global-start step-size global-end))))))
+           ;; Now, determine the second largest element in order to
+           ;; determine a suitable step size.
+           (loop for range in ranges
+                 minimize
+                 (if (= (range-start range) start)
+                     (if (size-one-range-p range)
+                         end
+                         (+ (range-start range)
+                            (range-step range)))
+                     (range-start range))
+                   into start+step
+                 finally
+                    (return-from
+                     fuse-ranges
+                     (range start (- start+step start) end)))))
