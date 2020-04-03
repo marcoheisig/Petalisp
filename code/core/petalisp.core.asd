@@ -30,6 +30,5 @@
    (:file "lazy-map")
    (:file "substitute-array")
    (:file "backend")
-   (:file "device")
    (:file "network")
    (:file "documentation")))

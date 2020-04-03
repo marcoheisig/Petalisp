@@ -21,9 +21,7 @@
   (executedp nil :type boolean)
   ;; Whether the buffer can be reused after its last use.
   (reusablep nil :type boolean)
-  ;; The device on which the buffer is allocated, or NIL.
-  (device nil :type (or device null))
-  ;; An opaque object, representing the allocated device memory.
+  ;; An opaque object, representing the allocated memory.
   (storage nil))
 
 (defun make-buffer (lazy-array)

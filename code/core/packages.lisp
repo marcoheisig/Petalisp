@@ -151,15 +151,4 @@
    #:asynchronous-backend
    #:delete-backend
    #:compute
-   #:schedule
-
-   ;; Devices
-   #:device
-   #:devicep
-   #:device-name
-   #:device-number-of-workers
-   #:device-memory-size
-   #:compile-blueprint
-   #:allocate-buffer
-   #:deallocate-buffer
-   #:move-buffer))
+   #:schedule))
