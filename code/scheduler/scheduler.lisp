@@ -70,7 +70,12 @@
                (petalisp.ir:map-buffer-inputs
                 (lambda (kernel)
                   (unless (member kernel potentially-available-kernels)
-                    (return)))
+                    ;; Should we encounter a kernel with zero inputs, we
+                    ;; retroactively add it to the potentially available
+                    ;; kernels.
+                    (if (zerop (petalisp.ir:kernel-number-of-loads kernel))
+                        (pushnew kernel potentially-available-kernels)
+                        (return))))
                 buffer)
                (push buffer available-buffers))))
          kernel))
