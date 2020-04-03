@@ -291,33 +291,3 @@
         (and (range-contains range-2 start)
              (range-contains range-2 end)
              (range-contains range-2 (+ start step))))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Fusion of Ranges
-
-(defun range-fusion (ranges)
-  ;; Assuming that all supplied RANGES are non-overlapping, the only
-  ;; possible fusion is obtained by summing the number of elements,
-  ;; determining the smallest and largest element of all sequences and
-  ;; choosing a step size to yield the correct number of elements.
-  (loop for range in ranges
-        summing (range-size range) into size
-        minimizing (range-start range) into start
-        maximizing (range-end range) into end
-        finally
-           (flet ((fail ()
-                    (alexandria:simple-program-error
-                     "Unable to fuse ranges:~%~{~A~%~}"
-                     ranges)))
-             (let ((step (if (= size 1)
-                             1
-                             (/ (- end start)
-                                (1- size)))))
-               (unless (integerp step)
-                 (fail))
-               (let ((result (%make-range start step size)))
-                 (when (notevery (lambda (range) (range-intersectionp range result)) ranges)
-                   (fail))
-                 (return result))))))
-
