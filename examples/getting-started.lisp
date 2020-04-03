@@ -8,9 +8,10 @@
 
 (in-package #:petalisp.examples.getting-started)
 
-(defun present (expression &optional (view-graph nil))
-  (when view-graph (petalisp.graphviz:view expression))
-  (format t "~%=> ~A~%~%" (compute expression)))
+(defun present (&rest arrays)
+  (format t "~{~& => ~A~}"
+          (multiple-value-list
+           (apply #'compute arrays))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -126,7 +127,7 @@
   (let ((interior (interior grid)))
     (fuse*
      grid
-     (α #'* 0.25
+     (α #'* 1/4
         (α #'+
            (reshape grid (τ (i j) ((1+ i) j)) interior)
            (reshape grid (τ (i j) ((1- i) j)) interior)
@@ -146,12 +147,16 @@
  (jacobi-2d
   (jacobi-2d domain)))
 
-;;; Finally, let's have a glimpse at the Petalisp intermediate
-;;; representation of Jacobi's algorithm.
+;;; Finally, let's have a glimpse at the Petalisp data flow representation
+;;; of Jacobi's algorithm and the corresponding IR.
 
 (petalisp.graphviz:view
- (first
-  (petalisp.ir:ir-from-lazy-arrays
-   (list
-    (jacobi-2d
-     (jacobi-2d domain))))))
+ (list
+  (jacobi-2d
+   (jacobi-2d domain))))
+
+(petalisp.graphviz:view
+ (petalisp.ir:ir-from-lazy-arrays
+  (list
+   (jacobi-2d
+    (jacobi-2d domain)))))
