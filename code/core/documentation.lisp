@@ -396,7 +396,6 @@ argument ARRAY-OR-SHAPE , where each array element at index (i_0 ... i_N)
 has the value i_AXIS.  If AXIS is not supplied, it defaults to zero."
   (compute (indices #2a((1 2) (3 4))))
   (compute (indices #2a((1 2) (3 4)) 1))
-  (compute (indices (reshape #2a((1 2) (3 4)) (τ (i j) (i (1+ j)))) 1))
   (compute (indices "abc")))
 
 (document-function α
@@ -411,27 +410,6 @@ first broadcast with the function BROADCAST-ARRAYS."
   (compute (α #'floor 7.5))
   (compute (α #'floor 7.5 #(1 2 3 4 5))))
 
-(document-function reshape
-  "Returns a lazy array with the contents of ARRAY, but after applying the
-supplied MODIFIERS in left-to-right order.  A modifier must either be a
-shape, or a transformation.
-
-A shape can denote one of three different modifications, depending on
-whether it is larger than the array, smaller than the array, or has the
-same number of elements as the array.  If the shape is larger than the
-array, it denotes a broadcasting operation.  If the shape is smaller than
-the array, it denotes a selection of a sub-array.  If the shape has the
-same number of elements, it denotes a lexicographic reordering operation.
-
-In case the modifier is a transformation, the new array is obtained by
-taking each index and corresponding value of the original array and
-applying the transformation to the index while retaining the value."
-  (compute (reshape 4 (~ 0 4)))
-  (compute (reshape #(1 2 3 4) (~ 1 2)))
-  (compute (reshape (indices (~ 1 9)) (~ 0 2 ~ 0 2)))
-  (compute (reshape #2A((1 2) (3 4)) (τ (i j) (j i))))
-  (compute (reshape #(1 2 3 4) (~ 1 2) (~ 0 1 ~ 0 1))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Backend
@@ -442,7 +420,6 @@ argument.  The computed result of a lazy array is a standard Common Lisp
 array with the same rank and dimensions.  The computed result of any other
 object is that object itself."
   (compute (α #'+ 2 #(3 4 5)))
-  (compute (reshape nil (~ 0 10)))
   (compute 2 #0A3 (α #'+ 2 2)))
 
 (document-function schedule

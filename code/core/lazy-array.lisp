@@ -284,7 +284,12 @@
 
 (defun make-range-immediate (range)
   (if (size-one-range-p range)
-      (reshape (range-start range) (~r range))
+      (lazy-reshape
+       (make-scalar-immediate (range-start range))
+       (~r range)
+       (make-transformation
+        :input-rank 1
+        :output-rank 0))
       (make-instance 'range-immediate
         :shape (~r range)
         :ntype

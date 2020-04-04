@@ -1,6 +1,6 @@
 ;;;; © 2016-2020 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package #:petalisp.core)
+(in-package #:petalisp.api)
 
 (defun reshape (array &rest modifiers)
   (reduce (lambda (lazy-array modifier)
@@ -24,7 +24,7 @@
         (change-shape lazy-array shape)
         ;; Case 2 - Broadcasting or selection of a subspace.
         (multiple-value-bind (transformation broadcast-p select-p)
-            (make-shape-transformation shape array-shape)
+            (petalisp.core::make-shape-transformation shape array-shape)
           ;; We do not allow transformations that broadcast some ranges, but
           ;; shrink others.  Otherwise, we would risk ambiguity with case 1.
           (unless (not (and broadcast-p select-p))
@@ -60,13 +60,13 @@
     (if (not start) ; If there is no mismatch, we don't have to do anything.
         lazy-array
         (let ((end (mismatch input-ranges output-ranges :key #'range-size :from-end t)))
-          (unflatten
-           (flatten lazy-array start end)
+          (reshape/unflatten
+           (reshape/flatten lazy-array start end)
            output-shape
            start
            (+ end (- output-rank input-rank)))))))
 
-(defun flatten (lazy-array start end)
+(defun reshape/flatten (lazy-array start end)
   (multiple-value-bind (vector-of-prime-factors pivot)
       (factorize-shape (shape lazy-array) start end)
     ;; Flatten all ranges above PIVOT.
@@ -85,7 +85,7 @@
             (setf lazy-array (remove-axis-before lazy-array (1+ index))))
     lazy-array))
 
-(defun unflatten (lazy-array shape start end)
+(defun reshape/unflatten (lazy-array shape start end)
   (multiple-value-bind (vector-of-prime-factors pivot)
       (factorize-shape shape start end)
     ;; Unflatten all ranges above PIVOT.
@@ -105,7 +105,7 @@
     (lazy-reshape
      lazy-array
      shape
-     (make-shape-transformation shape (shape lazy-array)))))
+     (petalisp.core::make-shape-transformation shape (shape lazy-array)))))
 
 ;;; Return a vector with the prime factors of SHAPE bounded by START and
 ;;; END, and the axis with the larges sum of prime factors therein.

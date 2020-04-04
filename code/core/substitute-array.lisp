@@ -12,9 +12,7 @@
     (loop for new-array in new-arrays
           for old-array in old-arrays do
             (setf (gethash old-array *substitutions*)
-                  (reshape
-                   (α #'coerce new-array (element-type old-array))
-                   (shape old-array))))
+                  (α #'coerce new-array (element-type old-array))))
     (mapcar #'substitute-array roots)))
 
 (defgeneric substitute-array (array))

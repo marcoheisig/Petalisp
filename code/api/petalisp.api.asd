@@ -17,6 +17,7 @@
   :serial t
   :components
   ((:file "packages")
+   (:file "reshape")
    (:file "collapse")
    (:file "fuse")
    (:file "drop-axes")

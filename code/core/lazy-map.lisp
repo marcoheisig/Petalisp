@@ -26,7 +26,12 @@
        inputs
        #'element-ntype
        (lambda (constant)
-         (reshape constant shape))
+         (lazy-reshape
+          (make-scalar-immediate constant)
+          shape
+          (make-transformation
+           :input-rank (shape-rank shape)
+           :output-rank 0)))
        (lambda (ntypes function inputs)
          (values-list
           (loop for ntype in ntypes

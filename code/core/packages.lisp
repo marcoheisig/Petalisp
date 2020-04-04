@@ -117,7 +117,6 @@
    #:array-immediate
    #:range-immediate
    #:move-axis-to-front
-   #:reshape
    #:empty-array
    #:make-array-immediate
    #:make-range-immediate

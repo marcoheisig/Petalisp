@@ -25,7 +25,6 @@
    (:file "lazy-array")
    (:file "lazy-reshape")
    (:file "broadcast")
-   (:file "reshape")
    (:file "lazy-fuse")
    (:file "lazy-map")
    (:file "substitute-array")
