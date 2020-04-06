@@ -4,8 +4,8 @@
 
 (defun broadcast-list-of-arrays (list-of-arrays)
   ;; As a first step, we create an alist whose keys are shapes, and whose
-  ;; values are either NIL, or a suitable transformation from that shape to
-  ;; the common broadcast shape.
+  ;; value is initially NIL and later set to a suitable transformation from
+  ;; that shape to the common broadcast shape.
   (let ((lazy-arrays (mapcar #'lazy-array list-of-arrays))
         (alist '()))
     (loop for lazy-array in list-of-arrays do
