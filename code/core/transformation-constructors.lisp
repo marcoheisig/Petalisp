@@ -236,16 +236,21 @@
       ',input-mask
       ',output-mask
       (list ,@(coerce output-functions 'list))
-      (list ,@(coerce output-expressions 'list)))))
-(defun make-tau-transformation (input-mask output-mask functions expressions)
-  (assert (= (length functions) (length expressions) (length output-mask)))
+      (list ,@(coerce output-expressions 'list))
+      ',(loop for elt across output-mask
+              collect (if (null elt) nil (nth elt inputs))))))
+
+(defun make-tau-transformation (input-mask output-mask functions expressions variables)
+  (assert (= (length output-mask)
+             (length functions)
+             (length expressions)
+             (length variables)))
   (let* ((output-rank (length output-mask))
          (offsets (make-array output-rank :initial-element 0))
          (scalings (make-array output-rank :initial-element 1)))
     (loop for function in functions
           for expression in expressions
-          for output-index from 0
-          for input-index = (elt output-mask output-index) do
+          for output-index from 0 do
             (let* ((y-0 (funcall function 0))
                    (y-1 (funcall function 1))
                    (y-2 (funcall function 2))
@@ -253,11 +258,9 @@
                    (a (- y-1 y-0)))
               (unless (= (+ (* 2 a) b) y-2)
                 (error "~@<The expression ~S is not affine ~
-                           linear ~@[in the variable ~S~].~:@>"
+                           linear~@[ in the variable ~S~].~:@>"
                        expression
-                       (if (null input-index)
-                           nil
-                           (elt input-mask input-index))))
+                       (elt variables output-index)))
               (setf (svref scalings output-index) a)
               (setf (svref offsets output-index) b)))
     (make-transformation
