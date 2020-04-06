@@ -4,7 +4,7 @@
 
   :depends-on
   ("alexandria"
-   "agnostic-lizard"
+   "trivial-macroexpand-all"
    "split-sequence"
    "bordeaux-threads"
    "lparallel"
