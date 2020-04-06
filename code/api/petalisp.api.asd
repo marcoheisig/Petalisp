@@ -14,22 +14,38 @@
 
   :in-order-to ((test-op (test-op "petalisp.test-suite")))
 
-  :serial t
   :components
-  ((:file "packages")
-   (:file "reshape")
-   (:file "broadcast")
-   (:file "alpha")
-   (:file "collapse")
-   (:file "fuse")
-   (:file "drop-axes")
-   (:file "flatten")
-   (:file "slice")
-   (:file "slices")
-   (:file "stack")
-   (:file "beta")
-   (:file "vectorize")
-   (:file "differentiator")
-   (:file "network")
-   (:file "documentation")
-   (:file "aliases")))
+  ((:file "aliases" :depends-on ("documentation"))
+   (:file "alpha" :depends-on ("broadcast"))
+   (:file "beta" :depends-on ("alpha" "reshape" "drop-axes" "stack"))
+   (:file "broadcast" :depends-on ("reshape"))
+   (:file "collapse" :depends-on ("reshape"))
+   (:file "differentiator" :depends-on ("reshape" "fuse" "alpha" "beta"))
+   (:file "drop-axes" :depends-on ("reshape"))
+   (:file "flatten" :depends-on ("reshape"))
+   (:file "fuse" :depends-on ("packages"))
+   (:file "network" :depends-on ("alpha" "reshape"))
+   (:file "packages")
+   (:file "reshape" :depends-on ("packages"))
+   (:file "slice" :depends-on ("packages"))
+   (:file "slices" :depends-on ("packages"))
+   (:file "stack" :depends-on ("fuse" "reshape"))
+   (:file "vectorize" :depends-on ("alpha"))
+   (:file "documentation"
+    :depends-on
+    ("alpha"
+     "beta"
+     "broadcast"
+     "collapse"
+     "differentiator"
+     "drop-axes"
+     "flatten"
+     "fuse"
+     "network"
+     "packages"
+     "reshape"
+     "drop-axes"
+     "slice"
+     "slices"
+     "stack"
+     "vectorize"))))
