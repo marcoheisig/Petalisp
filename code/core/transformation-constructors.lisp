@@ -481,3 +481,10 @@
             :scalings scalings)
            broadcast-p
            select-p)))))
+
+(defun make-broadcast-transformation (input-shape output-shape)
+  (multiple-value-bind (transformation broadcast-p select-p)
+      (make-shape-transformation input-shape output-shape)
+    (declare (ignore broadcast-p))
+    (assert (not select-p))
+    transformation))

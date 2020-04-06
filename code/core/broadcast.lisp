@@ -2,18 +2,37 @@
 
 (in-package #:petalisp.core)
 
-(defun broadcast (array shape)
-  (let* ((lazy-array (lazy-array array))
-         (array-shape (shape lazy-array))
-         (shape (shape shape)))
-    ;; Pick off the trivial case immediately.
-    (if (shape-equal array-shape shape)
-        lazy-array
-        (multiple-value-bind (transformation broadcast-p select-p)
-            (make-shape-transformation shape array-shape)
-          (declare (ignore broadcast-p))
-          (assert (not select-p))
-          (lazy-reshape lazy-array shape transformation)))))
+(defun broadcast-list-of-arrays (list-of-arrays)
+  ;; As a first step, we create an alist whose keys are shapes, and whose
+  ;; values are either NIL, or a suitable transformation from that shape to
+  ;; the common broadcast shape.
+  (let ((lazy-arrays (mapcar #'lazy-array list-of-arrays))
+        (alist '()))
+    (loop for lazy-array in list-of-arrays do
+      (let* ((shape (shape lazy-array))
+             (entry (assoc shape alist :test #'shape-equal)))
+        (when (null entry)
+          (push (cons shape nil) alist))))
+    (let* ((max-rank (loop for (shape) in alist maximize (shape-rank shape)))
+           (ranges (make-array max-rank :initial-element (range 0))))
+      (loop for (shape) in alist
+            for rank = (shape-rank shape) do
+              (loop for range in (shape-ranges shape)
+                    for index from (- max-rank rank) do
+                      (setf (aref ranges index)
+                            (broadcast-ranges (aref ranges index) range))))
+      (let ((broadcast-shape (~l (coerce ranges 'list))))
+        (loop for entry in alist do
+          (setf (cdr entry)
+                (make-broadcast-transformation broadcast-shape (car entry))))
+        (values
+         (loop for lazy-array in lazy-arrays
+               collect
+               (lazy-reshape
+                lazy-array
+                broadcast-shape
+                (cdr (assoc (shape lazy-array) alist :test #'shape-equal))))
+         broadcast-shape)))))
 
 (defun broadcast-ranges (range-1 range-2)
   (cond ((size-one-range-p range-1) range-2)
@@ -26,41 +45,15 @@
          (error "~@<Cannot broadcast the ranges ~S and ~S.~:@>"
                 range-1 range-2))))
 
-(define-modify-macro broadcast-ranges-f (range-2)
-  broadcast-ranges)
-
 (defun broadcast-arrays (&rest arrays)
   (values-list
    (broadcast-list-of-arrays arrays)))
 
-(defun broadcast-list-of-arrays (list-of-arrays)
-  (let* ((lazy-arrays (mapcar #'lazy-array list-of-arrays))
-         (shapes
-           (let ((acc '()))
-             (dolist (lazy-array lazy-arrays acc)
-               (push (shape lazy-array) acc))))
-         (rank (loop for shape in shapes maximize (shape-rank shape)))
-         (broadcast-ranges '()))
-    (loop for axis from (1- rank) downto 0 do
-      (let ((broadcast-range (range 0)))
-        (loop for shape in shapes do
-          (let ((other-range (nth-broadcast-range shape rank axis)))
-            (broadcast-ranges-f broadcast-range other-range)))
-        (push broadcast-range broadcast-ranges)))
-    (let ((broadcast-shape (~l broadcast-ranges)))
-      (values
-       (loop for lazy-array in lazy-arrays
-             for shape in shapes
-             collect (broadcast lazy-array broadcast-shape))
-       broadcast-shape))))
-
-;;; Pad SHAPE with leading one element ranges until it reaches
-;;; BROADCAST-RANK.  Then, access the range corresponding to AXIS of the
-;;; resulting padded shape.
-(defun nth-broadcast-range (shape broadcast-rank axis)
-  (declare (shape shape))
-  (let* ((padding (- broadcast-rank (shape-rank shape)))
-         (n (- axis padding)))
-    (if (minusp n)
-        (range 0)
-        (nth n (shape-ranges shape)))))
+(defun broadcast (array shape)
+  (let* ((lazy-array (lazy-array array))
+         (array-shape (shape lazy-array))
+         (shape (shape shape)))
+    (lazy-reshape
+     lazy-array
+     shape
+     (make-broadcast-transformation shape array-shape))))
