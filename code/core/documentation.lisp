@@ -375,21 +375,6 @@ contents are the those of a supplied Common Lisp array.")
 (document-type range-immediate
   "A range immediate is a rank one array, whose values are equal to its indices.")
 
-(document-function broadcast-arrays
-  "Returns as many lazy arrays as there are supplied arrays, but broadcast
-such that all resulting arrays have the same shape.  If there is no
-suitable broadcast shape for all supplied arrays, an error is signaled."
-  (broadcast-arrays #(1 2 3) 5)
-  (broadcast-arrays #(2 3 4) #2a((1 2 3) (4 5 6))))
-
-(document-function broadcast-list-of-arrays
-  "Returns a list of lazy arrays of the same length as the list of supplied
-arrays, but where each element is broadcast such that all resulting arrays
-have the same shape.  If there is no suitable broadcast shape for all
-supplied arrays, an error is signaled."
-  (broadcast-list-of-arrays (list #(1 2 3) 5))
-  (broadcast-list-of-arrays (list #(2 3 4) #2a((1 2 3) (4 5 6)))))
-
 (document-function indices
   "Returns a lazy array of integers of the shape indicated by the first
 argument ARRAY-OR-SHAPE , where each array element at index (i_0 ... i_N)
@@ -397,18 +382,6 @@ has the value i_AXIS.  If AXIS is not supplied, it defaults to zero."
   (compute (indices #2a((1 2) (3 4))))
   (compute (indices #2a((1 2) (3 4)) 1))
   (compute (indices "abc")))
-
-(document-function α
-  "Returns one or more lazy arrays, whose contents are the values returned
-by the supplied function when applied element-wise to the contents of the
-remaining argument arrays.  If the arguments don't agree in shape, they are
-first broadcast with the function BROADCAST-ARRAYS."
-  (α #'+ #(1 2) #(3 4))
-  (compute (α #'+ 2 3))
-  (compute (α #'+ 2 #(1 2 3 4 5)))
-  (compute (α #'* #(2 3) #2a((1 2) (3 4))))
-  (compute (α #'floor 7.5))
-  (compute (α #'floor 7.5 #(1 2 3 4 5))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -419,8 +392,8 @@ first broadcast with the function BROADCAST-ARRAYS."
 argument.  The computed result of a lazy array is a standard Common Lisp
 array with the same rank and dimensions.  The computed result of any other
 object is that object itself."
-  (compute (α #'+ 2 #(3 4 5)))
-  (compute 2 #0A3 (α #'+ 2 2)))
+  (compute (lazy-reshape (lazy-array #2a((1 2) (3 4))) (~ 0 1 ~ 0 1) (τ (i j) (j i))))
+  (compute 2 #0A3 #(4)))
 
 (document-function schedule
   "Hints that it would be worthwhile to compute the supplied arguments

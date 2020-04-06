@@ -24,7 +24,7 @@
         (change-shape lazy-array shape)
         ;; Case 2 - Broadcasting or selection of a subspace.
         (multiple-value-bind (transformation broadcast-p select-p)
-            (petalisp.core::make-shape-transformation shape array-shape)
+            (make-shape-transformation shape array-shape)
           ;; We do not allow transformations that broadcast some ranges, but
           ;; shrink others.  Otherwise, we would risk ambiguity with case 1.
           (unless (not (and broadcast-p select-p))
@@ -32,6 +32,109 @@
                  to the shape ~S.~:@>"
                    lazy-array shape))
           (lazy-reshape lazy-array shape transformation)))))
+
+;;; The function MAKE-SHAPE-TRANSFORMATION returns three values:
+;;;
+;;; 1. A transformation that maps each element of INPUT-SHAPE to an element
+;;;    of OUTPUT-SHAPE.
+;;;
+;;; 2. A boolean, indicating whether broadcasting has been performed.
+;;;
+;;; 3. A boolean, indicating whether some values of OUTPUT-SHAPE have been
+;;;    discarded.
+;;;
+;;; An error is signaled when there is no sensible way to transform
+;;; INPUT-SHAPE to the supplied OUTPUT-SHAPE.
+;;;
+;;; This function is primarily used for broadcasting.  In that case the
+;;; INPUT shape is the desired shape after broadcasting, and the
+;;; OUTPUT-SHAPE is that of the array to be broadcast.
+(defun make-shape-transformation (input-shape output-shape)
+  (if (shape-equal output-shape input-shape)
+      (identity-transformation (shape-rank input-shape))
+      (let* ((output-rank (shape-rank output-shape))
+             (input-rank (shape-rank input-shape))
+             (growth (- input-rank output-rank)))
+        (unless (not (minusp growth))
+          (error "~@<Cannot reshape the rank ~D shape ~S ~
+                     to the rank ~D shape ~S.~:@>"
+                 output-rank output-shape input-rank input-shape))
+        (let ((input-mask (make-array input-rank :initial-element nil))
+              (output-mask (make-array output-rank))
+              (offsets (make-array output-rank))
+              (scalings (make-array output-rank))
+              (broadcast-p nil)
+              (select-p nil))
+          (loop for output-range in (shape-ranges output-shape)
+                for input-range in (nthcdr growth (shape-ranges input-shape))
+                for oindex from 0
+                for iindex from growth do
+                  (symbol-macrolet ((input-constraint (svref input-mask iindex))
+                                    (output-mask-entry (svref output-mask oindex))
+                                    (scaling (svref scalings oindex))
+                                    (offset (svref offsets oindex)))
+                    ;; Now we need to pick the appropriate input
+                    ;; constraint, output mask entry, scaling and offset to
+                    ;; map from the range of INPUT-SHAPE to the
+                    ;; corresponding range of OUTPUT-SHAPE.
+                    (cond
+                      ;; First, we pick of the trivial case of reshaping a one
+                      ;; element range to another one element range.  This case
+                      ;; is significant, because it allows us to introduce a
+                      ;; suitable input constraint, thus increasing the chances
+                      ;; that the resulting transformation is invertible.
+                      ((and (size-one-range-p input-range)
+                            (size-one-range-p output-range))
+                       (setf input-constraint (range-start input-range))
+                       (setf output-mask-entry nil)
+                       (setf offset (range-start output-range))
+                       (setf scaling 0))
+                      ;; The second case is that of collapsing an arbitrary
+                      ;; range of INPUT-SHAPE to a one element range of
+                      ;; OUTPUT-SHAPE, i.e., actual broadcasting.  It is
+                      ;; similar to the previous case, except that we do
+                      ;; not introduce an input constraint.
+                      ((size-one-range-p output-range)
+                       (setf output-mask-entry nil)
+                       (setf offset (range-start output-range))
+                       (setf scaling 0)
+                       (setf broadcast-p t))
+                      ;; The third case is that of mapping an arbitrary range
+                      ;; to another one of the same size.
+                      ((= (range-size input-range)
+                          (range-size output-range))
+                       (let* ((old-start (range-start input-range))
+                              (new-start (range-start output-range))
+                              (old-step (range-step input-range))
+                              (new-step (range-step output-range))
+                              (a (/ new-step old-step))
+                              (b (- new-start (* a old-start))))
+                         (setf output-mask-entry iindex)
+                         (setf offset b)
+                         (setf scaling a)))
+                      ;; The fourth case is that of selecting a subset of the
+                      ;; elements of OUTPUT-RANGE.
+                      ((subrangep input-range output-range)
+                       (setf output-mask-entry iindex)
+                       (setf offset 0)
+                       (setf scaling 1)
+                       (setf select-p t))
+                      ;; Otherwise, an error is signaled.
+                      (t
+                       (error "~@<Cannot reshape the range ~S ~
+                                  to the range ~S.~:@>"
+                              input-range output-range)))))
+          (values
+           (make-transformation
+            :input-rank input-rank
+            :output-rank output-rank
+            :input-mask input-mask
+            :output-mask output-mask
+            :offsets offsets
+            :scalings scalings)
+           broadcast-p
+           select-p)))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -105,7 +208,7 @@
     (lazy-reshape
      lazy-array
      shape
-     (petalisp.core::make-shape-transformation shape (shape lazy-array)))))
+     (make-shape-transformation shape (shape lazy-array)))))
 
 ;;; Return a vector with the prime factors of SHAPE bounded by START and
 ;;; END, and the axis with the larges sum of prime factors therein.

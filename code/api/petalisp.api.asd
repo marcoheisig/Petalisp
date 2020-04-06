@@ -18,6 +18,8 @@
   :components
   ((:file "packages")
    (:file "reshape")
+   (:file "broadcast")
+   (:file "alpha")
    (:file "collapse")
    (:file "fuse")
    (:file "drop-axes")

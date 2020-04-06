@@ -2,23 +2,7 @@
 
 (in-package #:petalisp.core)
 
-(declaim (inline α))
-(defun α (function &rest arrays)
-  (declare (dynamic-extent arrays))
-  (multiple-value-bind (inputs shape)
-      (broadcast-list-of-arrays arrays)
-    (α-aux 1 shape (coerce function 'function) inputs)))
-
-(declaim (inline α*))
-(defun α* (n-values function &rest arrays)
-  (declare (petalisp.type-inference:multiple-value-count n-values)
-           (dynamic-extent arrays))
-  (multiple-value-bind (inputs shape)
-      (broadcast-list-of-arrays arrays)
-    (α-aux n-values shape (coerce function 'function) inputs)))
-
-(declaim (notinline α-aux))
-(defun α-aux (n-outputs shape function inputs)
+(defun lazy-map (n-outputs shape function inputs)
   (if (null shape)
       (empty-arrays n-outputs)
       (petalisp.type-inference:specialize

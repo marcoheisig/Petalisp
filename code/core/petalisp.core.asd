@@ -24,7 +24,6 @@
    (:file "transformation-constructors")
    (:file "lazy-array")
    (:file "lazy-reshape")
-   (:file "broadcast")
    (:file "lazy-fuse")
    (:file "lazy-map")
    (:file "substitute-array")

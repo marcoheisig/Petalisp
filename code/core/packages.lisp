@@ -35,6 +35,7 @@
    #:range-step
    #:range-end
    #:range-size
+   #:subrangep
 
    ;; Shapes
    #:~
@@ -126,9 +127,6 @@
    #:broadcast-list-of-arrays
    #:copy-arrays
    #:substitute-arrays
-   #:α
-   #:α*
-   #:β
 
    ;; Backend
    #:*backend*

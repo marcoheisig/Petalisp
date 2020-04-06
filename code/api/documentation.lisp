@@ -23,6 +23,33 @@ applying the transformation to the index while retaining the value."
   (compute (reshape #2A((1 2) (3 4)) (τ (i j) (j i))))
   (compute (reshape #(1 2 3 4) (~ 1 2) (~ 0 1 ~ 0 1))))
 
+(document-function broadcast-arrays
+  "Returns as many lazy arrays as there are supplied arrays, but broadcast
+such that all resulting arrays have the same shape.  If there is no
+suitable broadcast shape for all supplied arrays, an error is signaled."
+  (broadcast-arrays #(1 2 3) 5)
+  (broadcast-arrays #(2 3 4) #2a((1 2 3) (4 5 6))))
+
+(document-function broadcast-list-of-arrays
+  "Returns a list of lazy arrays of the same length as the list of supplied
+arrays, but where each element is broadcast such that all resulting arrays
+have the same shape.  If there is no suitable broadcast shape for all
+supplied arrays, an error is signaled."
+  (broadcast-list-of-arrays (list #(1 2 3) 5))
+  (broadcast-list-of-arrays (list #(2 3 4) #2a((1 2 3) (4 5 6)))))
+
+(document-function α
+  "Returns one or more lazy arrays, whose contents are the values returned
+by the supplied function when applied element-wise to the contents of the
+remaining argument arrays.  If the arguments don't agree in shape, they are
+first broadcast with the function BROADCAST-ARRAYS."
+  (α #'+ #(1 2) #(3 4))
+  (compute (α #'+ 2 3))
+  (compute (α #'+ 2 #(1 2 3 4 5)))
+  (compute (α #'* #(2 3) #2a((1 2) (3 4))))
+  (compute (α #'floor 7.5))
+  (compute (α #'floor 7.5 #(1 2 3 4 5))))
+
 (document-function collapse
   "Turns the supplied array into an array with the same rank and contents,
 but where all ranges start from zero and have a step size of one."

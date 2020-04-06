@@ -1,6 +1,6 @@
 ;;;; © 2016-2020 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package #:petalisp.core)
+(in-package #:petalisp.api)
 
 (defun broadcast-list-of-arrays (list-of-arrays)
   ;; As a first step, we create an alist whose keys are shapes, and whose
@@ -57,3 +57,10 @@
      lazy-array
      shape
      (make-broadcast-transformation shape array-shape))))
+
+(defun make-broadcast-transformation (input-shape output-shape)
+  (multiple-value-bind (transformation broadcast-p select-p)
+      (make-shape-transformation input-shape output-shape)
+    (declare (ignore broadcast-p))
+    (assert (not select-p))
+    transformation))
