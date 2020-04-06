@@ -1,6 +1,6 @@
 ;;;; © 2016-2020 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package #:petalisp.core)
+(in-package #:petalisp.api)
 
 (defgeneric compile-network-on-backend (network backend))
 
@@ -34,18 +34,15 @@
   (let ((args (loop for parameter in (network-parameters network)
                     for value = (getf plist parameter '.missing.)
                     collect
-                    (let ((value
-                            (α #'coerce
-                               (if (eq value '.missing.)
-                                   (if (typep parameter 'optional-parameter)
-                                       (optional-parameter-value parameter)
-                                       (error "Missing parameter: ~S." parameter))
-                                   value)
-                               (element-type parameter))))
-                      (lazy-reshape
-                       value
-                       (shape parameter)
-                       (make-shape-transformation (shape parameter) (shape value)))))))
+                    (reshape
+                     (α #'coerce
+                        (if (eq value '.missing.)
+                            (if (typep parameter 'optional-parameter)
+                                (optional-parameter-value parameter)
+                                (error "Missing parameter: ~S." parameter))
+                            value)
+                        (element-type parameter))
+                     (shape parameter)))))
     (apply (compile-network-on-backend network *backend*) args)))
 
 ;;; This is a simple, albeit slow way of compiling a network.  We simply

@@ -28,5 +28,6 @@
    (:file "beta")
    (:file "vectorize")
    (:file "differentiator")
+   (:file "network")
    (:file "documentation")
    (:file "aliases")))

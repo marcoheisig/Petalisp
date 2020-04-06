@@ -130,13 +130,6 @@
    #:α*
    #:β
 
-   ;; Network
-   #:network
-   #:network-parameters
-   #:network-outputs
-   #:make-network
-   #:call-network
-
    ;; Backend
    #:*backend*
    #:compute-on-backend

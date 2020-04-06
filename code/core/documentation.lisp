@@ -435,19 +435,3 @@ can be sped up by rewriting it as
  (progn (schedule array-1 array-2)
         (run-expensive-task)
         (compute array-1 array-2)).")
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Network
-
-(document-type network
-  "A network is an encapsulated data-flow graph that can be invoked with a
-set of inputs and weights to yield several outputs.
-
-Networks can also be differentiated, using the function NETWORK-GRADIENTS.")
-
-(document-function make-network
-  "Creates a network with the supplied inputs and outputs.
-
-An error is signaled of any of the inputs is not of type NETWORK-INPUT, or
-if additional network inputs are reachable from the network outputs.")

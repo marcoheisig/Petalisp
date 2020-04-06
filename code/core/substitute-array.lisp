@@ -11,8 +11,15 @@
   (let ((*substitutions* (make-hash-table :test #'eq)))
     (loop for new-array in new-arrays
           for old-array in old-arrays do
-            (setf (gethash old-array *substitutions*)
-                  (α #'coerce new-array (element-type old-array))))
+            (assert (petalisp.type-inference:ntype=
+                     (petalisp.type-inference:generalize-ntype
+                      (element-ntype new-array))
+                     (petalisp.type-inference:generalize-ntype
+                      (element-ntype old-array))))
+            (assert (shape-equal
+                     (shape new-array)
+                     (shape old-array)))
+            (setf (gethash old-array *substitutions*) new-array))
     (mapcar #'substitute-array roots)))
 
 (defgeneric substitute-array (array))

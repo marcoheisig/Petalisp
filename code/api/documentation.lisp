@@ -162,3 +162,15 @@ supplied OUTPUTS will return the gradient at that node.
 GRADIENTS must be a sequence of the same length as OUTPUTS, and whose
 elements are either arrays with or symbols that will be used as the name of
 such a parameter.")
+
+(document-type network
+  "A network is an encapsulated data-flow graph that can be invoked with a
+set of inputs and weights to yield several outputs.
+
+Networks can also be differentiated, using the function NETWORK-GRADIENTS.")
+
+(document-function make-network
+  "Creates a network with the supplied inputs and outputs.
+
+An error is signaled of any of the inputs is not of type NETWORK-INPUT, or
+if additional network inputs are reachable from the network outputs.")
