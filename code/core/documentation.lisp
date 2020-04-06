@@ -382,29 +382,3 @@ has the value i_AXIS.  If AXIS is not supplied, it defaults to zero."
   (compute (indices #2a((1 2) (3 4))))
   (compute (indices #2a((1 2) (3 4)) 1))
   (compute (indices "abc")))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Backend
-
-(document-function compute
-  "Returns, as multiple values, the computed result of each supplied
-argument.  The computed result of a lazy array is a standard Common Lisp
-array with the same rank and dimensions.  The computed result of any other
-object is that object itself."
-  (compute (lazy-reshape (lazy-array #2a((1 2) (3 4))) (~ 0 1 ~ 0 1) (τ (i j) (j i))))
-  (compute 2 #0A3 #(4)))
-
-(document-function schedule
-  "Hints that it would be worthwhile to compute the supplied arguments
-asynchronously.  Semantically, this function does nothing.  But on certain
-backends, a program like
-
- (progn (run-expensive-task)
-        (compute array-1 array-2))
-
-can be sped up by rewriting it as
-
- (progn (schedule array-1 array-2)
-        (run-expensive-task)
-        (compute array-1 array-2)).")
