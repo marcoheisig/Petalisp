@@ -15,7 +15,7 @@
 (defun extended-euclid (u v)
   "Given nonnegative integers u and v, return the values u1 and u3 such
 that u*u1 + v*u2 = u3 = gcd(u,v)."
-  (declare (non-negative-integer u v))
+  (declare (alexandria:non-negative-integer u v))
   ;; This is a variant of Knuth's Algorithm X from TAOCP Volume 2, but
   ;; using tail recursion instead of iteration and dropping the redundant
   ;; computation of u2.
@@ -33,7 +33,7 @@ that u*u1 + v*u2 = u3 = gcd(u,v)."
                     (- u3 (* q v3))))))
            (bignum-euclid (u1 u3 v1 v3)
              (declare (integer u1 v1)
-                      (non-negative-integer u3 v3))
+                      (alexandria:non-negative-integer u3 v3))
              (if (zerop v3)
                  (values u1 u3)
                  (let ((q (floor u3 v3)))

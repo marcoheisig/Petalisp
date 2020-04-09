@@ -42,7 +42,7 @@ evaluation of BODY and its value is used instead of KEY for storing the
 results.  This way, KEY can be an object with dynamic extent (to avoid
 consing) and STORE-KEY can create a copy with indefinite extent when
 necessary."
-  (once-only (key)
+  (alexandria:once-only (key)
     `(with-hash-table-memoization
          (,key ,@(when store-key-p `(:store-key ,store-key)))
          (load-time-value
@@ -98,8 +98,8 @@ evaluation of BODY and its value is used instead of KEY for storing the
 results.  This way, KEY can be an object with dynamic extent (to avoid
 consing) and STORE-KEY can create a copy with indefinite extent when
 necessary."
-  (once-only (key hash-table)
-    (with-gensyms (value present-p)
+  (alexandria:once-only (key hash-table)
+    (alexandria:with-gensyms (value present-p)
       `(multiple-value-bind (,value ,present-p)
            (gethash ,key ,hash-table)
          (if ,present-p
@@ -118,8 +118,8 @@ necessary."
   "Memoize the value of BODY for KEY being a relatively small integer."
   (check-type size (integer 2 (#.array-total-size-limit)))
   (check-type growth (single-float (1.0f0) #.most-positive-single-float))
-  (with-gensyms (value pool)
-    (once-only (key)
+  (alexandria:with-gensyms (value pool)
+    (alexandria:once-only (key)
       `(let* ((,pool
                 (load-time-value
                  (make-array ,size :initial-element ,+empty+

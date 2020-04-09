@@ -3,16 +3,8 @@
 (cl:in-package #:common-lisp-user)
 
 (defpackage #:petalisp.utilities
-  (:use
-   #:common-lisp
-   #:alexandria)
+  (:use #:common-lisp)
   (:export
-
-   ;; define-class-predicate.lisp
-   #:define-class-predicate
-
-   ;; define-method-pair.lisp
-   #:define-method-pair
 
    ;; documentation.lisp
    #:document-compiler-macro
