@@ -105,7 +105,6 @@
    #:refcount
    #:lazy-array
    #:lazy-map
-   #:lazy-reduce
    #:lazy-reshape
    #:lazy-fuse
    #:immediate

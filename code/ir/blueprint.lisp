@@ -104,12 +104,6 @@
        (return (ucons:ulist :iref input-index scaling offset)))
      (instruction-transformation iref-instruction))))
 
-(defmethod instruction-blueprint ((reduce-instruction reduce-instruction))
-  (ucons:ulist*
-   :reduce
-   (operator-blueprint (reduce-instruction-operator reduce-instruction))
-   (ucons:umapcar #'value-blueprint (instruction-inputs reduce-instruction))))
-
 ;;; Return as multiple values
 ;;;
 ;;; 1. A list of range descriptions.

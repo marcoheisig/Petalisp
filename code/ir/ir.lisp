@@ -43,19 +43,12 @@
 
 ;;; A kernel represents a computation that, for each element in its
 ;;; iteration space, reads from some buffers and writes to some buffers.
-;;; By convention, the first range of the iteration space is always the
-;;; reduction range.
 (defstruct (kernel
             (:predicate kernelp))
   (iteration-space nil :type shape)
   (load-instructions nil :type list)
   (store-instructions nil :type list)
   (executedp nil :type boolean))
-
-(declaim (inline kernel-reduction-range))
-(defun kernel-reduction-range (kernel)
-  (declare (kernel kernel))
-  (first (shape-ranges (kernel-iteration-space kernel))))
 
 ;;; This function is a very ad-hoc approximation of the cost of executing
 ;;; the kernel.
@@ -132,16 +125,6 @@
                                                   &aux (inputs (list value)))))
   (buffer nil :type buffer))
 
-;;; A reduce instruction represents a binary tree reduction along the axis
-;;; zero of the iteration space.  The operator of the reduce instruction is
-;;; a function that takes twice as many arguments as the instruction has
-;;; inputs, and returns as many values as the instruction has inputs.
-(defstruct (reduce-instruction
-            (:include instruction)
-            (:predicate reduce-instruction-p)
-            (:constructor make-reduce-instruction (operator inputs)))
-  (operator nil :type (or function symbol)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Printing
@@ -190,14 +173,6 @@
     (format stream "~S ~S"
             (instruction-number iref-instruction)
             (instruction-transformation iref-instruction))))
-
-(defmethod print-object ((reduce-instruction reduce-instruction) stream)
-  (print-unreadable-object (reduce-instruction stream :type t)
-    (format stream "~S ~S ~S"
-            (instruction-number reduce-instruction)
-            (reduce-instruction-operator reduce-instruction)
-            (mapcar #'simplify-input
-                    (instruction-inputs reduce-instruction)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -315,7 +290,6 @@
            transformation
            (instruction-transformation instruction))))
   instruction)
-
 
 (defun transform-buffer (buffer transformation)
   (declare (buffer buffer)

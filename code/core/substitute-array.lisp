@@ -40,14 +40,6 @@
     :ntype (element-ntype lazy-map)
     :inputs (mapcar #'substitute-array (inputs lazy-map))))
 
-(defmethod substitute-array ((lazy-reduce lazy-reduce))
-  (make-instance 'lazy-reduce
-    :operator (operator lazy-reduce)
-    :value-n (value-n lazy-reduce)
-    :shape (shape lazy-reduce)
-    :ntype (element-ntype lazy-reduce)
-    :inputs (mapcar #'substitute-array (inputs lazy-reduce))))
-
 (defmethod substitute-array ((lazy-fuse lazy-fuse))
   (make-instance 'lazy-fuse
     :shape (shape lazy-fuse)

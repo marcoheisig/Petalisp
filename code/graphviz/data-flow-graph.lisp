@@ -46,11 +46,6 @@
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (immediate petalisp.core:lazy-reduce))
-  `(:fillcolor "beige"))
-
-(defmethod graphviz-node-attributes
-    ((graph data-flow-graph)
      (node petalisp.core:lazy-fuse))
   `(:fillcolor "cyan3"))
 
@@ -82,11 +77,6 @@
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
      (node petalisp.core:lazy-map))
-  `(("operator" . ,(stringify (petalisp.core:operator node)))))
-
-(defmethod graphviz-node-properties append
-    ((graph data-flow-graph)
-     (node petalisp.core:lazy-reduce))
   `(("operator" . ,(stringify (petalisp.core:operator node)))))
 
 (defmethod graphviz-node-properties append

@@ -127,7 +127,6 @@
    #:inputs
    #:value-n
    #:operator
-   #:reduction-range
    #:immediatep
    #:storage
    #:array-immediate

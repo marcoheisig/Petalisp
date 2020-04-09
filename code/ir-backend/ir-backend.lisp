@@ -84,8 +84,7 @@
            ;; Evaluate all instructions with side-effects (= store
            ;; instructions) and their dependencies.
            (map-kernel-store-instructions #'instruction-values kernel)))
-       (shrink-shape
-        (kernel-iteration-space kernel))))))
+       (kernel-iteration-space kernel)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -119,33 +118,14 @@
           (transform *index* (instruction-transformation load-instruction)))))
 
 (defmethod instruction-values ((store-instruction store-instruction))
-  (setf (apply #'aref
-               (buffer-storage (store-instruction-buffer store-instruction))
-               (transform (cons 0 *index*) (instruction-transformation store-instruction)))
+  (setf (apply
+         #'aref
+         (buffer-storage (store-instruction-buffer store-instruction))
+         (transform *index* (instruction-transformation store-instruction)))
         (destructuring-bind ((value-n . instruction))
             (instruction-inputs store-instruction)
           (nth value-n (instruction-values instruction))))
   (list))
-
-(defmethod instruction-values ((reduce-instruction reduce-instruction))
-  (let ((k (length (instruction-inputs reduce-instruction))))
-    (labels ((divide-and-conquer (range)
-               (if (size-one-range-p range)
-                   (let ((*index* (cons (range-start range) *index*)))
-                     ;; *index* is changed, so we also have to clear the cache.
-                     (clear-instruction-values-cache)
-                     (loop for (value-n . instruction)
-                             in (instruction-inputs reduce-instruction)
-                           collect (nth value-n (instruction-values instruction))))
-                   (multiple-value-bind (left right)
-                       (split-range range)
-                     (subseq
-                      (multiple-value-list
-                       (multiple-value-call (reduce-instruction-operator reduce-instruction)
-                         (values-list (divide-and-conquer left))
-                         (values-list (divide-and-conquer right))))
-                      0 k)))))
-      (divide-and-conquer (kernel-reduction-range *kernel*)))))
 
 (defmethod instruction-values ((iref-instruction iref-instruction))
   (transform *index* (instruction-transformation iref-instruction)))

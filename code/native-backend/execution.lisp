@@ -57,14 +57,14 @@
               (setf (svref vector (+ (* 3 index) 2)) end)))
     ;; So far, we use a simple outer loop parallelization scheme.  To do
     ;; that, we first have to check whether there is an outer loop.
-    (if (= rank 1)
+    (if (zerop rank)
         ;; If there is no outer loop, we execute the kernel on one
         ;; worker only.
         (when (zerop normalized-worker-id)
           vector)
-        (symbol-macrolet ((start (svref vector 3))
-                          (step (svref vector 4))
-                          (end (svref vector 5)))
+        (symbol-macrolet ((start (svref vector 0))
+                          (step (svref vector 1))
+                          (end (svref vector 2)))
           (let ((outer-loop-size (/ (1+ (- end start)) step)))
             (multiple-value-bind (chunk-size remainder)
                 (floor outer-loop-size n-workers)
@@ -99,10 +99,8 @@
                         (incf current)))))))
       (map-instructions
        (lambda (instruction)
-         (cond ((call-instruction-p instruction)
-                (register-function (call-instruction-operator instruction)))
-               ((reduce-instruction-p instruction)
-                (register-function (reduce-instruction-operator instruction)))))
+         (when (call-instruction-p instruction)
+           (register-function (call-instruction-operator instruction))))
        kernel)
       vector)))
 

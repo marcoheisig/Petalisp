@@ -91,10 +91,6 @@
   ((%operator :initarg :operator :reader operator)
    (%value-n :initarg :value-n :reader value-n :type (integer 0 #.multiple-values-limit))))
 
-(defclass lazy-reduce (non-empty-non-immediate)
-  ((%operator :initarg :operator :reader operator)
-   (%value-n :initarg :value-n :reader value-n :type (integer 0 #.multiple-values-limit))))
-
 (defclass lazy-fuse (non-empty-non-immediate)
   ())
 

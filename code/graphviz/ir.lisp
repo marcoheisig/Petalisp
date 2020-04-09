@@ -157,9 +157,4 @@
                           (petalisp.ir:instruction-transformation instruction)
                           (simplify-input
                            (first
-                            (petalisp.ir:instruction-inputs instruction)))))
-                 (petalisp.ir:reduce-instruction
-                  (format nil "reduce ~S~{ ~S~}~%"
-                          (petalisp.ir:reduce-instruction-operator instruction)
-                          (mapcar #'simplify-input
-                                  (petalisp.ir:instruction-inputs instruction))))))))))
+                            (petalisp.ir:instruction-inputs instruction)))))))))))

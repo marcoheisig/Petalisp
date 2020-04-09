@@ -11,15 +11,9 @@
 ;;; 2. The node is referenced by multiple other nodes.
 ;;; 3. The node is the target of a broadcasting reference.
 ;;; 4. The node is an immediate node.
-;;; 5. The node is a reduction node.
-;;; 6. The node is a fusion node and would break a reduction range.
 ;;;
-;;; These rules 1-4 ensure that values that are used more than once reside
-;;; in main memory.  Rule 5 is chosen in addition, because it greatly
-;;; simplifies reasoning about kernels, while the cost of allocating the
-;;; results of a reduction is usually negligible.  Rule 6 is potentially
-;;; costly, but the alternative of dealing with heterogeneous reduction
-;;; kernels is a nightmare.
+;;; These rules ensure that values that are used more than once reside in
+;;; main memory.
 ;;;
 ;;; The derivation of the buffer table of a graph consists of two steps.
 ;;; In the first step, we build a hash table that assigns some strided
@@ -29,14 +23,14 @@
 
 (defvar *buffer-table*)
 
-(defmacro node-value (node)
+(defmacro buffer-table-entry (node)
   `(gethash ,node *buffer-table*))
 
 (defun compute-buffer-table (graph-roots)
   (let ((*buffer-table* (make-hash-table :test #'eq)))
     (loop for graph-root in graph-roots do
       ;; Rule 1
-      (traverse-node graph-root t nil))
+      (traverse-node graph-root t))
     ;; Finalize the buffer table.
     (finalize-buffer-table)
     *buffer-table*))
@@ -46,90 +40,50 @@
     (maphash
      (lambda (lazy-array value)
        (if (eq value :special)
-           (setf (node-value lazy-array)
+           (setf (buffer-table-entry lazy-array)
                  (if (typep lazy-array 'range-immediate)
                      '.range-immediate.
                      (make-buffer lazy-array)))
            (remhash lazy-array buffer-table)))
      buffer-table)))
 
-(defun traverse-node (node special-p reduction-axis)
-  (multiple-value-bind (traverse-inputs-p inputs-special-p reduction-axis)
-      (visit-node node reduction-axis)
+(defun traverse-node (node special-p)
+  (multiple-value-bind (traverse-inputs-p inputs-special-p)
+      (visit-node node)
     (when special-p
-      (setf (node-value node) :special))
+      (setf (buffer-table-entry node) :special))
     (when traverse-inputs-p
       (loop for input in (inputs node) do
-        (traverse-node input inputs-special-p reduction-axis)))))
+        (traverse-node input inputs-special-p)))))
 
-(defgeneric visit-node (node reduction-axis))
+(defgeneric visit-node (node))
 
-(defmethod visit-node ((node lazy-array) reduction-axis)
+(defmethod visit-node ((node lazy-array))
+  ;; Rule 2.
   (case (refcount node)
-    ((0 1) (values t nil reduction-axis))
+    ((0 1) (values t nil))
     (otherwise
-     ;; Rule 2.
-     (multiple-value-bind (value present-p) (node-value node)
+     (multiple-value-bind (value present-p) (buffer-table-entry node)
        (cond ((not present-p)
-              (setf (node-value node) :potentially-special)
-              (values t nil reduction-axis))
+              (setf (buffer-table-entry node) :potentially-special)
+              (values t nil))
              ((eq value :potentially-special)
-              (setf (node-value node) :special)
-              (values nil nil nil))
+              (setf (buffer-table-entry node) :special)
+              (values nil nil))
              ((eq value :special)
-              (values nil nil nil)))))))
+              (values nil nil)))))))
 
-(defmethod visit-node ((reduction lazy-reduce) reduction-axis)
-  (multiple-value-bind (value present-p) (node-value reduction)
-    (cond ((not present-p)
-           (unless (eq value :special)
-             (setf (node-value reduction) :special))
-           (values t nil 0))
-          (t
-           (values nil nil nil)))))
+(defmethod visit-node ((immediate immediate))
+  (setf (buffer-table-entry immediate) :special)
+  (values nil nil))
 
-(defmethod visit-node ((immediate immediate) reduction-axis)
-  (setf (node-value immediate) :special)
-  (values nil nil nil))
-
-(defmethod visit-node ((lazy-reshape lazy-reshape) reduction-axis)
-  (multiple-value-bind (traverse-inputs-p inputs-special-p reduction-axis)
+(defmethod visit-node ((lazy-reshape lazy-reshape))
+  (multiple-value-bind (traverse-inputs-p inputs-special-p)
       (call-next-method)
     (if (not traverse-inputs-p)
-        (values nil nil nil)
+        (values nil nil)
         (let ((transformation (transformation lazy-reshape)))
           (values
            traverse-inputs-p
            ;; Rule 3.
-           (or inputs-special-p (not (transformation-invertiblep transformation)))
-           ;; Adapt the reduction axis.
-           (if (null reduction-axis)
-               nil
-               (transform-axis reduction-axis transformation)))))))
-
-(defmethod visit-node ((lazy-fuse lazy-fuse) reduction-axis)
-  (multiple-value-bind (traverse-inputs-p inputs-special-p reduction-axis)
-      (call-next-method)
-    (cond ((not traverse-inputs-p)
-           (values nil nil nil))
-          ;; Rule 6.
-          ((breaking-fusion-p lazy-fuse reduction-axis)
-           (setf (node-value lazy-fuse) :special)
-           (values t inputs-special-p nil))
-          (t
-           (values t inputs-special-p reduction-axis)))))
-
-;;; Determine whether a reduction along the given REDUCTION-AXIS would be
-;;; heterogeneous, meaning that different parts of the reduction would read
-;;; different inputs of the fusion.
-(defun breaking-fusion-p (fusion reduction-axis)
-  (if (null reduction-axis)
-      nil
-      (flet ((reduction-range-of (lazy-array)
-               (nth reduction-axis (shape-ranges (shape lazy-array)))))
-        (let ((fusion-range (reduction-range-of fusion)))
-          (loop for input in (inputs fusion)
-                  thereis (not
-                           (range-equal
-                            fusion-range
-                            (reduction-range-of input))))))))
+           (or inputs-special-p (not (transformation-invertiblep transformation))))))))

@@ -29,19 +29,16 @@
    #:load-instruction
    #:store-instruction
    #:iref-instruction
-   #:reduce-instruction
 
    ;; Predicates
    #:bufferp
    #:kernelp
-   #:reduction-kernel-p
    #:instructionp
    #:call-instruction-p
    #:iterating-instruction-p
    #:iref-instruction-p
    #:load-instruction-p
    #:store-instruction-p
-   #:reduce-instruction-p
 
    ;; Constructors
    #:make-kernel
@@ -69,7 +66,6 @@
    #:buffer-reusablep
    #:buffer-storage
    #:kernel-iteration-space
-   #:kernel-reduction-range
    #:kernel-executedp
    #:kernel-blueprint
    #:kernel-buffers
@@ -83,7 +79,6 @@
    #:call-instruction-operator
    #:store-instruction-buffer
    #:load-instruction-buffer
-   #:reduce-instruction-operator
 
    ;; Miscellaneous
    #:assign-instruction-numbers

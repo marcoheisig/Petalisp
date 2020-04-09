@@ -153,32 +153,6 @@
         index))))
 
 (defmethod input-gradient
-    ((reduction lazy-reduce) (output-gradient lazy-array) index)
-  (with-accessors ((inputs inputs)
-                   (operator operator)
-                   (shape shape)) reduction
-    (let* ((input-ntypes (mapcar (alexandria:compose #'list #'element-ntype) inputs))
-           (result-ntypes
-             (petalisp.type-inference:differentiate
-              operator
-              (append input-ntypes input-ntypes)
-              #'first
-              #'list
-              (lambda (ntypes function inputs)
-                (declare (ignore function inputs))
-                ntypes)
-              index)))
-      (if (every #'petalisp.type-inference:eql-ntype-p result-ntypes)
-          (α #'* output-gradient
-             (α #'coerce
-                (reshape (first result-ntypes) (shape (first inputs)))
-                (element-type (first inputs))))
-          (error "~@<Don't know how to compute the gradient of a reduction ~
-                    of ~R argument~:P with the operator ~S.~:@>"
-                (length (inputs reduction))
-                (operator reduction))))))
-
-(defmethod input-gradient
     ((lazy-fuse lazy-fuse) (output-gradient lazy-array) index)
   (reshape output-gradient (shape (nth index (inputs lazy-fuse)))))
 

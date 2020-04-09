@@ -17,16 +17,13 @@
           (innermost-block nil))
       ;; Add loop blocks.
       (let ((immediate-dominator *initial-basic-block*))
-        (loop for info in (rest range-info) ; Skip the reduction range.
-              for index from 1 do
+        (loop for info in range-info
+              for index from 0 do
                 (let ((loop-block (add-loop-block info index immediate-dominator)))
                   (setf (successors immediate-dominator)
                         (list loop-block))
                   (setf immediate-dominator loop-block)))
         (setf innermost-block immediate-dominator))
-      ;; If we are dealing with a reduction kernel, emit a single
-      ;; instruction that combines all reduce instructions in that kernel.
-      (handle-reductions (first range-info) innermost-block)
       ;; Now translate and pseudo-evaluate all store instructions and their
       ;; dependencies.
       (loop for instruction across *instructions*
@@ -49,115 +46,6 @@
            :var loop-index
            :info range-info
            :immediate-dominator immediate-dominator))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Reductions
-;;;
-;;; The handling of reductions is somewhat involved, because instead of
-;;; having several reduction statements in the final code, we want to have
-;;; a single reduction that computes all reduction values simultaneously.
-;;;
-;;; To achieve this, we collect a list of all reduce instructions in the
-;;; kernel and combine them into a single instruction.  In the process, all
-;;; reduce instructions are replaced with :rref instructions, i.e.,
-;;; references to some of the values of the combined reduction instruction.
-
-(defun handle-reductions (range-info immediate-dominator)
-  ;; Add an auxiliary basic block to the symbol table, to collect all
-  ;; instructions that depend on the reduction index.
-  (let ((tail-block (make-progn-block :immediate-dominator immediate-dominator))
-        (reduction-index (index-symbol 0))
-        (reduction-values '())
-        (reduction-spec '()))
-    (setf (defining-basic-block reduction-index) tail-block)
-    ;; Process all dependencies of all reduce instructions.
-    (loop for instruction across *instructions*
-          when (eq (car instruction) :reduce) do
-            (destructuring-bind (operator . arguments) (rest instruction)
-              ;; Store the operator and arity of the reduction.
-              (push (cons operator (length arguments)) reduction-spec)
-              ;; Ensure evaluation of all arguments.
-              (loop for argument in arguments do
-                (push (pseudo-eval-argument argument) reduction-values))))
-    ;; Define the reduction thunk.
-    (setf (tail-form tail-block)
-          `(values . ,(nreverse reduction-values)))
-    (let* ((start (start-symbol 0))
-           (step (step-symbol 0))
-           (end (end-symbol 0))
-           (thunk-form
-             (ecase range-info
-               (:single
-                `(lambda ()
-                   (let ((,reduction-index ,start))
-                     (declare (ignorable ,reduction-index))
-                     ,(form tail-block))))
-               (:contiguous
-                `(lambda ()
-                      (labels
-                          ((divide-and-conquer (min max)
-                             (declare (type fixnum min max))
-                             (if (= min max)
-                                 (let ((,reduction-index (+ min ,start)))
-                                   (declare (ignorable ,reduction-index))
-                                   ,(form tail-block))
-                                 (let ((mid (+ min (floor (- max min) 2))))
-                                   (multiple-value-call
-                                       ,(make-reduction-lambda (nreverse reduction-spec))
-                                     (divide-and-conquer min mid)
-                                     (divide-and-conquer (1+ mid) max))))))
-                        (divide-and-conquer 0 (- ,end ,start)))))
-               (:strided
-                `(lambda ()
-                   (labels
-                       ((divide-and-conquer (min max)
-                          (declare (type fixnum min max))
-                          (if (= min max)
-                              (let ((,reduction-index (+ min (* ,start ,step))))
-                                (declare (ignorable ,reduction-index))
-                                ,(form tail-block))
-                              (let ((mid (+ min (floor (- max min) 2))))
-                                (multiple-value-call
-                                    ,(make-reduction-lambda (nreverse reduction-spec))
-                                  (divide-and-conquer min mid)
-                                  (divide-and-conquer (1+ mid) max))))))
-                     (divide-and-conquer 0 (/ (- ,end ,start) ,step)))))))
-           (thunk (value-symbol 0 thunk-form immediate-dominator)))
-      (setf (defining-basic-block thunk) immediate-dominator)
-      ;; Replace all reduce instructions with references to the result of
-      ;; evaluating the reduction thunk.
-      (loop with offset = 0
-            for instruction across *instructions*
-            for instruction-index from 0
-            when (eq (car instruction) :reduce) do
-              (let ((arity (length (cddr instruction))))
-                (setf (aref *instructions* instruction-index)
-                      `(:rref ,@(loop for value-n below arity
-                                      collect
-                                      (pseudo-eval
-                                       (+ value-n offset)
-                                       `(funcall ,thunk)))))
-                (incf offset arity))))))
-
-(defun make-reduction-lambda (reduction-spec)
-  (loop for (op . arity) in reduction-spec
-        collect (loop repeat arity collect (gensym)) into left
-        collect (loop repeat arity collect (gensym)) into right
-        collect (loop repeat arity collect (gensym)) into value-symbols
-        finally
-           (return
-             `(lambda ,(append (apply #'append left) (apply #'append right))
-                (basic-block
-                  ,@(loop for (op . nil) in reduction-spec
-                          for l in left
-                          for r in right
-                          for v in value-symbols
-                          collect
-                          (if (symbolp op)
-                              `(,v (,op ,@l ,@r))
-                              `(,v (funcall (aref functions ,op) ,@l ,@r))))
-                  (values ,@(apply #'append value-symbols)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

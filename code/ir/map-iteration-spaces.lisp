@@ -23,24 +23,18 @@
 
 (defvar *root*)
 
-(defvar *reduction-range*)
-
 (defun map-iteration-spaces (function root)
   (let* ((*function* function)
          (*root* root)
-         (*reduction-range* (reduction-range root))
          (shape (shape root))
          (transformation (identity-transformation (shape-rank shape))))
+    ;; If there are no fusions in the tree at all, we simply process the
+    ;; iteration space of the root node.
     (unless (map-iteration-spaces-aux root shape transformation)
       (process-iteration-space shape))))
 
 (defun process-iteration-space (iteration-space)
-  (funcall *function* (enlarge-shape iteration-space *reduction-range*)))
-
-(defun reduction-range (lazy-array)
-  (if (typep lazy-array 'lazy-reduce)
-      (first (shape-ranges (shape (first (inputs lazy-array)))))
-      (range 0)))
+  (funcall *function* iteration-space))
 
 ;;; Process all occurring iteration spaces.  Return whether the processed
 ;;; subtree contains fusion nodes.
@@ -53,7 +47,7 @@
   (if (eq node *root*)
       (call-next-method)
       ;; Stop when encountering a node with an entry in the buffer table.
-      (if (nth-value 1 (gethash node *buffer-table*))
+      (if (buffer-table-entry node)
           nil
           (call-next-method))))
 
@@ -88,17 +82,6 @@
    (compose-transformations
     (transformation lazy-reshape)
     transformation)))
-
-(defmethod map-iteration-spaces-aux
-    ((reduction lazy-reduce)
-     (iteration-space shape)
-     (transformation transformation))
-  (loop for input in (inputs reduction)
-          thereis
-          (map-iteration-spaces-aux
-           input
-           (enlarge-shape iteration-space *reduction-range*)
-           (enlarge-transformation transformation 1 0))))
 
 (defmethod map-iteration-spaces-aux
     ((lazy-map lazy-map)

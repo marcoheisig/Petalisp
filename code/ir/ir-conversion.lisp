@@ -12,8 +12,7 @@
 ;;;
 ;;; 1. A hash table is created that maps certain strided arrays to buffers
 ;;;    of the same size and element type.  This table is constructed such
-;;;    that any subgraph without these nodes is a tree and contains no
-;;;    reduction nodes.
+;;;    that any subgraph without these nodes is a tree.
 ;;;
 ;;; 2. Each root of a subtree from step 1 is turned into one or more
 ;;;    kernels.  All fusion nodes in the tree are eliminated by choosing
@@ -81,20 +80,14 @@
 (defvar *loads*)
 
 (defun compute-kernel-body (root iteration-space)
-  (let* ((*loads* '())
-         (rank (shape-rank iteration-space))
-         (inner-transformation (identity-transformation rank))
-         (outer-transformation (outer-transformation rank)))
+  (let* ((rank (shape-rank iteration-space))
+         (transformation (identity-transformation rank))
+         (*loads* '()))
     (values
      (make-store-instruction
-      (if (typep root 'lazy-reduce)
-          (compute-value root iteration-space inner-transformation)
-          (cons 0 (make-reduce-instruction
-                   'values
-                   (list
-                    (compute-value root (shrink-shape iteration-space) outer-transformation)))))
+      (compute-value root iteration-space transformation)
       (gethash root *buffer-table*)
-      outer-transformation)
+      transformation)
      *loads*)))
 
 (defun outer-transformation (rank)
@@ -148,22 +141,6 @@
          (loop for input in (inputs lazy-map)
                collect
                (compute-value input iteration-space transformation)))))
-
-(defmethod compute-value
-    ((reduction lazy-reduce)
-     (iteration-space shape)
-     (transformation transformation))
-  (let* ((inputs (inputs reduction))
-         ;; We do not have to intersect the shape with the current
-         ;; iteration space, because reductions only occur as the root
-         ;; node of a kernel.
-         (shape (shape (first inputs))))
-    (cons (value-n reduction)
-          (make-reduce-instruction
-           (operator reduction)
-           (loop for input in (inputs reduction)
-                 collect
-                 (compute-value input shape transformation))))))
 
 (defmethod compute-value
     ((lazy-reshape lazy-reshape)

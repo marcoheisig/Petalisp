@@ -77,33 +77,6 @@
          (apply (operator lazy-map)
                 (mapcar (lambda (input) (iref input index)) inputs))))))))
 
-(defmethod evaluate ((reduction lazy-reduce))
-  (let* ((inputs (mapcar #'evaluate (inputs reduction)))
-         (k (length inputs)))
-    (make-simple-immediate
-     (shape reduction)
-     (element-type reduction)
-     (lambda (index)
-       (labels ((divide-and-conquer (range)
-                  (if (size-one-range-p range)
-                      (values-list
-                       (mapcar (lambda (input)
-                                 (iref input (cons (range-start range) index)))
-                               inputs))
-                      (multiple-value-bind (left right)
-                          (split-range range)
-                        (values-list
-                         (subseq
-                          (multiple-value-list
-                           (multiple-value-call (operator reduction)
-                             (divide-and-conquer left)
-                             (divide-and-conquer right)))
-                          0 k))))))
-         (nth
-          (value-n reduction)
-          (multiple-value-list
-           (divide-and-conquer (first (shape-ranges (shape (first inputs))))))))))))
-
 (defmethod evaluate ((lazy-fuse lazy-fuse))
   (let ((inputs (mapcar #'evaluate (inputs lazy-fuse))))
     (make-simple-immediate
