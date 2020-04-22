@@ -17,7 +17,8 @@
                  `(etypecase array
                     ,@(loop for ntype across ntypes
                             collect
-                            `((array ,(%ntype-type-specifier ntype)) ',ntype))))))
+                            `((array ,(%ntype-type-specifier ntype)) ',ntype))
+                    (array (ntype (array-element-type array)))))))
     (body)))
 
 (defun make-rank-zero-array (value)
