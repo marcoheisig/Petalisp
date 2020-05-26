@@ -274,9 +274,19 @@
       (empty-array)
       (make-instance 'array-immediate
         :shape (shape array)
-        :storage array
+        :storage (simplify-array array)
         :reusablep reusablep
         :ntype (petalisp.type-inference:array-element-ntype array))))
+
+(defun simplify-array (array)
+  (if (typep array 'simple-array)
+      array
+      (let ((copy (make-array (array-dimensions array)
+                              :element-type (array-element-type array))))
+        (loop for index below (array-total-size array) do
+          (setf (row-major-aref copy index)
+                (row-major-aref array index)))
+        copy)))
 
 (defun make-range-immediate (range)
   (if (size-one-range-p range)
