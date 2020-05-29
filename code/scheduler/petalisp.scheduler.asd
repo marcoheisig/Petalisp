@@ -4,11 +4,13 @@
 
   :depends-on
   ("petalisp.core"
-   "petalisp.ir")
+   "petalisp.ir"
+   "atomics")
 
   :serial t
   :components
   ((:file "packages")
+   (:file "work-stealing-deque")
    (:file "slice")
    (:file "task")
    (:file "scheduler")))
