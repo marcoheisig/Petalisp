@@ -14,7 +14,7 @@
   (top 0 :type fixnum)
   (circular-array (make-circular-array 0) :type circular-array))
 
-(defun work-stealing-deque-push-bottom (work-stealing-deque value)
+(defun work-stealing-deque-push (work-stealing-deque value)
   (declare (work-stealing-deque work-stealing-deque))
   (let* ((bottom (work-stealing-deque-bottom work-stealing-deque))
          (top (work-stealing-deque-top work-stealing-deque))
@@ -28,7 +28,7 @@
     (incf (work-stealing-deque-bottom work-stealing-deque))
     value))
 
-(defun work-stealing-deque-pop-bottom (work-stealing-deque)
+(defun work-stealing-deque-pop (work-stealing-deque)
   (declare (work-stealing-deque work-stealing-deque))
   (let* ((ca (work-stealing-deque-circular-array work-stealing-deque))
          (bottom (decf (work-stealing-deque-bottom work-stealing-deque)))
