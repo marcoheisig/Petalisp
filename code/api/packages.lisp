@@ -17,7 +17,8 @@
    #:document-setf-expander
    #:document-structure
    #:document-type
-   #:document-variable)
+   #:document-variable
+   #:defalias)
 
   (:export
 

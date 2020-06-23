@@ -20,6 +20,9 @@
    #:document-variable
    #:document-variables
 
+   ;; defalias.lisp
+   #:defalias
+
    ;; extended-euclid.lisp
    #:extended-euclid
 

@@ -10,6 +10,7 @@
   :components
   ((:file "packages")
    (:file "documentation")
+   (:file "defalias")
    (:file "identical")
    (:file "memoization")
    (:file "extended-euclid")
