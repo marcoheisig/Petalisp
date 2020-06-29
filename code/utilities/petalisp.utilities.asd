@@ -11,6 +11,7 @@
   ((:file "packages")
    (:file "documentation")
    (:file "defalias")
+   (:file "bitfield")
    (:file "identical")
    (:file "memoization")
    (:file "extended-euclid")
