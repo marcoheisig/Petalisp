@@ -2,9 +2,6 @@
 
 (in-package #:petalisp.utilities)
 
-(deftype bitfield ()
-  '(and fixnum unsigned-byte))
-
 (defconstant +bitfield-max-bits+
   (1- (integer-length most-positive-fixnum)))
 

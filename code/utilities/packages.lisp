@@ -20,6 +20,9 @@
    #:document-variable
    #:document-variables
 
+   ;; bitfield.lisp
+   #:define-bitfield
+
    ;; defalias.lisp
    #:defalias
 
