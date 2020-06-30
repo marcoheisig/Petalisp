@@ -131,6 +131,9 @@ form (SLOT-NAME TYPE), this macro defines the following functions:
 
 3. A reader function named {NAME}-{SLOT-NAME} for each slot.
 
+In addition to these functions, NAME is defined as a suitable subtype
+of (and unsigned-byte fixnum).
+
 Currently this macro supports boolean, unsigned-byte and signed-byte slots.
 
  Example:
@@ -178,13 +181,14 @@ Currently this macro supports boolean, unsigned-byte and signed-byte slots.
                    (symbol-package name))))
     (assert (<= *bitfield-position* +bitfield-max-bits+))
     `(progn
+       (deftype ,name () '(unsigned-byte ,*bitfield-position*))
        ;; Define all slot readers.
        ,@(loop for slot in slots
                collect
                `(declaim (inline ,(bitfield-slot-reader slot)))
                collect
                `(defun ,(bitfield-slot-reader slot) (,name)
-                  (declare (type (unsigned-byte ,*bitfield-position*) ,name))
+                  (declare (,name ,name))
                   ,(bitfield-slot-unpack
                     slot
                     `(ldb (byte ,(bitfield-slot-size slot)
@@ -197,7 +201,7 @@ Currently this macro supports boolean, unsigned-byte and signed-byte slots.
                                collect
                                `(,(bitfield-slot-name slot)
                                  (,(bitfield-slot-reader slot) ,name))))
-         (declare (type (unsigned-byte ,*bitfield-position*) ,name))
+         (declare (,name ,name))
          (logior
           ,@(loop for slot in slots
                   collect
