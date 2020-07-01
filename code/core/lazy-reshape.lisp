@@ -5,10 +5,34 @@
 (defgeneric lazy-reshape (input shape transformation)
   (:argument-precedence-order transformation shape input))
 
-;;; Optimization:  Compose consecutive references.
-(defmethod lazy-reshape ((lazy-reshape lazy-reshape)
-                        (shape shape)
-                        (transformation transformation))
+;;; Ensure that the special variable *RELEVANT-SHAPE* carries the value of
+;;; the referenced input shape within each call to LAZY-RESHAPE.
+(defvar *relevant-shape*)
+
+(defmethod lazy-reshape :around
+    ((lazy-array lazy-array)
+     (shape shape)
+     (transformation transformation))
+  (let ((*relevant-shape* (transform shape transformation)))
+    (call-next-method)))
+
+;;; Error handling.
+(defmethod lazy-reshape :before
+    ((lazy-array lazy-array)
+     (shape shape)
+     (transformation transformation))
+  (let ((input-shape (shape lazy-array)))
+    (unless (and (= (shape-rank *relevant-shape*)
+                    (shape-rank input-shape))
+                 (subshapep *relevant-shape* input-shape))
+      (error "~@<Invalid reference to ~S with shape ~S and transformation ~S.~:@>"
+             lazy-array shape transformation))))
+
+;;; Optimization: Compose consecutive references.
+(defmethod lazy-reshape
+    ((lazy-reshape lazy-reshape)
+     (shape shape)
+     (transformation transformation))
   (lazy-reshape
    (input lazy-reshape)
    shape
@@ -16,7 +40,7 @@
     (transformation lazy-reshape)
     transformation)))
 
-;;; Optimization:  Drop references with no effect.
+;;; Optimization: Drop references with no effect.
 (defmethod lazy-reshape
     ((lazy-array lazy-array)
      (shape shape)
@@ -29,24 +53,24 @@
       lazy-array
       (call-next-method)))
 
+;;; Optimization: Skip references to lazy fuse operations in case they fall
+;;; entirely within a single input of that fusion.
+(defmethod lazy-reshape
+    ((lazy-fuse lazy-fuse)
+     (shape shape)
+     (transformation transformation))
+  (loop for input in (inputs lazy-fuse)
+        when (subshapep *relevant-shape* (shape input)) do
+          (return-from lazy-reshape
+            (lazy-reshape input shape transformation)))
+  (call-next-method))
+
 ;;; Handle empty shapes.
 (defmethod lazy-reshape
     ((lazy-array lazy-array)
      (null null)
      (transformation transformation))
   (empty-array))
-
-;;; Error handling.
-(defmethod lazy-reshape :before
-    ((lazy-array lazy-array)
-     (shape shape)
-     (transformation transformation))
-  (let ((relevant-shape (transform shape transformation))
-        (input-shape (shape lazy-array)))
-    (unless (and (= (shape-rank relevant-shape) (shape-rank input-shape))
-                 (subshapep relevant-shape input-shape))
-      (error "~@<Invalid reference to ~S with shape ~S and transformation ~S.~:@>"
-             lazy-array shape transformation))))
 
 ;;; Default:  Construct a new reference.
 (defmethod lazy-reshape ((lazy-array lazy-array)
