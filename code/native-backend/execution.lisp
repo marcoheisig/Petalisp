@@ -83,20 +83,23 @@
                     (setf end new-end)
                     vector))))))))
 
+(defun invalid-kernel-function (&rest args)
+  (declare (ignore args))
+  (error "Reference to uninitialized kernel function."))
+
 (defun kernel-functions (kernel size)
-  (let ((vector (make-array size))
+  (let ((vector (make-array size :initial-element #'invalid-kernel-function))
         (current 0))
     (flet ((register-function (function)
              ;; If FUNCTION is a symbol, it is part of the kernel blueprint
              ;; and we don't need to pass it explicitly.
              (unless (symbolp function)
-               (unless (find function vector :test #'eq :end current)
-                 (cond ((= current size)
-                        (return-from kernel-functions
-                          (kernel-functions kernel (* 5 size))))
-                       (t
-                        (setf (svref vector current) function)
-                        (incf current)))))))
+               (cond ((= current size)
+                      (return-from kernel-functions
+                        (kernel-functions kernel (* 5 size))))
+                     (t
+                      (setf (svref vector current) function)
+                      (incf current))))))
       (map-instructions
        (lambda (instruction)
          (when (call-instruction-p instruction)

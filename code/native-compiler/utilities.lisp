@@ -30,11 +30,17 @@
 (defun i+ (&rest expressions)
   (trivia:match (remove 0 expressions)
     ((list) 0)
-    ((list expression) expression)
-    (expressions `(fixnum-+ ,@expressions))))
+    ((list subexpression) subexpression)
+    (subexpressions `(fixnum-+ ,@subexpressions))))
+
+(defun ratiop (x)
+  (and (rationalp x)
+       (not (integerp x))))
 
 (defun i* (&rest expressions)
-  (trivia:match (remove 1 expressions)
+  ;; We filter out any occurring rational numbers, because rational numbers
+  ;; can only occur in trivial cases when one of the other factors is zero.
+  (trivia:match (remove 1 (substitute-if 1 #'ratiop expressions))
     ((list) 1)
     ((list expression) expression)
     ((trivia:guard expressions (member 0 expressions)) 0)
