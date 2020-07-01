@@ -37,17 +37,25 @@
     value))
 
 (defmethod lisp-datum-from-immediate ((simple-immediate simple-immediate))
-  (with-accessors ((shape shape) (table table)) simple-immediate
-    (if (zerop (rank shape))
-        (gethash '() table)
-        (let ((array (make-array (mapcar #'range-size (shape-ranges shape)))))
-          (map-shape
-           (lambda (index)
-             (setf (apply #'aref array index)
-                   (gethash index table)))
-           shape)
-          array))))
+  (let ((array (lisp-array-from-simple-immediate simple-immediate)))
+    (if (zerop (array-rank array))
+        (aref array)
+        array)))
+
+(defun lisp-array-from-simple-immediate (simple-immediate)
+  (with-accessors ((shape shape)
+                   (table table)
+                   (element-type element-type))
+      simple-immediate
+    (let ((array (make-array (mapcar #'range-size (shape-ranges shape))
+                             :element-type element-type)))
+      (map-shape
+       (lambda (index)
+         (setf (apply #'aref array index)
+               (gethash index table)))
+       shape)
+      array)))
 
 (defmethod replace-lazy-array ((instance lazy-array) (replacement simple-immediate))
-  (change-class instance 'simple-immediate
-    :table (table replacement)))
+  (change-class instance 'array-immediate
+    :storage (lisp-array-from-simple-immediate replacement)))
