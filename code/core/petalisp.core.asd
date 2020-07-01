@@ -5,6 +5,7 @@
   :depends-on
   ("alexandria"
    "trivial-macroexpand-all"
+   "trivial-garbage"
    "bordeaux-threads"
    "lparallel"
    "trivia"

@@ -262,21 +262,32 @@
 ;;;
 ;;; Immediate Constructors
 
+(defvar *scalar-immediate-cache*
+  (trivial-garbage:make-weak-hash-table :weakness :value))
+
+(defmacro scalar-immediate-cache (key)
+  `(values (gethash ,key *scalar-immediate-cache*)))
+
 (defun make-scalar-immediate (object)
-  (make-instance 'array-immediate
-    :shape (~)
-    :ntype (petalisp.type-inference:ntype-of object)
-    :storage (petalisp.type-inference:make-rank-zero-array object)))
+  (or (scalar-immediate-cache object)
+      (setf (scalar-immediate-cache object)
+            (make-instance 'array-immediate
+              :shape (~)
+              :ntype (petalisp.type-inference:ntype-of object)
+              :storage (petalisp.type-inference:make-rank-zero-array object)))))
 
 (defun make-array-immediate (array &optional reusablep)
   (check-type array array)
-  (if (zerop (array-total-size array))
-      (empty-array)
-      (make-instance 'array-immediate
-        :shape (shape array)
-        :storage (simplify-array array)
-        :reusablep reusablep
-        :ntype (petalisp.type-inference:array-element-ntype array))))
+  (cond ((zerop (array-total-size array))
+         (empty-array))
+        ((zerop (array-rank array))
+         (make-scalar-immediate (aref array)))
+        (t
+         (make-instance 'array-immediate
+           :shape (shape array)
+           :storage (simplify-array array)
+           :reusablep reusablep
+           :ntype (petalisp.type-inference:array-element-ntype array)))))
 
 (defun simplify-array (array)
   (if (typep array 'simple-array)
