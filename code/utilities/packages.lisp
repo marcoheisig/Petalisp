@@ -47,5 +47,12 @@
    #:prime-factors
    #:primep
 
+   ;; weak-set.lisp
+   #:weak-set
+   #:weak-set-p
+   #:map-weak-set
+   #:weak-set-size
+   #:weak-set-add
+
    ;; with-collectors.lisp
    #:with-collectors))

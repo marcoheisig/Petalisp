@@ -4,7 +4,9 @@
 
   :depends-on
   ("alexandria"
-   "trivia")
+   "atomics"
+   "trivia"
+   "trivial-garbage")
 
   :serial t
   :components
@@ -17,4 +19,5 @@
    (:file "extended-euclid")
    (:file "float-bits")
    (:file "prime-factors")
+   (:file "weak-set")
    (:file "with-collectors")))
