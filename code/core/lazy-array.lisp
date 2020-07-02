@@ -60,8 +60,10 @@
   ())
 
 (defclass non-empty-array (lazy-array)
-  ((%shape :initarg :shape :reader shape :reader shape)
-   (%ntype :initarg :ntype :reader element-ntype))
+  ((%shape :initarg :shape :reader shape)
+   (%ntype :initarg :ntype :reader element-ntype)
+   (%users :reader users
+           :initform (petalisp.utilities:make-weak-set :max-size 14 :min-size 4)))
   (:default-initargs
    :shape (~)
    :ntype (petalisp.type-inference:ntype 't)))
@@ -83,7 +85,7 @@
   ())
 
 (defclass non-empty-non-immediate (non-empty-array non-immediate)
-  ((%users :initform (petalisp.utilities:make-weak-set) :reader users)))
+  ())
 
 (defclass array-immediate (non-empty-immediate)
   ((%reusablep :initarg :reusablep :initform nil :reader reusablep)
@@ -261,7 +263,7 @@
 (defmethod add-to-users ((user lazy-array) (array t))
   (values))
 
-(defmethod add-to-users ((user lazy-array) (array non-empty-non-immediate))
+(defmethod add-to-users ((user lazy-array) (array non-empty-array))
   (petalisp.utilities:weak-set-add (users array) user))
 
 (defmethod number-of-users ((array t))
@@ -273,7 +275,7 @@
 (defmethod map-users ((function function) (array t))
   (values))
 
-(defmethod map-users ((function function) (array non-empty-non-immediate))
+(defmethod map-users ((function function) (array non-empty-array))
   (petalisp.utilities:map-weak-set function (users array)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

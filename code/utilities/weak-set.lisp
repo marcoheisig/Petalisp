@@ -9,11 +9,17 @@
 
 (defstruct (weak-set
             (:constructor make-weak-set
-                (&key (test #'eql)
+                (&key (test #'eql) (max-size nil) (min-size 1)
                  &aux (test (coerce test 'function))))
             (:predicate weak-set-p)
             (:copier nil))
   (test nil :type function :read-only t)
+  ;; If MAX-SIZE is non-null, it denotes the length of the weak set at
+  ;; which the set starts to discard all but its MIN-SIZE youngest items.
+  ;; This way, the size of the weak set can be bounded at the expense of
+  ;; the set not being precise anymore.
+  (max-size nil :type (or null unsigned-byte) :read-only t)
+  (min-size nil :type (integer 1 *) :read-only t)
   (pointers '()))
 
 (defun cleanup-weak-set (weak-set)
@@ -52,11 +58,25 @@
   (declare (weak-set weak-set))
   (assert (not (null item)))
   (with-accessors ((pointers weak-set-pointers)
+                   (min-size weak-set-min-size)
+                   (max-size weak-set-max-size)
                    (test weak-set-test))
       weak-set
     (loop for old = pointers
-          for new = (adjoin (trivial-garbage:make-weak-pointer item) old
-                            :key #'trivial-garbage:weak-pointer-value
-                            :test test)
-          until (or (eq old new)
-                    (atomics:cas pointers old new)))))
+          for cleanup = nil
+          for size fixnum = 0
+          for new = (progn
+                      (loop for weak-pointer in old
+                            for object = (trivial-garbage:weak-pointer-value weak-pointer) do
+                              (if (null object)
+                                  (setf cleanup t)
+                                  (if (funcall test object item)
+                                      (return-from weak-set-add item)
+                                      (incf size))))
+                      (if (or (not max-size)
+                              (< size max-size))
+                          (cons (trivial-garbage:make-weak-pointer item)
+                                old)
+                          (cons (trivial-garbage:make-weak-pointer item)
+                                (subseq old 0 (1- min-size)))))
+          until (atomics:cas pointers old new))))
