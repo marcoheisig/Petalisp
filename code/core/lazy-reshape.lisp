@@ -82,6 +82,10 @@
     :shape shape
     :transformation (add-transformation-constraints shape transformation)))
 
+;;; We can turn each axis of the resulting shape that consists of a single
+;;; element into an additional input constraint for the transformation.
+;;; This augmentation is important, because the additional constraints can
+;;; turn a previously non-invertible transformation invertible.
 (defun add-transformation-constraints (shape transformation)
   (if (loop for range in (shape-ranges shape)
             for mask-entry across (transformation-input-mask transformation)
