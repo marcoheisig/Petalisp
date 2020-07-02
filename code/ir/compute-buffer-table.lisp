@@ -60,7 +60,7 @@
 
 (defmethod visit-node ((node lazy-array))
   ;; Rule 2.
-  (case (refcount node)
+  (case (number-of-users node)
     ((0 1) (values t nil))
     (otherwise
      (multiple-value-bind (value present-p) (buffer-table-entry node)

@@ -50,6 +50,7 @@
    ;; weak-set.lisp
    #:weak-set
    #:weak-set-p
+   #:make-weak-set
    #:map-weak-set
    #:weak-set-size
    #:weak-set-add

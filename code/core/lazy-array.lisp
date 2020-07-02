@@ -30,13 +30,17 @@
 
 (defgeneric operator (array))
 
-(defgeneric refcount (array))
-
-(defgeneric increment-refcount (array))
-
 (defgeneric lazy-array (array))
 
 (defgeneric replace-lazy-array (lazy-array replacement))
+
+(defgeneric users (array))
+
+(defgeneric add-to-users (user array))
+
+(defgeneric number-of-users (array))
+
+(defgeneric map-users (function array))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -62,6 +66,7 @@
    :shape (~)
    :ntype (petalisp.type-inference:ntype 't)))
 
+;;; Turn any supplied :element-type argument into a suitable :ntype.
 (defmethod shared-initialize
     ((instance non-empty-array) slot-names
      &rest args
@@ -78,7 +83,7 @@
   ())
 
 (defclass non-empty-non-immediate (non-empty-array non-immediate)
-  ((%refcount :initform 0 :reader refcount :accessor %refcount)))
+  ((%users :initform (petalisp.utilities:make-weak-set) :reader users)))
 
 (defclass array-immediate (non-empty-immediate)
   ((%reusablep :initarg :reusablep :initform nil :reader reusablep)
@@ -112,7 +117,7 @@
     ((non-immediate non-immediate) &key &allow-other-keys)
   (let ((computablep t))
     (loop for input in (inputs non-immediate) do
-      (increment-refcount input)
+      (add-to-users non-immediate input)
       (unless (computablep input)
         (setf computablep nil)))
     (setf (%computablep non-immediate)
@@ -232,16 +237,6 @@
 (defun input (object)
   (destructuring-bind (input) (inputs object) input))
 
-(defmethod refcount ((object t))
-  0)
-
-(defmethod increment-refcount ((object t))
-  (declare (ignore object))
-  (values))
-
-(defmethod increment-refcount ((non-empty-non-immediate non-empty-non-immediate))
-  (incf (%refcount non-empty-non-immediate)))
-
 (defmethod print-object ((empty-array empty-array) stream)
   (print-unreadable-object (empty-array stream :type t :identity t)))
 
@@ -257,6 +252,29 @@
    lazy-array
    (transform (shape lazy-array) transformation)
    (invert-transformation transformation)))
+
+;;; Users
+
+(defmethod users ((object t))
+  nil)
+
+(defmethod add-to-users ((user lazy-array) (array t))
+  (values))
+
+(defmethod add-to-users ((user lazy-array) (array non-empty-non-immediate))
+  (petalisp.utilities:weak-set-add (users array) user))
+
+(defmethod number-of-users ((array t))
+  0)
+
+(defmethod number-of-users ((array non-empty-non-immediate))
+  (petalisp.utilities:weak-set-size (users array)))
+
+(defmethod map-users ((function function) (array t))
+  (values))
+
+(defmethod map-users ((function function) (array non-empty-non-immediate))
+  (petalisp.utilities:map-weak-set function (users array)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

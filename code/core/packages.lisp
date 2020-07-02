@@ -102,7 +102,8 @@
    #:value-n
    #:operator
    #:storage
-   #:refcount
+   #:map-users
+   #:number-of-users
    #:lazy-array
    #:lazy-map
    #:lazy-reshape
