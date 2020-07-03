@@ -132,11 +132,23 @@
         (t operator)))
 
 (defmethod compute-value
-    ((lazy-map lazy-map)
+    ((lazy-map single-value-lazy-map)
+     (iteration-space shape)
+     (transformation transformation))
+  (cons 0
+        (make-single-value-call-instruction
+         (simplify-operator (operator lazy-map))
+         (loop for input in (inputs lazy-map)
+               collect
+               (compute-value input iteration-space transformation)))))
+
+(defmethod compute-value
+    ((lazy-map multiple-value-lazy-map)
      (iteration-space shape)
      (transformation transformation))
   (cons (value-n lazy-map)
-        (make-call-instruction
+        (make-multiple-value-call-instruction
+         (number-of-values lazy-map)
          (simplify-operator (operator lazy-map))
          (loop for input in (inputs lazy-map)
                collect

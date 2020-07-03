@@ -131,7 +131,9 @@
         (α #'coerce value (element-type input)))))
 
 (defmethod input-gradient
-    ((lazy-map lazy-map) (output-gradient lazy-array) index)
+    ((lazy-map single-value-lazy-map)
+     (output-gradient lazy-array)
+     index)
   (with-accessors ((inputs inputs)
                    (operator operator)
                    (shape shape)) lazy-map
@@ -144,9 +146,8 @@
         (lambda (constant)
           (reshape constant shape))
         (lambda (ntypes function inputs)
-          (make-instance 'lazy-map
+          (make-instance 'single-value-lazy-map
             :operator function
-            :value-n 0
             :inputs inputs
             :shape shape
             :ntype (elt ntypes 0)))

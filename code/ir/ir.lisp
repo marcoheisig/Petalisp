@@ -82,9 +82,19 @@
 ;;; values that are the result of other instructions.
 (defstruct (call-instruction
             (:include instruction)
-            (:predicate call-instruction-p)
-            (:constructor make-call-instruction (operator inputs)))
+            (:predicate call-instruction-p))
   (operator nil :type (or function symbol)))
+
+(defstruct (single-value-call-instruction
+            (:include call-instruction)
+            (:constructor make-single-value-call-instruction
+                (operator inputs))))
+
+(defstruct (multiple-value-call-instruction
+            (:include call-instruction)
+            (:constructor make-multiple-value-call-instruction
+                (number-of-values operator inputs)))
+  (number-of-values nil :type (integer 0 (#.multiple-values-limit))))
 
 ;;; We call an instruction an iterating instruction, if its behavior
 ;;; directly depends on the current element of the iteration space.

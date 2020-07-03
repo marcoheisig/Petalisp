@@ -72,10 +72,11 @@
      (transformation transformation))
   (empty-array))
 
-;;; Default:  Construct a new reference.
-(defmethod lazy-reshape ((lazy-array lazy-array)
-                        (shape shape)
-                        (transformation transformation))
+;;; Default: Construct a new reference.
+(defmethod lazy-reshape
+    ((lazy-array lazy-array)
+     (shape shape)
+     (transformation transformation))
   (make-instance 'lazy-reshape
     :ntype (element-ntype lazy-array)
     :inputs (list lazy-array)

@@ -100,12 +100,15 @@
    #:input
    #:inputs
    #:value-n
+   #:number-of-values
    #:operator
    #:storage
    #:map-users
    #:number-of-users
    #:lazy-array
    #:lazy-map
+   #:single-value-lazy-map
+   #:multiple-value-lazy-map
    #:lazy-reshape
    #:lazy-fuse
    #:immediate

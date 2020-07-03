@@ -5,9 +5,9 @@
 (defun α (function &rest arrays)
   (multiple-value-bind (inputs shape)
       (broadcast-list-of-arrays arrays)
-    (lazy-map 1 shape function inputs)))
+    (single-value-lazy-map shape function inputs)))
 
 (defun α* (n-values function &rest arrays)
   (multiple-value-bind (inputs shape)
       (broadcast-list-of-arrays arrays)
-    (lazy-map n-values shape function inputs)))
+    (multiple-value-lazy-map n-values shape function inputs)))

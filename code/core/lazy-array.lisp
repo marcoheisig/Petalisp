@@ -26,6 +26,8 @@
 
 (defgeneric value-n (array))
 
+(defgeneric number-of-values (array))
+
 (defgeneric storage (array))
 
 (defgeneric operator (array))
@@ -47,7 +49,10 @@
 ;;; Classes
 
 (defclass lazy-array ()
-  ((%computable :initarg :computable :reader computablep :accessor %computablep)))
+  ((%computable
+    :initarg :computable
+    :reader computablep
+    :accessor %computablep)))
 
 (defclass immediate (lazy-array)
   ()
@@ -60,10 +65,15 @@
   ())
 
 (defclass non-empty-array (lazy-array)
-  ((%shape :initarg :shape :reader shape)
-   (%ntype :initarg :ntype :reader element-ntype)
-   (%users :reader users
-           :initform (petalisp.utilities:make-weak-set :max-size 14 :min-size 4)))
+  ((%shape
+    :initarg :shape
+    :reader shape)
+   (%ntype
+    :initarg :ntype
+    :reader element-ntype)
+   (%users
+    :reader users
+    :initform (petalisp.utilities:make-weak-set :max-size 14 :min-size 4)))
   (:default-initargs
    :shape (~)
    :ntype (petalisp.type-inference:ntype 't)))
@@ -88,28 +98,61 @@
   ())
 
 (defclass array-immediate (non-empty-immediate)
-  ((%reusablep :initarg :reusablep :initform nil :reader reusablep)
-   (%storage :initarg :storage :reader storage)))
+  ((%reusablep
+    :initarg :reusablep
+    :initform nil
+    :reader reusablep)
+   (%storage
+    :initarg :storage
+    :reader storage)))
 
 (defclass range-immediate (non-empty-immediate)
   ())
 
 (defclass lazy-map (non-empty-non-immediate)
-  ((%operator :initarg :operator :reader operator)
-   (%value-n :initarg :value-n :reader value-n :type (integer 0 #.multiple-values-limit))))
+  ((%operator
+    :initarg :operator
+    :reader operator
+    :type (or function symbol))))
+
+(defclass single-value-lazy-map (lazy-map)
+  ())
+
+(defclass multiple-value-lazy-map (lazy-map)
+  ((%number-of-values
+    :initarg :number-of-values
+    :reader number-of-values
+    :type (integer 0 (#.multiple-values-limit)))
+   (%value-n
+    :initarg :value-n
+    :reader value-n
+    :type (integer 0 (#.(1- multiple-values-limit))))
+   ;; The identity is a cons cell that is shared among all instances that
+   ;; are the result of mapping a multiple valued operator over some
+   ;; arguments.  It is later used to merge instances into a single kernel
+   ;; whenever possible.
+   (%identity
+    :initarg :identity
+    :reader identity-of
+    :type cons)))
 
 (defclass lazy-fuse (non-empty-non-immediate)
   ())
 
 (defclass lazy-reshape (non-empty-non-immediate)
-  ((%transformation :initarg :transformation :reader transformation)))
+  ((%transformation
+    :initarg :transformation
+    :reader transformation)))
 
 (defclass parameter (non-empty-immediate)
   ()
   (:default-initargs :computable nil :shape (~)))
 
 (defclass optional-parameter (parameter)
-  ((%value :initarg :value :initform nil :accessor optional-parameter-value)))
+  ((%value
+    :initarg :value
+    :initform nil
+    :accessor optional-parameter-value)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
