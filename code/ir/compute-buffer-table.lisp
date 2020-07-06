@@ -8,8 +8,11 @@
 ;;; in the buffer table:
 ;;;
 ;;; 1. The node is one of the root nodes.
+;;;
 ;;; 2. The node is referenced by multiple other nodes.
+;;;
 ;;; 3. The node is the target of a broadcasting reference.
+;;;
 ;;; 4. The node is an immediate node.
 ;;;
 ;;; These rules ensure that values that are used more than once reside in

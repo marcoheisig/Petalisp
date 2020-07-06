@@ -50,6 +50,8 @@
    #:map-buffers
    #:map-buffer-inputs
    #:map-buffer-outputs
+   #:map-buffer-load-instructions
+   #:map-buffer-store-instructions
    #:map-kernel-store-instructions
    #:map-kernel-load-instructions
    #:map-kernel-inputs
@@ -60,8 +62,8 @@
    ;; Accessors
    #:buffer-shape
    #:buffer-ntype
-   #:buffer-inputs
-   #:buffer-outputs
+   #:buffer-readers
+   #:buffer-writers
    #:buffer-executedp
    #:buffer-reusablep
    #:buffer-storage

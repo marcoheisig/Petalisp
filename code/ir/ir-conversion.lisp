@@ -52,15 +52,29 @@
      (lambda (iteration-space)
        (let ((kernel (compute-kernel root iteration-space)))
          (assign-instruction-numbers kernel)
-         ;; Update the inputs and outputs of all buffers to match the
-         ;; inputs and outputs of the corresponding kernels.
-         (map-kernel-inputs
-          (lambda (buffer)
-            (pushnew kernel (buffer-outputs buffer)))
+         ;; Update the readers of all referenced buffers.
+         (map-kernel-load-instructions
+          (lambda (load-instruction)
+            (let* ((buffer (load-instruction-buffer load-instruction))
+                   (found (assoc kernel (buffer-readers buffer))))
+              (etypecase found
+                (null
+                 (push (list kernel load-instruction)
+                       (buffer-readers buffer)))
+                (cons
+                 (push load-instruction (cdr found))))))
           kernel)
-         (map-kernel-outputs
-          (lambda (buffer)
-            (pushnew kernel (buffer-inputs buffer)))
+         ;; Update the writers of all referenced buffers.
+         (map-kernel-store-instructions
+          (lambda (store-instruction)
+            (let* ((buffer (store-instruction-buffer store-instruction))
+                   (found (assoc kernel (buffer-writers buffer))))
+              (etypecase found
+                (null
+                 (push (list kernel store-instruction)
+                       (buffer-writers buffer)))
+                (cons
+                 (push store-instruction (cdr found))))))
           kernel)))
      root)))
 

@@ -13,10 +13,12 @@
   (shape nil :type shape)
   ;; The type code of all elements stored in the buffer.
   (ntype nil)
-  ;; The list of kernels that store into this buffer.
-  (inputs '() :type list)
-  ;; The list of kernels that load from this buffer.
-  (outputs '() :type list)
+  ;; An alist whose keys are kernels writing to this buffer, and whose
+  ;; values are all store instructions from that kernel into this buffer.
+  (writers '() :type list)
+  ;; An alist whose keys are kernels reading from this buffer, and whose
+  ;; values are all load instructions from that kernel into this buffer.
+  (readers '() :type list)
   ;; Whether the buffer has already been executed.
   (executedp nil :type boolean)
   ;; Whether the buffer can be reused after its last use.
@@ -112,7 +114,8 @@
 (defstruct (iref-instruction
             (:include iterating-instruction)
             (:predicate iref-instruction-p)
-            (:constructor make-iref-instruction (transformation))))
+            (:constructor make-iref-instruction
+                (transformation))))
 
 ;;; A load instruction represents a read from main memory.  It returns a
 ;;; single value --- the entry of the buffer storage at the location
@@ -121,7 +124,8 @@
 (defstruct (load-instruction
             (:include iterating-instruction)
             (:predicate load-instruction-p)
-            (:constructor make-load-instruction (buffer transformation)))
+            (:constructor make-load-instruction
+                (buffer transformation)))
   (buffer nil :type buffer))
 
 ;;; A store instruction represents a write to main memory.  It stores its
@@ -131,8 +135,9 @@
 (defstruct (store-instruction
             (:include iterating-instruction)
             (:predicate store-instruction-p)
-            (:constructor make-store-instruction (value buffer transformation
-                                                  &aux (inputs (list value)))))
+            (:constructor make-store-instruction
+                (value buffer transformation
+                 &aux (inputs (list value)))))
   (buffer nil :type buffer))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -192,15 +197,31 @@
 (defun map-buffer-inputs (function buffer)
   (declare (function function)
            (buffer buffer))
-  (loop for kernel in (buffer-inputs buffer) do
+  (loop for (kernel . nil) in (buffer-writers buffer) do
     (funcall function kernel)))
 
 (declaim (inline map-buffer-outputs))
 (defun map-buffer-outputs (function buffer)
   (declare (function function)
            (buffer buffer))
-  (loop for kernel in (buffer-outputs buffer) do
+  (loop for (kernel . nil) in (buffer-readers buffer) do
     (funcall function kernel)))
+
+(declaim (inline map-buffer-load-instructions))
+(defun map-buffer-load-instructions (function buffer)
+  (declare (function function)
+           (buffer buffer))
+  (loop for (nil . load-instructions) in (buffer-readers buffer) do
+    (loop for load-instruction in load-instructions do
+      (funcall function load-instruction))))
+
+(declaim (inline map-buffer-store-instructions))
+(defun map-buffer-store-instructions (function buffer)
+  (declare (function function)
+           (buffer buffer))
+  (loop for (nil . store-instructions) in (buffer-writers buffer) do
+    (loop for store-instruction in store-instructions do
+      (funcall function store-instruction))))
 
 (declaim (inline map-kernel-store-instructions))
 (defun map-kernel-store-instructions (function kernel)
@@ -277,29 +298,29 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Rotating
+;;; Transforming Kernels and Buffers
 
-(declaim (inline transform-instruction-input))
-(defun transform-instruction-input (instruction transformation)
-  (declare (instruction instruction)
-           (transformation transformation))
-  (when (iterating-instruction-p instruction)
+(defgeneric transform-instruction-input (instruction transformation)
+  (:method ((instruction instruction)
+            (transformation transformation))
+    (values))
+  (:method ((instruction iterating-instruction)
+            (transformation transformation))
     (setf (instruction-transformation instruction)
           (compose-transformations
            (instruction-transformation instruction)
-           transformation)))
-  instruction)
+           transformation))))
 
-(declaim (inline transform-instruction-output))
-(defun transform-instruction-output (instruction transformation)
-  (declare (instruction instruction)
-           (transformation transformation))
-  (when (iterating-instruction-p instruction)
+(defgeneric transform-instruction-output (instruction transformation)
+  (:method ((instruction instruction)
+            (transformation transformation))
+    (values))
+  (:method ((instruction iterating-instruction)
+            (transformation transformation))
     (setf (instruction-transformation instruction)
           (compose-transformations
            transformation
-           (instruction-transformation instruction))))
-  instruction)
+           (instruction-transformation instruction)))))
 
 (defun transform-buffer (buffer transformation)
   (declare (buffer buffer)
@@ -308,21 +329,13 @@
         (transform (buffer-shape buffer) transformation))
   ;; After rotating a buffer, rotate all loads and stores referencing the
   ;; buffer to preserve the semantics of the IR.
-  (map-buffer-inputs
-   (lambda (kernel)
-     (map-kernel-store-instructions
-      (lambda (store-instruction)
-        (when (eq (store-instruction-buffer store-instruction) buffer)
-          (transform-instruction-output store-instruction transformation)))
-      kernel))
+  (map-buffer-store-instructions
+   (lambda (store-instruction)
+     (transform-instruction-output store-instruction transformation))
    buffer)
-  (map-buffer-outputs
-   (lambda (kernel)
-     (map-kernel-load-instructions
-      (lambda (load-instruction)
-        (when (eq (load-instruction-buffer load-instruction) buffer)
-          (transform-instruction-output load-instruction transformation)))
-      kernel))
+  (map-buffer-load-instructions
+   (lambda (load-instruction)
+     (transform-instruction-output load-instruction transformation))
    buffer)
   buffer)
 

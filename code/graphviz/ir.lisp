@@ -39,13 +39,17 @@
     ((graph ir-graph)
      (edge input-edge)
      (buffer petalisp.ir:buffer))
-  (petalisp.ir:buffer-inputs buffer))
+  (petalisp.utilities:with-collectors ((kernels collect))
+    (petalisp.ir:map-buffer-inputs #'collect buffer)
+    (kernels)))
 
 (defmethod graphviz-outgoing-edge-targets
     ((graph ir-graph)
      (edge output-edge)
      (buffer petalisp.ir:buffer))
-  (petalisp.ir:buffer-outputs buffer))
+  (petalisp.utilities:with-collectors ((kernels collect))
+    (petalisp.ir:map-buffer-outputs #'collect buffer)
+    (kernels)))
 
 (defmethod graphviz-incoming-edge-origins
     ((graph ir-graph)

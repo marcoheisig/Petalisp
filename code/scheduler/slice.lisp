@@ -49,7 +49,8 @@
          (lambda (buffer)
            (unless (or (assoc buffer active-buffers)
                        (member buffer allocations))
-             (push (cons buffer (petalisp.ir:buffer-outputs buffer)) active-buffers)
+             (push (cons buffer (mapcar #'car (petalisp.ir:buffer-readers buffer)))
+                   active-buffers)
              (push buffer allocations)))
          kernel))
       (%make-slice allocations kernels deallocations active-buffers))))
@@ -60,7 +61,7 @@
     (petalisp.ir:map-buffers-and-kernels
      (lambda (buffer)
        (when (leaf-buffer-p buffer)
-         (push (cons buffer (petalisp.ir:buffer-outputs buffer))
+         (push (cons buffer (mapcar #'car (petalisp.ir:buffer-readers buffer)))
                active-buffers)))
      (lambda (kernel)
        (when (kernel-ready-p kernel)
@@ -91,4 +92,4 @@
 
 (defun leaf-buffer-p (buffer)
   (null
-   (petalisp.ir:buffer-inputs buffer)))
+   (petalisp.ir:buffer-writers buffer)))
