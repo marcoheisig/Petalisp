@@ -25,7 +25,9 @@
 (defun jacobi (u f h &optional (iterations 1))
   "Iteratively solve the Poisson equation -Δu = f for a given uniform grid
   with spacing h, using the Jacobi scheme."
-  (let ((interior (interior u)))
+  (let* ((u (lazy-array u))
+         (f (lazy-array f))
+         (interior (interior u)))
     (ecase (rank u)
       (1
        (loop repeat iterations do
@@ -101,31 +103,34 @@
 (defun rbgs (u f h &optional (iterations 1))
   "Iteratively solve the Poisson equation -Δu = f for a given uniform grid
   with spacing h, using the Red-Black Gauss-Seidel scheme."
-  (let ((stencil (ecase (rank u)
-                   (1 (lambda (space)
-                        (α #'* (float 1/2)
-                           (α #'+
-                              (reshape (reshape u (τ (i) ((1+ i)))) space)
-                              (reshape (reshape u (τ (i) ((1- i)))) space)
-                              (reshape (α #'* (* h h) f) space)))))
-                   (2 (lambda (space)
-                        (α #'* (float 1/4)
-                           (α #'+
-                              (reshape (reshape u (τ (i j) ((1+ i) j))) space)
-                              (reshape (reshape u (τ (i j) ((1- i) j))) space)
-                              (reshape (reshape u (τ (i j) (i (1+ j)))) space)
-                              (reshape (reshape u (τ (i j) (i (1- j)))) space)
-                              (reshape (α #'* (* h h) f) space)))))
-                   (3 (lambda (space)
-                        (α #'* (float 1/6)
-                           (α #'+
-                              (reshape (reshape u (τ (i j k) ((1+ i) j k))) space)
-                              (reshape (reshape u (τ (i j k) ((1- i) j k))) space)
-                              (reshape (reshape u (τ (i j k) (i (1+ j) k))) space)
-                              (reshape (reshape u (τ (i j k) (i (1- j) k))) space)
-                              (reshape (reshape u (τ (i j k) (i j (1+ k)))) space)
-                              (reshape (reshape u (τ (i j k) (i j (1- k)))) space)
-                              (reshape (α #'* (* h h) f) space))))))))
+  (let* ((u (lazy-array u))
+         (f (lazy-array f))
+         (stencil
+           (ecase (rank u)
+             (1 (lambda (space)
+                  (α #'* (float 1/2)
+                     (α #'+
+                        (reshape (reshape u (τ (i) ((1+ i)))) space)
+                        (reshape (reshape u (τ (i) ((1- i)))) space)
+                        (reshape (α #'* (* h h) f) space)))))
+             (2 (lambda (space)
+                  (α #'* (float 1/4)
+                     (α #'+
+                        (reshape (reshape u (τ (i j) ((1+ i) j))) space)
+                        (reshape (reshape u (τ (i j) ((1- i) j))) space)
+                        (reshape (reshape u (τ (i j) (i (1+ j)))) space)
+                        (reshape (reshape u (τ (i j) (i (1- j)))) space)
+                        (reshape (α #'* (* h h) f) space)))))
+             (3 (lambda (space)
+                  (α #'* (float 1/6)
+                     (α #'+
+                        (reshape (reshape u (τ (i j k) ((1+ i) j k))) space)
+                        (reshape (reshape u (τ (i j k) ((1- i) j k))) space)
+                        (reshape (reshape u (τ (i j k) (i (1+ j) k))) space)
+                        (reshape (reshape u (τ (i j k) (i (1- j) k))) space)
+                        (reshape (reshape u (τ (i j k) (i j (1+ k)))) space)
+                        (reshape (reshape u (τ (i j k) (i j (1- k)))) space)
+                        (reshape (α #'* (* h h) f) space))))))))
     (multiple-value-bind (red-spaces black-spaces)
         (red-black-coloring u :boundary 1)
       (flet ((update (spaces)
@@ -226,84 +231,87 @@
                      (reshape u* (τ (i j k) ((1- i) (1- j) (1- k))) space-7)))))))))
 
 (defun restrict (u)
-  (trivia:ematch (shape u)
-    ((~ start-1 1 end-1)
-     (let* ((selection (~ start-1 2 end-1))
-            (interior (interior selection)))
-       (reshape
-        (fuse*
-         (reshape u selection)
-         (α #'+
-            (α #'* 1/2 (reshape u interior))
-            (α #'* 1/4 (reshape u (τ (i) ((1+ i))) interior))
-            (α #'* 1/4 (reshape u (τ (i) ((1- i))) interior))))
-        (τ (i) ((+ start-1 (/ (- i start-1) 2)))))))
-    ((~ start-1 1 end-1 ~ start-2 1 end-2)
-     (let* ((selection (~ start-1 2 end-1 ~ start-2 2 end-2))
-            (interior (interior selection)))
-       (reshape
-        (fuse*
-         (reshape u selection)
-         (α #'+
-            (α #'* 1/4
-               (reshape u interior))
-            (α #'* 1/8
-               (α #'+
-                  (reshape u (τ (i j) ((1+ i) j)) interior)
-                  (reshape u (τ (i j) ((1- i) j)) interior)
-                  (reshape u (τ (i j) (i (1+ j))) interior)
-                  (reshape u (τ (i j) (i (1- j))) interior)))
-            (α #'* 1/16
-               (reshape u (τ (i j) ((1+ i) (1+ j))) interior)
-               (reshape u (τ (i j) ((1- i) (1+ j))) interior)
-               (reshape u (τ (i j) ((1+ i) (1- j))) interior)
-               (reshape u (τ (i j) ((1- i) (1- j))) interior))))
-        (τ (i j) ((+ start-1 (/ (- i start-1) 2))
-                  (+ start-2 (/ (- j start-2) 2)))))))
-    ((~ start-1 1 end-1 ~ start-2 1 end-2 ~ start-3 1 end-3)
-     (let* ((selection (~ start-1 2 end-1 ~ start-2 2 end-2 ~ start-3 2 end-3))
-            (interior (interior selection)))
-       (reshape
-        (fuse*
-         (reshape u selection)
-         (α #'+
-            (α #'* 1/8
-               (reshape u interior))
-            (α #'* 1/16
-               (reshape u (τ (i j k) ((1+ i) j k)) interior)
-               (reshape u (τ (i j k) (i (1+ j) k)) interior)
-               (reshape u (τ (i j k) (i j (1+ k))) interior)
-               (reshape u (τ (i j k) ((1- i) j k)) interior)
-               (reshape u (τ (i j k) (i (1- j) k)) interior)
-               (reshape u (τ (i j k) (i j (1- k))) interior))
-            (α #'* 1/32
-               (reshape u (τ (i j k) (i (1+ j) (1+ k))) interior)
-               (reshape u (τ (i j k) ((1+ i) j (1+ k))) interior)
-               (reshape u (τ (i j k) ((1+ i) (1+ j) k)) interior)
-               (reshape u (τ (i j k) (i (1- j) (1+ k))) interior)
-               (reshape u (τ (i j k) ((1- i) j (1+ k))) interior)
-               (reshape u (τ (i j k) ((1- i) (1+ j) k)) interior)
-               (reshape u (τ (i j k) (i (1+ j) (1- k))) interior)
-               (reshape u (τ (i j k) ((1+ i) j (1- k))) interior)
-               (reshape u (τ (i j k) ((1+ i) (1- j) k)) interior)
-               (reshape u (τ (i j k) (i (1- j) (1- k))) interior)
-               (reshape u (τ (i j k) ((1- i) j (1- k))) interior)
-               (reshape u (τ (i j k) ((1- i) (1- j) k)) interior))
-            (α #'* 1/64
-               (reshape u (τ (i j k) ((1+ i) (1+ j) (1+ k))) interior)
-               (reshape u (τ (i j k) ((1+ i) (1+ j) (1- k))) interior)
-               (reshape u (τ (i j k) ((1+ i) (1- j) (1+ k))) interior)
-               (reshape u (τ (i j k) ((1+ i) (1- j) (1- k))) interior)
-               (reshape u (τ (i j k) ((1- i) (1+ j) (1+ k))) interior)
-               (reshape u (τ (i j k) ((1- i) (1+ j) (1- k))) interior)
-               (reshape u (τ (i j k) ((1- i) (1- j) (1+ k))) interior)
-               (reshape u (τ (i j k) ((1- i) (1- j) (1- k))) interior))))
-        (τ (i j k) ((+ start-1 (/ (- i start-1) 2))
-                    (+ start-2 (/ (- j start-2) 2))
-                    (+ start-3 (/ (- k start-3) 2)))))))))
+  (let ((u (lazy-array u)))
+    (trivia:ematch (shape u)
+      ((~ start-1 1 end-1)
+       (let* ((selection (~ start-1 2 end-1))
+              (interior (interior selection)))
+         (reshape
+          (fuse*
+           (reshape u selection)
+           (α #'+
+              (α #'* 1/2 (reshape u interior))
+              (α #'* 1/4 (reshape u (τ (i) ((1+ i))) interior))
+              (α #'* 1/4 (reshape u (τ (i) ((1- i))) interior))))
+          (τ (i) ((+ start-1 (/ (- i start-1) 2)))))))
+      ((~ start-1 1 end-1 ~ start-2 1 end-2)
+       (let* ((selection (~ start-1 2 end-1 ~ start-2 2 end-2))
+              (interior (interior selection)))
+         (reshape
+          (fuse*
+           (reshape u selection)
+           (α #'+
+              (α #'* 1/4
+                 (reshape u interior))
+              (α #'* 1/8
+                 (α #'+
+                    (reshape u (τ (i j) ((1+ i) j)) interior)
+                    (reshape u (τ (i j) ((1- i) j)) interior)
+                    (reshape u (τ (i j) (i (1+ j))) interior)
+                    (reshape u (τ (i j) (i (1- j))) interior)))
+              (α #'* 1/16
+                 (reshape u (τ (i j) ((1+ i) (1+ j))) interior)
+                 (reshape u (τ (i j) ((1- i) (1+ j))) interior)
+                 (reshape u (τ (i j) ((1+ i) (1- j))) interior)
+                 (reshape u (τ (i j) ((1- i) (1- j))) interior))))
+          (τ (i j) ((+ start-1 (/ (- i start-1) 2))
+                    (+ start-2 (/ (- j start-2) 2)))))))
+      ((~ start-1 1 end-1 ~ start-2 1 end-2 ~ start-3 1 end-3)
+       (let* ((selection (~ start-1 2 end-1 ~ start-2 2 end-2 ~ start-3 2 end-3))
+              (interior (interior selection)))
+         (reshape
+          (fuse*
+           (reshape u selection)
+           (α #'+
+              (α #'* 1/8
+                 (reshape u interior))
+              (α #'* 1/16
+                 (reshape u (τ (i j k) ((1+ i) j k)) interior)
+                 (reshape u (τ (i j k) (i (1+ j) k)) interior)
+                 (reshape u (τ (i j k) (i j (1+ k))) interior)
+                 (reshape u (τ (i j k) ((1- i) j k)) interior)
+                 (reshape u (τ (i j k) (i (1- j) k)) interior)
+                 (reshape u (τ (i j k) (i j (1- k))) interior))
+              (α #'* 1/32
+                 (reshape u (τ (i j k) (i (1+ j) (1+ k))) interior)
+                 (reshape u (τ (i j k) ((1+ i) j (1+ k))) interior)
+                 (reshape u (τ (i j k) ((1+ i) (1+ j) k)) interior)
+                 (reshape u (τ (i j k) (i (1- j) (1+ k))) interior)
+                 (reshape u (τ (i j k) ((1- i) j (1+ k))) interior)
+                 (reshape u (τ (i j k) ((1- i) (1+ j) k)) interior)
+                 (reshape u (τ (i j k) (i (1+ j) (1- k))) interior)
+                 (reshape u (τ (i j k) ((1+ i) j (1- k))) interior)
+                 (reshape u (τ (i j k) ((1+ i) (1- j) k)) interior)
+                 (reshape u (τ (i j k) (i (1- j) (1- k))) interior)
+                 (reshape u (τ (i j k) ((1- i) j (1- k))) interior)
+                 (reshape u (τ (i j k) ((1- i) (1- j) k)) interior))
+              (α #'* 1/64
+                 (reshape u (τ (i j k) ((1+ i) (1+ j) (1+ k))) interior)
+                 (reshape u (τ (i j k) ((1+ i) (1+ j) (1- k))) interior)
+                 (reshape u (τ (i j k) ((1+ i) (1- j) (1+ k))) interior)
+                 (reshape u (τ (i j k) ((1+ i) (1- j) (1- k))) interior)
+                 (reshape u (τ (i j k) ((1- i) (1+ j) (1+ k))) interior)
+                 (reshape u (τ (i j k) ((1- i) (1+ j) (1- k))) interior)
+                 (reshape u (τ (i j k) ((1- i) (1- j) (1+ k))) interior)
+                 (reshape u (τ (i j k) ((1- i) (1- j) (1- k))) interior))))
+          (τ (i j k) ((+ start-1 (/ (- i start-1) 2))
+                      (+ start-2 (/ (- j start-2) 2))
+                      (+ start-3 (/ (- k start-3) 2))))))))))
 
 (defun residual (u b h)
-  (let ((interior (interior u)))
+  (let* ((u (lazy-array u))
+         (b (lazy-array b))
+         (interior (interior u)))
     (ecase (rank u)
       (1
        (fuse* (reshape 0d0 (shape u))
