@@ -30,7 +30,6 @@
   (etypecase lazy-array
     (array-immediate
      (let ((storage (storage lazy-array)))
-       (assert (typep storage 'simple-array)) ; TODO support non-simple arrays, too.
        (%make-buffer
         :shape (shape lazy-array)
         :ntype (petalisp.type-inference:array-element-ntype storage)
