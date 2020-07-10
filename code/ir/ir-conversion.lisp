@@ -104,12 +104,6 @@
       transformation)
      *loads*)))
 
-(defun outer-transformation (rank)
-  (petalisp.utilities:with-vector-memoization (rank)
-    (make-transformation
-     :input-rank rank
-     :output-mask (loop for index from 1 below rank collect index))))
-
 ;;; Return the 'value' of ROOT for a given point in the iteration space of
 ;;; the kernel, i.e., return a cons cell whose cdr is an instruction and
 ;;; whose car is an integer denoting which of the N values of the
