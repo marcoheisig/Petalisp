@@ -104,6 +104,7 @@
     :reader reusablep)
    (%storage
     :initarg :storage
+    :type simple-array
     :reader storage)))
 
 (defclass range-immediate (non-empty-immediate)

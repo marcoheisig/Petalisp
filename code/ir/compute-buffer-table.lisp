@@ -15,8 +15,8 @@
 ;;;
 ;;; 4. The node is an immediate node.
 ;;;
-;;; These rules ensure that values that are used more than once reside in
-;;; main memory.
+;;; These rules ensure that values that are used more than once are only
+;;; computed once.
 ;;;
 ;;; The derivation of the buffer table of a graph consists of two steps.
 ;;; In the first step, we build a hash table that assigns some strided
@@ -27,7 +27,7 @@
 (defvar *buffer-table*)
 
 (defmacro buffer-table-entry (node)
-  `(gethash ,node *buffer-table*))
+  `(values (gethash ,node *buffer-table*)))
 
 (defun compute-buffer-table (graph-roots)
   (let ((*buffer-table* (make-hash-table :test #'eq)))
@@ -56,8 +56,10 @@
     (when special-p
       (setf (buffer-table-entry node) :special))
     (when traverse-inputs-p
-      (loop for input in (inputs node) do
-        (traverse-node input inputs-special-p)))))
+      (mapc
+       (lambda (input)
+         (traverse-node input inputs-special-p))
+       (inputs node)))))
 
 (defgeneric visit-node (node))
 
@@ -66,15 +68,15 @@
   (case (number-of-users node)
     ((0 1) (values t nil))
     (otherwise
-     (multiple-value-bind (value present-p) (buffer-table-entry node)
-       (cond ((not present-p)
-              (setf (buffer-table-entry node) :potentially-special)
-              (values t nil))
-             ((eq value :potentially-special)
-              (setf (buffer-table-entry node) :special)
-              (values nil nil))
-             ((eq value :special)
-              (values nil nil)))))))
+     (case (buffer-table-entry node)
+       ((nil)
+        (setf (buffer-table-entry node) :potentially-special)
+        (values t nil))
+       ((:potentially-special)
+        (setf (buffer-table-entry node) :special)
+        (values nil nil))
+       ((:special)
+        (values nil nil))))))
 
 (defmethod visit-node ((immediate immediate))
   (setf (buffer-table-entry immediate) :special)
