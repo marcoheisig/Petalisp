@@ -291,3 +291,20 @@
         (and (range-contains range-2 start)
              (range-contains range-2 end)
              (range-contains range-2 (+ start step))))))
+
+(defun fuse-ranges (range &rest more-ranges)
+  (let ((ranges (list* range more-ranges))
+        (start (range-start range))
+        (end (range-end range)))
+    (declare (dynamic-extent ranges))
+    (declare (integer start end))
+    (loop for range in more-ranges do
+      (setf start (min start (range-start range)))
+      (setf end (max end (range-end range))))
+    (let ((step (- end start)))
+      (loop for range in ranges do
+        (let ((delta (- (range-start range) start)))
+          (if (size-one-range-p range)
+              (setf step (gcd step delta))
+              (setf step (gcd step delta (range-step range))))))
+      (range start step end))))
