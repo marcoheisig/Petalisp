@@ -76,6 +76,7 @@
    #:identity-transformation
    #:invert-transformation
    #:transformation-equal
+   #:transformation-similar
    #:compose-transformations
    #:collapsing-transformation
    #:normalizing-transformation

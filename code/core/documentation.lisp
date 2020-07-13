@@ -239,6 +239,28 @@ constraints.")
    (τ (i j) (i j))
    (τ (i j) (j i))))
 
+(document-function transformation-similar
+  "Check whether two supplied transformations are similar.  Two
+transformations are similar if they have the same permutation, the same
+inputs constraints, the same scalings, and offsets whose entries differ in
+at most DELTA."
+  (transformation-similar
+   (τ (a) (a))
+   (τ (a) ((1+ a)))
+   0)
+  (transformation-similar
+   (τ (a) (a))
+   (τ (a) ((1+ a)))
+   1)
+  (transformation-similar
+   (τ (i j) ((+ j 2) i))
+   (τ (i j) ((- j 1) i))
+   2)
+  (transformation-similar
+   (τ (i j) ((+ j 2) i))
+   (τ (i j) ((- j 1) i))
+   3))
+
 (document-function compose-transformations
   "Returns a single transformation that is equivalent to consecutive
 invocations of the supplied transformations in right-to-left order."

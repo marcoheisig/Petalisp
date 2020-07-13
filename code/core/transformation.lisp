@@ -83,6 +83,8 @@
 
 (defgeneric transformation-equal (transformation-1 transformation-2))
 
+(defgeneric transformation-similar (transformation-1 transformation-2 delta))
+
 (defgeneric compose-two-transformations (g f))
 
 (defgeneric invert-transformation (transformation))
@@ -125,6 +127,27 @@
                (transformation-offsets t2))
        (equalp (transformation-scalings t1)
                (transformation-scalings t2))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; TRANSFORMATION-SIMILAR
+
+(defmethod transformation-similar ((t1 transformation)
+                                   (t2 transformation)
+                                   (delta integer))
+  (and (= (transformation-input-rank t1)
+          (transformation-input-rank t2))
+       (= (transformation-output-rank t1)
+          (transformation-output-rank t2))
+       (equalp (transformation-input-mask t1)
+               (transformation-input-mask t2))
+       (equalp (transformation-output-mask t1)
+               (transformation-output-mask t2))
+       (equalp (transformation-scalings t1)
+               (transformation-scalings t2))
+       (loop for o1 across (transformation-offsets t1)
+             for o2 across (transformation-offsets t2)
+             always (<= (abs (- o1 o2)) delta))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
