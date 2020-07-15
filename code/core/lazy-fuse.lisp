@@ -40,11 +40,7 @@
                                (shape lazy-array-1)
                                (shape lazy-array-2))))))
                  lazy-arrays :length 2 :copy nil)
-                (let ((shape (%make-shape
-                              (apply #'mapcar #'fuse-ranges
-                                     (mapcar (alexandria:compose #'shape-ranges #'shape)
-                                             lazy-arrays))
-                              rank))
+                (let ((shape (fuse-shapes (mapcar #'shape lazy-arrays)))
                       (ntype (reduce #'petalisp.type-inference:ntype-union
                                      lazy-arrays
                                      :key #'element-ntype)))

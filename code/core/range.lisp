@@ -297,7 +297,6 @@
         (start (range-start range))
         (end (range-end range)))
     (declare (dynamic-extent ranges))
-    (declare (integer start end))
     (loop for range in more-ranges do
       (setf start (min start (range-start range)))
       (setf end (max end (range-end range))))
