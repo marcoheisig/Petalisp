@@ -8,7 +8,7 @@
 ;;; more kernels.
 (defstruct (buffer
             (:predicate bufferp)
-            (:constructor %make-buffer))
+            (:constructor make-buffer))
   ;; The shape of the buffer.
   (shape nil :type shape)
   ;; The type code of all elements stored in the buffer.
@@ -19,37 +19,19 @@
   ;; An alist whose keys are kernels reading from this buffer, and whose
   ;; values are all load instructions from that kernel into this buffer.
   (readers '() :type list)
-  ;; Whether the buffer has already been executed.
-  (executedp nil :type boolean)
   ;; Whether the buffer can be reused after its last use.
   (reusablep nil :type boolean)
   ;; An opaque object, representing the allocated memory.
   (storage nil))
 
-(defun make-buffer (lazy-array)
-  (etypecase lazy-array
-    (array-immediate
-     (let ((storage (storage lazy-array)))
-       (%make-buffer
-        :shape (shape lazy-array)
-        :ntype (petalisp.type-inference:array-element-ntype storage)
-        :storage storage
-        :reusablep (reusablep lazy-array)
-        :executedp t)))
-    (lazy-array
-     (%make-buffer
-      :shape (shape lazy-array)
-      :reusablep t
-      :ntype (petalisp.type-inference:generalize-ntype (element-ntype lazy-array))))))
-
 ;;; A kernel represents a computation that, for each element in its
 ;;; iteration space, reads from some buffers and writes to some buffers.
 (defstruct (kernel
-            (:predicate kernelp))
+            (:predicate kernelp)
+            (:constructor make-kernel))
   (iteration-space nil :type shape)
-  (load-instructions nil :type list)
-  (store-instructions nil :type list)
-  (executedp nil :type boolean))
+  (load-instructions '() :type list)
+  (store-instructions '() :type list))
 
 ;;; This function is a very ad-hoc approximation of the cost of executing
 ;;; the kernel.
@@ -398,6 +380,43 @@
        (pushnew (store-instruction-buffer store-instruction) buffers))
      kernel)
     (nreverse buffers)))
+
+(defun delete-kernel (kernel)
+  ;; Only kernels with zero store instructions can be deleted without
+  ;; changing semantics.
+  (assert (null (kernel-store-instructions kernel)))
+  (let ((obsolete-buffers '()))
+    (map-kernel-inputs
+     (lambda (buffer)
+       (let ((new-readers (remove kernel (buffer-readers buffer) :key #'car)))
+         (setf (buffer-readers buffer)
+               new-readers)
+         ;; A buffer that is never read from is obsolete.
+         (when (null new-readers)
+           (pushnew buffer obsolete-buffers))))
+     kernel)
+    (mapc #'delete-buffer obsolete-buffers)
+    (values)))
+
+(defun delete-buffer (buffer)
+  ;; Only buffers with zero readers can be deleted without changing
+  ;; semantics.
+  (assert (null (buffer-readers buffer)))
+  (setf (buffer-storage buffer) nil)
+  (let ((obsolete-kernels '()))
+    (map-buffer-inputs
+     (lambda (kernel)
+       (let ((new-store-instructions
+               (remove buffer (kernel-store-instructions kernel)
+                       :key #'store-instruction-buffer)))
+         (setf (kernel-store-instructions kernel)
+               new-store-instructions)
+         ;; A kernel with zero store instructions is obsolete.
+         (when (null new-store-instructions)
+           (pushnew kernel obsolete-kernels))))
+     buffer)
+    (mapc #'delete-kernel obsolete-kernels)
+    (values)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

@@ -16,9 +16,6 @@
    ;; IR Conversion
    #:ir-from-lazy-arrays
 
-   ;; IR Normalization
-   #:normalize-ir
-
    ;; Structs
    #:instruction
    #:buffer
@@ -64,11 +61,9 @@
    #:buffer-ntype
    #:buffer-readers
    #:buffer-writers
-   #:buffer-executedp
    #:buffer-reusablep
    #:buffer-storage
    #:kernel-iteration-space
-   #:kernel-executedp
    #:kernel-blueprint
    #:kernel-buffers
    #:kernel-highest-instruction-number

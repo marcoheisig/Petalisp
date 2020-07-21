@@ -36,6 +36,7 @@
    #:range-end
    #:range-size
    #:subrangep
+   #:fuse-ranges
 
    ;; Shapes
    #:~
@@ -46,6 +47,7 @@
    #:shapep
    #:shape-rank
    #:shape-ranges
+   #:shape-dimensions
    #:shape-size
    #:shape-equal
    #:shape-difference-list
@@ -57,6 +59,7 @@
    #:enlarge-shape
    #:subdivide
    #:subshapep
+   #:fuse-shapes
 
    ;; Transformations
    #:τ

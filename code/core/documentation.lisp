@@ -132,6 +132,16 @@ contains."
   (shape-ranges (~ 1 ~ 2 ~ 3))
   (shape-ranges (~ 0 9 ~ 0 9)))
 
+(document-function shape-dimensions
+  "Return the array dimensions corresponding to a shape.  Signal an error
+if any of the ranges of the shape have a nonzero start or a step size other
+than one."
+  (shape-dimensions (~))
+  (shape-dimensions (~ 0 9))
+  (shape-dimensions (~ 1 9))
+  (shape-dimensions (~ 0 2 9))
+  (shape-dimensions (~ 0 4 ~ 0 5 ~ 0 6)))
+
 (document-function shape-size
   "Returns that number of integer tuples denoted by the supplied shape."
   (shape-size (~))

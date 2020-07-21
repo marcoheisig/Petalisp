@@ -3,8 +3,8 @@
 (in-package #:petalisp.ir)
 
 ;;; The purpose of IR conversion is to turn a data flow graph, whose nodes
-;;; are strided arrays, into an analogous graph, whose nodes are buffers
-;;; and kernels.  Kernels and buffers alternate, such that the inputs and
+;;; are lazy arrays, into an analogous graph, whose nodes are buffers and
+;;; kernels.  Kernels and buffers alternate, such that the inputs and
 ;;; outputs of a kernel are always buffers, and such that the inputs and
 ;;; outputs of a buffer are always kernels.
 ;;;
@@ -22,35 +22,46 @@
 ;;;    them or write from them.
 
 (defun ir-from-lazy-arrays (lazy-arrays)
-  (let ((*buffer-table* (compute-buffer-table lazy-arrays)))
-    ;; Now create a list of kernels for each entry in the buffer table.
+  (with-layout-table (lazy-arrays)
+    ;; Create a list of kernels for each entry in the buffer table.
     (maphash
-     (lambda (lazy-array buffer)
-       (unless (or (eq buffer '.range-immediate.)
-                   (immediatep lazy-array))
-         (create-kernels lazy-array)))
-     *buffer-table*)
-    ;; Finally, return the buffers corresponding to the root and leaf nodes
-    ;; and mark them as non-reusable, to avoid that their memory is
-    ;; reclaimed.
-    (loop for lazy-array in lazy-arrays
-          collect
-          (let ((buffer (gethash lazy-array *buffer-table*)))
-            (setf (buffer-reusablep buffer) nil)
-            buffer))))
-
-(defvar *root*)
+     (lambda (lazy-array layout)
+       (unless (immediatep lazy-array)
+         (create-kernels lazy-array layout)))
+     *layout-table*)
+    ;; Finalize all layouts.
+    (maphash
+     (lambda (lazy-array layout)
+       (declare (ignore lazy-array))
+       (finalize-layout layout))
+     *layout-table*)
+    ;; Delete all buffers that are referenced zero times.
+    (maphash
+     (lambda (lazy-array layout)
+       (declare (ignore lazy-array))
+       (when (lazy-array-layout-p layout)
+         (loop for (buffer . nil) in (layout-buffer-stores layout) do
+           (unless (buffer-readers buffer)
+             (delete-buffer buffer)))))
+     *layout-table*)
+    ;; Normalize the entire IR and return the root buffers.
+    (let ((root-buffers
+            (loop for lazy-array in lazy-arrays
+                  collect
+                  (layout-buffer (layout-table-entry lazy-array)))))
+      (normalize-ir root-buffers)
+      root-buffers)))
 
 ;;; We compute a partitioning of the shape of the root into multiple
 ;;; iteration spaces.  These spaces are chosen such that their union is the
 ;;; shape of the root, and such that each iteration space selects only a
 ;;; single input of each encountered fusion node.  Each such iteration
 ;;; space is used to create one kernel.
-(defun create-kernels (root)
+(defun create-kernels (root root-layout)
   (let ((*root* root))
     (map-iteration-spaces
      (lambda (iteration-space)
-       (let ((kernel (compute-kernel root iteration-space)))
+       (let ((kernel (compute-kernel root root-layout iteration-space)))
          (assign-instruction-numbers kernel)
          ;; Update the readers of all referenced buffers.
          (map-kernel-load-instructions
@@ -78,31 +89,34 @@
           kernel)))
      root)))
 
-;;; Create one kernel from the given root and iteration space.
-(defun compute-kernel (root iteration-space)
-  (multiple-value-bind (store-instruction load-instructions)
-      (compute-kernel-body root iteration-space)
-    (make-kernel
-     :iteration-space iteration-space
-     :load-instructions load-instructions
-     :store-instructions (list store-instruction))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Computing the Kernel Body
+;;; Computing one Kernel
 
-(defvar *loads*)
+(defun compute-kernel (root root-layout iteration-space)
+  (multiple-value-bind (store-instructions load-instructions)
+      (compute-kernel-body root root-layout iteration-space)
+    (make-kernel
+     :iteration-space iteration-space
+     :store-instructions store-instructions
+     :load-instructions load-instructions)))
 
-(defun compute-kernel-body (root iteration-space)
+(defun compute-kernel-body (root root-layout iteration-space)
   (let* ((rank (shape-rank iteration-space))
          (transformation (identity-transformation rank))
-         (*loads* '()))
+         (*layout-buffer-loads* '()))
     (values
-     (make-store-instruction
-      (compute-value root iteration-space transformation)
-      (gethash root *buffer-table*)
-      transformation)
-     *loads*)))
+     (list
+      (layout-store
+       root-layout
+       (compute-value root iteration-space transformation)
+       iteration-space
+       transformation))
+     (petalisp.utilities:with-collectors ((load-instructions collect))
+       (loop for (nil . buffer-loads) in *layout-buffer-loads* do
+         (loop for (nil . loads) in buffer-loads do
+           (mapc #'collect loads)))
+       (load-instructions)))))
 
 ;;; Return the 'value' of ROOT for a given point in the iteration space of
 ;;; the kernel, i.e., return a cons cell whose cdr is an instruction and
@@ -121,15 +135,10 @@
   ;; want to treat it as a leaf node.
   (if (eq node *root*)
       (call-next-method)
-      (multiple-value-bind (buffer buffer-p)
-          (gethash node *buffer-table*)
-        (if (not buffer-p)
+      (let ((layout (layout-table-entry node)))
+        (if (null layout)
             (call-next-method)
-            (if (eq buffer '.range-immediate.)
-                (cons 0 (make-iref-instruction transformation))
-                (let ((load (make-load-instruction buffer transformation)))
-                  (push load *loads*)
-                  (cons 0 load)))))))
+            (cons 0 (layout-load layout iteration-space transformation))))))
 
 (defmethod compute-value
     ((lazy-map single-value-lazy-map)

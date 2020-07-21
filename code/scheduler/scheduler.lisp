@@ -11,7 +11,6 @@
 ;;; to the workers.
 (defun schedule-on-workers (lazy-arrays n-workers enqueue-tasks barrier allocate deallocate)
   (let ((root-buffers (petalisp.ir:ir-from-lazy-arrays lazy-arrays)))
-    (petalisp.ir:normalize-ir root-buffers)
     ;; Now comes the actual scheduling.
     (let ((current-slice (make-initial-slice root-buffers)))
       (mapc allocate (slice-allocations current-slice))

@@ -379,19 +379,18 @@
          (petalisp.type-inference:ntype-of (range-end range))))))
 
 (defun indices (array-or-shape &optional (axis 0))
-  (cond ((null array-or-shape)
-         (empty-array))
-        ((shapep array-or-shape)
-         (let ((rank (shape-rank array-or-shape)))
-           (unless (<= 0 axis (1- rank))
-             (error "~@<Invalid axis ~A for a shape with rank ~D.~:@>" axis rank))
-           (lazy-reshape
-            (make-range-immediate (nth axis (shape-ranges array-or-shape)))
-            array-or-shape
-            (make-transformation
-             :input-rank rank
-             :output-mask (vector axis)))))
-        (t (indices (shape array-or-shape)))))
+  (if (null array-or-shape)
+      (empty-array)
+      (let* ((shape (shape array-or-shape))
+             (rank (shape-rank shape)))
+        (unless (<= 0 axis (1- rank))
+          (error "~@<Invalid axis ~A for a shape with rank ~D.~:@>" axis rank))
+        (lazy-reshape
+         (make-range-immediate (nth axis (shape-ranges shape)))
+         shape
+         (make-transformation
+          :input-rank rank
+          :output-mask (vector axis))))))
 
 (defun empty-array ()
   (load-time-value

@@ -16,9 +16,14 @@
 ;;;
 ;;; Data Flow Graph Evaluation
 
+(defvar *executedp*)
+
+(defmacro executedp (item)
+  `(values (gethash ,item *executedp*)))
+
 (defmethod compute-immediates ((lazy-arrays list) (ir-backend ir-backend))
-  (let ((root-buffers (ir-from-lazy-arrays lazy-arrays)))
-    (normalize-ir root-buffers)
+  (let ((root-buffers (ir-from-lazy-arrays lazy-arrays))
+        (*executedp* (make-hash-table)))
     (mapc #'execute-buffer root-buffers)
     (mapcar #'immediate-from-buffer root-buffers)))
 
@@ -33,13 +38,14 @@
 ;;; Buffer Execution
 
 (defun execute-buffer (buffer)
-  (unless (buffer-executedp buffer)
-    (setf (buffer-executedp buffer) t)
-    (setf (buffer-storage buffer)
-          (make-array
-           (mapcar #'range-size (shape-ranges (buffer-shape buffer)))
-           :element-type (petalisp.type-inference:type-specifier
-                          (buffer-ntype buffer))))
+  (unless (executedp buffer)
+    (setf (executedp buffer) t)
+    (unless (buffer-storage buffer)
+      (setf (buffer-storage buffer)
+            (make-array
+             (shape-dimensions (buffer-shape buffer))
+             :element-type (petalisp.type-inference:type-specifier
+                            (buffer-ntype buffer)))))
     (map-buffer-inputs #'execute-kernel buffer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -71,8 +77,8 @@
   (fill *instruction-values-cache* 0))
 
 (defmethod execute-kernel (kernel)
-  (unless (kernel-executedp kernel)
-    (setf (kernel-executedp kernel) t)
+  (unless (executedp kernel)
+    (setf (executedp kernel) t)
     (map-kernel-inputs #'execute-buffer kernel)
     (let* ((*kernel* kernel)
            (*instruction-values-cache* (make-instruction-values-cache kernel)))

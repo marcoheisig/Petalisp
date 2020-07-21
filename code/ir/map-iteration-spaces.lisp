@@ -3,7 +3,7 @@
 (in-package #:petalisp.ir)
 
 ;;; This file defines the function MAP-ITERATION-SPACES that, when invoked
-;;; on a node and in the context of a valid *BUFFER-TABLE*, will compute a
+;;; on a node and in the context of a valid *LAYOUT-TABLE*, will compute a
 ;;; partitioning of the shape of that node into one or more subspaces.
 ;;; These subspaces are chosen such that any path from a particular
 ;;; subspace upwards passes through exactly one input of each fusion node
@@ -20,8 +20,6 @@
 ;;; will be returned in the end.
 
 (defvar *function*)
-
-(defvar *root*)
 
 (defun map-iteration-spaces (function root)
   (let* ((*function* function)
@@ -47,7 +45,7 @@
   (if (eq node *root*)
       (call-next-method)
       ;; Stop when encountering a node with an entry in the buffer table.
-      (if (buffer-table-entry node)
+      (if (layout-table-entry node)
           nil
           (call-next-method))))
 

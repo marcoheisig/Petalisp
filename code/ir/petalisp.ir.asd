@@ -10,8 +10,10 @@
   :serial t
   :components
   ((:file "packages")
+   (:file "variables")
    (:file "ir")
-   (:file "compute-buffer-table")
+   (:file "layout")
+   (:file "layout-table")
    (:file "map-iteration-spaces")
    (:file "ir-conversion")
    (:file "blueprint")
