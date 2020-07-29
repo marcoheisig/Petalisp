@@ -30,7 +30,6 @@
           (if (immediatep lazy-array)
               lazy-array
               (let ((storage (petalisp.ir:buffer-storage root-buffer)))
-                (assert (arrayp storage))
                 (lazy-array storage))))))
 
 ;;; Return a suitable next slice, or NIL, if all work is done.
