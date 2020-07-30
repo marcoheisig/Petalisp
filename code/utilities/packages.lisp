@@ -56,4 +56,8 @@
    #:weak-set-add
 
    ;; with-collectors.lisp
-   #:with-collectors))
+   #:with-collectors
+
+   ;; number-of-cpus.lisp
+   #:number-of-cpus
+   ))

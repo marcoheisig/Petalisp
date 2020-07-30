@@ -20,4 +20,5 @@
    (:file "float-bits")
    (:file "prime-factors")
    (:file "weak-set")
-   (:file "with-collectors")))
+   (:file "with-collectors")
+   (:file "number-of-cpus")))

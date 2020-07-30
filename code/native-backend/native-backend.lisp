@@ -2,17 +2,6 @@
 
 (in-package #:petalisp.native-backend)
 
-(defun number-of-processors ()
-  (handler-case
-      (values
-       (parse-integer
-        (with-output-to-string (stream)
-          (uiop:run-program
-           (list "getconf" "_NPROCESSORS_ONLN")
-           :output stream))))
-    (uiop:subprocess-error () 1)
-    (parse-error () 1)))
-
 ;;; This is the default Petalisp backend.  It generates portable, highly
 ;;; optimized Lisp code and compiles it using CL:COMPILE.
 
@@ -22,7 +11,7 @@
    (%compile-cache :initarg :compile-cache :reader compile-cache
                    :initform (make-hash-table :test #'eq))))
 
-(defun make-native-backend (&key (threads (number-of-processors)))
+(defun make-native-backend (&key (threads (petalisp.utilities:number-of-cpus)))
   (check-type threads alexandria:positive-integer)
   (make-instance 'native-backend
     :memory-pool (make-memory-pool)
