@@ -29,9 +29,8 @@
           collect
           (if (immediatep lazy-array)
               lazy-array
-              (let ((storage (petalisp.ir:buffer-storage root-buffer)))
-                (assert (arrayp storage))
-                (lazy-array storage))))))
+              (lazy-array
+               (petalisp.ir:buffer-storage root-buffer))))))
 
 ;;; Return a suitable next slice, or NIL, if all work is done.
 (defun compute-next-slice (slice)
