@@ -135,6 +135,23 @@
    #:copy-arrays
    #:substitute-arrays
 
+   ;; Machine Model
+   #:memory
+   #:memory-name
+   #:memory-parent
+   #:memory-children
+   #:memory-size
+   #:memory-granularity
+   #:memory-latency
+   #:memory-bandwidth
+   #:memory-parent-bandwidth
+   #:processor
+   #:processor-name
+   #:processor-memory
+   #:machine
+   #:machine-name
+   #:machine-processors
+
    ;; Backend
    #:*backend*
    #:compute-on-backend
