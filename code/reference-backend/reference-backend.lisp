@@ -21,7 +21,8 @@
   ())
 
 (defun make-reference-backend ()
-  (make-instance 'reference-backend))
+  (make-instance 'reference-backend
+    :machine (host-machine)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

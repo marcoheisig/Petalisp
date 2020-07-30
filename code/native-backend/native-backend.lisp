@@ -14,6 +14,7 @@
 (defun make-native-backend (&key (threads (petalisp.utilities:number-of-cpus)))
   (check-type threads alexandria:positive-integer)
   (make-instance 'native-backend
+    :machine (host-machine)
     :memory-pool (make-memory-pool)
     :worker-pool (make-worker-pool threads)))
 

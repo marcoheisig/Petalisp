@@ -151,6 +151,7 @@
    #:machine
    #:machine-name
    #:machine-processors
+   #:host-machine
 
    ;; Backend
    #:*backend*

@@ -25,7 +25,10 @@
 ;;; Classes
 
 (defclass backend ()
-  ())
+  ((%machine
+    :initarg :machine
+    :reader backend-machine
+    :type machine)))
 
 (defclass asynchronous-backend (backend)
   ((%scheduler-queue :initform (lparallel.queue:make-queue) :reader scheduler-queue)
