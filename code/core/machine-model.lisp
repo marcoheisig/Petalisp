@@ -243,11 +243,14 @@
                        ;; Sort the cache directories such that parent caches
                        ;; are registered first.
                        (sort
-                        (uiop:subdirectories
-                         (make-pathname
-                          :directory
-                          (append (pathname-directory cpu-dir)
-                                  (list "cache"))))
+                        (remove-if-not
+                         (lambda (dir)
+                           (uiop:file-exists-p (merge-pathnames dir "level")))
+                         (uiop:subdirectories
+                          (make-pathname
+                           :directory
+                           (append (pathname-directory cpu-dir)
+                                   (list "cache")))))
                         #'>
                         :key #'cache-level)))
                 (mapc #'ensure-cache cache-dirs)
