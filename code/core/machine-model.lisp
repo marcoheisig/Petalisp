@@ -15,6 +15,9 @@
 ;;; Returns the list memories that have this one as their parent.
 (defgeneric memory-children (memory))
 
+;;; Returns the list of processors with access to this piece of memory.
+(defgeneric memory-processors (memory))
+
 ;;; Returns the memory size in bytes.
 (defgeneric memory-size (memory))
 
@@ -72,6 +75,13 @@
     :reader memory-children
     :accessor memory-children-slot
     :type list)
+   ;; The processors with access to this piece of memory.
+   (%processors
+    :initarg :processors
+    :initform '()
+    :reader memory-processors
+    :accessor memory-processors-slot
+    :type list)
    ;; The memory size in bytes.
    (%size
     :initarg :size
@@ -127,7 +137,12 @@
    (%processors
     :initarg :processors
     :reader machine-processors
-    :type list)))
+    :type list)
+   ;; The main memory of that machine.
+   (%main-memory
+    :initarg :main-memory
+    :reader machine-main-memory
+    :type memory)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -138,8 +153,16 @@
   (unless (null (memory-parent memory))
     (pushnew memory (memory-children-slot (memory-parent memory)))))
 
+(defmethod shared-initialize :after ((processor processor) slot-names &key &allow-other-keys)
+  (declare (ignore slot-names))
+  (labels ((register-processor-with-memory (memory)
+             (unless (null memory)
+               (pushnew processor (memory-processors-slot memory))
+               (register-processor-with-memory (memory-parent memory)))))
+    (register-processor-with-memory (processor-memory processor))))
+
 (defmethod print-object ((memory memory) stream)
-  (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;#>~:>"
+  (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
           (class-name (class-of memory))
           :name (memory-name memory)
           :size (memory-size memory)
@@ -150,15 +173,16 @@
           :parent-bandwidth (memory-parent-bandwidth memory)))
 
 (defmethod print-object ((processor processor) stream)
-  (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;#>~:>"
+  (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
           (class-name (class-of processor))
           :name (processor-name processor)
           :memory (processor-memory processor)))
 
 (defmethod print-object ((machine machine) stream)
-  (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;#>~:>"
+  (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
           (class-name (class-of machine))
           :name (machine-name machine)
+          :main-memory (machine-main-memory machine)
           :processors (machine-processors machine)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -173,28 +197,29 @@
   (default-host-machine))
 
 (defun linux-host-machine ()
-  (make-instance 'machine
-    :processors
-    (let* ((online (uiop:ensure-pathname "/sys/devices/system/cpu/online" :want-existing t))
-           (cpus (parse-integer-set (alexandria:read-file-into-string online)))
-           ;; Records of the form (id level cache).
-           (caches '())
-           (ram
-             (make-instance 'memory
-               :name "RAM"
-               :size
-               (with-open-file (stream "/proc/meminfo")
-                 (loop for line = (read-line stream nil nil)
-                       while line
-                       do (let ((position (mismatch #1="MemTotal:" line)))
-                            (when (= position (length #1#))
-                              (return
-                                (parse-size line :start position))))))
-               ;; TODO These values are just educated guesses.
-               :granularity 64
-               :throughput 64
-               :bandwidth 64
-               :latency 400)))
+  (let* ((ram (make-instance 'memory
+                :name "RAM"
+                :size
+                (with-open-file (stream "/proc/meminfo")
+                  (loop for line = (read-line stream nil nil)
+                        while line
+                        do (let ((position (mismatch #1="MemTotal:" line)))
+                             (when (= position (length #1#))
+                               (return
+                                 (parse-size line :start position))))))
+                ;; TODO These values are just educated guesses.
+                :granularity 64
+                :throughput 64
+                :bandwidth 64
+                :latency 400))
+         (online (uiop:ensure-pathname "/sys/devices/system/cpu/online"
+                                       :want-existing t))
+         (cpus (parse-integer-set (alexandria:read-file-into-string online)))
+         ;; Records of the form (id level cache).
+         (caches '()))
+    (make-instance 'machine
+      :main-memory ram
+      :processors
       (labels ((cache-level (cache-dir)
                  (parse-integer
                   (alexandria:read-file-into-string
@@ -360,29 +385,31 @@
              :granularity 64
              :latency 40
              :bandwidth 64
-             :parent-bandwidth 8)))
+             :parent-bandwidth 8))
+         (processors
+           (loop for id below n-cpus
+                 collect
+                 (make-instance 'processor
+                   :name (format nil "CPU-~D" id)
+                   :memory
+                   (make-instance 'memory
+                     :name "L1"
+                     ;; We assume  32 KB of L1 cache per CPU.
+                     :size (* 32 1024)
+                     :granularity 64
+                     :latency 5
+                     :bandwidth 128
+                     :parent-bandwidth 32
+                     :parent
+                     (make-instance 'memory
+                       :name "L2"
+                       :parent l3-cache
+                       ;; We assume  512 KB of L2 cache per CPU.
+                       :size (* n-cpus 512 1024)
+                       :granularity 64
+                       :latency 15
+                       :bandwidth 64
+                       :parent-bandwidth 16))))))
     (make-instance 'machine
-      :processors
-      (loop for id below n-cpus
-            collect
-            (make-instance 'processor
-              :name (format nil "CPU-~D" id)
-              :memory
-              (make-instance 'memory
-                :name "L1"
-                ;; We assume  32 KB of L1 cache per CPU.
-                :size (* 32 1024)
-                :granularity 64
-                :latency 5
-                :bandwidth 128
-                :parent-bandwidth 32
-                :parent
-                (make-instance 'memory
-                  :name "L2"
-                  :parent l3-cache
-                  ;; We assume  512 KB of L2 cache per CPU.
-                  :size (* n-cpus 512 1024)
-                  :granularity 64
-                  :latency 15
-                  :bandwidth 64
-                  :parent-bandwidth 16)))))))
+      :processors processors
+      :main-memory ram)))
