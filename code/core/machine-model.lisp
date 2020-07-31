@@ -199,6 +199,10 @@
                  (parse-integer
                   (alexandria:read-file-into-string
                    (merge-pathnames cache-dir "level"))))
+               (cache-id (cache-dir)
+                 (parse-integer
+                  (alexandria:read-file-into-string
+                   (merge-pathnames cache-dir "id"))))
                (cache-type (cache-dir)
                  (parse-cache-type
                   (alexandria:read-file-into-string
@@ -222,13 +226,14 @@
                    :parent-bandwidth 64
                    :latency (* level level 5)))
                (ensure-cache (cache-dir)
-                 (let* ((id (parse-integer
-                             (alexandria:read-file-into-string
-                              (merge-pathnames cache-dir "id"))))
-                        (entry (find id caches :key #'first)))
+                 (let* ((id (cache-id cache-dir))
+                        (level (cache-level cache-dir))
+                        (entry (find-if (lambda (entry)
+                                          (and (= id (first entry))
+                                               (= level (second entry))))
+                                        caches)))
                    (if (not entry)
-                       (let* ((level (cache-level cache-dir))
-                              (cache (make-cache cache-dir level)))
+                       (let ((cache (make-cache cache-dir level)))
                          (push (list id level cache) caches)
                          cache)
                        (third entry)))))
@@ -257,11 +262,10 @@
                 (make-instance 'processor
                   :name (first (last (pathname-directory cpu-dir)))
                   :memory (ensure-cache
-                           (find-if
+                           (find-if-not
                             (lambda (cache-dir)
-                              (not (eq (cache-type cache-dir) :instruction)))
-                            cache-dirs
-                            :from-end t)))))))))
+                              (eq (cache-type cache-dir) :instruction))
+                            (reverse cache-dirs))))))))))
 
 (defparameter *suffix-factors*
   (let ((table (make-hash-table :test #'equalp))
