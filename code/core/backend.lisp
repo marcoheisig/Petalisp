@@ -27,6 +27,7 @@
 (defclass backend ()
   ((%machine
     :initarg :machine
+    :initform (host-machine)
     :reader backend-machine
     :type machine)))
 
