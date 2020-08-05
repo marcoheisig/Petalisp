@@ -210,8 +210,8 @@
                  (kernel
                    (make-kernel
                     :iteration-space intersection
-                    :load-instructions `(,load)
-                    :store-instructions `(,store))))
+                    :sources `((,store-buffer ,load))
+                    :targets `((,load-buffer ,store)))))
             (assign-instruction-numbers kernel)
             (push `(,kernel ,load) (buffer-readers store-buffer))
             (push `(,kernel ,store) (buffer-writers load-buffer))

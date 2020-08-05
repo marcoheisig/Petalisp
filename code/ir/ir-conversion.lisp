@@ -94,29 +94,21 @@
 ;;; Computing one Kernel
 
 (defun compute-kernel (root root-layout iteration-space)
-  (multiple-value-bind (store-instructions load-instructions)
-      (compute-kernel-body root root-layout iteration-space)
-    (make-kernel
-     :iteration-space iteration-space
-     :store-instructions store-instructions
-     :load-instructions load-instructions)))
-
-(defun compute-kernel-body (root root-layout iteration-space)
   (let* ((rank (shape-rank iteration-space))
          (transformation (identity-transformation rank))
-         (*layout-buffer-loads* '()))
-    (values
-     (list
-      (layout-store
-       root-layout
-       (compute-value root iteration-space transformation)
-       iteration-space
-       transformation))
-     (petalisp.utilities:with-collectors ((load-instructions collect))
-       (loop for (nil . buffer-loads) in *layout-buffer-loads* do
-         (loop for (nil . loads) in buffer-loads do
-           (mapc #'collect loads)))
-       (load-instructions)))))
+         (*layout-buffer-loads* '())
+         (store-instruction
+           (layout-store
+            root-layout
+            (compute-value root iteration-space transformation)
+            iteration-space
+            transformation)))
+    (make-kernel
+     :iteration-space iteration-space
+     :targets `((,(store-instruction-buffer store-instruction)
+                 ,store-instruction))
+     :sources (loop for (nil . buffer-loads) in *layout-buffer-loads*
+                    append buffer-loads))))
 
 ;;; Return the 'value' of ROOT for a given point in the iteration space of
 ;;; the kernel, i.e., return a cons cell whose cdr is an instruction and

@@ -30,8 +30,12 @@
             (:predicate kernelp)
             (:constructor make-kernel))
   (iteration-space nil :type shape)
-  (load-instructions '() :type list)
-  (store-instructions '() :type list))
+  ;; An alist whose keys are buffers, and whose values are all load
+  ;; instructions referencing that buffer.
+  (sources '() :type list)
+  ;; An alist whose keys are buffers, and whose values are all store
+  ;; instructions referencing that buffer.
+  (targets '() :type list))
 
 ;;; This function is a very ad-hoc approximation of the cost of executing
 ;;; the kernel.
@@ -179,14 +183,16 @@
   (declare (function function)
            (buffer buffer))
   (loop for (kernel . nil) in (buffer-writers buffer) do
-    (funcall function kernel)))
+    (funcall function kernel))
+  buffer)
 
 (declaim (inline map-buffer-outputs))
 (defun map-buffer-outputs (function buffer)
   (declare (function function)
            (buffer buffer))
   (loop for (kernel . nil) in (buffer-readers buffer) do
-    (funcall function kernel)))
+    (funcall function kernel))
+  buffer)
 
 (declaim (inline map-buffer-load-instructions))
 (defun map-buffer-load-instructions (function buffer)
@@ -194,7 +200,8 @@
            (buffer buffer))
   (loop for (nil . load-instructions) in (buffer-readers buffer) do
     (loop for load-instruction in load-instructions do
-      (funcall function load-instruction))))
+      (funcall function load-instruction)))
+  buffer)
 
 (declaim (inline map-buffer-store-instructions))
 (defun map-buffer-store-instructions (function buffer)
@@ -202,30 +209,34 @@
            (buffer buffer))
   (loop for (nil . store-instructions) in (buffer-writers buffer) do
     (loop for store-instruction in store-instructions do
-      (funcall function store-instruction))))
+      (funcall function store-instruction)))
+  buffer)
 
 (declaim (inline map-kernel-store-instructions))
 (defun map-kernel-store-instructions (function kernel)
   (declare (function function)
            (kernel kernel))
-  (loop for store-instruction in (kernel-store-instructions kernel) do
-    (funcall function store-instruction)))
+  (loop for (nil . store-instructions) in (kernel-targets kernel) do
+    (loop for store-instruction in store-instructions do
+      (funcall function store-instruction)))
+  kernel)
 
 (declaim (inline map-kernel-load-instructions))
 (defun map-kernel-load-instructions (function kernel)
   (declare (function function)
            (kernel kernel))
-  (loop for load-instruction in (kernel-load-instructions kernel) do
-    (funcall function load-instruction)))
+  (loop for (nil . load-instructions) in (kernel-sources kernel) do
+    (loop for load-instruction in load-instructions do
+      (funcall function load-instruction)))
+  kernel)
 
 (declaim (inline map-kernel-inputs))
 (defun map-kernel-inputs (function kernel)
   (declare (function function)
            (kernel kernel))
-  (map-kernel-load-instructions
-   (lambda (load-instruction)
-     (funcall function (load-instruction-buffer load-instruction)))
-   kernel))
+  (loop for (buffer . nil) in (kernel-sources kernel) do
+    (funcall function buffer))
+  kernel)
 
 (declaim (inline map-kernel-outputs))
 (defun map-kernel-outputs (function kernel)
@@ -384,7 +395,7 @@
 (defun delete-kernel (kernel)
   ;; Only kernels with zero store instructions can be deleted without
   ;; changing semantics.
-  (assert (null (kernel-store-instructions kernel)))
+  (assert (null (kernel-targets kernel)))
   (let ((obsolete-buffers '()))
     (map-kernel-inputs
      (lambda (buffer)
@@ -406,13 +417,11 @@
   (let ((obsolete-kernels '()))
     (map-buffer-inputs
      (lambda (kernel)
-       (let ((new-store-instructions
-               (remove buffer (kernel-store-instructions kernel)
-                       :key #'store-instruction-buffer)))
-         (setf (kernel-store-instructions kernel)
-               new-store-instructions)
+       (let ((targets (remove buffer (kernel-targets kernel) :key #'car)))
+         (setf (kernel-targets kernel)
+               targets)
          ;; A kernel with zero store instructions is obsolete.
-         (when (null new-store-instructions)
+         (when (null targets)
            (pushnew kernel obsolete-kernels))))
      buffer)
     (mapc #'delete-kernel obsolete-kernels)
