@@ -31,6 +31,10 @@
 
    ;; identical.lisp
    #:float-bits
+   #:+short-float-bits+
+   #:+single-float-bits+
+   #:+double-float-bits+
+   #:+long-float-bits+
 
    ;; identical.lisp
    #:identical

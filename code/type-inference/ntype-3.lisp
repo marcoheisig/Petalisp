@@ -41,6 +41,11 @@
 ;;;
 ;;; Reasoning About Ntypes
 
+(declaim (inline ntype-size))
+(defun ntype-size (ntype)
+  (%ntype-size
+   (generalize-ntype ntype)))
+
 (declaim (inline %ntype=))
 (defun %ntype= (ntype-1 ntype-2)
   (declare (ntype ntype-1 ntype-2))

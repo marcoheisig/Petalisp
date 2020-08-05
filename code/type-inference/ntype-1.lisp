@@ -11,12 +11,45 @@
 ;;; hand, this convention makes ntypes much more useful and allows
 ;;; reasoning about forms such as (coerce x 'single-float) or (expt n 2).
 
+(defconstant +word-size+
+  #+32-bit 32
+  #+64-bit 64
+  #-(or 32-bit 64-bit) 64)
+
 (defstruct (ntype
             (:predicate %ntypep)
             (:copier nil)
             (:conc-name %ntype-)
-            (:constructor %make-ntype (type-specifier id)))
+            (:constructor %make-ntype
+                (type-specifier id
+                 &aux (size
+                       (loop for (type size) in
+                             `((nil 0)
+                               (short-float ,petalisp.utilities:+short-float-bits+)
+                               (single-float ,petalisp.utilities:+single-float-bits+)
+                               (double-float ,petalisp.utilities:+double-float-bits+)
+                               (long-float ,petalisp.utilities:+long-float-bits+)
+                               (complex-short-float ,(* 2 petalisp.utilities:+short-float-bits+))
+                               (complex-single-float ,(* 2 petalisp.utilities:+single-float-bits+))
+                               (complex-double-float ,(* 2 petalisp.utilities:+double-float-bits+))
+                               (complex-long-float ,(* 2 petalisp.utilities:+long-float-bits+))
+                               ((signed-byte 8) 8)
+                               ((signed-byte 16) 16)
+                               ((signed-byte 32) 32)
+                               ((signed-byte 64) 64)
+                               (bit 1)
+                               ((unsigned-byte 1) 1)
+                               ((unsigned-byte 2) 8)
+                               ((unsigned-byte 4) 8)
+                               ((unsigned-byte 8) 8)
+                               ((unsigned-byte 16) 16)
+                               ((unsigned-byte 32) 32)
+                               ((unsigned-byte 64) 64))
+                             when (equal type type-specifier)
+                               do (return size)
+                             finally (return +word-size+))))))
   (type-specifier nil :read-only t)
+  (size nil :type (unsigned-byte 8))
   (id nil :type (unsigned-byte 8) :read-only t))
 
 (defmethod print-object ((ntype ntype) stream)
