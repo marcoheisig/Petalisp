@@ -140,6 +140,7 @@
    #:memory-name
    #:memory-parent
    #:memory-children
+   #:memory-processors
    #:memory-size
    #:memory-granularity
    #:memory-latency
@@ -151,10 +152,12 @@
    #:machine
    #:machine-name
    #:machine-processors
+   #:machine-main-memory
    #:host-machine
 
    ;; Backend
    #:*backend*
+   #:backend-machine
    #:compute-on-backend
    #:schedule-on-backend
    #:compile-network-on-backend
