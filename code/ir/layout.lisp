@@ -201,18 +201,69 @@
                (buffer-shape store-buffer)
                (buffer-shape load-buffer))))
         (when intersection
-          (let* ((transformation
-                   (identity-transformation (shape-rank intersection)))
-                 (load
-                   (make-load-instruction store-buffer transformation))
-                 (store
-                   (make-store-instruction (cons 0 load) load-buffer transformation))
-                 (kernel
-                   (make-kernel
-                    :iteration-space intersection
-                    :sources `((,store-buffer ,load))
-                    :targets `((,load-buffer ,store)))))
-            (assign-instruction-numbers kernel)
-            (push `(,kernel ,load) (buffer-readers store-buffer))
-            (push `(,kernel ,store) (buffer-writers load-buffer))
-            (values)))))))
+          (make-copy-kernel
+           intersection
+           load-buffer
+           store-buffer
+           (identity-transformation (shape-rank intersection))))))))
+
+(defun make-copy-kernel (iteration-space target-buffer source-buffer transformation)
+  ;; When the source buffer has a single kernel writing to it, and when
+  ;; that kernel is a copy kernel, the new copy kernel can skip past the
+  ;; existing one by composing the respective transformations.
+  (loop do
+    (trivia:if-match (list (list kernel _))
+        (buffer-writers source-buffer)
+      (if (copy-kernel-p kernel)
+          (multiple-value-setq (source-buffer transformation)
+            (values
+             (load-instruction-buffer
+              (copy-kernel-load-instruction kernel))
+             (compose-transformations
+              (copy-kernel-transformation kernel)
+              transformation)))
+          (loop-finish))
+      (loop-finish)))
+  (let* ((load
+           (make-load-instruction source-buffer transformation))
+         (store
+           (make-store-instruction
+            (cons 0 load)
+            target-buffer
+            (identity-transformation (shape-rank iteration-space))))
+         (kernel
+           (make-kernel
+            :iteration-space iteration-space
+            :sources `((,source-buffer ,load))
+            :targets `((,target-buffer ,store)))))
+    (assign-instruction-numbers kernel)
+    (push `(,kernel ,load) (buffer-readers source-buffer))
+    (push `(,kernel ,store) (buffer-writers target-buffer))
+    kernel))
+
+(defun copy-kernel-p (kernel)
+  (trivia:when-match (list (list _ load-instruction))
+      (kernel-sources kernel)
+    (trivia:when-match (list (list _ store-instruction))
+        (kernel-targets kernel)
+      (trivia:when-match (list (cons _ input))
+          (instruction-inputs store-instruction)
+        (when (and (eq input load-instruction))
+          (return-from copy-kernel-p t))))))
+
+(defun copy-kernel-transformation (kernel)
+  (trivia:when-match (list (list _ load-instruction))
+      (kernel-sources kernel)
+    (trivia:when-match (list (list _ store-instruction))
+        (kernel-targets kernel)
+      (return-from copy-kernel-transformation
+        (compose-transformations
+         (load-instruction-transformation load-instruction)
+         (store-instruction-transformation store-instruction)))))
+  (error "Not a copy kernel: ~S." kernel))
+
+(defun copy-kernel-load-instruction (kernel)
+  (trivia:if-match (list (list _ load-instruction))
+      (kernel-sources kernel)
+    load-instruction
+    (error "Not a copy kernel: ~S." kernel)))
