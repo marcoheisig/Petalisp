@@ -36,13 +36,9 @@
 
 (defgeneric replace-lazy-array (lazy-array replacement))
 
-(defgeneric users (array))
+(defgeneric refcount (array))
 
-(defgeneric add-to-users (user array))
-
-(defgeneric number-of-users (array))
-
-(defgeneric map-users (function array))
+(defgeneric depth (array))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -59,7 +55,10 @@
   (:default-initargs :computable t))
 
 (defclass non-immediate (lazy-array)
-  ((%inputs :initarg :inputs :reader inputs)))
+  ((%inputs
+    :initarg :inputs
+    :reader inputs
+    :type list)))
 
 (defclass empty-array (immediate)
   ())
@@ -71,25 +70,19 @@
    (%ntype
     :initarg :ntype
     :reader element-ntype)
-   (%users
-    :reader users
-    :initform (petalisp.utilities:make-weak-set :max-size 14 :min-size 4)))
+   (%refcount
+    :reader refcount
+    :accessor %refcount
+    :type unsigned-byte
+    :initform 0)
+   (%depth
+    :reader depth
+    :accessor %depth
+    :type unsigned-byte
+    :initform 0))
   (:default-initargs
    :shape (~)
    :ntype (petalisp.type-inference:ntype 't)))
-
-;;; Turn any supplied :element-type argument into a suitable :ntype.
-(defmethod shared-initialize
-    ((instance non-empty-array) slot-names
-     &rest args
-     &key (element-type nil element-type-supplied-p))
-  (if (and element-type-supplied-p
-           (or (eql slot-names 't)
-               (member '%ntype slot-names)))
-      (apply #'call-next-method instance slot-names
-             :ntype (petalisp.type-inference:ntype element-type)
-             args)
-      (call-next-method)))
 
 (defclass non-empty-immediate (non-empty-array immediate)
   ())
@@ -159,15 +152,36 @@
 ;;;
 ;;; Methods
 
+;;; Turn any supplied :element-type argument into a suitable :ntype.
+(defmethod shared-initialize
+    ((instance non-empty-array) slot-names
+     &rest args
+     &key
+       (element-type nil element-type-supplied-p)
+       (inputs '()))
+  (if (and element-type-supplied-p
+           (or (eql slot-names 't)
+               (member '%ntype slot-names)))
+      (apply #'call-next-method instance slot-names
+             :ntype (petalisp.type-inference:ntype element-type)
+             args)
+      (call-next-method)))
+
 (defmethod initialize-instance :after
     ((non-immediate non-immediate) &key &allow-other-keys)
-  (let ((computablep t))
-    (loop for input in (inputs non-immediate) do
-      (add-to-users non-immediate input)
-      (unless (computablep input)
-        (setf computablep nil)))
-    (setf (%computablep non-immediate)
-          computablep)))
+  (loop
+    with computablep = t
+    for input in (inputs non-immediate)
+    sum 1 into refcount fixnum
+    maximize (depth input) into depth
+    unless (computablep input) do (setf computablep nil)
+      finally
+         (setf (%computablep non-immediate)
+               computablep)
+         (setf (%refcount non-immediate)
+               refcount)
+         (setf (%depth non-immediate)
+               (1+ depth))))
 
 (defmethod lazy-array ((lazy-array lazy-array))
   lazy-array)
@@ -298,29 +312,6 @@
    lazy-array
    (transform (shape lazy-array) transformation)
    (invert-transformation transformation)))
-
-;;; Users
-
-(defmethod users ((object t))
-  nil)
-
-(defmethod add-to-users ((user lazy-array) (array t))
-  (values))
-
-(defmethod add-to-users ((user lazy-array) (array non-empty-array))
-  (petalisp.utilities:weak-set-add (users array) user))
-
-(defmethod number-of-users ((array t))
-  0)
-
-(defmethod number-of-users ((array non-empty-non-immediate))
-  (petalisp.utilities:weak-set-size (users array)))
-
-(defmethod map-users ((function function) (array t))
-  (values))
-
-(defmethod map-users ((function function) (array non-empty-array))
-  (petalisp.utilities:map-weak-set function (users array)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

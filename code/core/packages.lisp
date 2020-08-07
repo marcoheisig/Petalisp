@@ -107,8 +107,8 @@
    #:number-of-values
    #:operator
    #:storage
-   #:map-users
-   #:number-of-users
+   #:refcount
+   #:depth
    #:lazy-array
    #:lazy-map
    #:single-value-lazy-map

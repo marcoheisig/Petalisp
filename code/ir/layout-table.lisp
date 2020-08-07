@@ -77,7 +77,7 @@
 
 (defmethod visit-node ((node lazy-array))
   ;; Rule 2.
-  (case (number-of-users node)
+  (case (refcount node)
     ((0 1) (values t nil))
     (otherwise
      (case (layout-table-entry node)

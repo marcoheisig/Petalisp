@@ -123,8 +123,8 @@
    #:element-type
    #:rank
    #:total-size
-   #:number-of-users
-   #:map-users
+   #:refcount
+   #:depth
    #:input
    #:inputs
    #:value-n
