@@ -26,6 +26,14 @@
    ;; defalias.lisp
    #:defalias
 
+   ;; deque.lisp
+   #:deque
+   #:dequep
+   #:make-deque
+   #:deque-push
+   #:deque-pop
+   #:deque-steal
+
    ;; extended-euclid.lisp
    #:extended-euclid
 

@@ -13,6 +13,7 @@
   ((:file "packages")
    (:file "documentation")
    (:file "defalias")
+   (:file "deque")
    (:file "bitfield")
    (:file "identical")
    (:file "memoization")

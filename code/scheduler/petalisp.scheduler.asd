@@ -10,7 +10,6 @@
   :serial t
   :components
   ((:file "packages")
-   (:file "work-stealing-deque")
    (:file "slice")
    (:file "task")
    (:file "scheduler")))
