@@ -23,27 +23,29 @@
 
 (defun ir-from-lazy-arrays (lazy-arrays)
   (with-layout-table (lazy-arrays)
-    ;; Create a list of kernels for each entry in the buffer table.
-    (maphash
-     (lambda (lazy-array layout)
-       (unless (immediatep lazy-array)
-         (create-kernels lazy-array layout)))
-     *layout-table*)
-    ;; Finalize all layouts.
-    (maphash
-     (lambda (lazy-array layout)
-       (declare (ignore lazy-array))
-       (finalize-layout layout))
-     *layout-table*)
-    ;; Delete all buffers that are referenced zero times.
-    (maphash
-     (lambda (lazy-array layout)
-       (declare (ignore lazy-array))
-       (when (lazy-array-layout-p layout)
-         (loop for (buffer . nil) in (layout-buffer-stores layout) do
-           (unless (buffer-readers buffer)
-             (delete-buffer buffer)))))
-     *layout-table*)
+    (let ((number-of-layouts 0)
+          (layouts (make-array (hash-table-count *layout-table*))))
+      (declare (fixnum number-of-layouts))
+      ;; Create kernels for each entry in the layout table and populate the
+      ;; vector of layouts.
+      (maphash
+       (lambda (lazy-array layout)
+         (setf (svref layouts number-of-layouts) layout)
+         (incf number-of-layouts)
+         (unless (immediatep lazy-array)
+           (create-kernels lazy-array layout)))
+       *layout-table*)
+      ;; Finalize all layouts, starting with those with the least depth.
+      (sort layouts #'< :key #'layout-depth)
+      (map nil #'finalize-layout layouts)
+      ;; Delete all buffers that are referenced zero times, starting with
+      ;; those with the highest depth.
+      (loop for index from (1- number-of-layouts) downto 0
+            for layout = (svref layouts index)
+            when (lazy-array-layout-p layout)
+              do (loop for (buffer . nil) in (layout-buffer-stores layout) do
+                (unless (buffer-readers buffer)
+                  (delete-buffer buffer)))))
     ;; Normalize the entire IR and return the root buffers.
     (let ((root-buffers
             (loop for lazy-array in lazy-arrays

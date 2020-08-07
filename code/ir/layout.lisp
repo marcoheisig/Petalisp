@@ -28,12 +28,19 @@
 
 (defstruct (layout
             (:constructor nil))
-  (lazy-array nil :type lazy-array :read-only t))
+  (lazy-array nil :type lazy-array :read-only t)
+  ;; All layouts but that of the last graph root have a predecessor, such
+  ;; that there is a single chain of layouts from the leaves to the roots
+  ;; that visits each layout exactly once.  We later use this chain to
+  ;; apply certain optimizations in the correct order.
+  (predecessor nil :type (or null layout)))
 
 (defstruct (range-immediate-layout
             (:include layout)
             (:constructor make-range-immediate-layout
-                (range-immediate &aux (lazy-array range-immediate)))))
+                (range-immediate
+                 &aux
+                   (lazy-array range-immediate)))))
 
 (defstruct (array-immediate-layout
             (:include layout)
@@ -54,8 +61,15 @@
             (:conc-name layout-)
             (:constructor make-lazy-array-layout
                 (lazy-array)))
+  ;; An alist whose keys are buffers and whose values are the corresponding
+  ;; load instructions.
   (buffer-loads '())
+  ;; An alist whose keys are buffers and whose values are the corresponding
+  ;; store instructions.
   (buffer-stores '()))
+
+(defun layout-depth (layout)
+  (depth (layout-lazy-array layout)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -211,19 +225,18 @@
   ;; When the source buffer has a single kernel writing to it, and when
   ;; that kernel is a copy kernel, the new copy kernel can skip past the
   ;; existing one by composing the respective transformations.
-  (loop do
-    (trivia:if-match (list (list kernel _))
-        (buffer-writers source-buffer)
-      (if (copy-kernel-p kernel)
-          (multiple-value-setq (source-buffer transformation)
-            (values
-             (load-instruction-buffer
-              (copy-kernel-load-instruction kernel))
-             (compose-transformations
-              (copy-kernel-transformation kernel)
-              transformation)))
-          (loop-finish))
-      (loop-finish)))
+  (trivia:when-match (list (list kernel _))
+      (buffer-writers source-buffer)
+    (when (copy-kernel-p kernel)
+      (return-from make-copy-kernel
+        (make-copy-kernel
+         iteration-space
+         target-buffer
+         (load-instruction-buffer
+          (copy-kernel-load-instruction kernel))
+         (compose-transformations
+          (copy-kernel-transformation kernel)
+          transformation)))))
   (let* ((load
            (make-load-instruction source-buffer transformation))
          (store
