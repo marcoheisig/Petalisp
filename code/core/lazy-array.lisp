@@ -157,8 +157,7 @@
     ((instance non-empty-array) slot-names
      &rest args
      &key
-       (element-type nil element-type-supplied-p)
-       (inputs '()))
+       (element-type nil element-type-supplied-p))
   (if (and element-type-supplied-p
            (or (eql slot-names 't)
                (member '%ntype slot-names)))
@@ -317,19 +316,11 @@
 ;;;
 ;;; Immediate Constructors
 
-(defvar *scalar-immediate-cache*
-  (trivial-garbage:make-weak-hash-table :weakness :value))
-
-(defmacro scalar-immediate-cache (key)
-  `(values (gethash ,key *scalar-immediate-cache*)))
-
 (defun make-scalar-immediate (object)
-  (or (scalar-immediate-cache object)
-      (setf (scalar-immediate-cache object)
-            (make-instance 'array-immediate
-              :shape (~)
-              :ntype (petalisp.type-inference:ntype-of object)
-              :storage (petalisp.type-inference:make-rank-zero-array object)))))
+  (make-instance 'array-immediate
+    :shape (~)
+    :ntype (petalisp.type-inference:ntype-of object)
+    :storage (petalisp.type-inference:make-rank-zero-array object)))
 
 (defun make-array-immediate (array &optional reusablep)
   (check-type array array)
