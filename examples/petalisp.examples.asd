@@ -14,6 +14,7 @@
   :components
   ((:file "iterative-methods")
    (:file "linear-algebra")
+   (:file "wave-equation")
    (:file "image-processing")
    (:module "mnist-data"
     :components
