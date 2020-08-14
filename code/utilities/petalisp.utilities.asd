@@ -18,7 +18,6 @@
    (:file "identical")
    (:file "memoization")
    (:file "extended-euclid")
-   (:file "float-bits")
    (:file "prime-factors")
    (:file "weak-set")
    (:file "with-collectors")

@@ -14,6 +14,7 @@
   ((:file "packages")
    (:file "auxiliary-types")
    (:file "function-lambda-lists")
+   (:file "float-bits")
    (:file "ntype-1")
    (:file "ntype-2")
    (:file "ntype-3")

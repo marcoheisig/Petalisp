@@ -1,6 +1,6 @@
 ;;;; © 2016-2020 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package #:petalisp.utilities)
+(in-package #:petalisp.type-inference)
 
 ;;; A Common Lisp implementation may provide up to four distinct floating
 ;;; point types - short-float, single-float, double-float and long-float.
