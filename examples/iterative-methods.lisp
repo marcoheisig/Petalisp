@@ -11,13 +11,6 @@
 
 (in-package #:petalisp.examples.iterative-methods)
 
-(defun interior (array)
-  (flet ((range-interior (range)
-           (multiple-value-bind (start step end)
-               (range-start-step-end range)
-             (range (+ start step) step (- end step)))))
-    (~l (mapcar #'range-interior (shape-ranges (shape array))))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; The Jacobi method
@@ -27,7 +20,7 @@
   with spacing h, using the Jacobi scheme."
   (let* ((u (lazy-array u))
          (f (lazy-array f))
-         (interior (interior u)))
+         (interior (array-interior u 1)))
     (ecase (rank u)
       (1
        (loop repeat iterations do
@@ -79,17 +72,18 @@
                      (cond ((<= size (* 2 boundary))
                             (return-from red-black-coloring (values '() '())))
                            ((= size (1+ (* 2 boundary)))
-                            (let ((range (range (+ start (* boundary step)))))
+                            (let* ((index (+ start (* boundary step)))
+                                   (range (range index (1+ index))))
                               (red-black-shapes
                                (mapcar (alexandria:curry #'cons range) red)
                                (mapcar (alexandria:curry #'cons range) black)
                                (rest ranges))))
                            (t
                             (let* ((new-start (+ start (* boundary step)))
-                                   (new-step (* step 2))
                                    (new-end (- end (* boundary step)))
-                                   (range-1 (range new-start new-step new-end))
-                                   (range-2 (range (+ new-start step) new-step new-end)))
+                                   (new-step (* step 2))
+                                   (range-1 (range new-start (1+ new-end) new-step))
+                                   (range-2 (range (+ new-start step) (1+ new-end) new-step)))
                               (red-black-shapes
                                (nconc
                                 (mapcar (alexandria:curry #'cons range-1) red)
@@ -154,17 +148,17 @@
 (defun prolongate (u)
   (let ((u* (scale-array u 2)))
     (trivia:ematch (shape u*)
-      ((~ start-1 2 end-1)
+      ((~ start-1 end-1 2)
        (let ((space-1 (~ (1+ start-1) 2 end-1)))
          (fuse u*
                (α #'* 1/2
                   (α #'+
                      (reshape u* (τ (i) ((1+ i))) space-1)
                      (reshape u* (τ (i) ((1- i))) space-1))))))
-      ((~ start-1 2 end-1 ~ start-2 2 end-2)
-       (let ((space-1 (~ (1+ start-1) 2 end-1  ~ start-2 2 end-2))
-             (space-2 (~ start-1 2 end-1 ~ (1+ start-2) 2 end-2))
-             (space-3 (~ (1+ start-1) 2 end-1 ~ (1+ start-2) 2 end-2)))
+      ((~ start-1 end-1 2 ~ start-2 end-2 2)
+       (let ((space-1 (~ (1+ start-1) end-1 2  ~ start-2 end-2 2))
+             (space-2 (~ start-1 end-1 2 ~ (1+ start-2) end-2 2))
+             (space-3 (~ (1+ start-1) end-1 2 ~ (1+ start-2) end-2 2)))
          (fuse u*
                (α #'* 1/2
                   (α #'+
@@ -180,14 +174,14 @@
                      (reshape u* (τ (i j) ((1+ i) (1- j))) space-3)
                      (reshape u* (τ (i j) ((1- i) (1+ j))) space-3)
                      (reshape u* (τ (i j) ((1- i) (1- j))) space-3))))))
-      ((~ start-1 2 end-1 ~ start-2 2 end-2 ~ start-3 2 end-3)
-       (let ((space-1 (~ (1+ start-1) 2 end-1 ~ start-2 2 end-2 ~ start-3 2 end-3))
-             (space-2 (~ start-1 2 end-1 ~ (1+ start-2) 2 end-2 ~ start-3 2 end-3))
-             (space-3 (~ start-1 2 end-1 ~ start-2 2 end-2 ~ (1+ start-3) 2 end-3))
-             (space-4 (~ start-1 2 end-1 ~ (1+ start-2) 2 end-2 ~ (1+ start-3) 2 end-3))
-             (space-5 (~ (1+ start-1) 2 end-1 ~ start-2 2 end-2 ~ (1+ start-3) 2 end-3))
-             (space-6 (~ (1+ start-1) 2 end-1 ~ (1+ start-2) 2 end-2 ~ start-3 2 end-3))
-             (space-7 (~ (1+ start-1) 2 end-1 ~ (1+ start-2) 2 end-2 ~ (1+ start-3) 2 end-3)))
+      ((~ start-1 end-1 2 ~ start-2 end-2 2 ~ start-3 end-3 2)
+       (let ((space-1 (~ (1+ start-1) end-1 2 ~ start-2 end-2 2 ~ start-3 end-3 2))
+             (space-2 (~ start-1 end-1 2 ~ (1+ start-2) end-2 2 ~ start-3 end-3 2))
+             (space-3 (~ start-1 end-1 2 ~ start-2 end-2 2 ~ (1+ start-3) end-3 2))
+             (space-4 (~ start-1 end-1 2 ~ (1+ start-2) end-2 2 ~ (1+ start-3) end-3 2))
+             (space-5 (~ (1+ start-1) end-1 2 ~ start-2 end-2 2 ~ (1+ start-3) end-3 2))
+             (space-6 (~ (1+ start-1) end-1 2 ~ (1+ start-2) end-2 2 ~ start-3 end-3 2))
+             (space-7 (~ (1+ start-1) end-1 2 ~ (1+ start-2) end-2 2 ~ (1+ start-3) end-3 2)))
          (fuse u*
                (α #'* 1/2
                   (α #'+
@@ -233,9 +227,9 @@
 (defun restrict (u)
   (let ((u (lazy-array u)))
     (trivia:ematch (shape u)
-      ((~ start-1 1 end-1)
-       (let* ((selection (~ start-1 2 end-1))
-              (interior (interior selection)))
+      ((~ start-1 end-1)
+       (let* ((selection (~ start-1 end-1 2))
+              (interior (array-interior selection 1)))
          (reshape
           (fuse*
            (reshape u selection)
@@ -244,9 +238,9 @@
               (α #'* 1/4 (reshape u (τ (i) ((1+ i))) interior))
               (α #'* 1/4 (reshape u (τ (i) ((1- i))) interior))))
           (τ (i) ((+ start-1 (/ (- i start-1) 2)))))))
-      ((~ start-1 1 end-1 ~ start-2 1 end-2)
-       (let* ((selection (~ start-1 2 end-1 ~ start-2 2 end-2))
-              (interior (interior selection)))
+      ((~ start-1 end-1 ~ start-2 end-2)
+       (let* ((selection (~ start-1 end-1 2 ~ start-2 end-2 2))
+              (interior (array-interior selection 1)))
          (reshape
           (fuse*
            (reshape u selection)
@@ -266,9 +260,9 @@
                  (reshape u (τ (i j) ((1- i) (1- j))) interior))))
           (τ (i j) ((+ start-1 (/ (- i start-1) 2))
                     (+ start-2 (/ (- j start-2) 2)))))))
-      ((~ start-1 1 end-1 ~ start-2 1 end-2 ~ start-3 1 end-3)
-       (let* ((selection (~ start-1 2 end-1 ~ start-2 2 end-2 ~ start-3 2 end-3))
-              (interior (interior selection)))
+      ((~ start-1 end-1 1 ~ start-2 end-2 1 ~ start-3 end-3 1)
+       (let* ((selection (~ start-1 end-1 2 ~ start-2 end-2 2 ~ start-3 end-3 2))
+              (interior (array-interior selection 1)))
          (reshape
           (fuse*
            (reshape u selection)
@@ -311,7 +305,7 @@
 (defun residual (u b h)
   (let* ((u (lazy-array u))
          (b (lazy-array b))
-         (interior (interior u)))
+         (interior (array-interior u 1)))
     (ecase (rank u)
       (1
        (fuse* (reshape 0d0 (shape u))

@@ -29,23 +29,28 @@
     ((~)
      (reshape x (~ 1 ~ 1)))
     ((~l (list range))
-     (reshape x (~ 1 (range-size range) ~ 1)))
+     (reshape x (~ (range-size range) ~ 1)))
     ((~l (list range-1 range-2))
-     (reshape x (~ 1 (range-size range-1) ~ 1 (range-size range-2))))))
+     (reshape x (~ (range-size range-1) ~ (range-size range-2))))))
 
 (defun coerce-to-scalar (x)
   (setf x (lazy-array x))
   (trivia:ematch (shape x)
     ((~) x)
-    ((~ i)
+    ((~ i 1+i)
+     (unless (= (1+ i) 1+i)
+       (trivia.fail:fail))
      (reshape x (make-transformation :input-mask (vector i) :output-rank 0)))
-    ((~ i ~ j)
+    ((~ i 1+i ~ j 1+j)
+     (unless (and (= (1+ i) 1+i)
+                  (= (1+ j) 1+j))
+       (trivia.fail:fail))
      (reshape x (make-transformation :input-mask (vector i j) :output-rank 0)))))
 
 (trivia:defpattern matrix (m n)
   (alexandria:with-gensyms (it)
     `(trivia:guard1 ,it (lazy-array-p ,it)
-                    (shape ,it) (~ 1 ,m ~ 1 ,n))))
+                    (shape ,it) (~ ,m ~ ,n))))
 
 (trivia:defpattern square-matrix (m)
   (alexandria:with-gensyms (g)
@@ -70,9 +75,7 @@
 ;;; Linear Algebra Subroutines
 
 (defun zeros (m &optional (n m))
-  (assert (plusp m))
-  (assert (plusp n))
-  (reshape 0 (~ 1 m ~ 1 n)))
+  (reshape 0 (~ m ~ n)))
 
 (declaim (inline δ))
 (defun δ (i j)
@@ -80,10 +83,10 @@
   (if (= i j) 1 0))
 
 (defun eye (m &optional (n m))
-  (assert (plusp m))
-  (assert (plusp n))
-  (let ((shape (~ 1 m ~ 1 n)))
-    (α #'δ (indices shape 0) (indices shape 1))))
+  (let ((shape (~ m ~ n)))
+    (α #'δ
+       (indices shape 0)
+       (indices shape 1))))
 
 (defun transpose (x)
   (reshape
@@ -119,16 +122,15 @@
 (defun matmul (A B)
   (β #'+
      (α #'*
-        (reshape (coerce-to-matrix A) (τ (m n) (n m 1)))
-        (reshape (coerce-to-matrix B) (τ (n k) (n 1 k))))))
+        (reshape (coerce-to-matrix A) (τ (m n) (n m 0)))
+        (reshape (coerce-to-matrix B) (τ (n k) (n 0 k))))))
 
 (defun pivot-and-value (A d)
   (setf A (coerce-to-matrix A))
   (trivia:ematch A
     ((square-matrix m)
-     (assert (<= 1 d m))
      (multiple-value-bind (v p)
-         (max* (α #'abs (reshape A (~ d m ~ d))))
+         (max* (α #'abs (reshape A (~ d m ~ d (1+ d)))))
        (let ((p (coerce-to-scalar p))
              (v (coerce-to-scalar v)))
          ;(schedule A p v)
@@ -137,13 +139,13 @@
 (defun swap-rows (A i j)
   (setf A (coerce-to-matrix A))
   (trivia:ematch A
-    ((matrix m n)
-     (assert (<= 1 i m))
-     (assert (<= 1 j m))
+    ((square-matrix m)
+     (assert (< -1 i m))
+     (assert (< -1 j m))
      (if (= i j)
          A
-         (let ((si (~ i ~ 1 n))
-               (sj (~ j ~ 1 n)))
+         (let ((si (~ i (1+ i) ~ m))
+               (sj (~ j (1+ j) ~ m)))
            (fuse* A
                   (reshape A sj si)
                   (reshape A si sj)))))))
@@ -154,7 +156,7 @@
     ((square-matrix m)
      (labels
          ((rec (d P L U)
-            (if (= d m)
+            (if (= (1+ d) m)
                 (values (transpose P) L U)
                 (multiple-value-bind (pivot value)
                     (pivot-and-value U d)
@@ -162,12 +164,13 @@
                   (let* ((P (swap-rows P d pivot))
                          (L (swap-rows L d pivot))
                          (U (swap-rows U d pivot))
-                         (S (α #'/ (reshape U (~ (1+ d) m ~ d))
+                         (S (α #'/ (reshape U (~ (1+ d) m ~ d (1+ d)))
                                (coerce-to-matrix value))))
                     (rec (1+ d)
                          P
-                         (fuse* L S (reshape 1 (~ d ~ d)))
+                         (fuse* L S (reshape 1 (~ d (1+ d) ~ d (1+ d))))
                          (fuse* U
-                                (α #'- (reshape U (~ (1+ d) m ~ d m))
-                                   (α #'* S (reshape U (~ d ~ d m)))))))))))
-       (rec 1 (eye m) (zeros m) A)))))
+                                (α #'-
+                                   (reshape U (~ (1+ d) m ~ d m))
+                                   (α #'* S (reshape U (~ d (1+ d) ~ d m)))))))))))
+       (rec 0 (eye m) (zeros m) A)))))

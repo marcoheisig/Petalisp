@@ -7,33 +7,44 @@
 ;;; Ranges
 
 (document-type range
-  "A range denotes a set of integers, starting from a lower bound START,
-by a fixed stride STEP, to an inclusive upper bound END.")
+  "A range denotes a possibly empty set of integers.")
+
+(document-type empty-range
+  "An empty range is a range with zero elements.")
+
+(document-type non-empty-range
+  "A non-empty range denotes a set of integers, starting from a lower bound START,
+by a fixed stride STEP, to an exclusive upper bound END.")
 
 (document-function range
-  "Returns a new, normalized range from the supplied parameters.  Can be
-invoked with one, two or three integers.  In the case of a single integer,
-it constructs the range with exactly that element.  In the case of two
-integers, it creates a contiguous range.  In the case of three arguments,
-the first and the third argument denote the interval, and the second
-argument denotes the step size.  If the first argument and the last
-argument are not congruent modulo the step size, the latter one is moved
-towards the former until they are."
+  "Returns a new, normalized range from the supplied parameters.
+
+This function can be invoked with one, two or three integers.  In the case
+of a single integer, it constructs the range from zero with step size one
+up to but excluding that integer.  In the case of two integers, it creates
+a range from the first integer with step size one up to but excluding the
+second integer.  In the case of three arguments, it creates a range from
+the first integer up to but excluding the second integer, using the third
+integer as the step size.  If the first, inclusive integer and final,
+exclusive integer are not congruent modulo the step size, the latter one is
+moved towards the former until they are."
   (range 5)
   (range 5 9)
-  (range 5 2 13)
-  (range 7 3 -3))
+  (range 5 11)
+  (range 5 13 2)
+  (range 5 14 2)
+  (range 7 -3 3))
 
 (document-function rangep
   "Checks whether a supplied object is a range."
   (rangep 42)
-  (rangep (range 1 2 3)))
+  (rangep (range 1 3 2)))
 
 (document-function size-one-range-p
   "Checks whether the supplied range has a size of one."
   (size-one-range-p (range 5))
-  (size-one-range-p (range 5 2 7))
-  (size-one-range-p (range 5 3 7)))
+  (size-one-range-p (range 5 7 2))
+  (size-one-range-p (range 5 7 3)))
 
 (document-function split-range
   "Splits the supplied range R into a lower and an upper half and returns
@@ -44,47 +55,43 @@ An error is signaled if the supplied range has only a single element."
   (split-range (range 1))
   (split-range (range 1 10))
   (split-range (range 1 9))
-  (split-range (range 2 2 9)))
+  (split-range (range 2 9 2)))
 
 (document-function map-range
   "Takes a function and a range and applies the function to all integers of
 that range, in ascending order."
   (let ((l '()))
-    (map-range (lambda (i) (push i l)) (range 1 2 9))
+    (map-range (lambda (i) (push i l)) (range 1 9 2))
     (nreverse l)))
 
 (document-function range-equal
   "Check whether two supplied ranges describe the same set of integers."
   (range-equal (range 1) (range 2))
   (range-equal (range 2) (range 2))
-  (range-equal (range 0 2 8) (range 0 2 9))
-  (range-equal (range 0 3 8) (range 0 3 9)))
+  (range-equal (range 0 8 2) (range 0 9 2))
+  (range-equal (range 0 8 3) (range 0 9 3)))
 
 (document-function range-contains
   "Check whether the supplied range contains a particular integer."
   (range-contains (range 1 10) 5)
   (range-contains (range 1 10) -5)
-  (range-contains (range 1 3 10) 4))
+  (range-contains (range 1 10 3) 4))
 
 (document-function range-intersection
   "Returns the range containing exactly those elements that occur in both
-supplied ranges.  Returns NIL if there are no such elements."
+supplied ranges.."
   (range-intersection (range 1 10) (range 2 20))
-  (range-intersection (range 3 2 13) (range 1 3 13)))
+  (range-intersection (range 3 14 2) (range 1 14 3)))
 
 (document-function range-intersectionp
   "Check whether two supplied ranges have at least one common element."
   (range-intersectionp (range 1 10) (range 2 20))
-  (range-intersectionp (range 0 2 8) (range 1 2 9)))
+  (range-intersectionp (range 0 7 2) (range 1 8 2)))
 
 (document-function range-difference-list
   "Compute the difference of two ranges R1 and R2.  Returns a list of
 disjoint subranges of R1 that describe exactly those integers appearing in
 R1 but not in R2.")
-
-(document-function range-start-step-end
-  "Returns the start, step and (inclusive) end of the range, respectively."
-  (range-start-step-end (range 0 2 8)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -100,18 +107,18 @@ some given range designators, from lists of ranges, from shapes, or from a
 single range, respectively.  Each of these patterns can be used repeatedly
 in a single call."
   (~)
-  (~ 7)
-  (~ 1 9)
-  (~ 0 2 9 ~ 0 2 9)
-  (~ 5 ~s (~ 1 2 3 ~ 4 5 9) ~ 5)
-  (~r (range 1 9) ~l (list (range 2 8)) ~ 42)
-  (apply #'~ 1 9 (loop repeat 3 append '(~ 2 5))))
+  (~ 8)
+  (~ 1 10)
+  (~ 0 10 2 ~ 0 10 2)
+  (~ 5 ~s (~ 1 4 2 ~ 4 10 5) ~ 5)
+  (~r (range 1 10) ~l (list (range 2 9)) ~ 42)
+  (apply #'~ 1 10 (loop repeat 3 append '(~ 2 6))))
 
 (document-type shape
   "A shape is the cartesian product of zero or more ranges.  Shapes can be
 constructed by calling ~ or MAKE-SHAPE.  The elements of a shape are lists
 of integers.  The rank of a shape is the length of these lists.  For
-example, the shape (~ 0 ~ 1 2 ~ 3 4 7) has rank three and consists of the
+example, the shape (~ 0 1 ~ 1 3 ~ 3 8 4) has rank three and consists of the
 integer tuples (0 1 3), (0 1 7), (0 2 3), (0 2 7).")
 
 (document-function shapep
@@ -146,7 +153,7 @@ than one."
   "Returns that number of integer tuples denoted by the supplied shape."
   (shape-size (~))
   (shape-size (~ 2 9))
-  (shape-size (~ 1 10 ~ 1 8)))
+  (shape-size (~ 1 9 ~ 1 8)))
 
 (document-function shape-equal
   "Checks whether two supplied shapes denote the same set of integer tuples."
@@ -159,17 +166,17 @@ than one."
   "Computes the difference of two shapes S1 and S2.  Returns a list of
 disjoint subshapes of S1 that describe exactly those integer tuples
 appearing in S1 but not in S2."
-  (shape-difference-list (~ 1 10) (~ 2 9))
-  (shape-difference-list (~ 1 10) (~ 4 7))
-  (shape-difference-list (~ 1 10) (~ 2 2 8))
-  (shape-difference-list (~ 1 10) (~ 2 20))
-  (shape-difference-list (~ 1 2 20) (~ 1 3 20)))
+  (shape-difference-list (~ 1 11) (~ 2 10))
+  (shape-difference-list (~ 1 11) (~ 4 8))
+  (shape-difference-list (~ 1 11) (~ 2 9 2))
+  (shape-difference-list (~ 1 11) (~ 2 21))
+  (shape-difference-list (~ 1 21 2) (~ 1 21 3)))
 
 (document-function shape-intersection
   "Returns the shape containing exactly those integer tuples that occur in
 both supplied shapes.  Returns NIL if there are no such elements."
-  (shape-intersection (~ 1 10 ~ 3 2 13) (~ 1 5 ~ 1 3 13))
-  (shape-intersection (~ 1 5) (~ 6 10)))
+  (shape-intersection (~ 1 11 ~ 3 14 2) (~ 1 6 ~ 1 14 3))
+  (shape-intersection (~ 1 6) (~ 6 11)))
 
 (document-function shape-intersectionp
   "Check whether two supplied shapes have at least one common element."
@@ -180,7 +187,7 @@ both supplied shapes.  Returns NIL if there are no such elements."
   "Takes a function and a shape and applies the function to all integer
 tuples of that range, in ascending order."
   (let ((l '()))
-    (map-shape (lambda (i) (push i l)) (~ 1 2 ~ 3 4))
+    (map-shape (lambda (i) (push i l)) (~ 1 3 ~ 3 5))
     (nreverse l)))
 
 (document-function shape-contains
@@ -206,7 +213,7 @@ range R1 that has been peeled off."
 subshape of one or more of the supplied shapes and their fusion covers all
 supplied shapes.  The bitmask indicates which of the supplied shapes are
 supersets of the corresponding resulting shape."
-  (subdivide (list (~ 1 2 ~ 1 2) (~ 1 ~ 1)))
+  (subdivide (list (~ 1 3 ~ 1 3) (~ 1 2 ~ 1 2)))
   (subdivide (list (~ 1 10) (~ 2 20))))
 
 (document-function subshapep

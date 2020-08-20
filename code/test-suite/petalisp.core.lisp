@@ -10,32 +10,28 @@
 
 (define-test range-test
   ;; Range constructors
-  (is (rangep (range 1 0 1)))
-  (is (rangep (apply #'range (list 1 2 3))))
-  (signals error (range 1 0 99))
+  (is (rangep (range 1 1 0)))
+  (is (rangep (apply #'range (list 1 3 2))))
+  (signals error (range 1 99 0))
   ;; Range operations
   (labels ((test-range (range)
-             (declare (notinline range-start-step-end size-one-range-p range-end))
+             (declare (notinline size-one-range-p range-end))
              (is (rangep range))
              (with-output-to-string (stream)
                (print range stream))
-             (multiple-value-bind (start step end)
-                 (range-start-step-end range)
-               (is (= start (range-start range)))
-               (is (= step (range-step range)))
-               (is (= end (range-end range)))
-               (is (<= (range-start range)
-                       (range-end range))))
              (if (= 1 (range-size range))
                  (is (size-one-range-p range))
                  (is (not (size-one-range-p range))))
              (is (range-equal range range))
-             (is (range-equal range (multiple-value-call #'range (range-start-step-end range))))
-             (if (size-one-range-p range)
-                 (is (= (range-start range)
-                        (range-end range)))
-                 (is (/= (range-start range)
-                         (range-end range))))
+             (cond ((empty-range-p range)
+                    (is (zerop (range-size range)))
+                    (return-from test-range))
+                   ((size-one-range-p range)
+                    (is (= (range-start range)
+                           (range-end range))))
+                   (t
+                    (is (/= (range-start range)
+                            (range-end range)))))
              (map-range
               (lambda (index)
                 (is (range-contains range index)))
@@ -58,19 +54,20 @@
                         (- (range-size range-2)
                            (range-size intersection-2))))))))
     (test-range-pair (range 0) (range 0))
+    (test-range-pair (range 1) (range 1))
     (test-range-pair (range 0) (range 1))
     (test-range-pair (range -1) (range 1))
     (test-range-pair (range 0 2) (range 1))
     (test-range-pair (range 0 99) (range 1 100))
-    (test-range-pair (range 0 2 99) (range 3 100))
-    (test-range-pair (range 0 3 50) (range 55 5 100))))
+    (test-range-pair (range 0 99 2) (range 3 100))
+    (test-range-pair (range 0 50 3) (range 55 100 5))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Networks and Automatic Differentiation
 
 (define-test network-test
-  (let* ((shape (~ 0 9))
+  (let* ((shape (~ 10))
          (x1 (make-instance 'parameter :shape shape :element-type 'double-float))
          (x2 (make-instance 'parameter :shape shape :element-type 'double-float))
          (v1 (α #'+
@@ -123,45 +120,45 @@
    (fuse (reshape (vector 4 5 6) (τ (i) ((+ i 3))))
          (vector 1 2 3)))
   (compute
-   (fuse* (reshape 0.0 (~ 2 4 ~ 2 4))
-          (reshape 1.0 (~ 3 ~ 3)))))
+   (fuse* (reshape 0.0 (~ 2 5 ~ 2 5))
+          (reshape 1.0 (~ 3 4 ~ 3 4)))))
 
 (define-test reshape-test
-  (compute (reshape 4 (~ 0 4)))
+  (compute (reshape 4 (~ 5)))
   (compute (reshape #(1 2 3) (τ (i) ((- i)))) #(3 2 1))
-  (compute (reshape #(1 2 3 4) (~ 1 2)))
-  (compute (reshape (indices (~ 1 9)) (~ 0 2 ~ 0 2)))
+  (compute (reshape #(1 2 3 4) (~ 1 3)))
+  (compute (reshape (indices (~ 1 10)) (~ 3 ~ 3)))
   (compute (reshape #2A((1 2) (3 4)) (τ (i j) (j i))))
-  (compute (reshape #(1 2 3 4) (~ 1 2) (~ 0 1 ~ 0 1)))
+  (compute (reshape #(1 2 3 4) (~ 1 3) (~ 0 2 ~ 0 2)))
   (alexandria:map-permutations
    (lambda (shapes)
      (compute
-      (apply #'reshape (indices (~ 1 100)) shapes)))
-   (list (~ 0 4 ~ 0 4 ~ 0 3)
-         (~ 0 1 ~ 0 4 ~ 0 0 ~ 0 1 ~ 0 4)
-         (~ 1 2 ~ 1 5 ~ 1 2 ~ 1 5)
-         (~ 1 2 3 ~ 1 2 9 ~ 1 2 3 ~ 1 2 9)
-         (~ 0 99)))
+      (apply #'reshape (indices (~ 1 101)) shapes)))
+   (list (~ 0 5 ~ 0 5 ~ 0 4)
+         (~ 0 2 ~ 0 5 ~ 0 1 ~ 0 2 ~ 0 5)
+         (~ 1 3 ~ 1 6 ~ 1 3 ~ 1 6)
+         (~ 1 4 2 ~ 1 10 2 ~ 1 4 2 ~ 1 10 2)
+         (~ 100)))
   (alexandria:map-permutations
    (lambda (shapes)
      (compute
-      (apply #'reshape (indices (~ 1 200)) shapes)))
-   (list (~ 0 1 ~ 0 4 ~ 0 4 ~ 0 3)
-         (~ 0 1 ~ 0 1 ~ 0 4 ~ 0 0 ~ 0 1 ~ 0 4)
-         (~ 0 1 ~ 0 99)))
+      (apply #'reshape (indices (~ 1 201)) shapes)))
+   (list (~ 0 2 ~ 0 5 ~ 0 5 ~ 0 4)
+         (~ 0 2 ~ 0 2 ~ 0 5 ~ 0 1 ~ 0 2 ~ 0 5)
+         (~ 0 2 ~ 0 100)))
   (alexandria:map-permutations
    (lambda (shapes)
      (compute
-      (apply #'reshape (indices (~ 1 200)) shapes)))
-   (list (~ 0 4 ~ 0 4 ~ 0 3 ~ 0 1)
-         (~ 0 1 ~ 0 4 ~ 0 0 ~ 0 1 ~ 0 4 ~ 0 1)
-         (~ 0 99 ~ 0 1)))
+      (apply #'reshape (indices (~ 1 201)) shapes)))
+   (list (~ 0 5 ~ 0 5 ~ 0 4 ~ 0 2)
+         (~ 0 2 ~ 0 5 ~ 0 1 ~ 0 2 ~ 0 5 ~ 0 2)
+         (~ 0 100 ~ 0 2)))
   (compute
    (fuse*
     (reshape #2A((1 2 3) (4 5 6)) (τ (i j) ((+ 2 i) (+ 3 j))))
     (reshape 9 (τ () (3 4)))))
   (signals error
-    (compute (reshape #(1 2 3 4) (~ -1 3)))))
+    (compute (reshape #(1 2 3 4) (~ -1 4)))))
 
 (define-test multiple-arguments
   (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1))))
@@ -177,9 +174,9 @@
   (let* ((size 10)
          (a (lazy-array (make-array size :initial-element 0))))
     (compute
-     (β #'+ (fuse (reshape a (~ 0 (- size 2))
+     (β #'+ (fuse (reshape a (~ 0 (- size 1))
                            (τ (i) (0 i)))
-                  (reshape a (~ 1 (- size 1))
+                  (reshape a (~ 1 size)
                            (τ (i) (1 (1- i)))))))))
 
 (define-test reduction-of-fusions

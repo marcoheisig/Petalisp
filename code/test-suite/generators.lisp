@@ -43,7 +43,7 @@
            (step (funcall step-generator))
            (size (funcall size-generator))
            (end (+ start (* step (1- size)))))
-      (range start step end))))
+      (range start (if (< end start) (1- end) (1+ end)) step))))
 
 (defgenerator shape (&key (rank-generator (make-integer-generator :min 0 :max 5))
                           (range-generator (make-range-generator)))
@@ -86,7 +86,7 @@
     :rank-generator (constantly 2)
     :range-generator
     (make-range-generator
-     :start-generator (constantly 1)
+     :start-generator (constantly 0)
      :step-generator (constantly 1)
      :size-generator size-generator))))
 

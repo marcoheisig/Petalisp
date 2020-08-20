@@ -22,6 +22,10 @@
    ;; Ranges
    #:range
    #:rangep
+   #:empty-range
+   #:empty-range-p
+   #:non-empty-range
+   #:non-empty-range-p
    #:size-one-range-p
    #:split-range
    #:map-range
@@ -30,7 +34,6 @@
    #:range-intersection
    #:range-intersectionp
    #:range-difference-list
-   #:range-start-step-end
    #:range-start
    #:range-step
    #:range-end
@@ -45,6 +48,10 @@
    #:~r
    #:shape
    #:shapep
+   #:empty-shape
+   #:empty-shape-p
+   #:non-empty-shape
+   #:non-empty-shape-p
    #:shape-rank
    #:shape-ranges
    #:shape-dimensions

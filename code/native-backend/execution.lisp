@@ -50,11 +50,12 @@
          (vector (make-array (* 3 rank))))
     (loop for index below rank
           for range in (shape-ranges iteration-space) do
-            (multiple-value-bind (start step end)
-                (range-start-step-end range)
-              (setf (svref vector (+ (* 3 index) 0)) start)
-              (setf (svref vector (+ (* 3 index) 1)) step)
-              (setf (svref vector (+ (* 3 index) 2)) end)))
+            (setf (svref vector (+ (* 3 index) 0))
+                  (range-start range))
+            (setf (svref vector (+ (* 3 index) 1))
+                  (range-step range))
+            (setf (svref vector (+ (* 3 index) 2))
+                  (range-end range)))
     ;; So far, we use a simple outer loop parallelization scheme.  To do
     ;; that, we first have to check whether there is an outer loop.
     (if (zerop rank)

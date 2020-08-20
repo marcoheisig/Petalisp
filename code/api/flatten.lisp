@@ -3,4 +3,4 @@
 (in-package #:petalisp.api)
 
 (defun flatten (array)
-  (reshape array (~ 0 (1- (shape-size (shape array))))))
+  (reshape array (~ 0 (shape-size (shape array)))))

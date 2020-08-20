@@ -58,7 +58,7 @@
   (loop for input in (inputs lazy-fuse) do
     (let ((subspace (shape-intersection iteration-space (shape input))))
       ;; If the input is unreachable, we do nothing.
-      (unless (null subspace)
+      (unless (empty-shape-p subspace)
         ;; If the input contains fusion nodes, we also do nothing.
         (unless (map-iteration-spaces-aux input subspace transformation)
           ;; We have an outer fusion.  This means we have to add a new

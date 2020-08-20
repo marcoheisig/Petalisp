@@ -459,12 +459,14 @@
     (flet ((store-output-range (output-index input-index scaling offset)
              (setf (elt output-ranges output-index)
                    (if (not input-index)
-                       (make-range offset 1 offset)
+                       (range offset (1+ offset))
                        (let ((input-range (elt input-ranges input-index)))
                          (range
                           (+ offset (* scaling (range-start input-range)))
-                          (* scaling (range-step input-range))
-                          (+ offset (* scaling (range-end input-range)))))))))
+                          (1+ (+ offset (* scaling (range-end input-range))))
+                          (if (size-one-range-p input-range)
+                              1
+                              (* scaling (range-step input-range)))))))))
       (map-transformation-outputs #'store-output-range transformation))
     (~l output-ranges)))
 

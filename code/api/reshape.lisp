@@ -238,13 +238,13 @@
          (prefix (subseq ranges 0 axis))
          (range (nth axis ranges))
          (suffix (subseq ranges (1+ axis)))
-         (range-2 (range 0 (1- (/ (range-size range) k)))))
+         (range-2 (range 0 (/ (range-size range) k))))
     (lazy-fuse
      (loop for offset below k
            collect
            (lazy-reshape
             lazy-array
-            (~l prefix ~ offset ~r range-2 ~l suffix)
+            (~l prefix ~ offset (1+ offset) ~r range-2 ~l suffix)
             (let ((input-mask (make-array (1+ rank) :initial-element nil))
                   (output-mask (make-array rank :initial-element nil))
                   (offsets (make-array rank :initial-element 0)))
@@ -269,13 +269,13 @@
          (prefix (subseq ranges 0 axis))
          (suffix (subseq ranges (1+ axis)))
          (n (range-size (nth axis ranges)))
-         (range-1 (range 0 (1- (/ n k)))))
+         (range-1 (range 0 (/ n k))))
     (lazy-fuse
      (loop for offset below k
            collect
            (lazy-reshape
             lazy-array
-            (~l prefix ~r range-1 ~ offset ~l suffix)
+            (~l prefix ~r range-1 ~ offset (1+ offset) ~l suffix)
             (let ((input-mask (make-array (1+ rank) :initial-element nil))
                   (output-mask (make-array rank :initial-element nil))
                   (offsets (make-array rank :initial-element 0))
@@ -309,7 +309,7 @@
            collect
            (lazy-reshape
             lazy-array
-            (~l prefix ~ (* offset size-2) (1- (* (1+ offset) size-2)) ~l suffix)
+            (~l prefix ~ (* offset size-2) (* (1+ offset) size-2) ~l suffix)
             (let ((input-mask (make-array (1- rank) :initial-element nil))
                   (output-mask (make-array rank :initial-element nil))
                   (offsets (make-array rank :initial-element 0)))
@@ -341,7 +341,7 @@
            collect
            (lazy-reshape
             lazy-array
-            (~l prefix ~ offset size-2 (1- (* size-1 size-2)) ~l suffix)
+            (~l prefix ~ offset (* size-1 size-2) size-2 ~l suffix)
             (let ((input-mask (make-array (1- rank) :initial-element nil))
                   (output-mask (make-array rank :initial-element nil))
                   (scalings (make-array rank :initial-element 1))

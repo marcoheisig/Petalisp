@@ -74,7 +74,6 @@
    #:range-intersection
    #:range-intersectionp
    #:range-difference-list
-   #:range-start-step-end
    #:range-start
    #:range-step
    #:range-end
@@ -146,6 +145,8 @@
 
    ;; Utilities
    #:move-axis-to-front
+   #:array-interior
+   #:shape-interior
    #:collapse
    #:flatten
    #:slice

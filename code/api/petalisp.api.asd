@@ -24,6 +24,7 @@
    (:file "drop-axes" :depends-on ("reshape"))
    (:file "flatten" :depends-on ("reshape"))
    (:file "fuse" :depends-on ("packages"))
+   (:file "interior" :depends-on ("packages"))
    (:file "network" :depends-on ("alpha" "reshape"))
    (:file "packages")
    (:file "reshape" :depends-on ("packages"))
@@ -41,6 +42,7 @@
      "drop-axes"
      "flatten"
      "fuse"
+     "interior"
      "network"
      "packages"
      "reshape"

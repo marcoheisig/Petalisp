@@ -104,7 +104,8 @@
   (let ((symbols (lambda-list lambda-block)))
     `(lambda ,symbols
        (declare ,@(declarations lambda-block))
-       (with-unsafe-optimizations
+       (locally
+           (declare (optimize (debug 3) (safety 3)))
          ,(call-next-method)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

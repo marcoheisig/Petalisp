@@ -14,7 +14,7 @@
         (when (null entry)
           (push (cons shape nil) alist))))
     (let* ((max-rank (loop for (shape) in alist maximize (shape-rank shape)))
-           (ranges (make-array max-rank :initial-element (range 0))))
+           (ranges (make-array max-rank :initial-element (range 1))))
       (loop for (shape) in alist
             for rank = (shape-rank shape) do
               (loop for range in (shape-ranges shape)

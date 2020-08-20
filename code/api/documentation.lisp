@@ -19,9 +19,9 @@ taking each index and corresponding value of the original array and
 applying the transformation to the index while retaining the value."
   (compute (reshape 4 (~ 0 4)))
   (compute (reshape #(1 2 3 4) (~ 1 2)))
-  (compute (reshape (indices (~ 1 9)) (~ 0 2 ~ 0 2)))
+  (compute (reshape (indices (~ 9)) (~ 3 ~ 3)))
   (compute (reshape #2A((1 2) (3 4)) (τ (i j) (j i))))
-  (compute (reshape #(1 2 3 4) (~ 1 2) (~ 0 1 ~ 0 1))))
+  (compute (reshape #(1 2 3 4) (~ 1 3) (~ 0 2 ~ 0 2))))
 
 (document-function broadcast-arrays
   "Returns as many lazy arrays as there are supplied arrays, but broadcast
@@ -53,30 +53,30 @@ first broadcast with the function BROADCAST-ARRAYS."
 (document-function collapse
   "Turns the supplied array into an array with the same rank and contents,
 but where all ranges start from zero and have a step size of one."
-  (collapse (reshape 42 (~ 1 3 99 ~ 1 8 99))))
+  (collapse (reshape 42 (~ 1 100 3 ~ 1 100 8))))
 
 (document-function fuse
   "Combine ARRAYS into a single strided array.  It is an error if some of
 the supplied arrays overlap, or if there exists no suitable strided array
 to represent the fusion."
-  (compute (fuse (reshape 1 (~ 0 1))
-                 (reshape 0 (~ 2 3))))
-  (compute (fuse (reshape 1 (~ 0 2 6))
-                 (reshape 0 (~ 1 2 6)))))
+  (compute (fuse (reshape 1 (~ 0 2))
+                 (reshape 0 (~ 2 4))))
+  (compute (fuse (reshape 1 (~ 0 7 2))
+                 (reshape 0 (~ 1 7 2)))))
 
 (document-function fuse*
   "Combines ARRAYS into a single strided array.  When some of the supplied
 arguments overlap partially, the value of the rightmost object is used."
-  (compute (fuse* (reshape 1 (~ 0 3))
-                 (reshape 0 (~ 2 3)))))
+  (compute (fuse* (reshape 1 (~ 0 4))
+                  (reshape 0 (~ 2 4)))))
 
 (document-function drop-axes
   "Removes zero or more axes whose corresponding range has only a single
 element from a supplied array."
-  (drop-axes (reshape 1 (~ 1 ~ 2)) 1)
-  (compute (drop-axes (reshape 1 (~ 1 ~ 2)) 1))
-  (compute (drop-axes (reshape 1 (~ 1 ~ 2)) 0 1))
-  (compute (drop-axes (reshape 1 (~ 1 ~ 2 4)) 0)))
+  (drop-axes (reshape 1 (~ 1 2 ~ 2 3)) 1)
+  (compute (drop-axes (reshape 1 (~ 1 2 ~ 2 3)) 1))
+  (compute (drop-axes (reshape 1 (~ 1 2 ~ 2 3)) 0 1))
+  (compute (drop-axes (reshape 1 (~ 1 2 ~ 2 5)) 0)))
 
 (document-function flatten
   "Turns the supplied array into a rank one array, while preserving the
@@ -108,12 +108,12 @@ are contained in the supplied RANGE."
             #2A((1 0 0)
                 (0 1 0)
                 (0 0 1))
-            (range 0 2 2)))
+            (range 0 3 2)))
   (compute (slices
             #2A((1 0 0)
                 (0 1 0)
                 (0 0 1))
-            (range 0 2 2)
+            (range 0 3 2)
             1)))
 
 (document-function stack

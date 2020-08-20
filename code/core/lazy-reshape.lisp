@@ -57,7 +57,7 @@
 ;;; entirely within a single input of that fusion.
 (defmethod lazy-reshape
     ((lazy-fuse lazy-fuse)
-     (shape shape)
+     (shape non-empty-shape)
      (transformation transformation))
   (loop for input in (inputs lazy-fuse)
         when (subshapep *relevant-shape* (shape input)) do
@@ -68,14 +68,14 @@
 ;;; Handle empty shapes.
 (defmethod lazy-reshape
     ((lazy-array lazy-array)
-     (null null)
+     (empty-shape empty-shape)
      (transformation transformation))
   (empty-array))
 
 ;;; Default: Construct a new reference.
 (defmethod lazy-reshape
     ((lazy-array lazy-array)
-     (shape shape)
+     (shape non-empty-shape)
      (transformation transformation))
   (make-instance 'lazy-reshape
     :ntype (element-ntype lazy-array)

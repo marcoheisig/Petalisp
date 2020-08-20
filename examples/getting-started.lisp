@@ -24,13 +24,13 @@
   (reshape 0 shape))
 
 (present
- (zeros (~ 0 9))) ; ten zeros
+ (zeros (~ 10))) ; ten zeros
 
 (present
- (indices (zeros (~ 0 9)))) ; the numbers from 0 to 9 (inclusive)
+ (indices (zeros (~ 10)))) ; the numbers from 0 to 9 (inclusive)
 
 (present
- (reshape #2a((1 2 3 4) (5 6 7 8)) (~ 0 1 ~ 1 2))) ; selecting values
+ (reshape #2a((1 2 3 4) (5 6 7 8)) (~ 0 2 ~ 1 3))) ; selecting values
 
 (present
  (reshape #2a((1 2 3 4) (5 6 7 8))
@@ -38,22 +38,22 @@
 
 ;; arrays can be merged with fuse
 
-(present (fuse (reshape 5 (~ 0 2))
-               (reshape 1 (~ 3 5))))
+(present (fuse (reshape 5 (~ 0 3))
+               (reshape 1 (~ 3 6))))
 
 ;; arrays can be overwritten with fuse*
 
 (present
- (fuse* (zeros (~ 0 9 ~ 0 9))
-        (reshape 1 (~ 2 7 ~ 2 7))))
+ (fuse* (zeros (~ 10 ~ 10))
+        (reshape 1 (~ 2 8 ~ 2 8))))
 
 ;; lazy arrays permit beautiful functional abstractions
 
 (defun chessboard (h w)
-  (fuse (reshape 0 (~ 0 2 h ~ 0 2 w))
-        (reshape 0 (~ 1 2 h ~ 1 2 w))
-        (reshape 1 (~ 0 2 h ~ 1 2 w))
-        (reshape 1 (~ 1 2 h ~ 0 2 w))))
+  (fuse (reshape 0 (~ 0 h 2 ~ 0 w 2))
+        (reshape 0 (~ 1 h 2 ~ 1 w 2))
+        (reshape 1 (~ 0 h 2 ~ 1 w 2))
+        (reshape 1 (~ 1 h 2 ~ 0 w 2))))
 
 (present
  (chessboard 8 8))
@@ -102,10 +102,10 @@
 (present (matmul MA MA))
 
 (present
- (matmul (reshape 3.0 (~ 0 3 ~ 0 7))
-         (reshape 2.0 (~ 0 7 ~ 0 3))))
+ (matmul (reshape 3.0 (~ 4 ~ 8))
+         (reshape 2.0 (~ 8 ~ 4))))
 
-(defparameter M (reshape #(1 2 3 4 5 6) (~ 0 5 ~ 0 5)))
+(defparameter M (reshape #(1 2 3 4 5 6) (~ 6 ~ 6)))
 
 (present M)
 
@@ -116,15 +116,8 @@
 ;;;
 ;;;  Jacobi's Method
 
-(defun interior (array)
-  (flet ((range-interior (range)
-           (multiple-value-bind (start step end)
-               (range-start-step-end range)
-             (range (+ start step) step (- end step)))))
-    (~l (mapcar #'range-interior (shape-ranges (shape array))))))
-
 (defun jacobi-2d (grid)
-  (let ((interior (interior grid)))
+  (let ((interior (array-interior grid 1)))
     (fuse*
      grid
      (α #'* 1/4
@@ -135,8 +128,8 @@
            (reshape grid (τ (i j) (i (1- j))) interior))))))
 
 (defparameter domain
-  (fuse* (reshape 1.0 (~ 0 9 ~ 0 9))
-         (reshape 0.0 (~ 1 8 ~ 1 8))))
+  (fuse* (reshape 1.0 (~ 10 ~ 10))
+         (reshape 0.0 (~ 1 9 ~ 1 9))))
 
 (present domain)
 

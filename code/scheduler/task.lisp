@@ -118,5 +118,5 @@
         (decf size-2)
         (incf size-1))
       (values
-       (range start (+ start (1- size-1)))
-       (range (+ start size-1) end)))))
+       (range start (+ start size-1))
+       (range (+ start size-1) (1+ end))))))

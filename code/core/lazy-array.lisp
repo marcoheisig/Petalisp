@@ -266,14 +266,13 @@
 (defmethod shape ((array array))
   (if (zerop (array-total-size array))
       nil
-      (%make-shape
+      (make-shape
        (loop for axis below (array-rank array)
              collect
-             (range 0 1 (1- (array-dimension array axis))))
-       (array-rank array))))
+             (range (array-dimension array axis))))))
 
 (defmethod shape ((empty-array empty-array))
-  (error "The empty array has no shape."))
+  (make-empty-shape 0))
 
 (defmethod shape ((shape shape))
   shape)
@@ -361,7 +360,7 @@
          (petalisp.type-inference:ntype-of (range-end range))))))
 
 (defun indices (array-or-shape &optional (axis 0))
-  (if (null array-or-shape)
+  (if (empty-shape-p array-or-shape)
       (empty-array)
       (let* ((shape (shape array-or-shape))
              (rank (shape-rank shape)))

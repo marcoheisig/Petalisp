@@ -15,7 +15,7 @@
     (let ((current-slice (make-initial-slice root-buffers)))
       (mapc allocate (slice-allocations current-slice))
       (loop
-        (funcall enqueue-tasks (tasks-from-slice current-slice (range 0 (1- n-workers))))
+        (funcall enqueue-tasks (tasks-from-slice current-slice (range n-workers)))
         (let ((next-slice (compute-next-slice current-slice)))
           (funcall barrier)
           (mapc deallocate (slice-deallocations current-slice))

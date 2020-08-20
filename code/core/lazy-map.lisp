@@ -3,7 +3,7 @@
 (in-package #:petalisp.core)
 
 (defun single-value-lazy-map (shape function inputs)
-  (if (null shape)
+  (if (empty-shape-p shape)
       (empty-array)
       (petalisp.type-inference:specialize
        function
@@ -30,7 +30,7 @@
            :ntype (petalisp.type-inference:ntype 't))))))
 
 (defun multiple-value-lazy-map (n-outputs shape function inputs)
-  (if (null shape)
+  (if (empty-shape-p shape)
       (empty-arrays n-outputs)
       (let ((identity (cons nil nil)))
         (petalisp.type-inference:specialize

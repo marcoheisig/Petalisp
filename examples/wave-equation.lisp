@@ -53,13 +53,6 @@
         (α #'- (reshape prev interior))
         (α #'* 2.0 (reshape curr interior))))))
 
-(defun interior (array)
-  (flet ((range-interior (range)
-           (multiple-value-bind (start step end)
-               (range-start-step-end range)
-             (range (+ start step) step (- end step)))))
-    (~l (mapcar #'range-interior (shape-ranges (shape array))))))
-
 (defun print-domain (domain stream)
   (setf domain (compute domain))
   (fresh-line stream)

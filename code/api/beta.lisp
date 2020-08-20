@@ -14,37 +14,39 @@
 
 (defun β-aux (function n-values inputs)
   (trivia:ematch (shape (first inputs))
-    ((~ _ ~l _)
-     (values-list
-      (mapcar (lambda (input) (drop-axes input 0)) inputs)))
     ((~r range ~l more-ranges)
-     (multiple-value-bind (n rem) (floor (range-size range) 2)
-       (multiple-value-bind (start step end) (range-start-step-end range)
-         (let* ((left (~ start
-                         (* 2 step)
-                         (+ start (* 2 step (1- n)))
-                         ~l more-ranges))
-                (right (~ (+ start step)
-                          (* 2 step)
-                          (+ start (* 2 step n))
-                          ~l more-ranges))
-                (values
-                 (multiple-value-list
-                  (apply #'α* n-values function
-                         (petalisp.utilities:with-collectors ((arguments collect))
-                           (dolist (input inputs)
-                             (collect (reshape input left)))
-                           (dolist (input inputs)
-                             (collect (reshape input right)))
-                           (arguments))))))
-           (if (zerop rem)
-               (β-aux function n-values values)
-               (β-aux function n-values
-                      (let ((rest (~ end ~l more-ranges)))
-                        (loop for input in inputs
-                              for value in values
-                              collect
-                              (stack 0 value (reshape input rest))))))))))))
+     (if (size-one-range-p range)
+         (values-list
+          (mapcar (lambda (input) (drop-axes input 0)) inputs))
+         (multiple-value-bind (n rem) (floor (range-size range) 2)
+           (with-accessors ((start range-start)
+                            (end range-end)
+                            (step range-step)) range
+             (let* ((left (~ start
+                             (+ step start (* 2 step (1- n)))
+                             (* 2 step)
+                             ~l more-ranges))
+                    (right (~ (+ start step)
+                              (+ step start (* 2 step n))
+                              (* 2 step)
+                              ~l more-ranges))
+                    (values
+                      (multiple-value-list
+                       (apply #'α* n-values function
+                              (petalisp.utilities:with-collectors ((arguments collect))
+                                (dolist (input inputs)
+                                  (collect (reshape input left)))
+                                (dolist (input inputs)
+                                  (collect (reshape input right)))
+                                (arguments))))))
+               (if (zerop rem)
+                   (β-aux function n-values values)
+                   (β-aux function n-values
+                          (let ((rest (~ end (1+ end) ~l more-ranges)))
+                            (loop for input in inputs
+                                  for value in values
+                                  collect
+                                  (stack 0 value (reshape input rest)))))))))))))
 
 (defun β* (f z x &optional axis)
   (cond ((empty-array-p x) z)

@@ -40,9 +40,9 @@
      (mapcar
       (let ((position nil))
         (lambda (lazy-array)
-          (multiple-value-bind (start step end)
-              (range-start-step-end (nth axis (shape-ranges (shape lazy-array))))
-            (declare (ignore step))
+          (with-accessors ((start range-start)
+                           (end range-end))
+              (nth axis (shape-ranges (shape lazy-array)))
             (cond ((null position)
                    (setf position (+ end stack-width))
                    lazy-array)

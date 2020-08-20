@@ -214,7 +214,7 @@
               (shape-intersection
                (buffer-shape store-buffer)
                (buffer-shape load-buffer))))
-        (when intersection
+        (unless (empty-shape-p intersection)
           (make-copy-kernel
            intersection
            load-buffer

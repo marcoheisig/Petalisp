@@ -318,13 +318,11 @@
                       (setf (aref output-mask index) nil)
                       (setf (aref scalings index) 0)
                       (setf (aref offsets index) value))
-                    (multiple-value-bind (start step end)
-                        (range-start-step-end range)
-                      (declare (ignore end))
+                    (progn
                       (setf (aref input-mask index) nil)
                       (setf (aref output-mask index) index)
-                      (setf (aref scalings index) step)
-                      (setf (aref offsets index) start))))
+                      (setf (aref scalings index) (range-step range))
+                      (setf (aref offsets index) (range-start range)))))
         (%make-hairy-transformation rank rank input-mask output-mask scalings offsets t))))
 
 ;;; Returns an invertible transformation that eliminates all ranges with
