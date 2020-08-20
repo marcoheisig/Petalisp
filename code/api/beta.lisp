@@ -20,7 +20,7 @@
           (mapcar (lambda (input) (drop-axes input 0)) inputs))
          (multiple-value-bind (n rem) (floor (range-size range) 2)
            (with-accessors ((start range-start)
-                            (end range-end)
+                            (last range-last)
                             (step range-step)) range
              (let* ((left (~ start
                              (+ step start (* 2 step (1- n)))
@@ -42,7 +42,7 @@
                (if (zerop rem)
                    (β-aux function n-values values)
                    (β-aux function n-values
-                          (let ((rest (~ end (1+ end) ~l more-ranges)))
+                          (let ((rest (~ last (1+ last) ~l more-ranges)))
                             (loop for input in inputs
                                   for value in values
                                   collect

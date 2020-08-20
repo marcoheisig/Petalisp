@@ -55,7 +55,7 @@
             (setf (svref vector (+ (* 3 index) 1))
                   (range-step range))
             (setf (svref vector (+ (* 3 index) 2))
-                  (range-end range)))
+                  (range-last range)))
     ;; So far, we use a simple outer loop parallelization scheme.  To do
     ;; that, we first have to check whether there is an outer loop.
     (if (zerop rank)

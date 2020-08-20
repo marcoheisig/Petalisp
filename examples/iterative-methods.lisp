@@ -82,8 +82,8 @@
                             (let* ((new-start (+ start (* boundary step)))
                                    (new-end (- end (* boundary step)))
                                    (new-step (* step 2))
-                                   (range-1 (range new-start (1+ new-end) new-step))
-                                   (range-2 (range (+ new-start step) (1+ new-end) new-step)))
+                                   (range-1 (range new-start new-end new-step))
+                                   (range-2 (range (+ new-start step) new-end new-step)))
                               (red-black-shapes
                                (nconc
                                 (mapcar (alexandria:curry #'cons range-1) red)
@@ -149,7 +149,7 @@
   (let ((u* (scale-array u 2)))
     (trivia:ematch (shape u*)
       ((~ start-1 end-1 2)
-       (let ((space-1 (~ (1+ start-1) 2 end-1)))
+       (let ((space-1 (~ (1+ start-1) end-1 2)))
          (fuse u*
                (α #'* 1/2
                   (α #'+
@@ -343,7 +343,7 @@
       (rbgs u f h 3) ; solve "exactly"
       (let* ((x (rbgs u f h v1))
              (r (restrict (residual x f h)))
-             (c (v-cycle (reshape 0d0 (shape r)) r (* 2 h) v1 v2)))
+             (c (v-cycle (reshape 0.0 (shape r)) r (* 2 h) v1 v2)))
         (rbgs (α #'+ x (prolongate c)) f h v2))))
 
 

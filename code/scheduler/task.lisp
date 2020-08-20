@@ -119,4 +119,4 @@
         (incf size-1))
       (values
        (range start (+ start size-1))
-       (range (+ start size-1) (1+ end))))))
+       (range (+ start size-1) end)))))

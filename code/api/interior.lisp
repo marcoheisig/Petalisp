@@ -10,7 +10,7 @@
                        (end range-end)
                        (step range-step)) range
         (let ((new-start (+ start (* step width)))
-              (new-end (- end (* step width) -1)))
+              (new-end (- end (* step width))))
           (range new-start new-end step))))
     (shape-ranges shape))))
 

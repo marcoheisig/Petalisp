@@ -49,50 +49,50 @@
         (make-empty-shape rank)
         (make-non-empty-shape ranges rank size))))
 
-(defun shape-equal (shape-1 shape-2)
-  (declare (shape shape-1 shape-2))
-  (and (= (shape-rank shape-1)
-          (shape-rank shape-2))
-       (= (shape-size shape-1)
-          (shape-size shape-2))
-       (or (zerop (shape-size shape-1))
+(defun shape-equal (shape1 shape2)
+  (declare (shape shape1 shape2))
+  (and (= (shape-rank shape1)
+          (shape-rank shape2))
+       (= (shape-size shape1)
+          (shape-size shape2))
+       (or (zerop (shape-size shape1))
            (every #'range-equal
-                  (shape-ranges shape-1)
-                  (shape-ranges shape-2)))))
+                  (shape-ranges shape1)
+                  (shape-ranges shape2)))))
 
-(defun shape-intersection (shape-1 shape-2)
-  (if (/= (shape-rank shape-1)
-          (shape-rank shape-2))
-      (make-empty-shape (shape-rank shape-1)) ; TODO should we signal an error here?
+(defun shape-intersection (shape1 shape2)
+  (if (/= (shape-rank shape1)
+          (shape-rank shape2))
+      (make-empty-shape (shape-rank shape1)) ; TODO should we signal an error here?
       (make-shape
-       (loop with rank = (shape-rank shape-1)
-             for range-1 in (shape-ranges shape-1)
-             for range-2 in (shape-ranges shape-2)
-             for intersection = (range-intersection range-1 range-2)
+       (loop with rank = (shape-rank shape1)
+             for range1 in (shape-ranges shape1)
+             for range2 in (shape-ranges shape2)
+             for intersection = (range-intersection range1 range2)
              when (empty-range-p intersection) do
                (return-from shape-intersection (make-empty-shape rank))
              collect intersection))))
 
-(defun shape-intersectionp (shape-1 shape-2)
-  (declare (shape shape-1 shape-2))
-  (and (= (shape-rank shape-1)
-          (shape-rank shape-2))
+(defun shape-intersectionp (shape1 shape2)
+  (declare (shape shape1 shape2))
+  (and (= (shape-rank shape1)
+          (shape-rank shape2))
        (every #'range-intersectionp
-              (shape-ranges shape-1)
-              (shape-ranges shape-2))))
+              (shape-ranges shape1)
+              (shape-ranges shape2))))
 
-(defun shape-difference-list (shape-1 shape-2)
-  (declare (shape shape-1 shape-2))
-  (let ((intersection (shape-intersection shape-1 shape-2)))
+(defun shape-difference-list (shape1 shape2)
+  (declare (shape shape1 shape2))
+  (let ((intersection (shape-intersection shape1 shape2)))
     (if (empty-shape-p intersection)
-        (list shape-1)
+        (list shape1)
         (let ((intersection-ranges (shape-ranges intersection))
               (result '()))
-          (loop for (range-1 . tail) on (shape-ranges shape-1)
-                for range-2 in (shape-ranges shape-2)
+          (loop for (range1 . tail) on (shape-ranges shape1)
+                for range2 in (shape-ranges shape2)
                 for i from 0
                 for head = (subseq intersection-ranges 0 i) do
-                  (loop for difference in (range-difference-list range-1 range-2) do
+                  (loop for difference in (range-difference-list range1 range2) do
                     (push (make-shape (append head (cons difference tail)))
                           result)))
           result))))
@@ -134,13 +134,13 @@
   (make-shape
    (list* range (shape-ranges shape))))
 
-(defun subshapep (shape-1 shape-2)
-  (declare (shape shape-1 shape-2))
-  (and (= (shape-rank shape-1)
-          (shape-rank shape-2))
-       (loop for range-1 in (shape-ranges shape-1)
-             for range-2 in (shape-ranges shape-2)
-             always (subrangep range-1 range-2))))
+(defun subshapep (shape1 shape2)
+  (declare (shape shape1 shape2))
+  (and (= (shape-rank shape1)
+          (shape-rank shape2))
+       (loop for range1 in (shape-ranges shape1)
+             for range2 in (shape-ranges shape2)
+             always (subrangep range1 range2))))
 
 (defun fuse-shapes (shape &rest more-shapes)
   (declare (shape shape))
@@ -175,9 +175,9 @@
                                    (step range-step)) range
                     (if (= step 1)
                         (if (zerop start)
-                            (list (1+ end))
-                            (list start (1+ end)))
-                        (list start (1+ end) step)))))
+                            (list end)
+                            (list start end))
+                        (list start end step)))))
             (shape-ranges shape))))
     (cond ((and *print-readably* *read-eval*)
            (format stream "#.(~~~{~^ ~{~D~^ ~}~^ ~~~})"
@@ -307,26 +307,26 @@
            (fragment-difference-list old-fragment new-fragment))
      (subtract-fragment-lists (list new-fragment) intersections))))
 
-(defun fragment-intersections (fragment-1 fragment-2)
-  (destructuring-bind (shape-1 . mask-1) fragment-1
-    (destructuring-bind (shape-2 . mask-2) fragment-2
-      (let ((intersection (shape-intersection shape-1 shape-2)))
+(defun fragment-intersections (fragment1 fragment2)
+  (destructuring-bind (shape1 . mask1) fragment1
+    (destructuring-bind (shape2 . mask2) fragment2
+      (let ((intersection (shape-intersection shape1 shape2)))
         (if (empty-shape-p intersection)
             '()
-            (list (cons intersection (logior mask-1 mask-2))))))))
+            (list (cons intersection (logior mask1 mask2))))))))
 
-(defun fragment-difference-list (fragment-1 fragment-2)
-  (destructuring-bind (shape-1 . mask-1) fragment-1
-    (destructuring-bind (shape-2 . mask-2) fragment-2
-      (declare (ignore mask-2))
-      (loop for shape in (shape-difference-list shape-1 shape-2)
-            collect (cons shape mask-1)))))
+(defun fragment-difference-list (fragment1 fragment2)
+  (destructuring-bind (shape1 . mask1) fragment1
+    (destructuring-bind (shape2 . mask2) fragment2
+      (declare (ignore mask2))
+      (loop for shape in (shape-difference-list shape1 shape2)
+            collect (cons shape mask1)))))
 
-(defun subtract-fragment-lists (fragment-list-1 fragment-list-2)
-  (if (null fragment-list-2)
-      fragment-list-1
+(defun subtract-fragment-lists (fragment-list1 fragment-list2)
+  (if (null fragment-list2)
+      fragment-list1
       (subtract-fragment-lists
-       (loop for fragment in fragment-list-1
+       (loop for fragment in fragment-list1
              append
-             (fragment-difference-list fragment (first fragment-list-2)))
-       (rest fragment-list-2))))
+             (fragment-difference-list fragment (first fragment-list2)))
+       (rest fragment-list2))))

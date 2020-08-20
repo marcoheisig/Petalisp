@@ -36,6 +36,7 @@
    #:range-difference-list
    #:range-start
    #:range-step
+   #:range-last
    #:range-end
    #:range-size
    #:subrangep

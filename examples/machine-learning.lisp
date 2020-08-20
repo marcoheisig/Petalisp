@@ -151,8 +151,8 @@
                  (loop for offset below pooling-factor
                        collect
                        (range (+ (range-start range) offset)
-                              (* (range-step range) pooling-factor)
-                              (range-end range))))))
+                              (range-end range)
+                              (* (range-step range) pooling-factor))))))
     (collapse
      (apply #'α #'max
             (apply #'alexandria:map-product

@@ -20,7 +20,10 @@
 (define-test v-cycle-test
   (compute (v-cycle (reshape 1.0 (~ 5 ~ 5)) 0.0 1.0 2 1))
   (compute (v-cycle (reshape 1.0 (~ 9 ~ 9)) 0.0 1.0 2 1))
+  (compute (v-cycle (reshape 1.0 (~ 17 ~ 17)) 0.0 1.0 2 1))
+  #+(or)
   (compute (v-cycle (reshape 1.0 (~ 33 ~ 33)) 0.0 1.0 2 1))
+  #+(or)
   (compute (v-cycle (reshape 1.0 (~ 65 ~ 65)) 0.0 1.0 3 3)))
 
 #+nil

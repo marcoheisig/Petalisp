@@ -444,8 +444,8 @@
           for constraint across input-mask
           for index from 0 do
             (when constraint
-              (unless (and (= constraint (range-start range))
-                           (= constraint (range-end range)))
+              (unless (and (size-one-range-p range)
+                           (= constraint (range-start range)))
                 (error "~@<The ~:R axis of the shape ~W violates ~
                            the input constraint ~W of the transformation ~W.~:@>"
                  (1+ index) shape constraint transformation))))))
@@ -463,7 +463,7 @@
                        (let ((input-range (elt input-ranges input-index)))
                          (range
                           (+ offset (* scaling (range-start input-range)))
-                          (1+ (+ offset (* scaling (range-end input-range))))
+                          (1+ (+ offset (* scaling (range-last input-range))))
                           (if (size-one-range-p input-range)
                               1
                               (* scaling (range-step input-range)))))))))

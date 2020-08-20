@@ -357,7 +357,7 @@
         :ntype
         (petalisp.type-inference:ntype-union
          (petalisp.type-inference:ntype-of (range-start range))
-         (petalisp.type-inference:ntype-of (range-end range))))))
+         (petalisp.type-inference:ntype-of (range-last range))))))
 
 (defun indices (array-or-shape &optional (axis 0))
   (if (empty-shape-p array-or-shape)
