@@ -31,7 +31,7 @@
 ;;; Optimization: Compose consecutive references.
 (defmethod lazy-reshape
     ((lazy-reshape lazy-reshape)
-     (shape shape)
+     (shape non-empty-shape)
      (transformation transformation))
   (lazy-reshape
    (input lazy-reshape)
@@ -43,7 +43,7 @@
 ;;; Optimization: Drop references with no effect.
 (defmethod lazy-reshape
     ((lazy-array lazy-array)
-     (shape shape)
+     (shape non-empty-shape)
      (identity-transformation identity-transformation))
   (if (and (shape-equal (shape lazy-array) shape)
            ;; Don't drop references to range immediates.  The reason for
