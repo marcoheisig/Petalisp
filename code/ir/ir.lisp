@@ -427,6 +427,29 @@
     (mapc #'delete-kernel obsolete-kernels)
     (values)))
 
+(define-modify-macro appendf (&rest lists) append)
+
+(defun substitute-buffer (new-buffer old-buffer)
+  (loop for (kernel . store-instructions) in (buffer-writers old-buffer) do
+    (loop for cons in (kernel-targets kernel) do
+      (when (eq (car cons) old-buffer)
+        (setf (car cons) new-buffer)))
+    (loop for store-instruction in store-instructions do
+      (setf (store-instruction-buffer store-instruction) new-buffer)))
+  (loop for (kernel . load-instructions) in (buffer-readers old-buffer) do
+    (loop for cons in (kernel-sources kernel) do
+      (when (eq (car cons) old-buffer)
+        (setf (car cons) new-buffer)))
+    (loop for load-instruction in load-instructions do
+      (setf (load-instruction-buffer load-instruction) new-buffer)))
+  (appendf (buffer-writers new-buffer)
+           (buffer-writers old-buffer))
+  (appendf (buffer-readers new-buffer)
+           (buffer-readers old-buffer))
+  (setf (buffer-writers old-buffer) nil)
+  (setf (buffer-readers old-buffer) nil)
+  new-buffer)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Assigning Instruction Numbers

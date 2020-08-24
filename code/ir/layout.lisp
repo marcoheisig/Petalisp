@@ -28,12 +28,7 @@
 
 (defstruct (layout
             (:constructor nil))
-  (lazy-array nil :type lazy-array :read-only t)
-  ;; All layouts but that of the last graph root have a predecessor, such
-  ;; that there is a single chain of layouts from the leaves to the roots
-  ;; that visits each layout exactly once.  We later use this chain to
-  ;; apply certain optimizations in the correct order.
-  (predecessor nil :type (or null layout)))
+  (lazy-array nil :type lazy-array :read-only t))
 
 (defstruct (range-immediate-layout
             (:include layout)
@@ -195,6 +190,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Layout Finalization
+;;;
+;;; During layout finalization, all loads and store instructions related to
+;;; a particular layout have already been created, but source and target
+;;; buffers into this layout are not yet connected.  This step introduces
+;;; the necessary copy kernels to move the data from each store instruction
+;;; buffer to all relevant load instruction buffers.
 
 (defmethod finalize-layout ((layout range-immediate-layout))
   (values))
@@ -202,24 +203,66 @@
 (defmethod finalize-layout ((layout array-immediate-layout))
   (values))
 
-;;; At this point, we know all loads and store instructions related to a
-;;; particular layout, but none of the target buffers of a store
-;;; instruction is used.  During finalization, we introduce the necessary
-;;; copy kernels to move the data from each store instruction buffer to all
-;;; relevant load instruction buffers.
 (defmethod finalize-layout ((layout lazy-array-layout))
   (loop for (store-buffer store) in (layout-buffer-stores layout) do
-    (loop for (load-buffer . nil) in (layout-buffer-loads layout) do
-      (let ((intersection
-              (shape-intersection
-               (buffer-shape store-buffer)
-               (buffer-shape load-buffer))))
-        (unless (empty-shape-p intersection)
-          (make-copy-kernel
-           intersection
-           load-buffer
-           store-buffer
-           (identity-transformation (shape-rank intersection))))))))
+    ;; As an optimization, we attempt to find a load instruction buffer
+    ;; that is large enough to hold all elements that will be written to by
+    ;; STORE (or almost large enough, in which case the buffer is suitably
+    ;; resized).  If such a buffer exists, we can eliminate one copy kernel
+    ;; by having the store instruction write to that buffer directly.
+    (let ((store-shape (buffer-shape store-buffer))
+          (best-fit-buffer nil)
+          (best-fit-intersection nil)
+          (best-fit-cover nil)
+          (best-fit-growth nil))
+      (declare (type (or null buffer) best-fit-buffer))
+      (declare (type (or null shape) best-fit-cover))
+      (declare (type (or null unsigned-byte) best-fit-growth))
+      (loop for (load-buffer . nil) in (layout-buffer-loads layout) do
+        (let* ((load-shape (buffer-shape load-buffer))
+               (intersection (shape-intersection load-shape store-shape)))
+          ;; If the load buffer's shape doesn't intersect with the store
+          ;; buffer's shape, do nothing.
+          (unless (empty-shape-p intersection)
+            ;; If there is an intersection, the buffer may qualify for
+            ;; being optimized away, in case it intersects with more than
+            ;; 50 percent of the store buffer.
+            (when (> (shape-size intersection) (ceiling (shape-size store-shape) 2))
+              ;; For merging a load and the store buffer, the load buffer
+              ;; needs to be resized to a space that covers both shapes.
+              (let* ((cover (fuse-shapes store-shape load-shape))
+                     (growth (- (shape-size cover) (shape-size load-shape))))
+                (when (and
+                       ;; Make sure that we don't accidentally resize a
+                       ;; buffer that is already allocated somewhere.
+                       (not (buffer-reusablep load-buffer))
+                       ;; Only resize if it doesn't increase the size of
+                       ;; the load buffer by more than the entire size of
+                       ;; the store buffer.
+                       (< growth (shape-size store-shape))
+                       ;; Only accept the new 'best fit' if it has a
+                       ;; smaller cover than any of the previous ones.
+                       (or (null best-fit-growth)
+                           (< growth best-fit-growth)
+                           ;; When the growth is equal to that of the best
+                           ;; fit, accept the new entry if it has a smaller
+                           ;; load buffer.
+                           (and (= growth best-fit-growth)
+                                (< (shape-size load-shape)
+                                   (shape-size (shape best-fit-buffer))))))
+                  (rotatef best-fit-buffer load-buffer)
+                  (rotatef best-fit-intersection intersection)
+                  (rotatef best-fit-cover cover)
+                  (rotatef best-fit-growth growth))))
+            (when load-buffer
+              (make-copy-kernel
+               intersection
+               load-buffer
+               store-buffer
+               (identity-transformation (shape-rank intersection)))))))
+      (when best-fit-buffer
+        (setf (buffer-shape best-fit-buffer) best-fit-cover)
+        (substitute-buffer best-fit-buffer store-buffer)))))
 
 (defun make-copy-kernel (iteration-space target-buffer source-buffer transformation)
   ;; When the source buffer has a single kernel writing to it, and when
