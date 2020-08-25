@@ -27,6 +27,12 @@
   (error "Missing reverse link for a ~S in ~S."
          node map-object))
 
+(defun duplicates (list)
+  (remove-duplicates
+   (loop for (elt . rest) on list
+         when (member elt rest)
+           collect elt)))
+
 (defmethod check-ir-node :around ((object t))
   (unless (gethash object *ir-checker-table*)
     (setf (gethash object *ir-checker-table*) t)
@@ -35,12 +41,14 @@
 (defmethod check-ir-node ((buffer buffer))
   (loop for (kernel . load-instructions) in (buffer-readers buffer) do
     (check-ir-node-eventually kernel)
+    (assert (null (duplicates load-instructions)))
     (loop for load-instruction in load-instructions do
       (check-ir-node-eventually load-instruction)
       (assert (eq (load-instruction-buffer load-instruction) buffer))
       (check-reverse-link load-instruction kernel #'map-kernel-load-instructions)))
   (loop for (kernel . store-instructions) in (buffer-writers buffer) do
     (check-ir-node-eventually kernel)
+    (assert (null (duplicates store-instructions)))
     (loop for store-instruction in store-instructions do
       (check-ir-node-eventually store-instruction)
       (assert (eq (store-instruction-buffer store-instruction) buffer))
@@ -49,12 +57,14 @@
 (defmethod check-ir-node ((kernel kernel))
   (loop for (buffer . load-instructions) in (kernel-sources kernel) do
     (check-ir-node-eventually buffer)
+    (assert (null (duplicates load-instructions)))
     (loop for load-instruction in load-instructions do
       (check-ir-node-eventually load-instruction)
       (assert (eq (load-instruction-buffer load-instruction) buffer))
       (check-reverse-link load-instruction buffer #'map-buffer-load-instructions)))
   (loop for (buffer . store-instructions) in (kernel-targets kernel) do
     (check-ir-node-eventually buffer)
+    (assert (null (duplicates store-instructions)))
     (loop for store-instruction in store-instructions do
       (check-ir-node-eventually store-instruction)
       (assert (eq (store-instruction-buffer store-instruction) buffer))
