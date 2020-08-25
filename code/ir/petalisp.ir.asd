@@ -14,6 +14,7 @@
    (:file "ir")
    (:file "layout")
    (:file "layout-table")
+   (:file "ir-checker")
    (:file "map-iteration-spaces")
    (:file "ir-conversion")
    (:file "blueprint")

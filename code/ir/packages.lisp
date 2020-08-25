@@ -79,4 +79,5 @@
 
    ;; Miscellaneous
    #:assign-instruction-numbers
-   #:parse-kernel-blueprint))
+   #:parse-kernel-blueprint
+   #:check-ir))
