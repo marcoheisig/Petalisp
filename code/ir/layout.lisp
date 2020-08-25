@@ -28,14 +28,18 @@
 
 (defstruct (layout
             (:constructor nil))
-  (lazy-array nil :type lazy-array :read-only t))
+  (lazy-array nil :type lazy-array :read-only t)
+  (ntype nil :read-only t))
 
 (defstruct (range-immediate-layout
             (:include layout)
             (:constructor make-range-immediate-layout
                 (range-immediate
                  &aux
-                   (lazy-array range-immediate)))))
+                   (lazy-array range-immediate)
+                   (ntype
+                    (petalisp.type-inference:generalize-ntype
+                     (element-ntype range-immediate)))))))
 
 (defstruct (array-immediate-layout
             (:include layout)
@@ -44,10 +48,13 @@
                 (array-immediate storage
                  &aux
                    (lazy-array array-immediate)
+                   (ntype
+                    (petalisp.type-inference:generalize-ntype
+                     (element-ntype array-immediate)))
                    (buffer
                     (make-buffer
                      :shape (shape array-immediate)
-                     :ntype (element-ntype array-immediate)
+                     :ntype ntype
                      :storage storage)))))
   (buffer nil :type buffer))
 
@@ -55,7 +62,11 @@
             (:include layout)
             (:conc-name layout-)
             (:constructor make-lazy-array-layout
-                (lazy-array)))
+                (lazy-array
+                 &aux
+                   (ntype
+                    (petalisp.type-inference:generalize-ntype
+                     (element-ntype lazy-array))))))
   ;; An alist whose keys are buffers and whose values are the corresponding
   ;; load instructions.
   (buffer-loads '())
@@ -147,12 +158,10 @@
               (return-from layout-load load))))))
     ;; If no buffer can be reused, create a now one, load from it, and
     ;; register both entities.
-    (let* ((lazy-array (layout-lazy-array layout))
-           (buffer (make-buffer
+    (let* ((buffer (make-buffer
                     :shape shape
                     :reusablep t
-                    :ntype (petalisp.type-inference:generalize-ntype
-                            (element-ntype lazy-array))))
+                    :ntype (layout-ntype layout)))
            (load (make-load-instruction buffer transformation))
            (new-entry `(,buffer ,load)))
       (push new-entry (cdr layout-entry))
@@ -177,12 +186,10 @@
      (value t)
      (shape shape)
      (transformation transformation))
-  (let* ((lazy-array (layout-lazy-array layout))
-         (buffer (make-buffer
+  (let* ((buffer (make-buffer
                   :shape shape
                   :reusablep t
-                  :ntype (petalisp.type-inference:generalize-ntype
-                          (element-ntype lazy-array))))
+                  :ntype (layout-ntype layout)))
          (store (make-store-instruction value buffer transformation)))
     (push `(,buffer ,store) (layout-buffer-stores layout))
     store))
@@ -304,7 +311,7 @@
         (kernel-targets kernel)
       (trivia:when-match (list (cons _ input))
           (instruction-inputs store-instruction)
-        (when (and (eq input load-instruction))
+        (when (eq input load-instruction)
           (return-from copy-kernel-p t))))))
 
 (defun copy-kernel-transformation (kernel)
