@@ -2,7 +2,7 @@
 
 (in-package #:petalisp.api)
 
-(defun shape-interior (shape width)
+(defun shape-interior (shape &optional (width 1))
   (~l
    (mapcar
     (lambda (range)
@@ -14,6 +14,6 @@
           (range new-start new-end step))))
     (shape-ranges shape))))
 
-(defun array-interior (array width)
+(defun array-interior (array &optional (width 1))
   (check-type width unsigned-byte)
   (reshape array (shape-interior (shape array) width)))

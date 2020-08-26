@@ -117,7 +117,7 @@
 ;;;  Jacobi's Method
 
 (defun jacobi-2d (grid)
-  (let ((interior (array-interior grid 1)))
+  (let ((interior (array-interior grid)))
     (fuse*
      grid
      (α #'* 1/4

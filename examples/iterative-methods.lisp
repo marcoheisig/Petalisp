@@ -20,7 +20,7 @@
   with spacing h, using the Jacobi scheme."
   (let* ((u (lazy-array u))
          (f (lazy-array f))
-         (interior (array-interior u 1)))
+         (interior (array-interior u)))
     (ecase (rank u)
       (1
        (loop repeat iterations do
@@ -229,7 +229,7 @@
     (trivia:ematch (shape u)
       ((~ start-1 end-1)
        (let* ((selection (~ start-1 end-1 2))
-              (interior (array-interior selection 1)))
+              (interior (array-interior selection)))
          (reshape
           (fuse*
            (reshape u selection)
@@ -240,7 +240,7 @@
           (τ (i) ((+ start-1 (/ (- i start-1) 2)))))))
       ((~ start-1 end-1 ~ start-2 end-2)
        (let* ((selection (~ start-1 end-1 2 ~ start-2 end-2 2))
-              (interior (array-interior selection 1)))
+              (interior (array-interior selection)))
          (reshape
           (fuse*
            (reshape u selection)
@@ -262,7 +262,7 @@
                     (+ start-2 (/ (- j start-2) 2)))))))
       ((~ start-1 end-1 1 ~ start-2 end-2 1 ~ start-3 end-3 1)
        (let* ((selection (~ start-1 end-1 2 ~ start-2 end-2 2 ~ start-3 end-3 2))
-              (interior (array-interior selection 1)))
+              (interior (array-interior selection)))
          (reshape
           (fuse*
            (reshape u selection)
@@ -305,7 +305,7 @@
 (defun residual (u b h)
   (let* ((u (lazy-array u))
          (b (lazy-array b))
-         (interior (array-interior u 1)))
+         (interior (array-interior u)))
     (ecase (rank u)
       (1
        (fuse* (reshape 0d0 (shape u))

@@ -32,7 +32,7 @@
       curr)))
 
 (defun simulate-one-step (prev curr dx dt N E S W)
-  (let ((interior (array-interior curr 1)))
+  (let ((interior (array-interior curr)))
     (fuse*
      curr
      (α #'+
