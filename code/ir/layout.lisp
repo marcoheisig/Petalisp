@@ -242,7 +242,7 @@
                 (when (and
                        ;; Make sure that we don't accidentally resize a
                        ;; buffer that is already allocated somewhere.
-                       (not (buffer-reusablep load-buffer))
+                       (buffer-reusablep load-buffer)
                        ;; Only resize if it doesn't increase the size of
                        ;; the load buffer by more than the entire size of
                        ;; the store buffer.
@@ -256,7 +256,7 @@
                            ;; load buffer.
                            (and (= growth best-fit-growth)
                                 (< (shape-size load-shape)
-                                   (shape-size (shape best-fit-buffer))))))
+                                   (shape-size (buffer-shape best-fit-buffer))))))
                   (rotatef best-fit-buffer load-buffer)
                   (rotatef best-fit-intersection intersection)
                   (rotatef best-fit-cover cover)
