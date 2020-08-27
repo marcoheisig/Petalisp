@@ -21,7 +21,7 @@
     ((lazy-array lazy-array)
      (shape shape)
      (transformation transformation))
-  (let ((input-shape (shape lazy-array)))
+  (let ((input-shape (array-shape lazy-array)))
     (unless (and (= (shape-rank *relevant-shape*)
                     (shape-rank input-shape))
                  (subshapep *relevant-shape* input-shape))
@@ -45,7 +45,7 @@
     ((lazy-array lazy-array)
      (shape non-empty-shape)
      (identity-transformation identity-transformation))
-  (if (and (shape-equal (shape lazy-array) shape)
+  (if (and (shape-equal (array-shape lazy-array) shape)
            ;; Don't drop references to range immediates.  The reason for
            ;; this is that we never want these immediates to appear as
            ;; roots of a data flow graph.
@@ -60,7 +60,7 @@
      (shape non-empty-shape)
      (transformation transformation))
   (loop for input in (inputs lazy-fuse)
-        when (subshapep *relevant-shape* (shape input)) do
+        when (subshapep *relevant-shape* (array-shape input)) do
           (return-from lazy-reshape
             (lazy-reshape input shape transformation)))
   (call-next-method))

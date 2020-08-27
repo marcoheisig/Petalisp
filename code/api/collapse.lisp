@@ -4,4 +4,4 @@
 
 (defun collapse (array)
   (let ((lazy-array (lazy-array array)))
-    (reshape lazy-array (collapsing-transformation (shape lazy-array)))))
+    (reshape lazy-array (collapsing-transformation (array-shape lazy-array)))))

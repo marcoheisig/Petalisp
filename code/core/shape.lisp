@@ -289,7 +289,7 @@
   (reduce #'subdivide-aux
           (loop for array in arrays
                 for bitmask = 1 then (ash bitmask 1)
-                collect (cons (shape array) bitmask))
+                collect (cons (array-shape array) bitmask))
           :initial-value '()))
 
 ;; A fragment is a cons whose car is a shape and whose cdr is the

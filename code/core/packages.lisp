@@ -49,6 +49,7 @@
    #:~r
    #:shape
    #:shapep
+   #:make-shape
    #:empty-shape
    #:empty-shape-p
    #:non-empty-shape
@@ -101,6 +102,7 @@
    #:immediatep
    #:reusablep
    #:lazy-array
+   #:array-shape
    #:parameter
    #:optional-parameter
    #:optional-parameter-value

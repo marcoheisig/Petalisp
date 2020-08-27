@@ -20,7 +20,7 @@
 
 (defgeneric element-type (array))
 
-(defgeneric shape (array))
+(defgeneric array-shape (array))
 
 (defgeneric inputs (array))
 
@@ -66,7 +66,7 @@
 (defclass non-empty-array (lazy-array)
   ((%shape
     :initarg :shape
-    :reader shape)
+    :reader array-shape)
    (%ntype
     :initarg :ntype
     :reader element-ntype)
@@ -245,7 +245,7 @@
   0)
 
 (defmethod total-size ((non-empty-array non-empty-array))
-  (shape-size (shape non-empty-array)))
+  (shape-size (array-shape non-empty-array)))
 
 (defmethod element-type ((object t))
   (petalisp.type-inference:type-specifier
@@ -260,22 +260,17 @@
 (defmethod element-ntype ((empty-array empty-array))
   (petalisp.type-inference:ntype 'nil))
 
-(defmethod shape ((object t))
+(defmethod array-shape ((object t))
   (~))
 
-(defmethod shape ((array array))
-  (if (zerop (array-total-size array))
-      nil
-      (make-shape
-       (loop for axis below (array-rank array)
-             collect
-             (range (array-dimension array axis))))))
+(defmethod array-shape ((array array))
+  (make-shape
+   (loop for axis below (array-rank array)
+         collect
+         (range (array-dimension array axis)))))
 
-(defmethod shape ((empty-array empty-array))
+(defmethod array-shape ((empty-array empty-array))
   (make-empty-shape 0))
-
-(defmethod shape ((shape shape))
-  shape)
 
 (defmethod rank ((object t))
   0)
@@ -284,7 +279,7 @@
   (array-rank array))
 
 (defmethod rank ((lazy-array lazy-array))
-  (shape-rank (shape lazy-array)))
+  (shape-rank (array-shape lazy-array)))
 
 (defmethod rank ((shape shape))
   (shape-rank shape))
@@ -302,13 +297,13 @@
   (print-unreadable-object (lazy-array stream :type t :identity t)
     (format stream "~S ~S"
             (element-type lazy-array)
-            (shape lazy-array))))
+            (array-shape lazy-array))))
 
 ;; TODO remove this function?
 (defmethod transform ((lazy-array lazy-array) (transformation transformation))
   (lazy-reshape
    lazy-array
-   (transform (shape lazy-array) transformation)
+   (transform (array-shape lazy-array) transformation)
    (invert-transformation transformation)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -329,7 +324,7 @@
          (make-scalar-immediate (aref array)))
         (t
          (make-instance 'array-immediate
-           :shape (shape array)
+           :shape (array-shape array)
            :storage (simplify-array array)
            :reusablep reusablep
            :ntype (petalisp.type-inference:array-element-ntype array)))))
@@ -360,18 +355,20 @@
          (petalisp.type-inference:ntype-of (range-last range))))))
 
 (defun indices (array-or-shape &optional (axis 0))
-  (if (empty-shape-p array-or-shape)
-      (empty-array)
-      (let* ((shape (shape array-or-shape))
+  (if (shapep array-or-shape)
+      (let* ((shape array-or-shape)
              (rank (shape-rank shape)))
-        (unless (<= 0 axis (1- rank))
-          (error "~@<Invalid axis ~A for a shape with rank ~D.~:@>" axis rank))
-        (lazy-reshape
-         (make-range-immediate (nth axis (shape-ranges shape)))
-         shape
-         (make-transformation
-          :input-rank rank
-          :output-mask (vector axis))))))
+        (if (empty-shape-p shape)
+            (empty-array)
+            (if (<= 0 axis (1- rank))
+                (lazy-reshape
+                 (make-range-immediate (nth axis (shape-ranges shape)))
+                 shape
+                 (make-transformation
+                  :input-rank rank
+                  :output-mask (vector axis)))
+                (error "~@<Invalid axis ~A for a shape with rank ~D.~:@>" axis rank))))
+      (indices (array-shape array-or-shape) axis)))
 
 (defun empty-array ()
   (load-time-value

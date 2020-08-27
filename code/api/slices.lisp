@@ -5,7 +5,7 @@
 (defun slices (array range &optional (axis 0))
   (setf array (lazy-array array))
   (let ((rank (rank array))
-        (ranges (shape-ranges (shape array))))
+        (ranges (shape-ranges (array-shape array))))
     (unless (< -1 axis rank)
       (error "~@<Invalid slices axis ~S for the array ~S.~:@>"
              axis array))

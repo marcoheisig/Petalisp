@@ -59,7 +59,7 @@
 
 (defmethod compute-on-backend ((lazy-arrays list) (backend backend))
   (let* ((collapsing-transformations
-           (mapcar (alexandria:compose #'collapsing-transformation #'shape)
+           (mapcar (alexandria:compose #'collapsing-transformation #'array-shape)
                    lazy-arrays))
          (immediates
            (compute-immediates
@@ -70,7 +70,7 @@
           for immediate in immediates
           do (replace-lazy-array
               lazy-array
-              (lazy-reshape immediate (shape lazy-array) collapsing-transformation)))
+              (lazy-reshape immediate (array-shape lazy-array) collapsing-transformation)))
     (values-list
      (mapcar #'lisp-datum-from-immediate immediates))))
 
@@ -94,7 +94,7 @@
       (storage array-immediate)))
 
 (defmethod lisp-datum-from-immediate ((range-immediate range-immediate))
-  (let* ((shape (shape range-immediate))
+  (let* ((shape (array-shape range-immediate))
          (range (first (shape-ranges shape)))
          (size (range-size range))
          (array (make-array size)))

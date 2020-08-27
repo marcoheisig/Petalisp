@@ -164,7 +164,7 @@
   (compute-value
    (input lazy-reshape)
    (transform
-    (shape-intersection iteration-space (shape lazy-reshape))
+    (shape-intersection iteration-space (array-shape lazy-reshape))
     (transformation lazy-reshape))
    (compose-transformations
     (transformation lazy-reshape)
@@ -175,11 +175,11 @@
      (iteration-space shape)
      (transformation transformation))
   (let ((input (find iteration-space (inputs lazy-fuse)
-                     :key #'shape
+                     :key #'array-shape
                      :test #'shape-intersectionp)))
     (compute-value
      input
-     (shape-intersection iteration-space (shape input))
+     (shape-intersection iteration-space (array-shape input))
      transformation)))
 
 (defmethod compute-value

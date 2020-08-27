@@ -43,7 +43,7 @@
         array)))
 
 (defun lisp-array-from-simple-immediate (simple-immediate)
-  (with-accessors ((shape shape)
+  (with-accessors ((shape array-shape)
                    (table table)
                    (element-type element-type))
       simple-immediate

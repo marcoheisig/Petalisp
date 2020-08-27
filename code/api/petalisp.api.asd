@@ -15,7 +15,9 @@
   :in-order-to ((test-op (test-op "petalisp.test-suite")))
 
   :components
-  ((:file "aliases" :depends-on ("documentation"))
+  (;; Define the aliases after the documentation has been established, such
+   ;; that the documentation is already present and can be copied, too.
+   (:file "aliases" :depends-on ("documentation"))
    (:file "alpha" :depends-on ("broadcast"))
    (:file "beta" :depends-on ("alpha" "reshape" "drop-axes" "stack"))
    (:file "broadcast" :depends-on ("reshape"))

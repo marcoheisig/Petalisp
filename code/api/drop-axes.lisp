@@ -4,7 +4,7 @@
 
 (defun drop-axes (array &rest axes)
   (let* ((lazy-array (lazy-array array))
-         (shape (shape lazy-array))
+         (shape (array-shape lazy-array))
          (input-rank (shape-rank shape))
          (input-mask (make-array input-rank :initial-element nil))
          (output-mask (make-array input-rank)))

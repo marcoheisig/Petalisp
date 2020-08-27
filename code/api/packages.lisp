@@ -96,6 +96,7 @@
    #:enlarge-shape
    #:shape-union
    #:subdivide
+   #:array-shape
 
    ;; Transformations
    #:transformation

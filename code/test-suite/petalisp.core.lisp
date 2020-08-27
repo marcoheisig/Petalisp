@@ -77,7 +77,7 @@
          (network
            (make-network v1))
          (g1 (make-instance 'parameter
-               :shape (shape v1)
+               :shape (array-shape v1)
                :element-type (element-type v1)))
          (gradient-fn (differentiator (list v1) (list g1)))
          (gradient-network

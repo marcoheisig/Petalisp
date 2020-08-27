@@ -24,7 +24,7 @@
 (defun make-trainable-parameter (initial-value)
   (let ((value (lazy-array initial-value)))
     (make-instance 'trainable-parameter
-      :shape (shape initial-value)
+      :shape (array-shape initial-value)
       :element-type (upgraded-array-element-type (element-type value))
       :value value)))
 
@@ -102,7 +102,7 @@
             (~ 0 ~l
                (loop for lb across lower-bounds
                      for ub across upper-bounds
-                     for range in (shape-ranges (shape array))
+                     for range in (shape-ranges (array-shape array))
                      collect
                      (if (and (integerp lb)
                               (integerp ub))
@@ -140,13 +140,13 @@
          (array (lazy-array array))
          (pooling-ranges
            (loop for pooling-factor across pooling-factors
-                 for range in (shape-ranges (shape array))
+                 for range in (shape-ranges (array-shape array))
                  for index from 1 do
                    (check-type pooling-factor (integer 1 *) "a positive integer")
                    (unless (zerop (mod (range-size range) pooling-factor))
                      (error "~@<The ~:R range of the shape ~S is not ~
                          divisible by the corresponding pooling factor ~S.~:@>"
-                            index (shape array) pooling-factor))
+                            index (array-shape array) pooling-factor))
                  collect
                  (loop for offset below pooling-factor
                        collect
@@ -173,7 +173,7 @@
            (loop for output in (network-outputs network)
                  collect (make-instance 'parameter
                            :element-type (element-type output)
-                           :shape (shape output))))
+                           :shape (array-shape output))))
          (gradient
            (differentiator
             (network-outputs network)
@@ -192,11 +192,11 @@
     ;; Determine the training data size.
     (dolist (data output-training-data)
       (if (null n)
-          (setf n (range-size (first (shape-ranges (shape data)))))
-          (assert (= n (range-size (first (shape-ranges (shape data))))))))
+          (setf n (range-size (first (shape-ranges (array-shape data)))))
+          (assert (= n (range-size (first (shape-ranges (array-shape data))))))))
     (alexandria:doplist (parameter data training-data-plist) ()
       (unless (symbolp parameter)
-        (assert (= n (range-size (first (shape-ranges (shape data))))))))
+        (assert (= n (range-size (first (shape-ranges (array-shape data))))))))
     ;; Iterate over the training data.
     (loop for index below n do
       (when (and (plusp index)

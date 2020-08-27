@@ -9,7 +9,7 @@
   (let ((lazy-arrays (mapcar #'lazy-array list-of-arrays))
         (alist '()))
     (loop for lazy-array in list-of-arrays do
-      (let* ((shape (shape lazy-array))
+      (let* ((shape (array-shape lazy-array))
              (entry (assoc shape alist :test #'shape-equal)))
         (when (null entry)
           (push (cons shape nil) alist))))
@@ -31,7 +31,7 @@
                (lazy-reshape
                 lazy-array
                 broadcast-shape
-                (cdr (assoc (shape lazy-array) alist :test #'shape-equal))))
+                (cdr (assoc (array-shape lazy-array) alist :test #'shape-equal))))
          broadcast-shape)))))
 
 (defun broadcast-ranges (range-1 range-2)
@@ -51,8 +51,8 @@
 
 (defun broadcast (array shape)
   (let* ((lazy-array (lazy-array array))
-         (array-shape (shape lazy-array))
-         (shape (shape shape)))
+         (array-shape (array-shape lazy-array))
+         (shape (array-shape shape)))
     (lazy-reshape
      lazy-array
      shape

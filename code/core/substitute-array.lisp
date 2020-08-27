@@ -17,8 +17,8 @@
                      (petalisp.type-inference:generalize-ntype
                       (element-ntype old-array))))
             (assert (shape-equal
-                     (shape new-array)
-                     (shape old-array)))
+                     (array-shape new-array)
+                     (array-shape old-array)))
             (setf (gethash old-array *substitutions*) new-array))
     (mapcar #'substitute-array roots)))
 
@@ -35,7 +35,7 @@
 (defmethod substitute-array ((lazy-map single-value-lazy-map))
   (make-instance 'single-value-lazy-map
     :operator (operator lazy-map)
-    :shape (shape lazy-map)
+    :shape (array-shape lazy-map)
     :ntype (element-ntype lazy-map)
     :inputs (mapcar #'substitute-array (inputs lazy-map))))
 
@@ -44,20 +44,20 @@
     :operator (operator lazy-map)
     :value-n (value-n lazy-map)
     :number-of-values (number-of-values lazy-map)
-    :shape (shape lazy-map)
+    :shape (array-shape lazy-map)
     :ntype (element-ntype lazy-map)
     :inputs (mapcar #'substitute-array (inputs lazy-map))))
 
 (defmethod substitute-array ((lazy-fuse lazy-fuse))
   (make-instance 'lazy-fuse
-    :shape (shape lazy-fuse)
+    :shape (array-shape lazy-fuse)
     :ntype (element-ntype lazy-fuse)
     :inputs (mapcar #'substitute-array (inputs lazy-fuse))))
 
 (defmethod substitute-array ((lazy-reshape lazy-reshape))
   (make-instance 'lazy-reshape
     :ntype (element-ntype lazy-reshape)
-    :shape (shape lazy-reshape)
+    :shape (array-shape lazy-reshape)
     :transformation (transformation lazy-reshape)
     :inputs (list (substitute-array (input lazy-reshape)))))
 

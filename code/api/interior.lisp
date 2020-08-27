@@ -16,4 +16,4 @@
 
 (defun array-interior (array &optional (width 1))
   (check-type width unsigned-byte)
-  (reshape array (shape-interior (shape array) width)))
+  (reshape array (shape-interior (array-shape array) width)))

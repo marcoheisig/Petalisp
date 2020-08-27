@@ -13,7 +13,7 @@
            (β-aux function n-values inputs)))))
 
 (defun β-aux (function n-values inputs)
-  (trivia:ematch (shape (first inputs))
+  (trivia:ematch (array-shape (first inputs))
     ((~r range ~l more-ranges)
      (if (size-one-range-p range)
          (values-list

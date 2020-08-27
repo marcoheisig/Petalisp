@@ -48,7 +48,7 @@
             do (setf (gethash graph-root *layout-table*)
                      (make-array-immediate-layout
                       graph-root
-                      (make-array (shape-dimensions (shape graph-root))
+                      (make-array (shape-dimensions (array-shape graph-root))
                                   :element-type (element-type graph-root)))))
     ;; Now we convert all other entries.
     (maphash

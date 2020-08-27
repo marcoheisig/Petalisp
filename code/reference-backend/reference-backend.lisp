@@ -55,21 +55,21 @@
 
 (defmethod evaluate ((array-immediate array-immediate))
   (make-simple-immediate
-   (shape array-immediate)
+   (array-shape array-immediate)
    (element-type array-immediate)
    (lambda (index)
      (apply #'aref (storage array-immediate) index))))
 
 (defmethod evaluate ((range-immediate range-immediate))
   (make-simple-immediate
-   (shape range-immediate)
+   (array-shape range-immediate)
    (element-type range-immediate)
    #'first))
 
 (defmethod evaluate ((lazy-map single-value-lazy-map))
   (let ((inputs (mapcar #'evaluate (inputs lazy-map))))
     (make-simple-immediate
-     (shape lazy-map)
+     (array-shape lazy-map)
      (element-type lazy-map)
      (lambda (index)
        (values
@@ -79,7 +79,7 @@
 (defmethod evaluate ((lazy-map multiple-value-lazy-map))
   (let ((inputs (mapcar #'evaluate (inputs lazy-map))))
     (make-simple-immediate
-     (shape lazy-map)
+     (array-shape lazy-map)
      (element-type lazy-map)
      (lambda (index)
        (nth
@@ -91,17 +91,17 @@
 (defmethod evaluate ((lazy-fuse lazy-fuse))
   (let ((inputs (mapcar #'evaluate (inputs lazy-fuse))))
     (make-simple-immediate
-     (shape lazy-fuse)
+     (array-shape lazy-fuse)
      (element-type lazy-fuse)
      (lambda (index)
-       (let ((input (find-if (lambda (input) (shape-contains (shape input) index)) inputs)))
+       (let ((input (find-if (lambda (input) (shape-contains (array-shape input) index)) inputs)))
          (assert input)
          (iref input index))))))
 
 (defmethod evaluate ((lazy-reshape lazy-reshape))
   (let ((input (evaluate (input lazy-reshape))))
     (make-simple-immediate
-     (shape lazy-reshape)
+     (array-shape lazy-reshape)
      (element-type lazy-reshape)
      (lambda (index)
        (iref input (transform index (transformation lazy-reshape)))))))

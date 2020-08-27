@@ -9,7 +9,7 @@
     ;; Loop over all arrays to validate the input and to determine a
     ;; suitable stack width.
     (loop for lazy-array in lazy-arrays and index from 0 do
-      (let* ((shape (shape lazy-array))
+      (let* ((shape (array-shape lazy-array))
              (rank (shape-rank shape)))
         ;; Determine the stack rank.
         (cond ((null stack-rank)
@@ -42,7 +42,7 @@
         (lambda (lazy-array)
           (with-accessors ((start range-start)
                            (last range-last))
-              (nth axis (shape-ranges (shape lazy-array)))
+              (nth axis (shape-ranges (array-shape lazy-array)))
             (cond ((null position)
                    (setf position (+ last stack-width))
                    lazy-array)

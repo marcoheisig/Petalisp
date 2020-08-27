@@ -24,7 +24,7 @@
 (defun map-iteration-spaces (function root)
   (let* ((*function* function)
          (*root* root)
-         (shape (shape root))
+         (shape (array-shape root))
          (transformation (identity-transformation (shape-rank shape))))
     ;; If there are no fusions in the tree at all, we simply process the
     ;; iteration space of the root node.
@@ -56,7 +56,7 @@
   ;; Check whether any inputs are free of fusion nodes.  If so, process
   ;; their iteration space.
   (loop for input in (inputs lazy-fuse) do
-    (let ((subspace (shape-intersection iteration-space (shape input))))
+    (let ((subspace (shape-intersection iteration-space (array-shape input))))
       ;; If the input is unreachable, we do nothing.
       (unless (empty-shape-p subspace)
         ;; If the input contains fusion nodes, we also do nothing.
@@ -75,7 +75,7 @@
   (map-iteration-spaces-aux
    (input lazy-reshape)
    (transform
-    (shape-intersection iteration-space (shape lazy-reshape))
+    (shape-intersection iteration-space (array-shape lazy-reshape))
     (transformation lazy-reshape))
    (compose-transformations
     (transformation lazy-reshape)

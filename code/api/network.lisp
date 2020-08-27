@@ -42,7 +42,7 @@
                                 (error "Missing parameter: ~S." parameter))
                             value)
                         (element-type parameter))
-                     (shape parameter)))))
+                     (array-shape parameter)))))
     (apply (compile-network-on-backend network *backend*) args)))
 
 ;;; This is a simple, albeit slow way of compiling a network.  We simply

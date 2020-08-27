@@ -25,7 +25,7 @@
 
 (defun coerce-to-matrix (x)
   (setf x (lazy-array x))
-  (trivia:ematch (shape x)
+  (trivia:ematch (array-shape x)
     ((~)
      (reshape x (~ 1 ~ 1)))
     ((~l (list range))
@@ -35,7 +35,7 @@
 
 (defun coerce-to-scalar (x)
   (setf x (lazy-array x))
-  (trivia:ematch (shape x)
+  (trivia:ematch (array-shape x)
     ((~) x)
     ((~ i 1+i)
      (unless (= (1+ i) 1+i)
@@ -50,7 +50,7 @@
 (trivia:defpattern matrix (m n)
   (alexandria:with-gensyms (it)
     `(trivia:guard1 ,it (lazy-array-p ,it)
-                    (shape ,it) (~ ,m ~ ,n))))
+                    (array-shape ,it) (~ ,m ~ ,n))))
 
 (trivia:defpattern square-matrix (m)
   (alexandria:with-gensyms (g)

@@ -29,18 +29,18 @@
                  (lambda (lazy-arrays)
                    (destructuring-bind (lazy-array-1 lazy-array-2) lazy-arrays
                      (when (shape-intersectionp
-                            (shape lazy-array-1)
-                            (shape lazy-array-2))
+                            (array-shape lazy-array-1)
+                            (array-shape lazy-array-2))
                        (error "~@<Can only fuse disjoint shapes, ~
                          but the arrays ~S and the shape ~S have the ~
                          common subshape ~S.~:@>"
                               lazy-array-1
                               lazy-array-2
                               (shape-intersection
-                               (shape lazy-array-1)
-                               (shape lazy-array-2))))))
+                               (array-shape lazy-array-1)
+                               (array-shape lazy-array-2))))))
                  lazy-arrays :length 2 :copy nil)
-                (let ((shape (apply #'fuse-shapes (mapcar #'shape lazy-arrays)))
+                (let ((shape (apply #'fuse-shapes (mapcar #'array-shape lazy-arrays)))
                       (ntype (reduce #'petalisp.type-inference:ntype-union
                                      lazy-arrays
                                      :key #'element-ntype)))

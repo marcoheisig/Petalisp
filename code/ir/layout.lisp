@@ -53,7 +53,7 @@
                      (element-ntype array-immediate)))
                    (buffer
                     (make-buffer
-                     :shape (shape array-immediate)
+                     :shape (array-shape array-immediate)
                      :ntype ntype
                      :storage storage)))))
   (buffer nil :type buffer))

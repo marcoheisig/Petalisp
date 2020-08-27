@@ -56,7 +56,7 @@
                     (symbol
                      (make-instance 'parameter
                        :name gradient
-                       :shape (shape output)
+                       :shape (array-shape output)
                        :ntype (element-ntype output)))
                     (t
                      (reshape
@@ -64,7 +64,7 @@
                          (petalisp.type-inference:type-specifier
                           (petalisp.type-inference:generalize-ntype
                            (element-ntype output))))
-                      (shape output))))))
+                      (array-shape output))))))
     ;; Return the two differentiating closures.
     (labels ((ad-record (lazy-array)
                (check-type lazy-array lazy-array)
@@ -92,7 +92,7 @@
                (alist (ad-record-alist ad-record))
                (gradients
                  (list*
-                  (reshape (coerce 0 (element-type lazy-array)) (shape lazy-array))
+                  (reshape (coerce 0 (element-type lazy-array)) (array-shape lazy-array))
                   (loop for (index . record) in alist
                         collect
                         (ad-record-input-gradient record index)))))
@@ -136,7 +136,7 @@
      index)
   (with-accessors ((inputs inputs)
                    (operator operator)
-                   (shape shape)) lazy-map
+                   (shape array-shape)) lazy-map
     (α #'*
        output-gradient
        (petalisp.type-inference:differentiate
@@ -155,7 +155,7 @@
 
 (defmethod input-gradient
     ((lazy-fuse lazy-fuse) (output-gradient lazy-array) index)
-  (reshape output-gradient (shape (nth index (inputs lazy-fuse)))))
+  (reshape output-gradient (array-shape (nth index (inputs lazy-fuse)))))
 
 (defun move-axis-to-front (array axis)
   (check-type axis rank)
@@ -174,7 +174,7 @@
      (output-gradient lazy-array)
      (index (eql 0)))
   (with-accessors ((transformation transformation)
-                   (shape shape)) lazy-reshape
+                   (shape array-shape)) lazy-reshape
     (if (transformation-invertiblep transformation)
         (reshape output-gradient (transformation lazy-reshape))
         ;; The input gradient of a broadcasting reference is the sum of all
