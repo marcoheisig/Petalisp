@@ -100,6 +100,7 @@
    #:shape-union
    #:subdivide
    #:array-shape
+   #:define-shape-syntax
 
    ;; Transformations
    #:transformation
