@@ -99,7 +99,7 @@
               (maxf (aref upper-bounds index) offset)))
     ;; Use the bounding box to compute the shape of the result.
     (let ((result-shape
-            (~ 0 ~l
+            (~ 1 ~l
                (loop for lb across lower-bounds
                      for ub across upper-bounds
                      for range in (shape-ranges (array-shape array))
