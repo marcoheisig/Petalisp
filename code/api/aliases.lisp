@@ -5,7 +5,7 @@
 (defalias a α)
 (defalias a* α*)
 (defalias alpha α)
-(defalias α* α*)
+(defalias alpha* α*)
 (defalias b β)
 (defalias b* β*)
 (defalias beta β)
