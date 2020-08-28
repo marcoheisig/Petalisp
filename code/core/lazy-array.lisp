@@ -66,9 +66,11 @@
 (defclass non-empty-array (lazy-array)
   ((%shape
     :initarg :shape
+    :initform (alexandria:required-argument :shape)
     :reader array-shape)
    (%ntype
     :initarg :ntype
+    :initform (alexandria:required-argument :ntype)
     :reader element-ntype)
    (%refcount
     :reader refcount
@@ -79,10 +81,7 @@
     :reader depth
     :accessor %depth
     :type unsigned-byte
-    :initform 0))
-  (:default-initargs
-   :shape (~)
-   :ntype (petalisp.type-inference:ntype 't)))
+    :initform 0)))
 
 (defclass non-empty-immediate (non-empty-array immediate)
   ())
@@ -140,7 +139,7 @@
 
 (defclass parameter (non-empty-immediate)
   ()
-  (:default-initargs :computable nil :shape (~)))
+  (:default-initargs :computable nil))
 
 (defclass optional-parameter (parameter)
   ((%value
@@ -267,7 +266,8 @@
   (petalisp.type-inference:ntype 'nil))
 
 (defmethod array-shape ((object t))
-  (~))
+  (load-time-value
+   (make-shape '())))
 
 (defmethod array-shape ((array array))
   (make-shape
@@ -318,7 +318,7 @@
 
 (defun make-scalar-immediate (object)
   (make-instance 'array-immediate
-    :shape (~)
+    :shape (load-time-value (make-shape '()))
     :ntype (petalisp.type-inference:ntype-of object)
     :storage (petalisp.type-inference:make-rank-zero-array object)))
 
@@ -349,16 +349,15 @@
   (if (size-one-range-p range)
       (lazy-reshape
        (make-scalar-immediate (range-start range))
-       (~r range)
+       (make-shape (list range))
        (make-transformation
         :input-rank 1
         :output-rank 0))
       (make-instance 'range-immediate
-        :shape (~r range)
-        :ntype
-        (petalisp.type-inference:ntype-union
-         (petalisp.type-inference:ntype-of (range-start range))
-         (petalisp.type-inference:ntype-of (range-last range))))))
+        :shape (make-shape (list range))
+        :ntype (petalisp.type-inference:ntype-union
+                (petalisp.type-inference:ntype-of (range-start range))
+                (petalisp.type-inference:ntype-of (range-last range))))))
 
 (defun empty-array ()
   (load-time-value

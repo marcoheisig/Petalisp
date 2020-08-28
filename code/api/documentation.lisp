@@ -2,6 +2,133 @@
 
 (in-package #:petalisp.api)
 
+(document-variables (~ ~l ~s ~r)
+  "The symbols ~, ~l, ~s and ~r are self-evaluating.  Their only purpose is
+to separate range designators in the functions named ~, ~l, ~s and ~r.")
+
+(document-functions (~ ~l ~s ~r)
+  "The functions ~, ~l, ~s and ~r can be used to construct new shapes from
+some given range designators, from lists of ranges, from shapes, or from a
+single range, respectively.  Each of these patterns can be used repeatedly
+in a single call."
+  (~)
+  (~ 8)
+  (~ 1 10)
+  (~ 0 10 2 ~ 0 10 2)
+  (~ 5 ~s (~ 1 4 2 ~ 4 10 5) ~ 5)
+  (~r (range 1 10) ~l (list (range 2 9)) ~ 42)
+  (apply #'~ 1 10 (loop repeat 3 append '(~ 2 6))))
+
+(document-type shape
+  "A shape is the cartesian product of zero or more ranges.  Shapes can be
+constructed by calling ~ or MAKE-SHAPE.  The elements of a shape are lists
+of integers.  The rank of a shape is the length of these lists.  For
+example, the shape (~ 0 1 ~ 1 3 ~ 3 8 4) has rank three and consists of the
+integer tuples (0 1 3), (0 1 7), (0 2 3), (0 2 7).")
+
+(document-function shapep
+  "Checks whether a supplied object is a shape."
+  (shapep 42)
+  (shapep (~ 1 ~ 2 ~ 3 4)))
+
+(document-function shape-rank
+  "Returns the rank of the supplied shape, i.e., the number of ranges it
+contains."
+  (shape-rank (~))
+  (shape-rank (~ 1 ~ 2 ~ 3))
+  (shape-rank (~ 0 9 ~ 0 9)))
+
+(document-function shape-ranges
+  "Returns a list of all ranges contained in the supplied shape."
+  (shape-ranges (~))
+  (shape-ranges (~ 1 ~ 2 ~ 3))
+  (shape-ranges (~ 0 9 ~ 0 9)))
+
+(document-function shape-dimensions
+  "Return the array dimensions corresponding to a shape.  Signal an error
+if any of the ranges of the shape have a nonzero start or a step size other
+than one."
+  (shape-dimensions (~))
+  (shape-dimensions (~ 0 9))
+  (shape-dimensions (~ 1 9))
+  (shape-dimensions (~ 0 2 9))
+  (shape-dimensions (~ 0 4 ~ 0 5 ~ 0 6)))
+
+(document-function shape-size
+  "Returns that number of integer tuples denoted by the supplied shape."
+  (shape-size (~))
+  (shape-size (~ 2 9))
+  (shape-size (~ 1 9 ~ 1 8)))
+
+(document-function shape-equal
+  "Checks whether two supplied shapes denote the same set of integer tuples."
+  (shape-equal (~) (~))
+  (shape-equal (~ 42) (~ 42))
+  (shape-equal (~ 1 42) (~ 1 42))
+  (shape-equal (~ 1 42) (~ 2 42)))
+
+(document-function shape-difference-list
+  "Computes the difference of two shapes S1 and S2.  Returns a list of
+disjoint subshapes of S1 that describe exactly those integer tuples
+appearing in S1 but not in S2."
+  (shape-difference-list (~ 1 11) (~ 2 10))
+  (shape-difference-list (~ 1 11) (~ 4 8))
+  (shape-difference-list (~ 1 11) (~ 2 9 2))
+  (shape-difference-list (~ 1 11) (~ 2 21))
+  (shape-difference-list (~ 1 21 2) (~ 1 21 3)))
+
+(document-function shape-intersection
+  "Returns the shape containing exactly those integer tuples that occur in
+both supplied shapes.  Returns NIL if there are no such elements."
+  (shape-intersection (~ 1 11 ~ 3 14 2) (~ 1 6 ~ 1 14 3))
+  (shape-intersection (~ 1 6) (~ 6 11)))
+
+(document-function shape-intersectionp
+  "Check whether two supplied shapes have at least one common element."
+  (shape-intersectionp (~ 1 6) (~ 6 10))
+  (shape-intersectionp (~ 1 5) (~ 6 10)))
+
+(document-function map-shape
+  "Takes a function and a shape and applies the function to all integer
+tuples of that range, in ascending order."
+  (let ((l '()))
+    (map-shape (lambda (i) (push i l)) (~ 1 3 ~ 3 5))
+    (nreverse l)))
+
+(document-function shape-contains
+  "Check whether the supplied shape contains a particular integer tuple."
+  (shape-contains (~ 1 9) (list 4))
+  (shape-contains (~ 1 2 9) (list 4)))
+
+(document-function shrink-shape
+  "This function expects a single shape with one or more ranges R1 to Rn.
+It returns a shape with the ranges R2 to R1, and, as a second value, the
+range R1 that has been peeled off."
+  (shrink-shape (~ 1 10))
+  (shrink-shape (~ 1 10 ~ 0 2)))
+
+(document-function enlarge-shape
+  "For a given shape S and range R, this function returns a shape whose
+  first range is R, and whose remaining ranges are those of S."
+  (enlarge-shape (~) (range 1 10))
+  (enlarge-shape (~ 1 3) (range 1 4)))
+
+(document-function subdivide
+  "Returns a list of (shape . bitmask) conses.  Each shape is a proper
+subshape of one or more of the supplied shapes and their fusion covers all
+supplied shapes.  The bitmask indicates which of the supplied shapes are
+supersets of the corresponding resulting shape."
+  (subdivide (list (~ 1 3 ~ 1 3) (~ 1 2 ~ 1 2)))
+  (subdivide (list (~ 1 10) (~ 2 20))))
+
+(document-function subshapep
+  "Checks for two shapes whether the former is fully contained in the
+latter."
+  (subshapep (~) (~))
+  (subshapep (~ 0 9) (~ 0 9))
+  (subshapep (~ 0 3) (~ 1 9))
+  (subshapep (~ 0 3 ~ 0 3) (~ 0 9 ~ 0 9)))
+
 (document-function reshape
   "Returns a lazy array with the contents of ARRAY, but after applying the
 supplied MODIFIERS in left-to-right order.  A modifier must either be a

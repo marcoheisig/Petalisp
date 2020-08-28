@@ -30,7 +30,8 @@
    (:file "interior" :depends-on ("packages"))
    (:file "network" :depends-on ("alpha" "reshape"))
    (:file "packages")
-   (:file "reshape" :depends-on ("packages"))
+   (:file "reshape" :depends-on ("shape-syntax"))
+   (:file "shape-syntax" :depends-on ("packages"))
    (:file "slice" :depends-on ("packages"))
    (:file "slices" :depends-on ("packages"))
    (:file "stack" :depends-on ("fuse" "reshape"))
@@ -51,6 +52,7 @@
      "packages"
      "reshape"
      "drop-axes"
+     "shape-syntax"
      "slice"
      "slices"
      "stack"

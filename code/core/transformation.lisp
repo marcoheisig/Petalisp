@@ -468,7 +468,7 @@
                               1
                               (* scaling (range-step input-range)))))))))
       (map-transformation-outputs #'store-output-range transformation))
-    (~l output-ranges)))
+    (make-shape output-ranges)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

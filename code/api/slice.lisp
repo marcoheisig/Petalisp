@@ -14,7 +14,7 @@
              index axis array))
     (lazy-reshape
      array
-     (~l
+     (make-shape
       (petalisp.utilities:with-collectors ((ranges collect-range))
         (do ((rest ranges (cdr rest))
              (pos 0 (1+ pos)))

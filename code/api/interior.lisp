@@ -3,7 +3,7 @@
 (in-package #:petalisp.api)
 
 (defun shape-interior (shape &optional (width 1))
-  (~l
+  (make-shape
    (mapcar
     (lambda (range)
       (with-accessors ((start range-start)

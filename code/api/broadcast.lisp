@@ -21,7 +21,7 @@
                     for index from (- max-rank rank) do
                       (setf (aref ranges index)
                             (broadcast-ranges (aref ranges index) range))))
-      (let ((broadcast-shape (~l (coerce ranges 'list))))
+      (let ((broadcast-shape (make-shape (coerce ranges 'list))))
         (loop for entry in alist do
           (setf (cdr entry)
                 (make-broadcast-transformation broadcast-shape (car entry))))
