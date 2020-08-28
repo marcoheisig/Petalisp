@@ -414,10 +414,3 @@ contents are the those of a supplied Common Lisp array.")
 (document-type range-immediate
   "A range immediate is a rank one array, whose values are equal to its indices.")
 
-(document-function indices
-  "Returns a lazy array of integers of the shape indicated by the first
-argument ARRAY-OR-SHAPE , where each array element at index (i_0 ... i_N)
-has the value i_AXIS.  If AXIS is not supplied, it defaults to zero."
-  (compute (indices #2a((1 2) (3 4))))
-  (compute (indices #2a((1 2) (3 4)) 1))
-  (compute (indices "abc")))

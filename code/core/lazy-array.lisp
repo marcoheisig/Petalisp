@@ -191,6 +191,12 @@
 (defmethod lazy-array ((object t))
   (make-scalar-immediate object))
 
+(defmethod replace-lazy-array
+    ((instance empty-array)
+     (replacement empty-array))
+  ;; TODO
+  instance)
+
 (defmethod replace-lazy-array ((instance lazy-reshape) (replacement lazy-reshape))
   (reinitialize-instance instance
     :transformation (transformation replacement)
@@ -353,22 +359,6 @@
         (petalisp.type-inference:ntype-union
          (petalisp.type-inference:ntype-of (range-start range))
          (petalisp.type-inference:ntype-of (range-last range))))))
-
-(defun indices (array-or-shape &optional (axis 0))
-  (if (shapep array-or-shape)
-      (let* ((shape array-or-shape)
-             (rank (shape-rank shape)))
-        (if (empty-shape-p shape)
-            (empty-array)
-            (if (<= 0 axis (1- rank))
-                (lazy-reshape
-                 (make-range-immediate (nth axis (shape-ranges shape)))
-                 shape
-                 (make-transformation
-                  :input-rank rank
-                  :output-mask (vector axis)))
-                (error "~@<Invalid axis ~A for a shape with rank ~D.~:@>" axis rank))))
-      (indices (array-shape array-or-shape) axis)))
 
 (defun empty-array ()
   (load-time-value

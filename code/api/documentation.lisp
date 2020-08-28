@@ -19,7 +19,7 @@ taking each index and corresponding value of the original array and
 applying the transformation to the index while retaining the value."
   (compute (reshape 4 (~ 0 4)))
   (compute (reshape #(1 2 3 4) (~ 1 2)))
-  (compute (reshape (indices (~ 9)) (~ 3 ~ 3)))
+  (compute (reshape (shape-indices (~ 9)) (~ 3 ~ 3)))
   (compute (reshape #2A((1 2) (3 4)) (τ (i j) (j i))))
   (compute (reshape #(1 2 3 4) (~ 1 3) (~ 0 2 ~ 0 2))))
 
@@ -69,6 +69,29 @@ to represent the fusion."
 arguments overlap partially, the value of the rightmost object is used."
   (compute (fuse* (reshape 1 (~ 0 4))
                   (reshape 0 (~ 2 4)))))
+
+(document-function array-indices
+  "Returns a lazy array of integers of the shape of ARRAY, where each array
+element at index (i_0 ... i_N) has the value i_AXIS.  If AXIS is not
+supplied, it defaults to zero."
+  (compute (array-indices #2a((1 2) (3 4))))
+  (compute (array-indices #2a((1 2) (3 4)) 1))
+  (compute (array-indices "abc")))
+
+(document-function shape-indices
+   "Returns a lazy array of integers of the shape of SHAPE, where each
+array element at index (i_0 ... i_N) has the value i_AXIS.  If AXIS is not
+supplied, it defaults to zero."
+   (compute (shape-indices (~ 9)))
+   (compute (shape-indices (~ 0 4 2 ~ 1 5 2) 0))
+   (compute (shape-indices (~ 0 4 2 ~ 1 5 2) 1)))
+
+(document-function array-interior
+  "For a given ARRAY and WIDTH, return a new, lazy array with those
+  elements that are at least WIDTH entries away from any boundary.  If not
+  supplied, WIDTH defaults to one."
+  (compute (array-interior #2a((1 2 3 4) (5 6 7 8) (1 2 3 4) (5 6 7 8))))
+  (compute (array-interior #2a((1 2 3 4) (5 6 7 8) (1 2 3 4) (5 6 7 8)) 2)))
 
 (document-function drop-axes
   "Removes zero or more axes whose corresponding range has only a single
@@ -159,7 +182,7 @@ the following rules:
             (if (> lv rv)
                 (values lv li)
                 (values rv ri)))
-          a (indices a 0))
+          a (array-indices a 0))
      (compute max index))))
 
 (document-function β*

@@ -85,8 +85,8 @@
 (defun eye (m &optional (n m))
   (let ((shape (~ m ~ n)))
     (α #'δ
-       (indices shape 0)
-       (indices shape 1))))
+       (shape-indices shape 0)
+       (shape-indices shape 1))))
 
 (defun transpose (x)
   (reshape
@@ -117,7 +117,7 @@
        (if (> lv rv)
            (values lv li)
            (values rv ri)))
-     x (indices x)))
+     x (array-indices x)))
 
 (defun matmul (A B)
   (β #'+

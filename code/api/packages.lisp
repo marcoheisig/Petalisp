@@ -50,7 +50,8 @@
    #:fuse*
    #:compute
    #:schedule
-   #:indices
+   #:array-indices
+   #:shape-indices
    #:define-parallel-aliases
    #:vectorize
 

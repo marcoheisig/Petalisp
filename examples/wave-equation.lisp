@@ -16,8 +16,8 @@
 (defun solve-wave-equation (&key (n 20) (timesteps 0) (dt 0.01) (verbose nil))
   (let* ((dx (/ (1- n)))
          (shape (~ 0 (1- n) ~ 0 (1- n)))
-         (X (α #'/ (indices shape 0) (coerce n 'single-float)))
-         (Y (α #'/ (indices shape 1) (coerce n 'single-float)))
+         (X (α #'/ (shape-indices shape 0) (coerce n 'single-float)))
+         (Y (α #'/ (shape-indices shape 1) (coerce n 'single-float)))
          (Z (α #'*
                (α #'sin (α #'* 2 X pi))
                (α #'sin (α #'* 2 Y pi)))))

@@ -127,13 +127,13 @@
   (compute (reshape 4 (~ 5)))
   (compute (reshape #(1 2 3) (τ (i) ((- i)))) #(3 2 1))
   (compute (reshape #(1 2 3 4) (~ 1 3)))
-  (compute (reshape (indices (~ 1 10)) (~ 3 ~ 3)))
+  (compute (reshape (shape-indices (~ 1 10)) (~ 3 ~ 3)))
   (compute (reshape #2A((1 2) (3 4)) (τ (i j) (j i))))
   (compute (reshape #(1 2 3 4) (~ 1 3) (~ 0 2 ~ 0 2)))
   (alexandria:map-permutations
    (lambda (shapes)
      (compute
-      (apply #'reshape (indices (~ 1 101)) shapes)))
+      (apply #'reshape (shape-indices (~ 1 101)) shapes)))
    (list (~ 0 5 ~ 0 5 ~ 0 4)
          (~ 0 2 ~ 0 5 ~ 0 1 ~ 0 2 ~ 0 5)
          (~ 1 3 ~ 1 6 ~ 1 3 ~ 1 6)
@@ -142,14 +142,14 @@
   (alexandria:map-permutations
    (lambda (shapes)
      (compute
-      (apply #'reshape (indices (~ 1 201)) shapes)))
+      (apply #'reshape (shape-indices (~ 1 201)) shapes)))
    (list (~ 0 2 ~ 0 5 ~ 0 5 ~ 0 4)
          (~ 0 2 ~ 0 2 ~ 0 5 ~ 0 1 ~ 0 2 ~ 0 5)
          (~ 0 2 ~ 0 100)))
   (alexandria:map-permutations
    (lambda (shapes)
      (compute
-      (apply #'reshape (indices (~ 1 201)) shapes)))
+      (apply #'reshape (shape-indices (~ 1 201)) shapes)))
    (list (~ 0 5 ~ 0 5 ~ 0 4 ~ 0 2)
          (~ 0 2 ~ 0 5 ~ 0 1 ~ 0 2 ~ 0 5 ~ 0 2)
          (~ 0 100 ~ 0 2)))
@@ -164,10 +164,13 @@
   (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1))))
 
 (define-test indices-test
-  (compute (indices #(5 6 7)))
+  (compute (array-indices #(5 6 7)))
   (let ((a (make-array '(2 3 4))))
-    (compute (indices a 1))
-    (compute (α #'+ (indices a 0) (indices a 1) (indices a 2)))))
+    (compute (array-indices a 1))
+    (compute (α #'+
+                (array-indices a 0)
+                (array-indices a 1)
+                (array-indices a 2)))))
 
 
 (define-test sum-of-pairs
