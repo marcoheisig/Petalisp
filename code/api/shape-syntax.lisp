@@ -34,6 +34,7 @@
 ;;;
 ;;; Constructors and Pattern Matching
 
+(declaim (list *shape-syntax*))
 (defvar *shape-syntax* '())
 
 (defstruct (shape-syntax
@@ -65,15 +66,15 @@
       (push syntax *shape-syntax*)
       syntax)))
 
-(defun shape-syntax-delimiter-p (x)
-  (and (member x *shape-syntax* :key #'shape-syntax-delimiter)
+(defun shape-syntax-delimiter-p (object)
+  (and (find-shape-syntax-no-error object)
        t))
 
 (deftype shape-syntax-delimiter ()
   '(and symbol (satisfies shape-syntax-delimiter-p)))
 
 (trivia:defpattern non-~ ()
-  '(not (type shape-syntax-delimiter)))
+  '(type (not shape-syntax-delimiter)))
 
 (defmacro define-shape-syntax
     (delimiter (tokens collect finish) constructor-syntax pattern-syntax)
@@ -133,6 +134,42 @@
        (lambda (patterns)
          `(list ,@patterns))))))
 
+(define-shape-syntax ~s (tokens collect finish)
+  (trivia:ematch tokens
+    ((list* shape rest)
+     (mapc #'collect (shape-ranges shape))
+     rest))
+  (trivia:ematch tokens
+    ((list* shape rest)
+     (unless (and (listp shape) (shape-syntax-delimiter-p (car shape)))
+       (error "The token after a ~S pattern must be a valid shape pattern."
+              ~s))
+     (append shape rest))))
+
+(define-shape-syntax ~l (tokens collect finish)
+  (trivia:ematch tokens
+    ((list* ranges rest)
+     (mapc #'collect ranges)
+     rest))
+  (trivia:ematch tokens
+    ((list* ranges rest)
+     (unless (null rest)
+       (error "~S must only appear at the last clause of a shape pattern."
+              ~l))
+     (finish
+      (lambda (patterns)
+        `(list* ,@patterns ,ranges))))))
+
+(define-shape-syntax ~r (tokens collect finish)
+  (trivia:ematch tokens
+    ((list* range rest)
+     (collect range)
+     rest))
+  (trivia:ematch tokens
+    ((list* range rest)
+     (collect `(and ,range (type range)))
+     rest)))
+
 (define-shape-syntax ~ (tokens collect finish)
   (trivia:ematch tokens
     ((list* (and start (non-~)) (and end (non-~)) (and step (non-~)) rest)
@@ -162,39 +199,3 @@
     ((list* (and n (non-~)) rest)
      (collect `(range ,n))
      rest)))
-
-(define-shape-syntax ~r (tokens collect finish)
-  (trivia:ematch tokens
-    ((list* range rest)
-     (collect range)
-     rest))
-  (trivia:ematch tokens
-    ((list* range rest)
-     (collect `(and ,range (type range)))
-     rest)))
-
-(define-shape-syntax ~l (tokens collect finish)
-  (trivia:ematch tokens
-    ((list* ranges rest)
-     (mapc #'collect ranges)
-     rest))
-  (trivia:ematch tokens
-    ((list* ranges rest)
-     (unless (null rest)
-       (error "~S must only appear at the last clause of a shape pattern."
-              ~l))
-     (finish
-      (lambda (patterns)
-        `(list* ,@patterns ,ranges))))))
-
-(define-shape-syntax ~s (tokens collect finish)
-  (trivia:ematch tokens
-    ((list* shape rest)
-     (mapc #'collect (shape-ranges shape))
-     rest))
-  (trivia:ematch tokens
-    ((list* shape rest)
-     (unless (and (listp shape) (shape-syntax-delimiter-p (car shape)))
-       (error "The token after a ~S pattern must be a valid shape pattern."
-              ~s))
-     (append shape rest))))
