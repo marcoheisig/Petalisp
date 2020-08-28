@@ -19,16 +19,17 @@
   (with-output-to-string (stream)
     (write-string docstring stream)
     (unless (null example-forms)
-      (format stream "~&~%Example~P:" (length example-forms))
-      (loop for example-form in example-forms
-            for example-thunk in example-thunks do
-              (format stream "~&~% ~A~%" example-form)
-              (handler-case
-                  (format stream "~{  => ~A~%~}"
-                          (multiple-value-list
-                           (funcall example-thunk)))
-                (error (e)
-                  (format stream "  >> ~A" (class-name (class-of e)))))))))
+      (let ((*print-case* :downcase))
+        (format stream "~&~%Example~P:" (length example-forms))
+        (loop for example-form in example-forms
+              for example-thunk in example-thunks do
+                (format stream "~&~% ~A~%" example-form)
+                (handler-case
+                    (format stream "~{  => ~A~%~}"
+                            (multiple-value-list
+                             (funcall example-thunk)))
+                  (error (e)
+                    (format stream "  >> ~A" (class-name (class-of e))))))))))
 
 (defmacro expand-documentation (form &rest examples)
   `(build-documentation
