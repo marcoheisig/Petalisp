@@ -36,9 +36,9 @@
 
 (defgeneric replace-lazy-array (lazy-array replacement))
 
-(defgeneric refcount (array))
+(defgeneric lazy-array-refcount (array))
 
-(defgeneric depth (array))
+(defgeneric lazy-array-depth (array))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -73,13 +73,13 @@
     :initform (alexandria:required-argument :ntype)
     :reader element-ntype)
    (%refcount
-    :reader refcount
-    :accessor %refcount
+    :reader lazy-array-refcount
+    :accessor %lazy-array-refcount
     :type unsigned-byte
     :initform 0)
    (%depth
-    :reader depth
-    :accessor %depth
+    :reader lazy-array-depth
+    :accessor %lazy-array-depth
     :type unsigned-byte
     :initform 0)))
 
@@ -170,16 +170,14 @@
   (loop
     with computablep = t
     for input in (inputs non-immediate)
-    sum 1 into refcount fixnum
-    maximize (depth input) into depth
+    maximize (lazy-array-depth input) into lazy-array-depth
+    do (incf (%lazy-array-refcount input))
     unless (computablep input) do (setf computablep nil)
       finally
          (setf (%computablep non-immediate)
                computablep)
-         (setf (%refcount non-immediate)
-               refcount)
-         (setf (%depth non-immediate)
-               (1+ depth))))
+         (setf (%lazy-array-depth non-immediate)
+               (1+ lazy-array-depth))))
 
 (defmethod lazy-array ((lazy-array lazy-array))
   lazy-array)

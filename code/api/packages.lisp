@@ -128,8 +128,6 @@
    #:element-type
    #:rank
    #:total-size
-   #:refcount
-   #:depth
    #:input
    #:inputs
    #:value-n

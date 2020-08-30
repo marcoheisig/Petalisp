@@ -17,7 +17,7 @@
   (let ((table (make-hash-table :test #'eq))
         (parameters '()))
     (labels ((scan (lazy-array)
-               (cond ((= 1 (refcount lazy-array))
+               (cond ((= 1 (lazy-array-refcount lazy-array))
                       (process lazy-array))
                      ((not (gethash lazy-array table))
                       (setf (gethash lazy-array table) t)

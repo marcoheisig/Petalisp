@@ -113,8 +113,8 @@
    #:number-of-values
    #:operator
    #:storage
-   #:refcount
-   #:depth
+   #:lazy-array-refcount
+   #:lazy-array-depth
    #:lazy-array
    #:lazy-map
    #:single-value-lazy-map

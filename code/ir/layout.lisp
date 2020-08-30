@@ -75,7 +75,7 @@
   (buffer-stores '()))
 
 (defun layout-depth (layout)
-  (depth (layout-lazy-array layout)))
+  (lazy-array-depth (layout-lazy-array layout)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
