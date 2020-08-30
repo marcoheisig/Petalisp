@@ -36,9 +36,11 @@
 
 (defgeneric replace-lazy-array (lazy-array replacement))
 
-(defgeneric lazy-array-refcount (array))
+(defgeneric lazy-array-shape (lazy-array))
 
-(defgeneric lazy-array-depth (array))
+(defgeneric lazy-array-refcount (lazy-array))
+
+(defgeneric lazy-array-depth (lazy-array))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -67,7 +69,8 @@
   ((%shape
     :initarg :shape
     :initform (alexandria:required-argument :shape)
-    :reader array-shape)
+    :reader array-shape
+    :reader lazy-array-shape)
    (%ntype
     :initarg :ntype
     :initform (alexandria:required-argument :ntype)

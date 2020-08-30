@@ -115,6 +115,7 @@
    #:storage
    #:lazy-array-refcount
    #:lazy-array-depth
+   #:lazy-array-shape
    #:lazy-array
    #:lazy-map
    #:single-value-lazy-map
