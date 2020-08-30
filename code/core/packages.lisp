@@ -51,6 +51,7 @@
    #:non-empty-shape
    #:non-empty-shape-p
    #:shape-rank
+   #:shape-range
    #:shape-ranges
    #:shape-dimensions
    #:shape-size

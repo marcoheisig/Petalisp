@@ -49,6 +49,12 @@
         (make-empty-shape rank)
         (make-non-empty-shape ranges rank size))))
 
+(defun shape-range (shape axis)
+  (declare (shape shape))
+  (assert (<= 0 axis))
+  (assert (< axis (shape-rank shape)))
+  (nth axis (shape-ranges shape)))
+
 (defun shape-equal (shape1 shape2)
   (declare (shape shape1 shape2))
   (and (= (shape-rank shape1)
@@ -61,6 +67,7 @@
                   (shape-ranges shape2)))))
 
 (defun shape-intersection (shape1 shape2)
+  (declare (shape shape1 shape2))
   (if (/= (shape-rank shape1)
           (shape-rank shape2))
       (make-empty-shape (shape-rank shape1)) ; TODO should we signal an error here?
