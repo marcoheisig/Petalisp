@@ -5,8 +5,10 @@
 ;;; This is the default Petalisp backend.  It generates portable, highly
 ;;; optimized Lisp code and compiles it using CL:COMPILE.
 
-(defclass native-backend (asynchronous-backend)
-  ((%memory-pool :initarg :memory-pool :reader memory-pool)
+(defclass native-backend (backend)
+  ((%scheduler-queue :initform (lparallel.queue:make-queue) :reader scheduler-queue)
+   (%scheduler-thread :accessor scheduler-thread)
+   (%memory-pool :initarg :memory-pool :reader memory-pool)
    (%worker-pool :initarg :worker-pool :reader worker-pool)
    (%compile-cache :initarg :compile-cache :reader compile-cache
                    :initform (make-hash-table :test #'eq))))
@@ -18,4 +20,33 @@
     :worker-pool (make-worker-pool threads)))
 
 (defmethod delete-backend ((native-backend native-backend))
+  (with-accessors ((queue scheduler-queue)
+                   (thread scheduler-thread)) native-backend
+    (lparallel.queue:push-queue :quit queue)
+    (bt:join-thread thread))
   (delete-worker-pool (worker-pool native-backend)))
+
+(defmethod initialize-instance :after
+    ((native-backend native-backend) &key &allow-other-keys)
+  (let ((queue (scheduler-queue native-backend)))
+    (setf (scheduler-thread native-backend)
+          (bt:make-thread
+           (lambda ()
+             (loop for item = (lparallel.queue:pop-queue queue) do
+               (if (functionp item)
+                   (funcall item)
+                   (loop-finish))))
+           :name (format nil "~A scheduler thread"
+                         (class-name (class-of native-backend)))))))
+
+(defmethod schedule-on-backend
+    ((lazy-arrays list)
+     (native-backend native-backend))
+  (let ((promise (lparallel.promise:promise)))
+    (lparallel.queue:push-queue
+     (lambda ()
+       (lparallel.promise:fulfill promise
+         (compute-on-backend lazy-arrays native-backend)))
+     (scheduler-queue native-backend))
+    promise))
+

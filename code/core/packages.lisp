@@ -150,7 +150,6 @@
    #:compute-immediates
    #:lisp-datum-from-immediate
    #:backend
-   #:asynchronous-backend
    #:delete-backend
    #:compute
    #:schedule))
