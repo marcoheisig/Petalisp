@@ -77,6 +77,26 @@
    #:store-instruction-buffer
    #:load-instruction-buffer
 
+   ;; Devices, Workers, and Memory
+   #:device
+   #:device-name
+   #:device-memory
+   #:device-workers
+   #:host-device
+   #:worker
+   #:worker-name
+   #:worker-memory
+   #:memory
+   #:memory-name
+   #:memory-parent
+   #:memory-children
+   #:memory-workers
+   #:memory-size
+   #:memory-granularity
+   #:memory-latency
+   #:memory-bandwidth
+   #:memory-parent-bandwidth
+
    ;; Miscellaneous
    #:assign-instruction-numbers
    #:parse-kernel-blueprint

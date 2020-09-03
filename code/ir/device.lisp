@@ -6,50 +6,67 @@
 ;;;
 ;;; Generic Functions.
 
-;;; The name of the memory, e.g., "L1" or "RAM".
+(defgeneric device-name (device))
+
+(defgeneric device-memory (device))
+
+(defgeneric device-workers (device))
+
+(defgeneric worker-name (device))
+
+(defgeneric worker-memory (device))
+
 (defgeneric memory-name (memory))
 
-;;; Returns the parent memory.
 (defgeneric memory-parent (memory))
 
-;;; Returns the list memories that have this one as their parent.
 (defgeneric memory-children (memory))
 
-;;; Returns the list of processors with access to this piece of memory.
-(defgeneric memory-processors (memory))
+(defgeneric memory-workers (memory))
 
-;;; Returns the memory size in bytes.
 (defgeneric memory-size (memory))
 
-;;; Returns the granularity of the memory, i.e., how many elements are
-;;; transferred at minimum for a single access.
 (defgeneric memory-granularity (memory))
 
-;;; Returns the memory latency in cycles.
 (defgeneric memory-latency (memory))
 
-;;; Returns the memory bandwidth in bytes per cycle for accessing elements
-;;; in this memory hierarchy.
 (defgeneric memory-bandwidth (memory))
 
-;;; Returns the bandwidth for communicating data with the parent.
 (defgeneric memory-parent-bandwidth (memory))
-
-;;; Returns the name of the processor.
-(defgeneric processor-name (processor))
-
-;;; Returns the memory of the processor.
-(defgeneric processor-memory (processor))
-
-;;; Returns the name of a machine.
-(defgeneric machine-name (machine))
-
-;;; Returns the processors of a machine.
-(defgeneric machine-processors (machine))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes.
+
+(defclass device ()
+  (;; The name of the device, e.g., "AMD FX(tm)-8150"
+   (%name
+    :initarg :name
+    :initform (alexandria:required-argument :name)
+    :reader device-name
+    :type string)
+   ;; The memory hierarchy accessed by that device.
+   (%memory
+    :initarg :memory
+    :initform (alexandria:required-argument :memory)
+    :reader device-memory
+    :type memory)
+   (%number-of-workers
+    :initarg :number-of-workers
+    :reader device-number-of-workers
+    :type (and (integer 1) fixnum))))
+
+(defclass worker ()
+  ((%name
+    :initarg :name
+    :initform (alexandria:required-argument :name)
+    :reader worker-name
+    :type string)
+   (%memory
+    :initarg :memory
+    :initform (alexandria:required-argument :memory)
+    :reader worker-memory
+    :type memory)))
 
 (defclass memory ()
   (;; The name of the memory, e.g., "L1" or "RAM"
@@ -75,12 +92,12 @@
     :reader memory-children
     :accessor memory-children-slot
     :type list)
-   ;; The processors with access to this piece of memory.
-   (%processors
-    :initarg :processors
+   ;; The workers with access to this piece of memory.
+   (%workers
+    :initarg :workers
     :initform '()
-    :reader memory-processors
-    :accessor memory-processors-slot
+    :reader memory-workers
+    :accessor memory-workers-slot
     :type list)
    ;; The memory size in bytes.
    (%size
@@ -88,7 +105,8 @@
     :initform (alexandria:required-argument :size)
     :reader memory-size
     :type unsigned-byte)
-   ;; The memory granularity in bytes.
+   ;; The memory granularity, i.e., the minimum number of elements
+   ;; transferred per load or store operation in bytes.
    (%granularity
     :initarg :granularity
     :initform (alexandria:required-argument :granularity)
@@ -106,43 +124,12 @@
     :initform (alexandria:required-argument :bandwidth)
     :reader memory-bandwidth
     :type unsigned-byte)
+   ;; The memory bandwidth for communicating with the parent.
    (%parent-bandwidth
     :initarg :parent-bandwidth
     :initform nil
     :reader memory-parent-bandwidth
     :type (or null unsigned-byte))))
-
-(defclass processor ()
-  (;; The name of the processor, e.g., "AMD FX(tm)-8150 Core #2"
-   (%name
-    :initarg :name
-    :initform (alexandria:required-argument :name)
-    :reader processor-name
-    :type string)
-   ;; The memory hierarchy accessed by that processor.
-   (%memory
-    :initarg :memory
-    :initform (alexandria:required-argument :memory)
-    :reader processor-memory
-    :type memory)))
-
-(defclass machine ()
-  (;; The name of the machine, e.g., "alice-laptop"
-   (%name
-    :initarg :name
-    :initform (or (machine-instance) "Host")
-    :reader machine-name
-    :type string)
-   ;; The processors of that machine.
-   (%processors
-    :initarg :processors
-    :reader machine-processors
-    :type list)
-   ;; The main memory of that machine.
-   (%main-memory
-    :initarg :main-memory
-    :reader machine-main-memory
-    :type memory)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -153,13 +140,26 @@
   (unless (null (memory-parent memory))
     (pushnew memory (memory-children-slot (memory-parent memory)))))
 
-(defmethod shared-initialize :after ((processor processor) slot-names &key &allow-other-keys)
+(defmethod shared-initialize :after ((worker worker) slot-names &key &allow-other-keys)
   (declare (ignore slot-names))
-  (labels ((register-processor-with-memory (memory)
+  (labels ((register-worker-with-memory (memory)
              (unless (null memory)
-               (pushnew processor (memory-processors-slot memory))
-               (register-processor-with-memory (memory-parent memory)))))
-    (register-processor-with-memory (processor-memory processor))))
+               (pushnew device (memory-workers-slot memory))
+               (register-device-with-memory (memory-parent memory)))))
+    (register-worker-with-memory (worker-memory worker))))
+
+(defmethod print-object ((device device) stream)
+  (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
+          (class-name (class-of device))
+          :name (device-name device)
+          :memory (device-memory device)
+          :workers (device-workers device)))
+
+(defmethod print-object ((worker worker) stream)
+  (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
+          (class-name (class-of worker))
+          :name (worker-name worker)
+          :memory (worker-memory worker)))
 
 (defmethod print-object ((memory memory) stream)
   (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
@@ -172,31 +172,69 @@
           :parent (memory-parent memory)
           :parent-bandwidth (memory-parent-bandwidth memory)))
 
-(defmethod print-object ((processor processor) stream)
-  (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
-          (class-name (class-of processor))
-          :name (processor-name processor)
-          :memory (processor-memory processor)))
-
-(defmethod print-object ((machine machine) stream)
-  (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
-          (class-name (class-of machine))
-          :name (machine-name machine)
-          :main-memory (machine-main-memory machine)
-          :processors (machine-processors machine)))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Initialization
+;;; The Host Device
 
 ;;; Use a bunch of heuristics to figure out the machine model of the host.
-(defun host-machine ()
+(defun host-device ()
   #+linux
-  (linux-host-machine)
+  (linux-host-device)
   #-(or linux)
-  (default-host-machine))
+  (fallback-host-device))
 
-(defun linux-host-machine ()
+;;; Return the machine model for a 'typical' machine with a give number of
+;;; cores.  This is a fallback solution - all numbers have been made up :)
+(defun fallback-host-device ()
+  (let* ((n-cpus (petalisp.utilities:number-of-cpus))
+         (ram
+           ;; We assume two GB of RAM per CPU.
+           (make-instance 'memory
+             :name "RAM"
+             :size (* n-cpus 2 1024 1024 1024)
+             :granularity 64
+             :latency 400
+             :bandwidth (* n-cpus 4)))
+         (l3-cache
+           ;; We assume two MB of L3 cache per CPU, shared among all CPUs.
+           (make-instance 'memory
+             :name "L3"
+             :parent ram
+             :size (* n-cpus 2 1024 1024)
+             :granularity 64
+             :latency 40
+             :bandwidth 64
+             :parent-bandwidth 8))
+         (workers
+           (loop for id below n-cpus
+                 collect
+                 (make-instance 'worker
+                   :name (format nil "CPU-~D" id)
+                   :memory
+                   (make-instance 'memory
+                     :name "L1"
+                     ;; We assume  32 KB of L1 cache per CPU.
+                     :size (* 32 1024)
+                     :granularity 64
+                     :latency 5
+                     :bandwidth 128
+                     :parent-bandwidth 32
+                     :parent
+                     (make-instance 'memory
+                       :name "L2"
+                       :parent l3-cache
+                       ;; We assume  512 KB of L2 cache per CPU.
+                       :size (* n-cpus 512 1024)
+                       :granularity 64
+                       :latency 15
+                       :bandwidth 64
+                       :parent-bandwidth 16))))))
+    (make-instance 'device
+      :name (or (machine-type) "fallback-host-device")
+      :workers workers
+      :main-memory ram)))
+
+(defun linux-host-device ()
   (let* ((ram (make-instance 'memory
                 :name "RAM"
                 :size
@@ -214,12 +252,12 @@
                 :latency 400))
          (online (uiop:ensure-pathname "/sys/devices/system/cpu/online"
                                        :want-existing t))
-         (cpus (parse-integer-set (alexandria:read-file-into-string online)))
+         (worker-ids (parse-integer-set (alexandria:read-file-into-string online)))
          ;; Records of the form (id level cache).
          (caches '()))
-    (make-instance 'machine
+    (make-instance 'device
       :main-memory ram
-      :processors
+      :workers
       (labels ((cache-level (cache-dir)
                  (parse-integer
                   (alexandria:read-file-into-string
@@ -262,7 +300,7 @@
                          (push (list id level cache) caches)
                          cache)
                        (third entry)))))
-        (loop for cpu in cpus
+        (loop for worker-id in worker-ids
               collect
               (let* ((cpu-dir
                        (uiop:ensure-pathname
@@ -284,7 +322,7 @@
                         #'>
                         :key #'cache-level)))
                 (mapc #'ensure-cache cache-dirs)
-                (make-instance 'processor
+                (make-instance 'worker
                   :name (first (last (pathname-directory cpu-dir)))
                   :memory (ensure-cache
                            (find-if-not
@@ -364,52 +402,3 @@
                 (collect (+ base offset)))))))
       (remove-duplicates (integers)))))
 
-;;; Return the machine model for a 'typical' machine with a give number of
-;;; cores.  This is a fallback solution - all numbers have been made up :)
-(defun default-host-machine ()
-  (let* ((n-cpus (petalisp.utilities:number-of-cpus))
-         (ram
-           ;; We assume two GB of RAM per CPU.
-           (make-instance 'memory
-             :name "RAM"
-             :size (* n-cpus 2 1024 1024 1024)
-             :granularity 64
-             :latency 400
-             :bandwidth (* n-cpus 4)))
-         (l3-cache
-           ;; We assume two MB of L3 cache per CPU, shared among all CPUs.
-           (make-instance 'memory
-             :name "L3"
-             :parent ram
-             :size (* n-cpus 2 1024 1024)
-             :granularity 64
-             :latency 40
-             :bandwidth 64
-             :parent-bandwidth 8))
-         (processors
-           (loop for id below n-cpus
-                 collect
-                 (make-instance 'processor
-                   :name (format nil "CPU-~D" id)
-                   :memory
-                   (make-instance 'memory
-                     :name "L1"
-                     ;; We assume  32 KB of L1 cache per CPU.
-                     :size (* 32 1024)
-                     :granularity 64
-                     :latency 5
-                     :bandwidth 128
-                     :parent-bandwidth 32
-                     :parent
-                     (make-instance 'memory
-                       :name "L2"
-                       :parent l3-cache
-                       ;; We assume  512 KB of L2 cache per CPU.
-                       :size (* n-cpus 512 1024)
-                       :granularity 64
-                       :latency 15
-                       :bandwidth 64
-                       :parent-bandwidth 16))))))
-    (make-instance 'machine
-      :processors processors
-      :main-memory ram)))

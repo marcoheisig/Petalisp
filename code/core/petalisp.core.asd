@@ -28,6 +28,5 @@
    (:file "lazy-fuse")
    (:file "lazy-map")
    (:file "substitute-array")
-   (:file "machine-model")
    (:file "backend")
    (:file "documentation")))

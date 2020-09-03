@@ -142,29 +142,8 @@
    #:copy-arrays
    #:substitute-arrays
 
-   ;; Machine Model
-   #:memory
-   #:memory-name
-   #:memory-parent
-   #:memory-children
-   #:memory-processors
-   #:memory-size
-   #:memory-granularity
-   #:memory-latency
-   #:memory-bandwidth
-   #:memory-parent-bandwidth
-   #:processor
-   #:processor-name
-   #:processor-memory
-   #:machine
-   #:machine-name
-   #:machine-processors
-   #:machine-main-memory
-   #:host-machine
-
    ;; Backend
    #:*backend*
-   #:backend-machine
    #:compute-on-backend
    #:schedule-on-backend
    #:compile-network-on-backend

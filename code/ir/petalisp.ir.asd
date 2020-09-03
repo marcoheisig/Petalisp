@@ -11,6 +11,7 @@
   :components
   ((:file "packages")
    (:file "variables")
+   (:file "device")
    (:file "ir")
    (:file "layout")
    (:file "layout-table")

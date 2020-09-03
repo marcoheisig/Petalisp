@@ -10,8 +10,7 @@
   ())
 
 (defun make-ir-backend ()
-  (make-instance 'ir-backend
-    :machine (host-machine)))
+  (make-instance 'ir-backend))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
