@@ -35,10 +35,7 @@
   (sources '() :type list)
   ;; An alist whose keys are buffers, and whose values are all store
   ;; instructions referencing that buffer.
-  (targets '() :type list)
-  ;; An opaque object, representing the 
-  (device nil)
-  )
+  (targets '() :type list))
 
 ;;; This function is a very ad-hoc approximation of the cost of executing
 ;;; the kernel.
