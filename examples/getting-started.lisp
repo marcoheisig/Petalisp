@@ -27,7 +27,7 @@
  (zeros (~ 10))) ; ten zeros
 
 (present
- (indices (zeros (~ 10)))) ; the numbers from 0 to 9 (inclusive)
+ (array-indices (zeros (~ 10)))) ; the numbers from 0 to 9 (inclusive)
 
 (present
  (reshape #2a((1 2 3 4) (5 6 7 8)) (~ 0 2 ~ 1 3))) ; selecting values
