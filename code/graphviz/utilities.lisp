@@ -12,7 +12,8 @@
           (*print-right-margin* 60)
           (*print-pretty* t)
           (*print-escape* nil)
-          (*print-readably* nil))
+          (*print-readably* nil)
+          (*package* (find-package '#:petalisp.api)))
       (write-to-string x))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
