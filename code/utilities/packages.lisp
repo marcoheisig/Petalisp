@@ -65,4 +65,7 @@
 
    ;; number-of-cpus.lisp
    #:number-of-cpus
+
+   ;; assocf.lisp
+   #:assocf
    ))
