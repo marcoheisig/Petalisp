@@ -393,62 +393,17 @@
     (nreverse buffers)))
 
 (defun delete-kernel (kernel)
-  ;; Only kernels with zero store instructions can be deleted without
-  ;; changing semantics.
-  (assert (null (kernel-targets kernel)))
-  (let ((obsolete-buffers '()))
-    (map-kernel-inputs
-     (lambda (buffer)
-       (let ((new-readers (remove kernel (buffer-readers buffer) :key #'car)))
-         (setf (buffer-readers buffer)
-               new-readers)
-         ;; A buffer that is never read from is obsolete.
-         (when (null new-readers)
-           (pushnew buffer obsolete-buffers))))
-     kernel)
-    (mapc #'delete-buffer obsolete-buffers)
-    (values)))
-
-(defun delete-buffer (buffer)
-  ;; Only buffers with zero readers can be deleted without changing
-  ;; semantics.
-  (assert (null (buffer-readers buffer)))
-  (setf (buffer-storage buffer) nil)
-  (let ((obsolete-kernels '()))
-    (map-buffer-inputs
-     (lambda (kernel)
-       (let ((targets (remove buffer (kernel-targets kernel) :key #'car)))
-         (setf (kernel-targets kernel)
-               targets)
-         ;; A kernel with zero store instructions is obsolete.
-         (when (null targets)
-           (pushnew kernel obsolete-kernels))))
-     buffer)
-    (mapc #'delete-kernel obsolete-kernels)
-    (values)))
-
-(define-modify-macro appendf (&rest lists) append)
-
-(defun substitute-buffer (new-buffer old-buffer)
-  (loop for (kernel . store-instructions) in (buffer-writers old-buffer) do
-    (loop for cons in (kernel-targets kernel) do
-      (when (eq (car cons) old-buffer)
-        (setf (car cons) new-buffer)))
-    (loop for store-instruction in store-instructions do
-      (setf (store-instruction-buffer store-instruction) new-buffer)))
-  (loop for (kernel . load-instructions) in (buffer-readers old-buffer) do
-    (loop for cons in (kernel-sources kernel) do
-      (when (eq (car cons) old-buffer)
-        (setf (car cons) new-buffer)))
-    (loop for load-instruction in load-instructions do
-      (setf (load-instruction-buffer load-instruction) new-buffer)))
-  (appendf (buffer-writers new-buffer)
-           (buffer-writers old-buffer))
-  (appendf (buffer-readers new-buffer)
-           (buffer-readers old-buffer))
-  (setf (buffer-writers old-buffer) nil)
-  (setf (buffer-readers old-buffer) nil)
-  new-buffer)
+  (map-kernel-inputs
+   (lambda (buffer)
+     (setf (buffer-readers buffer)
+           (remove kernel (buffer-readers buffer) :key #'car)))
+   kernel)
+  (map-kernel-outputs
+   (lambda (buffer)
+     (setf (buffer-writers buffer)
+           (remove kernel (buffer-writers buffer) :key #'car)))
+   kernel)
+  (values))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

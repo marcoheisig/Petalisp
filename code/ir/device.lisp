@@ -144,8 +144,8 @@
   (declare (ignore slot-names))
   (labels ((register-worker-with-memory (memory)
              (unless (null memory)
-               (pushnew device (memory-workers-slot memory))
-               (register-device-with-memory (memory-parent memory)))))
+               (pushnew worker (memory-workers-slot memory))
+               (register-worker-with-memory (memory-parent memory)))))
     (register-worker-with-memory (worker-memory worker))))
 
 (defmethod print-object ((device device) stream)
@@ -304,7 +304,7 @@
               collect
               (let* ((cpu-dir
                        (uiop:ensure-pathname
-                        (format nil "/sys/devices/system/cpu/cpu~D/" cpu)
+                        (format nil "/sys/devices/system/cpu/cpu~D/" worker-id)
                         :want-existing t
                         :want-directory t))
                      (cache-dirs

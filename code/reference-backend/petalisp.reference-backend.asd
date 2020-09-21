@@ -8,5 +8,4 @@
   :serial t
   :components
   ((:file "packages")
-   (:file "simple-immediate")
    (:file "reference-backend")))

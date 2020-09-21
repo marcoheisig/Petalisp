@@ -113,13 +113,20 @@ range R1 that has been peeled off."
   (enlarge-shape (~) (range 1 10))
   (enlarge-shape (~ 1 3) (range 1 4)))
 
-(document-function subdivide
+(document-function subdivide-arrays
+  "Invoke SUBDIVIDE-SHAPES on the shapes of the supplied ARRAYS."
+  (subdivide-arrays (list))
+  (subdivide-arrays (list #()))
+  (subdivide-arrays (list #() #()))
+  (subdivide-arrays (list #(1 2 3 4) #(1 2))))
+
+(document-function subdivide-shapes
   "Returns a list of (shape . bitmask) conses.  Each shape is a proper
 subshape of one or more of the supplied shapes and their fusion covers all
 supplied shapes.  The bitmask indicates which of the supplied shapes are
 supersets of the corresponding resulting shape."
-  (subdivide (list (~ 1 3 ~ 1 3) (~ 1 2 ~ 1 2)))
-  (subdivide (list (~ 1 10) (~ 2 20))))
+  (subdivide-shapes (list (~ 1 3 ~ 1 3) (~ 1 2 ~ 1 2)))
+  (subdivide-shapes (list (~ 1 10) (~ 2 20))))
 
 (document-function subshapep
   "Checks for two shapes whether the former is fully contained in the

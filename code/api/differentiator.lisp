@@ -99,7 +99,7 @@
           (setf (ad-record-output-gradient-cache ad-record)
                 (apply
                  #'fuse
-                 (loop for (shape . bitmask) in (subdivide gradients)
+                 (loop for (shape . bitmask) in (subdivide-arrays gradients)
                        collect
                        (apply
                         #'α #'+
@@ -131,7 +131,7 @@
         (α #'coerce value (element-type input)))))
 
 (defmethod input-gradient
-    ((lazy-map single-value-lazy-map)
+    ((lazy-map lazy-map)
      (output-gradient lazy-array)
      index)
   (with-accessors ((inputs inputs)
@@ -146,7 +146,7 @@
         (lambda (constant)
           (reshape constant shape))
         (lambda (ntypes function inputs)
-          (make-instance 'single-value-lazy-map
+          (make-instance 'lazy-map
             :operator function
             :inputs inputs
             :shape shape

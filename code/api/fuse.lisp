@@ -22,4 +22,4 @@
            (nth (1- (integer-length bitmask)) lazy-arrays)
            shape
            identity)))
-      (subdivide lazy-arrays)))))
+      (subdivide-arrays lazy-arrays)))))

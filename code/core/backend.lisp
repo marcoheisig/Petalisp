@@ -37,7 +37,11 @@
 ;;; Methods
 
 (defmethod compute-on-backend :before ((lazy-arrays list) (backend t))
-  (assert (every #'computablep lazy-arrays)))
+  (loop for lazy-array in lazy-arrays do
+    (assert (computablep lazy-array))
+    ;; Ensure that root nodes are referenced at least twice, such that the
+    ;; IR conversion always allocates them in memory.
+    (incf (%lazy-array-refcount lazy-array) 2)))
 
 (defmethod schedule-on-backend :before ((lazy-arrays list) (backend t))
   (assert (every #'computablep lazy-arrays)))

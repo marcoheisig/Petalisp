@@ -111,26 +111,21 @@
     :reader operator
     :type (or function symbol))))
 
-(defclass single-value-lazy-map (lazy-map)
-  ())
-
-(defclass multiple-value-lazy-map (lazy-map)
-  ((%number-of-values
+(defclass lazy-multiple-value-map (non-empty-non-immediate)
+  ((%operator
+    :initarg :operator
+    :reader operator
+    :type (or function symbol))
+   (%number-of-values
     :initarg :number-of-values
     :reader number-of-values
-    :type (integer 0 (#.multiple-values-limit)))
-   (%value-n
+    :type (integer 0 (#.multiple-values-limit)))))
+
+(defclass lazy-multiple-value-ref (non-empty-non-immediate)
+  ((%value-n
     :initarg :value-n
     :reader value-n
-    :type (integer 0 (#.(1- multiple-values-limit))))
-   ;; The identity is a cons cell that is shared among all instances that
-   ;; are the result of mapping a multiple valued operator over some
-   ;; arguments.  It is later used to merge instances into a single kernel
-   ;; whenever possible.
-   (%identity
-    :initarg :identity
-    :reader identity-of
-    :type cons)))
+    :type (integer 0 (#.(1- multiple-values-limit))))))
 
 (defclass lazy-fuse (non-empty-non-immediate)
   ())

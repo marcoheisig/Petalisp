@@ -32,18 +32,24 @@
         (setf (gethash lazy-array *substitutions*)
               (call-next-method)))))
 
-(defmethod substitute-array ((lazy-map single-value-lazy-map))
-  (make-instance 'single-value-lazy-map
+(defmethod substitute-array ((lazy-map lazy-map))
+  (make-instance 'lazy-map
     :operator (operator lazy-map)
     :shape (array-shape lazy-map)
     :ntype (element-ntype lazy-map)
     :inputs (mapcar #'substitute-array (inputs lazy-map))))
 
-(defmethod substitute-array ((lazy-map multiple-value-lazy-map))
-  (make-instance 'multiple-value-lazy-map
+(defmethod substitute-array ((lazy-multiple-value-map lazy-multiple-value-map))
+  (make-instance 'lazy-multiple-value-map
     :operator (operator lazy-map)
-    :value-n (value-n lazy-map)
     :number-of-values (number-of-values lazy-map)
+    :shape (array-shape lazy-map)
+    :ntype (element-ntype lazy-map)
+    :inputs (mapcar #'substitute-array (inputs lazy-map))))
+
+(defmethod substitute-array ((lazy-multiple-value-ref lazy-multiple-value-ref))
+  (make-instance 'lazy-multiple-value-map
+    :value-n (value-n lazy-map)
     :shape (array-shape lazy-map)
     :ntype (element-ntype lazy-map)
     :inputs (mapcar #'substitute-array (inputs lazy-map))))

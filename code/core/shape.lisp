@@ -171,11 +171,15 @@
 ;;;
 ;;; Subdivide
 
-(defun subdivide (arrays)
+(defun subdivide-arrays (arrays)
+  (subdivide-shapes
+   (mapcar #'array-shape arrays)))
+
+(defun subdivide-shapes (shapes)
   (reduce #'subdivide-aux
-          (loop for array in arrays
+          (loop for shape in shapes
                 for bitmask = 1 then (ash bitmask 1)
-                collect (cons (array-shape array) bitmask))
+                collect (cons shape bitmask))
           :initial-value '()))
 
 ;; A fragment is a cons whose car is a shape and whose cdr is the

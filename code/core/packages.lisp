@@ -63,7 +63,8 @@
    #:shape-contains
    #:shrink-shape
    #:enlarge-shape
-   #:subdivide
+   #:subdivide-arrays
+   #:subdivide-shapes
    #:subshapep
    #:fuse-shapes
 
@@ -119,8 +120,9 @@
    #:lazy-array-shape
    #:lazy-array
    #:lazy-map
-   #:single-value-lazy-map
-   #:multiple-value-lazy-map
+   #:lazy-map
+   #:lazy-multiple-value-map
+   #:lazy-multiple-value-ref
    #:lazy-reshape
    #:lazy-fuse
    #:immediate

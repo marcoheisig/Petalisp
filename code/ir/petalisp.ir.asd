@@ -4,19 +4,16 @@
 
   :depends-on
   ("alexandria"
+   "priority-queue"
    "petalisp.utilities"
    "petalisp.core")
 
   :serial t
   :components
   ((:file "packages")
-   (:file "variables")
    (:file "device")
    (:file "ir")
-   (:file "layout")
-   (:file "layout-table")
    (:file "ir-checker")
-   (:file "map-iteration-spaces")
    (:file "ir-conversion")
    (:file "blueprint")
    (:file "documentation")))

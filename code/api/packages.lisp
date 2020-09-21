@@ -98,7 +98,8 @@
    #:shrink-shape
    #:enlarge-shape
    #:shape-union
-   #:subdivide
+   #:subdivide-arrays
+   #:subdivide-shapes
    #:array-shape
    #:define-shape-syntax
 

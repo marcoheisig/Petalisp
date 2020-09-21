@@ -21,5 +21,4 @@
    (:file "prime-factors")
    (:file "weak-set")
    (:file "with-collectors")
-   (:file "number-of-cpus")
-   (:file "assocf")))
+   (:file "number-of-cpus")))
