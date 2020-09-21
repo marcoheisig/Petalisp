@@ -195,15 +195,13 @@
         (let ((dshape (dendrite-shape dendrite)))
           (loop for entry in alist do
             (let* ((eshape (car entry))
-                   (intersection (shape-intersection eshape dshape)))
-              (unless (empty-shape-p intersection)
-                (let ((cover (fuse-shapes eshape dshape)))
-                  (when (<= (shape-size cover)
-                            (+ (shape-size dshape)
-                               (shape-size eshape)))
-                    (setf (car entry) cover)
-                    (push dendrite (cdr entry))
-                    (return-from convert-one-dendrite)))))
+                   (cover (fuse-shapes eshape dshape)))
+              (when (<= (shape-size cover)
+                        (+ (shape-size dshape)
+                           (shape-size eshape)))
+                (setf (car entry) cover)
+                (push dendrite (cdr entry))
+                (return-from convert-one-dendrite)))
                 finally (push `(,dshape ,dendrite) alist)))))
     ;; Create one buffer per alist entry and insert the corresponding load
     ;; instructions.
