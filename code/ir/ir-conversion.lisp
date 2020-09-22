@@ -196,8 +196,7 @@
           (loop for entry in alist do
             (let* ((eshape (car entry))
                    (cover (fuse-shapes eshape dshape)))
-              (when (<= (- (shape-size cover)
-                           (shape-rank cover))
+              (when (<= (* (shape-size cover) 0.75)
                         (+ (shape-size dshape)
                            (shape-size eshape)))
                 (setf (car entry) cover)
