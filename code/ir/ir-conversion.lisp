@@ -149,10 +149,20 @@
     (loop until (ir-converter-empty-p *ir-converter*)
           for cluster = (ir-converter-next-cluster *ir-converter*)
           do (convert-cluster cluster (cluster-lazy-array cluster)))
-    ;; Assign instruction numbers.
-    (map-kernels #'assign-instruction-numbers root-buffers)
+    ;(petalisp.graphviz:view root-buffers)
     (normalize-ir root-buffers)
     (nreverse root-buffers)))
+
+(defun normalize-ir (root-buffers)
+  (map-buffers #'normalize-buffer root-buffers)
+  (map-kernels #'normalize-kernel root-buffers))
+
+(defun normalize-buffer (buffer)
+  (transform-buffer buffer (collapsing-transformation (buffer-shape buffer))))
+
+(defun normalize-kernel (kernel)
+  (kernel-instruction-vector kernel)
+  (transform-kernel kernel (collapsing-transformation (kernel-iteration-space kernel))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -308,13 +318,8 @@
   (if (and (< (lazy-array-depth non-immediate)
               (dendrite-depth dendrite))
            (> (lazy-array-refcount non-immediate) 1))
-      (enqueue-dendrite dendrite non-immediate)
+      (push dendrite (cluster-dendrites (ensure-cluster non-immediate)))
       (call-next-method)))
-
-(defun enqueue-dendrite (dendrite lazy-array)
-  (declare (dendrite dendrite))
-  (push dendrite (cluster-dendrites (ensure-cluster lazy-array)))
-  (values))
 
 (defmethod grow-dendrite
     ((dendrite dendrite)
@@ -408,20 +413,18 @@
                    (cons dendrite-cons)) dendrite
     (let* ((kernel (stem-kernel stem))
            (shape (lazy-array-shape array-immediate))
+           (ntype (element-ntype array-immediate))
+           (storage (storage array-immediate))
            (buffer
              (if (zerop (shape-rank shape))
                  (alexandria:ensure-gethash
                   (aref (storage array-immediate))
                   (ir-converter-scalar-table *ir-converter*)
-                  (make-buffer :shape (make-shape '())
-                               :ntype (element-ntype array-immediate)
-                               :storage (storage array-immediate)))
+                  (make-buffer :shape shape :ntype ntype :storage storage))
                  (alexandria:ensure-gethash
                   (storage array-immediate)
                   (ir-converter-array-table *ir-converter*)
-                  (make-buffer :shape (lazy-array-shape array-immediate)
-                               :ntype (element-ntype array-immediate)
-                               :storage (storage array-immediate)))))
+                  (make-buffer :shape shape :ntype ntype :storage storage))))
            (load-instruction (make-load-instruction buffer transformation)))
       (push load-instruction (alexandria:assoc-value (kernel-sources kernel) buffer))
       (push load-instruction (alexandria:assoc-value (buffer-readers buffer) kernel))

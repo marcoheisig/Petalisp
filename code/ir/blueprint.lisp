@@ -19,18 +19,11 @@
      (ucons:umapcar #'range-blueprint (shape-ranges (kernel-iteration-space kernel)))
      (ucons:umapcar #'buffer-blueprint *buffers*)
      ;; Now generate the blueprints for all instructions in the kernel
-     (let* ((size (1+ (kernel-highest-instruction-number kernel)))
-            (instruction-blueprints (make-array size))
-            (result '()))
-       (map-instructions
-        (lambda (instruction)
-          (let ((index (instruction-number instruction)))
-            (setf (aref instruction-blueprints index)
-                  (instruction-blueprint instruction))))
-        kernel)
-       (loop for index from (1- size) downto 0 do
-         (let ((instruction (aref instruction-blueprints index)))
-           (setf result (ucons:ucons instruction result))))
+     (let ((vector (kernel-instruction-vector kernel))
+           (result '()))
+       (loop for index from (1- (length vector)) downto 0 do
+         (let ((instruction (svref vector index)))
+           (setf result (ucons:ucons (instruction-blueprint instruction) result))))
        result))))
 
 (defun range-blueprint (range)

@@ -98,6 +98,6 @@
    #:memory-parent-bandwidth
 
    ;; Miscellaneous
-   #:assign-instruction-numbers
+   #:kernel-instruction-vector
    #:parse-kernel-blueprint
    #:check-ir))

@@ -35,13 +35,15 @@
   (sources '() :type list)
   ;; An alist whose keys are buffers, and whose values are all store
   ;; instructions referencing that buffer.
-  (targets '() :type list))
+  (targets '() :type list)
+  ;; A vector of instructions of the kernel, in top-to-bottom order.
+  (instruction-vector-cache nil :type (or null vector)))
 
 ;;; This function is a very ad-hoc approximation of the cost of executing
 ;;; the kernel.
 (defun kernel-cost (kernel)
-  (* (shape-size (kernel-iteration-space kernel))
-     (kernel-highest-instruction-number kernel)))
+  (max 1 (* (shape-size (kernel-iteration-space kernel))
+            (kernel-highest-instruction-number kernel))))
 
 ;;; The behavior of a kernel is described by its iteration space and its
 ;;; instructions.  The instructions form a DAG, whose leaves are load
@@ -273,20 +275,9 @@
   (map-buffers-and-kernels #'identity function root-buffers))
 
 (defun map-instructions (function kernel)
-  (map-kernel-store-instructions
-   (lambda (store-instruction)
-     (map-instruction-tree function store-instruction))
-   kernel))
-
-(defun map-instruction-tree (function root-instruction)
-  (labels ((process-node (instruction n)
-             (let ((new-n (instruction-number instruction)))
-               (when (< new-n n)
-                 (funcall function instruction)
-                 (map-instruction-inputs
-                  (lambda (next) (process-node next new-n))
-                  instruction)))))
-    (process-node root-instruction most-positive-fixnum)))
+  (let ((vector (kernel-instruction-vector kernel)))
+    (declare (simple-vector vector))
+    (map nil function vector)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -405,49 +396,46 @@
    kernel)
   (values))
 
+(defun merge-kernels (kernel other-kernel)
+  (map-kernel-inputs
+   (lambda (buffer)
+     (loop for entry in (buffer-readers buffer)
+           when (eq (car entry) other-kernel)
+             do (setf (car entry) kernel)))
+   other-kernel)
+  (map-kernel-outputs
+   (lambda (buffer)
+     (loop for entry in (buffer-writers buffer)
+           when (eq (car entry) other-kernel)
+             do (setf (car entry) kernel)))
+   other-kernel)
+  (alexandria:appendf (kernel-sources kernel) (kernel-sources other-kernel))
+  (alexandria:appendf (kernel-targets kernel) (kernel-targets other-kernel))
+  (setf (kernel-sources other-kernel) '())
+  (setf (kernel-targets other-kernel) '())
+  kernel)
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Assigning Instruction Numbers
+;;; Computing the Instruction Vector
 
-(defun assign-instruction-numbers (kernel)
-  ;; Step 1 - set all instruction numbers to -1.
-  (labels ((clear-instruction-numbers (instruction)
-             (unless (= -1 (instruction-number instruction))
-               (map-instruction-inputs #'clear-instruction-numbers instruction)
-               (setf (instruction-number instruction) -1))))
-    (map-kernel-store-instructions #'clear-instruction-numbers kernel))
-  ;; Step 2 - assign new instruction numbers.
-  (let ((n -1))
-    (labels ((assign-instruction-numbers (instruction)
-               (when (= -1 (instruction-number instruction))
-                 (setf (instruction-number instruction) -2)
-                 (map-instruction-inputs #'assign-instruction-numbers instruction)
-                 (setf (instruction-number instruction) (incf n)))))
-      (map-kernel-store-instructions #'assign-instruction-numbers kernel))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; IR Normalization
-;;;
-;;; The IR consists of buffers of arbitrary shape, and of kernels that
-;;; reference some buffers via arbitrary affine linear transformations.  A
-;;; downside of this representation is that it includes a useless degree of
-;;; freedom.  We can reshape each buffer with another affine-linear
-;;; transformation, as long as we also update the transformations of all
-;;; references to the buffer.
-;;;
-;;; The purpose of this IR transformation is to get rid of this useless
-;;; degree of freedom.  To do so, we reshape each buffer such that all
-;;; ranges of its shape have a start of zero and a step size of one.  Of
-;;; course, we also update all references to each buffer, such that the
-;;; semantics is preserved.
-
-(defun normalize-ir (root-buffers)
-  (map-buffers #'normalize-buffer root-buffers)
-  (map-kernels #'normalize-kernel root-buffers))
-
-(defun normalize-buffer (buffer)
-  (transform-buffer buffer (collapsing-transformation (buffer-shape buffer))))
-
-(defun normalize-kernel (kernel)
-  (transform-kernel kernel (collapsing-transformation (kernel-iteration-space kernel))))
+(defun kernel-instruction-vector (kernel)
+  (or (kernel-instruction-vector-cache kernel)
+      (let ((counter 0))
+        (labels ((clear-instruction-number (instruction)
+                   (unless (= -1 (instruction-number instruction))
+                     (incf counter)
+                     (setf (instruction-number instruction) -1)
+                     (map-instruction-inputs #'clear-instruction-number instruction))))
+          (map-kernel-store-instructions #'clear-instruction-number kernel))
+        (let ((vector (make-array counter))
+              (index 0))
+          (labels ((assign-instruction-number (instruction)
+                     (when (= -1 (instruction-number instruction))
+                       (setf (instruction-number instruction) -2)
+                       (map-instruction-inputs #'assign-instruction-number instruction)
+                       (setf (instruction-number instruction) index)
+                       (setf (svref vector index) instruction)
+                       (incf index))))
+            (map-kernel-store-instructions #'assign-instruction-number kernel))
+          (setf (kernel-instruction-vector-cache kernel) vector)))))
