@@ -188,15 +188,16 @@
   (let ((dendrites (cluster-dendrites cluster))
         (alist '())
         (buffers '()))
-    ;; Compute an alist from shapes to dendrites that have a non-negligible
-    ;; intersection with that shape.
+    ;; Compute an alist from shapes to dendrites that will write into a
+    ;; buffer of that shape.
     (loop for dendrite in dendrites do
       (block convert-one-dendrite
         (let ((dshape (dendrite-shape dendrite)))
           (loop for entry in alist do
             (let* ((eshape (car entry))
                    (cover (fuse-shapes eshape dshape)))
-              (when (<= (shape-size cover)
+              (when (<= (- (shape-size cover)
+                           (shape-rank cover))
                         (+ (shape-size dshape)
                            (shape-size eshape)))
                 (setf (car entry) cover)
@@ -205,10 +206,10 @@
                 finally (push `(,dshape ,dendrite) alist)))))
     ;; Create one buffer per alist entry and insert the corresponding load
     ;; instructions.
-    (loop for (shape . dendrites) in alist do
+    (loop for (shape . mergeable-dendrites) in alist do
       (let ((buffer (make-buffer :shape shape :ntype (cluster-ntype cluster))))
         (push buffer buffers)
-        (loop for dendrite in dendrites do
+        (loop for dendrite in mergeable-dendrites do
           (with-accessors ((cons dendrite-cons)
                            (kernel dendrite-kernel)
                            (transformation dendrite-transformation)) dendrite
