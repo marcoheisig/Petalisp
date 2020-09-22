@@ -146,6 +146,7 @@
 
    ;; Backend
    #:*backend*
+   #:make-reference-backend
    #:compute-on-backend
    #:schedule-on-backend
    #:compile-network-on-backend

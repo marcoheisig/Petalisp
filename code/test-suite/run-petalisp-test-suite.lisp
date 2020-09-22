@@ -10,7 +10,6 @@
   (print-system-statistics "petalisp.type-inference")
   (print-system-statistics "petalisp.core")
   (print-system-statistics "petalisp.ir")
-  (print-system-statistics "petalisp.reference-backend")
   (print-system-statistics "petalisp.ir-backend")
   (print-system-statistics "petalisp.native-backend")
   (print-system-statistics "petalisp.api")

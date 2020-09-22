@@ -8,7 +8,6 @@
    "trivia"
    "petalisp.utilities"
    "petalisp.core"
-   "petalisp.reference-backend"
    "petalisp.ir-backend"
    "petalisp.native-backend")
 

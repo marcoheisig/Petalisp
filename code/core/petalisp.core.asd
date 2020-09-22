@@ -29,4 +29,5 @@
    (:file "lazy-map")
    (:file "substitute-array")
    (:file "backend")
+   (:file "reference-backend")
    (:file "documentation")))

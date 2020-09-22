@@ -1,6 +1,6 @@
 ;;;; © 2016-2020 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package #:petalisp.reference-backend)
+(in-package #:petalisp.core)
 
 ;;; The purpose of the reference backend is to compute reference solutions
 ;;; for automated testing. It is totally acceptable that this
