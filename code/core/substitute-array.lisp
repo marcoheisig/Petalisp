@@ -41,18 +41,18 @@
 
 (defmethod substitute-array ((lazy-multiple-value-map lazy-multiple-value-map))
   (make-instance 'lazy-multiple-value-map
-    :operator (operator lazy-map)
-    :number-of-values (number-of-values lazy-map)
-    :shape (array-shape lazy-map)
-    :ntype (element-ntype lazy-map)
-    :inputs (mapcar #'substitute-array (inputs lazy-map))))
+    :operator (operator lazy-multiple-value-map)
+    :number-of-values (number-of-values lazy-multiple-value-map)
+    :shape (array-shape lazy-multiple-value-map)
+    :ntype (element-ntype lazy-multiple-value-map)
+    :inputs (mapcar #'substitute-array (inputs lazy-multiple-value-map))))
 
 (defmethod substitute-array ((lazy-multiple-value-ref lazy-multiple-value-ref))
   (make-instance 'lazy-multiple-value-map
-    :value-n (value-n lazy-map)
-    :shape (array-shape lazy-map)
-    :ntype (element-ntype lazy-map)
-    :inputs (mapcar #'substitute-array (inputs lazy-map))))
+    :value-n (value-n lazy-multiple-value-ref)
+    :shape (array-shape lazy-multiple-value-ref)
+    :ntype (element-ntype lazy-multiple-value-ref)
+    :inputs (mapcar #'substitute-array (inputs lazy-multiple-value-ref))))
 
 (defmethod substitute-array ((lazy-fuse lazy-fuse))
   (make-instance 'lazy-fuse
