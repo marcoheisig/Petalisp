@@ -59,8 +59,8 @@
 ;;; recomputed.
 ;;;
 ;;; Each instruction input is a cons cell, whose cdr is another
-;;; instruction, and whose car is an integer describing which of the
-;;; multiple values of the cdr is referenced.
+;;; instruction, and whose car is an integer denoting which of the multiple
+;;; values of the cdr is being referenced.
 (defstruct (instruction
             (:predicate instructionp)
             (:constructor nil))

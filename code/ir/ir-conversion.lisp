@@ -8,19 +8,36 @@
 ;;; outputs of a kernel are always buffers, and such that the inputs and
 ;;; outputs of a buffer are always kernels.
 ;;;
-;;; The IR conversion algorithm proceeds as such:
+;;; The main data structure IR conversion algorithm are so called dendrites
+;;; that grow from the lazy arrays that are the graph roots and along their
+;;; inputs.  When a dendrite reaches an immediate, its growth stops.  While
+;;; growing, dendrites create the instructions of a particular kernel,
+;;; while keeping track of the current transformation and shape.  When a
+;;; dendrite grows over a lazy array has more than one input, the dendrite
+;;; branches out into multiple dendrites.  Each dendrite has a stem that
+;;; tracks the kernel being generated.  All dendrites that are the result
+;;; of branching out this way share the same stem.
 ;;;
-;;; - One dendrite is created for each supplied graph root.
+;;; Whenever a dendrite reaches a lazy array with a refcount larger than
+;;; one, or a lazy array that follows a broadcasting reshape operation, its
+;;; growth is suspended and we record that this dendrite has reached that
+;;; lazy array.  The data structure that tracks which dendrites have
+;;; reached a particular lazy array is called a cluster.  Once the growth
+;;; of all dendrites has been suspended or stopped, we pick the cluster
+;;; whose lazy array has the highest depth from a priority queue.  This
+;;; cluster is now turned into one or more buffers, and each buffer is the
+;;; root of a stem with a single dendrite that is grown further.  Once
+;;; there are no further clusters, the IR conversion is complete.
 ;;;
-;;; - We maintain a priority queue of dendrites, sorted by depth.
-;;;
-;;; - The dendrite with the highest depth is advanced until it reaches
-;;;   either a lazy array with multiple inputs, or a lazy array that has
-;;;   more than one static reference.  In the case of multiple inputs, a
-;;;   new dendrite is created for all but the first input.  The new
-;;;   dendrites are placed in the priority queue, and the first one is
-;;;   processed further.  If the lazy array has more then one static
-;;;   reference, the dendrite is also inserted into the priority queue.
+;;; A special case occurs when a dendrite reaches a fusion node with
+;;; multiple inputs that intersect with the dendrite's shape.  In such a
+;;; case, we want to replace the current kernel by multiple kernels, while
+;;; choosing the iteration space of each kernel such that it reaches only a
+;;; single input of the fusion node.  We achieve this by deleting both the
+;;; stem's kernel, and all dendrites that originate from that stem.  Then
+;;; we restart with one stem and kernel for each suitable subspace of the
+;;; original stem.  In doing so, we eliminate fusion nodes altogether from
+;;; the IR.
 
 (defstruct ir-converter
   ;; A priority queue of clusters, sorted by the depth of the corresponding
@@ -52,17 +69,6 @@
   ;; A list of dendrites that have reached this cluster.
   (dendrites '() :type list))
 
-(defstruct (stem
-            (:constructor make-stem (cluster kernel)))
-  ;; The cluster in which the stem is rooted.
-  (cluster nil :type cluster)
-  ;; The kernel that is grown from that stem.
-  (kernel nil :type kernel)
-  ;; A list of dendrites that originated from this stem.  This list is used
-  ;; to invalidate dendrites whenever one of them reaches more than one
-  ;; input of a fusion node.
-  (dendrites '() :type list))
-
 (defun ensure-cluster (lazy-array)
   (alexandria:ensure-gethash
    lazy-array
@@ -82,6 +88,17 @@
   (declare (cluster cluster))
   (lazy-array-shape (cluster-lazy-array cluster)))
 
+(defstruct (stem
+            (:constructor make-stem (cluster kernel)))
+  ;; The cluster in which the stem is rooted.
+  (cluster nil :type cluster)
+  ;; The kernel that is grown from that stem.
+  (kernel nil :type kernel)
+  ;; A list of dendrites that originated from this stem.  This list is used
+  ;; to invalidate dendrites whenever one of them reaches more than one
+  ;; input of a fusion node.
+  (dendrites '() :type list))
+
 (defstruct (dendrite
             (:constructor %make-dendrite)
             (:copier %copy-dendrite))
@@ -94,9 +111,9 @@
   (transformation nil :type transformation)
   ;; The depth of the cluster most recently visited by this dendrite.
   (depth nil :type unsigned-byte)
-  ;; The cons cell whose car is the value of the current lazy array being
-  ;; referenced, and whose cdr is to be filled with the result of growing
-  ;; the dendrite.
+  ;; The cons cell whose car is to be filled with a cons cell whose cdr is
+  ;; the next instruction, and whose car is an integer denoting which of
+  ;; the multiple values of the cdr is being referenced.
   (cons nil :type cons)
   ;; Whether the dendrite is to be considered when converting a cluster.
   (validp t :type boolean))
@@ -135,6 +152,21 @@
     (push copy (stem-dendrites stem))
     copy))
 
+(defun mergeable-dendrites-p (d1 d2)
+  (and (eq
+        (dendrite-stem d1)
+        (dendrite-stem d2))
+       (shape-equal
+        (dendrite-shape d1)
+        (dendrite-shape d2))
+       (transformation-equal
+        (dendrite-transformation d1)
+        (dendrite-transformation d2))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; IR Conversion
+
 (defun ir-from-lazy-arrays (lazy-arrays)
   (let ((*ir-converter* (make-ir-converter))
         (root-buffers '()))
@@ -149,7 +181,6 @@
     (loop until (ir-converter-empty-p *ir-converter*)
           for cluster = (ir-converter-next-cluster *ir-converter*)
           do (convert-cluster cluster (cluster-lazy-array cluster)))
-    ;(petalisp.graphviz:view root-buffers)
     (normalize-ir root-buffers)
     (nreverse root-buffers)))
 
@@ -170,25 +201,36 @@
 
 (defgeneric convert-cluster (cluster lazy-array))
 
+;;; Under certain circumstances, there is no need to convert the current
+;;; cluster at all.  This around method handles these cases.  It also
+;;; removes all dendrites that have been invalidated.
 (defmethod convert-cluster :around
     ((cluster cluster)
      (non-immediate non-immediate))
+  ;; Since clusters are converted in depth-first order, and since all
+  ;; further lazy arrays have a depth less than the current cluster, there
+  ;; is no need to keep the current cluster in the cluster table.  No new
+  ;; dendrites will ever reach it.
   (remhash non-immediate (ir-converter-cluster-table *ir-converter*))
+  ;; Now we remove all invalid dendrites.  Recall that dendrites can become
+  ;; invalid if they, or another dendrite with the same stem, reach more
+  ;; than one input of a lazy fuse array.
   (let ((valid-dendrites (delete-if-not #'dendrite-validp (cluster-dendrites cluster))))
     (setf (cluster-dendrites cluster) valid-dendrites)
     (cond
       ;; If there are zero valid dendrites, the cluster can be ignored
       ((null valid-dendrites)
        (values))
-      ;; If we have only a single valid dendrite, and that dendrite is
-      ;; also invertible, we need not consider this cluster at all.
-      ;; The dendrite can simply continue its growth.
-      ((and (null (rest valid-dendrites))
-            (transformation-invertiblep
-             (dendrite-transformation (first valid-dendrites))))
-       (setf (dendrite-depth (first valid-dendrites))
-             (lazy-array-depth non-immediate))
-       (grow-dendrite (first valid-dendrites) non-immediate))
+      ;; If all dendrites have the same stem, shape, and transformation,
+      ;; there is no need to convert this cluster at all.  We can simply
+      ;; continue growing from here.
+      ((and (null (cdr valid-dendrites)) ; TODO support merging multiple dendrites.
+            (petalisp.utilities:identical valid-dendrites :test #'mergeable-dendrites-p)
+            (transformation-invertiblep (dendrite-transformation (first valid-dendrites))))
+       (let ((dendrite (first valid-dendrites)))
+         (setf (dendrite-depth dendrite)
+               (lazy-array-depth non-immediate))
+         (grow-dendrite dendrite non-immediate)))
       ;; Otherwise, actually convert the cluster.
       (t (call-next-method)))))
 
@@ -275,17 +317,7 @@
     (loop for dendrite in dendrites do
       (let ((entry (find dendrite mergeable-dendrites-list
                          :key #'car
-                         :test
-                         (lambda (d1 d2)
-                           (and (eq
-                                 (dendrite-kernel d1)
-                                 (dendrite-kernel d2))
-                                (shape-equal
-                                 (dendrite-shape d1)
-                                 (dendrite-shape d2))
-                                (transformation-equal
-                                 (dendrite-transformation d1)
-                                 (dendrite-transformation d2)))))))
+                         :test #'mergeable-dendrites-p)))
         (if (not entry)
             (push (list dendrite) mergeable-dendrites-list)
             (push dendrite (cdr entry)))))
