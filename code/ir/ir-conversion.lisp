@@ -224,13 +224,16 @@
       ;; If all dendrites have the same stem, shape, and transformation,
       ;; there is no need to convert this cluster at all.  We can simply
       ;; continue growing from here.
-      ((and (null (cdr valid-dendrites)) ; TODO support merging multiple dendrites.
-            (petalisp.utilities:identical valid-dendrites :test #'mergeable-dendrites-p)
+      ((and (petalisp.utilities:identical valid-dendrites :test #'mergeable-dendrites-p)
             (transformation-invertiblep (dendrite-transformation (first valid-dendrites))))
-       (let ((dendrite (first valid-dendrites)))
+       (let* ((dendrite (first valid-dendrites))
+              (cons (dendrite-cons dendrite)))
          (setf (dendrite-depth dendrite)
                (lazy-array-depth non-immediate))
-         (grow-dendrite dendrite non-immediate)))
+         (grow-dendrite dendrite non-immediate)
+         (loop for other-dendrite in (rest valid-dendrites) do
+           (setf (cdr (dendrite-cons other-dendrite))
+                 (cdr cons)))))
       ;; Otherwise, actually convert the cluster.
       (t (call-next-method)))))
 
