@@ -235,6 +235,10 @@
          (setf (dendrite-depth dendrite)
                (lazy-array-depth non-immediate))
          (grow-dendrite dendrite non-immediate)
+         ;; After growing, it is important to copy the next instruction to
+         ;; the cons cells of all abandoned dendrites.  If the instruction
+         ;; is known right after growing, this can be done immediately.
+         ;; Otherwise, the copying is postponed to a later pass.
          (unless (null other-dendrites)
            (if (instructionp (cdr cons))
                (loop for other-dendrite in other-dendrites do
@@ -248,26 +252,8 @@
 (defmethod convert-cluster
     ((cluster cluster)
      (non-immediate non-immediate))
-  (let ((dendrites (cluster-dendrites cluster))
-        (alist '())
+  (let ((alist (partition-dendrites (cluster-dendrites cluster)))
         (buffers '()))
-    ;; Compute an alist from shapes to dendrites that will write into a
-    ;; buffer of that shape.
-    (loop for dendrite in dendrites do
-      (block convert-one-dendrite
-        (let ((dshape (dendrite-shape dendrite)))
-          (loop for entry in alist do
-            (let* ((eshape (car entry))
-                   (cover (fuse-shapes eshape dshape)))
-              (when (<= (* (shape-size cover) 0.75)
-                        (+ (shape-size dshape)
-                           (shape-size eshape)))
-                (setf (car entry) cover)
-                (push dendrite (cdr entry))
-                (return-from convert-one-dendrite)))
-                finally (push `(,dshape ,dendrite) alist)))))
-    ;; Create one buffer per alist entry and insert the corresponding load
-    ;; instructions.
     (loop for (shape . mergeable-dendrites) in alist do
       (let ((buffer (make-buffer :shape shape :ntype (cluster-ntype cluster))))
         (push buffer buffers)
@@ -313,6 +299,28 @@
     (push `(,kernel ,load) (buffer-readers source-buffer))
     (push `(,kernel ,store) (buffer-writers target-buffer))
     kernel))
+
+;;; Compute an alist whose keys are shapes and whose values are dendrites
+;;; that are covered by that shape.  Ensure that the dendrites of each
+;;; cover a reasonable portion of that shape.  We use an empirically
+;;; determined heuristic to decide which dendrites are to be grouped in one
+;;; entry.
+(defun partition-dendrites (dendrites)
+  (let ((alist '()))
+    (loop for dendrite in dendrites do
+      (block convert-one-dendrite
+        (let ((dshape (dendrite-shape dendrite)))
+          (loop for entry in alist do
+            (let* ((eshape (car entry))
+                   (cover (fuse-shapes eshape dshape)))
+              (when (<= (* (shape-size cover) 0.75)
+                        (+ (shape-size dshape)
+                           (shape-size eshape)))
+                (setf (car entry) cover)
+                (push dendrite (cdr entry))
+                (return-from convert-one-dendrite)))
+                finally (push `(,dshape ,dendrite) alist)))))
+    alist))
 
 (defmethod convert-cluster
     ((cluster cluster)
