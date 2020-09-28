@@ -48,12 +48,14 @@
               :input-rank (shape-rank shape)
               :output-rank 0)))
           (lambda (ntypes function inputs)
-            (let ((inputs (list (make-instance 'lazy-multiple-value-map
-                                  :operator function
-                                  :inputs inputs
-                                  :shape shape
-                                  :number-of-values n-outputs
-                                  :ntype (petalisp.type-inference:ntype t)))))
+            (let* ((default (petalisp.type-inference:ntype null))
+                   (ntype (make-list n-outputs :initial-element default))
+                   (inputs (list (make-instance 'lazy-multiple-value-map
+                                   :operator function
+                                   :inputs inputs
+                                   :shape shape
+                                   :number-of-values n-outputs
+                                   :ntype (replace ntype ntypes)))))
               (values-list
                (loop for ntype in ntypes
                      for value-n from 0
@@ -64,12 +66,14 @@
                        :shape shape
                        :ntype ntype)))))
           (lambda ()
-            (let ((inputs (list (make-instance 'lazy-multiple-value-map
-                                  :operator function
-                                  :inputs inputs
-                                  :shape shape
-                                  :number-of-values n-outputs
-                                  :ntype (petalisp.type-inference:ntype t)))))
+            (let* ((default (petalisp.type-inference:ntype t))
+                   (ntype (make-list n-outputs :initial-element default))
+                   (inputs (list (make-instance 'lazy-multiple-value-map
+                                   :operator function
+                                   :inputs inputs
+                                   :shape shape
+                                   :number-of-values n-outputs
+                                   :ntype ntype))))
               (values-list
                (loop for value-n from 0 below n-outputs
                      collect

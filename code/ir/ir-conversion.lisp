@@ -49,7 +49,10 @@
   (array-table (make-hash-table :test #'eq) :type hash-table)
   ;; A hash table, mapping from Common Lisp scalars to buffers of rank zero
   ;; containing those scalars.
-  (scalar-table (make-hash-table :test #'eql) :type hash-table))
+  (scalar-table (make-hash-table :test #'eql) :type hash-table)
+  ;; A list of lists of conses that need to be updated by writing the value
+  ;; of the cdr of the first cons to the cdr of each remaining cons.
+  (cons-updates '() :type list))
 
 (defun ir-converter-next-cluster (ir-converter)
   (priority-queue:pqueue-pop
@@ -94,14 +97,13 @@
   (cluster nil :type cluster)
   ;; The kernel that is grown from that stem.
   (kernel nil :type kernel)
-  ;; A list of dendrites that originated from this stem.  This list is used
-  ;; to invalidate dendrites whenever one of them reaches more than one
-  ;; input of a fusion node.
-  (dendrites '() :type list))
+  ;; A stem is turned invalid when one of its dendrites reaches more than
+  ;; one input of a lazy fuse node.
+  (validp t :type boolean))
 
 (defstruct (dendrite
             (:constructor %make-dendrite)
-            (:copier %copy-dendrite))
+            (:copier copy-dendrite))
   ;; The stem from which this dendrite originated.
   (stem nil :type stem)
   ;; The shape of the iteration space referenced by the dendrite.
@@ -114,9 +116,7 @@
   ;; The cons cell whose car is to be filled with a cons cell whose cdr is
   ;; the next instruction, and whose car is an integer denoting which of
   ;; the multiple values of the cdr is being referenced.
-  (cons nil :type cons)
-  ;; Whether the dendrite is to be considered when converting a cluster.
-  (validp t :type boolean))
+  (cons nil :type cons))
 
 (defun dendrite-kernel (dendrite)
   (declare (dendrite dendrite))
@@ -125,6 +125,10 @@
 (defun dendrite-cluster (dendrite)
   (declare (dendrite dendrite))
   (stem-cluster (dendrite-stem dendrite)))
+
+(defun dendrite-validp (dendrite)
+  (declare (dendrite dendrite))
+  (stem-validp (dendrite-stem dendrite)))
 
 (defun make-dendrite
     (cluster shape &optional (buffer (make-buffer :shape shape :ntype (cluster-ntype cluster))))
@@ -142,15 +146,7 @@
                     :cons cons)))
     (push store-instruction (alexandria:assoc-value (kernel-targets kernel) buffer))
     (push store-instruction (alexandria:assoc-value (buffer-writers buffer) kernel))
-    (push dendrite (stem-dendrites stem))
     dendrite))
-
-(defun copy-dendrite (dendrite)
-  (declare (dendrite dendrite))
-  (let ((stem (dendrite-stem dendrite))
-        (copy (%copy-dendrite dendrite)))
-    (push copy (stem-dendrites stem))
-    copy))
 
 (defun mergeable-dendrites-p (d1 d2)
   (and (eq
@@ -181,6 +177,13 @@
     (loop until (ir-converter-empty-p *ir-converter*)
           for cluster = (ir-converter-next-cluster *ir-converter*)
           do (convert-cluster cluster (cluster-lazy-array cluster)))
+    ;; Update all cons cells whose instruction couldn't be determined
+    ;; immediately at cluster conversion time.
+    (loop for (cons . other-conses) in (ir-converter-cons-updates *ir-converter*) do
+      (let ((instruction (cdr cons)))
+        (assert (instructionp instruction))
+        (loop for other-cons in other-conses do
+          (setf (cdr other-cons) instruction))))
     (normalize-ir root-buffers)
     (nreverse root-buffers)))
 
@@ -215,7 +218,7 @@
   ;; Now we remove all invalid dendrites.  Recall that dendrites can become
   ;; invalid if they, or another dendrite with the same stem, reach more
   ;; than one input of a lazy fuse array.
-  (let ((valid-dendrites (delete-if-not #'dendrite-validp (cluster-dendrites cluster))))
+  (let ((valid-dendrites (remove-if-not #'dendrite-validp (cluster-dendrites cluster))))
     (setf (cluster-dendrites cluster) valid-dendrites)
     (cond
       ;; If there are zero valid dendrites, the cluster can be ignored
@@ -227,13 +230,18 @@
       ((and (petalisp.utilities:identical valid-dendrites :test #'mergeable-dendrites-p)
             (transformation-invertiblep (dendrite-transformation (first valid-dendrites))))
        (let* ((dendrite (first valid-dendrites))
+              (other-dendrites (rest valid-dendrites))
               (cons (dendrite-cons dendrite)))
          (setf (dendrite-depth dendrite)
                (lazy-array-depth non-immediate))
          (grow-dendrite dendrite non-immediate)
-         (loop for other-dendrite in (rest valid-dendrites) do
-           (setf (cdr (dendrite-cons other-dendrite))
-                 (cdr cons)))))
+         (unless (null other-dendrites)
+           (if (instructionp (cdr cons))
+               (loop for other-dendrite in other-dendrites do
+                 (setf (cdr (dendrite-cons other-dendrite))
+                       (cdr cons)))
+               (push (list* cons (mapcar #'dendrite-cons other-dendrites))
+                     (ir-converter-cons-updates *ir-converter*))))))
       ;; Otherwise, actually convert the cluster.
       (t (call-next-method)))))
 
@@ -327,7 +335,7 @@
     (loop for mergeable-dendrites in mergeable-dendrites-list do
       (let* ((input-conses (loop for input in inputs collect (cons 0 input)))
              (instruction
-               (make-multiple-value-call-instruction
+               (make-call-instruction
                 (number-of-values lazy-multiple-value-map)
                 (operator lazy-multiple-value-map)
                 input-conses)))
@@ -375,12 +383,11 @@
         (otherwise
          (let* ((kernel (dendrite-kernel dendrite))
                 (buffer (caar (kernel-targets kernel))))
-           ;; Invalidate the current kernel and its dendrites.
+           (setf (stem-validp stem) nil)
            (delete-kernel kernel)
-           (loop for dendrite in (stem-dendrites stem) do
-             (setf (dendrite-validp dendrite) nil))
-           ;; Try growing from the cluster again, but with one stem for
-           ;; each reachable fusion input.
+           ;; Invalidate the current kernel and its dendrites.  Try growing
+           ;; from the cluster again, but with one stem for each reachable
+           ;; fusion input.
            (loop for input in inputs
                  for intersection in intersections
                  unless (empty-shape-p intersection)
@@ -413,9 +420,7 @@
     (let* ((inputs (inputs lazy-map))
            (input-conses (loop for input in inputs collect (cons 0 input))))
       (setf (cdr cons)
-            (make-call-instruction
-             :inputs input-conses
-             :operator (operator lazy-map)))
+            (make-call-instruction 1 (operator lazy-map) input-conses))
       ;; If our function has zero inputs, we are done.  Otherwise we create
       ;; one dendrite for each input (except the first one, for which we
       ;; can reuse the current dendrite) and continue growing.

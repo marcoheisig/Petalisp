@@ -111,12 +111,8 @@
     :reader operator
     :type (or function symbol))))
 
-(defclass lazy-multiple-value-map (non-empty-non-immediate)
-  ((%operator
-    :initarg :operator
-    :reader operator
-    :type (or function symbol))
-   (%number-of-values
+(defclass lazy-multiple-value-map (lazy-map)
+  ((%number-of-values
     :initarg :number-of-values
     :reader number-of-values
     :type (integer 0 (#.multiple-values-limit)))))
@@ -285,6 +281,9 @@
 
 (defmethod rank ((shape shape))
   (shape-rank shape))
+
+(defmethod number-of-values ((lazy-array lazy-array))
+  1)
 
 (defmethod inputs ((object t))
   '())

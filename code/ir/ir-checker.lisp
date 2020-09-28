@@ -70,13 +70,11 @@
       (assert (eq (store-instruction-buffer store-instruction) buffer))
       (check-reverse-link store-instruction buffer #'map-buffer-store-instructions))))
 
-(defmethod check-ir-node :after ((instruction instruction))
+(defmethod check-ir-node ((instruction instruction))
   (loop for (value-n . other-instruction) in (instruction-inputs instruction) do
+    (assert (instructionp other-instruction))
     (check-ir-node-eventually other-instruction)
     (assert (typep value-n 'unsigned-byte))
     (unless (zerop value-n)
-      (assert (typep other-instruction 'multiple-value-call-instruction))
-      (assert (< value-n (multiple-value-call-instruction-number-of-values other-instruction))))))
-
-(defmethod check-ir-node ((instruction instruction))
-  (values))
+      (assert (typep other-instruction 'call-instruction))
+      (assert (< value-n (call-instruction-number-of-values other-instruction))))))
