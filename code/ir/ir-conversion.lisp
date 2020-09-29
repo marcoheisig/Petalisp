@@ -91,19 +91,21 @@
   (declare (cluster cluster))
   (lazy-array-shape (cluster-lazy-array cluster)))
 
-(defstruct (stem
-            (:constructor make-stem (cluster kernel)))
+(defstruct stem
   ;; The cluster in which the stem is rooted.
   (cluster nil :type cluster)
   ;; The kernel that is grown from that stem.
   (kernel nil :type kernel)
-  ;; A stem is turned invalid when one of its dendrites reaches more than
+  ;; A list whose entries are the buffers for each value produced by the
+  ;; root instruction of that stem, or NIL if that value is never
+  ;; referenced.
+  (buffers nil :type list)
+  ;;A stem is turned invalid when one of its dendrites reaches more than
   ;; one input of a lazy fuse node.
   (validp t :type boolean))
 
 (defstruct (dendrite
-            (:constructor %make-dendrite)
-            (:copier copy-dendrite))
+            (:constructor %make-dendrite))
   ;; The stem from which this dendrite originated.
   (stem nil :type stem)
   ;; The shape of the iteration space referenced by the dendrite.
@@ -130,22 +132,33 @@
   (declare (dendrite dendrite))
   (stem-validp (dendrite-stem dendrite)))
 
-(defun make-dendrite
-    (cluster shape &optional (buffer (make-buffer :shape shape :ntype (cluster-ntype cluster))))
-  (declare (cluster cluster) (shape shape) (buffer buffer))
-  (let* ((cons (cons 0 nil))
-         (transformation (identity-transformation (shape-rank shape)))
-         (store-instruction (make-store-instruction cons buffer transformation))
+(defun make-dendrite (cluster shape buffers)
+  (declare (cluster cluster) (shape shape) (list buffers))
+  (let* ((transformation (identity-transformation (shape-rank shape)))
          (kernel (make-kernel :iteration-space shape))
-         (stem (make-stem cluster kernel))
+         (stem (make-stem
+                :cluster cluster
+                :kernel kernel
+                :buffers buffers))
+         (store-instructions
+           (loop for buffer in buffers
+                 for index from 0
+                 unless (null buffer)
+                   collect
+                   (make-store-instruction (cons index nil) buffer transformation)))
          (dendrite (%make-dendrite
                     :stem stem
                     :shape shape
                     :transformation transformation
                     :depth (lazy-array-depth (cluster-lazy-array cluster))
-                    :cons cons)))
-    (push store-instruction (alexandria:assoc-value (kernel-targets kernel) buffer))
-    (push store-instruction (alexandria:assoc-value (buffer-writers buffer) kernel))
+                    :cons (store-instruction-input (first store-instructions)))))
+    (loop for store-instruction in store-instructions do
+      (let ((buffer (store-instruction-buffer store-instruction)))
+        (push store-instruction (alexandria:assoc-value (kernel-targets kernel) buffer))
+        (push store-instruction (alexandria:assoc-value (buffer-writers buffer) kernel))))
+    (unless (null (rest store-instructions))
+      (push (mapcar #'store-instruction-input store-instructions)
+            (ir-converter-cons-updates *ir-converter*)))
     dendrite))
 
 (defun mergeable-dendrites-p (d1 d2)
@@ -169,9 +182,10 @@
     ;; Create and grow one dendrite for each root array.
     (loop for lazy-array in lazy-arrays do
       (let* ((cluster (make-cluster lazy-array))
-             (dendrite (make-dendrite cluster (lazy-array-shape lazy-array))))
-        (push (caar (kernel-targets (stem-kernel (dendrite-stem dendrite))))
-              root-buffers)
+             (shape (lazy-array-shape lazy-array))
+             (buffer (make-buffer :shape shape :ntype (element-ntype lazy-array)))
+             (dendrite (make-dendrite cluster shape (list buffer))))
+        (push buffer root-buffers)
         (grow-dendrite dendrite lazy-array)))
     ;; Successively convert all clusters.
     (loop until (ir-converter-empty-p *ir-converter*)
@@ -252,21 +266,23 @@
 (defmethod convert-cluster
     ((cluster cluster)
      (non-immediate non-immediate))
-  (let ((alist (partition-dendrites (cluster-dendrites cluster)))
-        (buffers '()))
-    (loop for (shape . mergeable-dendrites) in alist do
-      (let ((buffer (make-buffer :shape shape :ntype (cluster-ntype cluster))))
-        (push buffer buffers)
-        (loop for dendrite in mergeable-dendrites do
-          (with-accessors ((cons dendrite-cons)
-                           (kernel dendrite-kernel)
-                           (transformation dendrite-transformation)) dendrite
-            (let ((load-instruction (make-load-instruction buffer transformation)))
-              (setf (cdr cons) load-instruction)
-              (push load-instruction (alexandria:assoc-value (kernel-sources kernel) buffer))
-              (push load-instruction (alexandria:assoc-value (buffer-readers buffer) kernel)))))))
-    (setf buffers (nreverse buffers))
-    ;; Now subdivide the space of all buffers and emit one kernel per
+  (let* ((alist (partition-dendrites (cluster-dendrites cluster)))
+         ;; Create one buffer for each alist entry.
+         (buffers
+           (loop for (shape . dendrites) in alist
+                 collect
+                 (make-buffer :shape shape :ntype (cluster-ntype cluster)))))
+    ;; Emit one load instruction for each dendrite.
+    (loop for (shape . dendrites) in alist for buffer in buffers do
+      (loop for dendrite in dendrites do
+        (with-accessors ((cons dendrite-cons)
+                         (kernel dendrite-kernel)
+                         (transformation dendrite-transformation)) dendrite
+          (let ((load-instruction (make-load-instruction buffer transformation)))
+            (setf (cdr cons) load-instruction)
+            (push load-instruction (alexandria:assoc-value (kernel-sources kernel) buffer))
+            (push load-instruction (alexandria:assoc-value (buffer-readers buffer) kernel))))))
+    ;; now subdivide the space of all buffers and emit one kernel per
     ;; resulting fragment, plus some copy kernels if the fragment is part
     ;; of the shapes of several buffers.
     (let ((fragments (subdivide-shapes (mapcar #'first alist))))
@@ -277,11 +293,70 @@
                       when (logbitp index bitmask)
                         collect buffer)))
           (let ((main-buffer (first target-buffers)))
-            (grow-dendrite (make-dendrite cluster shape main-buffer) non-immediate)
-            ;; Finally, emit copy kernels from the main buffer to all the
+            (grow-dendrite (make-dendrite cluster shape (list main-buffer)) non-immediate)
+            ;; finally, emit copy kernels from the main buffer to all the
             ;; other buffers.
-            (loop for target-buffer in (rest target-buffers) do
-              (insert-copy-kernel shape target-buffer main-buffer))))))))
+            (loop for other-buffer in (rest target-buffers) do
+              (insert-copy-kernel shape other-buffer main-buffer))))))))
+
+(defmethod convert-cluster
+    ((cluster cluster)
+     (lazy-multiple-value-map lazy-multiple-value-map))
+  (let* ((alist (partition-dendrites (cluster-dendrites cluster)))
+         ;; Create one set of buffers for each alist entry.
+         (list-of-buffers
+           (loop for (shape . dendrites) in alist
+                 collect
+                 ;; Remember that we abuse the ntype slot of a lazy
+                 ;; multiple value map to store a list of ntypes.
+                 (loop for ntype in (element-ntype lazy-multiple-value-map)
+                       for index from 0
+                       ;; Don't create buffers that are never referenced.
+                       when (loop for dendrite in dendrites
+                                  for value-n = (car (dendrite-cons dendrite))
+                                    thereis (= index value-n))
+                         collect (make-buffer :shape shape :ntype ntype)
+                       else collect nil))))
+    ;; Emit one load instruction for each dendrite.
+    (loop for (shape . dendrites) in alist for buffers in list-of-buffers do
+      (loop for dendrite in dendrites do
+        (with-accessors ((cons dendrite-cons)
+                         (kernel dendrite-kernel)
+                         (transformation dendrite-transformation)) dendrite
+          (let* ((buffer (nth (car cons) buffers))
+                 (load-instruction (make-load-instruction buffer transformation)))
+            (setf (car cons) 0)
+            (setf (cdr cons) load-instruction)
+            (push load-instruction (alexandria:assoc-value (kernel-sources kernel) buffer))
+            (push load-instruction (alexandria:assoc-value (buffer-readers buffer) kernel))))))
+    ;; Now subdivide the space of all buffers and emit one kernel per
+    ;; resulting fragment, plus some copy kernels if the fragment is part
+    ;; of the shapes of several buffers.
+    (let ((fragments (subdivide-shapes (mapcar #'first alist))))
+      (loop for (shape . bitmask) in fragments do
+        ;; Initialize a vector of buffer lists with one entry per value
+        ;; returned by the underlying lazy multiple value map operation.
+        (let ((vector-of-buffers
+                (make-sequence 'vector (number-of-values lazy-multiple-value-map)
+                               :initial-element '())))
+          (loop for buffers in list-of-buffers
+                for index from 0
+                when (logbitp index bitmask)
+                  do (loop for buffer in buffers
+                           for index from 0
+                           unless (null buffer)
+                             do (push buffer (svref vector-of-buffers index))))
+          (let* ((main-buffers (map 'list #'first vector-of-buffers))
+                 (dendrite (make-dendrite cluster shape main-buffers)))
+            (grow-dendrite dendrite lazy-multiple-value-map))
+          ;; Finally, emit copy kernels from the main buffers to all the
+          ;; other buffers.
+          (loop for index from 0
+                for buffers across vector-of-buffers
+                do (let ((main-buffer (first buffers))
+                         (other-buffers (rest buffers)))
+                     (loop for other-buffer in (rest other-buffers) do
+                       (insert-copy-kernel shape other-buffer main-buffer)))))))))
 
 (defun insert-copy-kernel (iteration-space target-buffer source-buffer)
   (let* ((rank (shape-rank iteration-space))
@@ -300,9 +375,9 @@
     (push `(,kernel ,store) (buffer-writers target-buffer))
     kernel))
 
-;;; Compute an alist whose keys are shapes and whose values are dendrites
-;;; that are covered by that shape.  Ensure that the dendrites of each
-;;; cover a reasonable portion of that shape.  We use an empirically
+;;; compute an alist whose keys are shapes and whose values are dendrites
+;;; that are covered by that shape.  ensure that the dendrites of each
+;;; cover a reasonable portion of that shape.  we use an empirically
 ;;; determined heuristic to decide which dendrites are to be grouped in one
 ;;; entry.
 (defun partition-dendrites (dendrites)
@@ -322,41 +397,6 @@
                 finally (push `(,dshape ,dendrite) alist)))))
     alist))
 
-(defmethod convert-cluster
-    ((cluster cluster)
-     (lazy-multiple-value-map lazy-multiple-value-map))
-  (convert-lazy-multiple-value-map
-   lazy-multiple-value-map
-   (cluster-dendrites cluster)))
-
-(defun convert-lazy-multiple-value-map
-    (lazy-multiple-value-map dendrites)
-  (let ((inputs (inputs lazy-multiple-value-map))
-        (mergeable-dendrites-list '()))
-    (loop for dendrite in dendrites do
-      (let ((entry (find dendrite mergeable-dendrites-list
-                         :key #'car
-                         :test #'mergeable-dendrites-p)))
-        (if (not entry)
-            (push (list dendrite) mergeable-dendrites-list)
-            (push dendrite (cdr entry)))))
-    (loop for mergeable-dendrites in mergeable-dendrites-list do
-      (let* ((input-conses (loop for input in inputs collect (cons 0 input)))
-             (instruction
-               (make-call-instruction
-                (number-of-values lazy-multiple-value-map)
-                (operator lazy-multiple-value-map)
-                input-conses)))
-        (loop for dendrite in mergeable-dendrites do
-          (setf (cdr (dendrite-cons dendrite))
-                instruction))
-        (loop for input in inputs
-              for input-cons in input-conses
-              for input-dendrite = (copy-dendrite (first mergeable-dendrites))
-              for depth = (lazy-array-depth lazy-multiple-value-map)
-              do (setf (dendrite-cons input-dendrite) input-cons)
-              do (grow-dendrite input-dendrite input))))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Dendrite Growing
@@ -369,7 +409,14 @@
   (if (and (< (lazy-array-depth non-immediate)
               (dendrite-depth dendrite))
            (> (lazy-array-refcount non-immediate) 1))
-      (push dendrite (cluster-dendrites (ensure-cluster non-immediate)))
+      ;; We employ a trick here - if the multiply referenced non-immediate
+      ;; is a lazy multiple value ref, we don't create a cluster for it but
+      ;; for its parent.
+      (if (typep non-immediate 'lazy-multiple-value-ref)
+          (with-accessors ((cons dendrite-cons)) dendrite
+            (setf (car cons) (value-n non-immediate))
+            (push dendrite (cluster-dendrites (ensure-cluster (input non-immediate)))))
+          (push dendrite (cluster-dendrites (ensure-cluster non-immediate))))
       (call-next-method)))
 
 (defmethod grow-dendrite
@@ -378,6 +425,7 @@
   (with-accessors ((shape dendrite-shape)
                    (transformation dendrite-transformation)
                    (stem dendrite-stem)
+                   (kernel dendrite-kernel)
                    (cons dendrite-cons)) dendrite
     (let* ((inputs (inputs lazy-fuse))
            (intersections
@@ -389,22 +437,20 @@
         (1 (let ((input (nth (position-if-not #'empty-shape-p intersections) inputs)))
              (grow-dendrite dendrite input)))
         (otherwise
-         (let* ((kernel (dendrite-kernel dendrite))
-                (buffer (caar (kernel-targets kernel))))
-           (setf (stem-validp stem) nil)
-           (delete-kernel kernel)
-           ;; Invalidate the current kernel and its dendrites.  Try growing
-           ;; from the cluster again, but with one stem for each reachable
-           ;; fusion input.
-           (loop for input in inputs
-                 for intersection in intersections
-                 unless (empty-shape-p intersection)
-                   do (grow-dendrite
-                       (make-dendrite
-                        (stem-cluster stem)
-                        (transform intersection (invert-transformation transformation))
-                        buffer)
-                       (cluster-lazy-array (stem-cluster stem))))))))))
+         (setf (stem-validp stem) nil)
+         (delete-kernel kernel)
+         ;; Invalidate the current kernel and its dendrites.  Try growing
+         ;; from the cluster again, but with one stem for each reachable
+         ;; fusion input.
+         (loop for input in inputs
+               for intersection in intersections
+               unless (empty-shape-p intersection)
+                 do (grow-dendrite
+                     (make-dendrite
+                      (stem-cluster stem)
+                      (transform intersection (invert-transformation transformation))
+                      (stem-buffers stem))
+                     (cluster-lazy-array (stem-cluster stem)))))))))
 
 (defmethod grow-dendrite
     ((dendrite dendrite)
@@ -428,21 +474,17 @@
     (let* ((inputs (inputs lazy-map))
            (input-conses (loop for input in inputs collect (cons 0 input))))
       (setf (cdr cons)
-            (make-call-instruction 1 (operator lazy-map) input-conses))
+            (make-call-instruction
+             (number-of-values lazy-map)
+             (operator lazy-map)
+             input-conses))
       ;; If our function has zero inputs, we are done.  Otherwise we create
-      ;; one dendrite for each input (except the first one, for which we
-      ;; can reuse the current dendrite) and continue growing.
-      (unless (null inputs)
-        (loop for input in inputs
-              for input-cons in input-conses do
-                (let ((new-dendrite (copy-dendrite dendrite)))
-                  (setf (dendrite-cons new-dendrite) input-cons)
-                  (grow-dendrite new-dendrite input)))))))
-
-(defmethod grow-dendrite
-    ((dendrite dendrite)
-     (lazy-multiple-value-map lazy-multiple-value-map))
-  (convert-lazy-multiple-value-map lazy-multiple-value-map (list dendrite)))
+      ;; one dendrite for each input and continue growing.
+      (loop for input in inputs
+            for input-cons in input-conses do
+              (let ((new-dendrite (copy-dendrite dendrite)))
+                (setf (dendrite-cons new-dendrite) input-cons)
+                (grow-dendrite new-dendrite input))))))
 
 (defmethod grow-dendrite
     ((dendrite dendrite)

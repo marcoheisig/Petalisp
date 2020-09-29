@@ -118,6 +118,10 @@
                  &aux (inputs (list value)))))
   (buffer nil :type buffer))
 
+(defun store-instruction-input (store-instruction)
+  (declare (store-instruction store-instruction))
+  (first (store-instruction-inputs store-instruction)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Printing
