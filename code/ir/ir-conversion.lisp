@@ -336,9 +336,8 @@
       (loop for (shape . bitmask) in fragments do
         ;; Initialize a vector of buffer lists with one entry per value
         ;; returned by the underlying lazy multiple value map operation.
-        (let ((vector-of-buffers
-                (make-sequence 'vector (number-of-values lazy-multiple-value-map)
-                               :initial-element '())))
+        (let* ((n (lazy-map-number-of-values lazy-multiple-value-map))
+               (vector-of-buffers (make-sequence 'vector n :initial-element '())))
           (loop for buffers in list-of-buffers
                 for index from 0
                 when (logbitp index bitmask)
@@ -414,8 +413,9 @@
       ;; for its parent.
       (if (typep non-immediate 'lazy-multiple-value-ref)
           (with-accessors ((cons dendrite-cons)) dendrite
-            (setf (car cons) (value-n non-immediate))
-            (push dendrite (cluster-dendrites (ensure-cluster (input non-immediate)))))
+            (setf (car cons)
+                  (lazy-multiple-value-ref-value-n non-immediate))
+            (push dendrite (cluster-dendrites (ensure-cluster (lazy-array-input non-immediate)))))
           (push dendrite (cluster-dendrites (ensure-cluster non-immediate))))
       (call-next-method)))
 
@@ -427,7 +427,7 @@
                    (stem dendrite-stem)
                    (kernel dendrite-kernel)
                    (cons dendrite-cons)) dendrite
-    (let* ((inputs (inputs lazy-fuse))
+    (let* ((inputs (lazy-array-inputs lazy-fuse))
            (intersections
              (loop for input in inputs
                    for intersection = (shape-intersection shape (lazy-array-shape input))
@@ -463,7 +463,7 @@
     (setf transformation (compose-transformations
                           (transformation lazy-reshape)
                           transformation))
-    (grow-dendrite dendrite (input lazy-reshape))))
+    (grow-dendrite dendrite (lazy-array-input lazy-reshape))))
 
 (defmethod grow-dendrite
     ((dendrite dendrite)
@@ -471,12 +471,12 @@
   (with-accessors ((shape dendrite-shape)
                    (transformation dendrite-transformation)
                    (cons dendrite-cons)) dendrite
-    (let* ((inputs (inputs lazy-map))
+    (let* ((inputs (lazy-array-inputs lazy-map))
            (input-conses (loop for input in inputs collect (cons 0 input))))
       (setf (cdr cons)
             (make-call-instruction
-             (number-of-values lazy-map)
-             (operator lazy-map)
+             (lazy-map-number-of-values lazy-map)
+             (lazy-map-operator lazy-map)
              input-conses))
       ;; If our function has zero inputs, we are done.  Otherwise we create
       ;; one dendrite for each input and continue growing.
@@ -491,8 +491,8 @@
      (lazy-multiple-value-ref lazy-multiple-value-ref))
   (with-accessors ((cons dendrite-cons)) dendrite
     (setf (car cons)
-          (value-n lazy-multiple-value-ref)))
-  (grow-dendrite dendrite (input lazy-multiple-value-ref)))
+          (lazy-multiple-value-ref-value-n lazy-multiple-value-ref)))
+  (grow-dendrite dendrite (lazy-array-input lazy-multiple-value-ref)))
 
 (defmethod grow-dendrite
     ((dendrite dendrite)
@@ -504,15 +504,15 @@
     (let* ((kernel (stem-kernel stem))
            (shape (lazy-array-shape array-immediate))
            (ntype (element-ntype array-immediate))
-           (storage (storage array-immediate))
+           (storage (array-immediate-storage array-immediate))
            (buffer
              (if (zerop (shape-rank shape))
                  (alexandria:ensure-gethash
-                  (aref (storage array-immediate))
+                  (aref (array-immediate-storage array-immediate))
                   (ir-converter-scalar-table *ir-converter*)
                   (make-buffer :shape shape :ntype ntype :storage storage))
                  (alexandria:ensure-gethash
-                  (storage array-immediate)
+                  (array-immediate-storage array-immediate)
                   (ir-converter-array-table *ir-converter*)
                   (make-buffer :shape shape :ntype ntype :storage storage))))
            (load-instruction (make-load-instruction buffer transformation)))

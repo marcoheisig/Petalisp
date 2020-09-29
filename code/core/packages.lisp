@@ -109,18 +109,17 @@
    #:element-type
    #:element-ntype
    #:rank
-   #:input
-   #:inputs
-   #:value-n
-   #:number-of-values
-   #:operator
-   #:storage
+   #:lazy-array-input
+   #:lazy-array-inputs
+   #:lazy-multiple-value-ref-value-n
+   #:lazy-map-operator
+   #:lazy-map-number-of-values
    #:lazy-array-refcount
    #:lazy-array-depth
    #:lazy-array-shape
    #:lazy-array
    #:lazy-map
-   #:lazy-map
+   #:array-immediate-storage
    #:lazy-multiple-value-map
    #:lazy-multiple-value-ref
    #:lazy-reshape

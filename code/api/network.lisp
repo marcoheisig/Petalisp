@@ -26,7 +26,7 @@
                (cond ((typep lazy-array 'parameter)
                       (push lazy-array parameters))
                      (t
-                      (mapc #'scan (inputs lazy-array))))))
+                      (mapc #'scan (lazy-array-inputs lazy-array))))))
       (mapc #'scan outputs))
     parameters))
 

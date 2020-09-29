@@ -48,7 +48,7 @@
               :input-rank (shape-rank shape)
               :output-rank 0)))
           (lambda (ntypes function inputs)
-            (let* ((default (petalisp.type-inference:ntype null))
+            (let* ((default (petalisp.type-inference:ntype 'null))
                    (ntype (make-list n-outputs :initial-element default))
                    (inputs (list (make-instance 'lazy-multiple-value-map
                                    :operator function

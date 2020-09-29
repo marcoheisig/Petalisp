@@ -34,7 +34,7 @@
      (shape non-empty-shape)
      (transformation transformation))
   (lazy-reshape
-   (input lazy-reshape)
+   (lazy-array-input lazy-reshape)
    shape
    (compose-transformations
     (transformation lazy-reshape)
@@ -59,7 +59,7 @@
     ((lazy-fuse lazy-fuse)
      (shape non-empty-shape)
      (transformation transformation))
-  (loop for input in (inputs lazy-fuse)
+  (loop for input in (lazy-array-inputs lazy-fuse)
         when (subshapep *relevant-shape* (array-shape input)) do
           (return-from lazy-reshape
             (lazy-reshape input shape transformation)))

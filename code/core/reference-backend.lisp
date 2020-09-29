@@ -43,7 +43,7 @@
 
 (defmethod lazy-array-value
     ((array-immediate array-immediate) index)
-  (apply #'aref (storage array-immediate) index))
+  (apply #'aref (array-immediate-storage array-immediate) index))
 
 (defmethod lazy-array-value
     ((range-immediate range-immediate) index)
@@ -51,31 +51,31 @@
 
 (defmethod lazy-array-value
     ((lazy-map lazy-map) index)
-  (apply (operator lazy-map)
+  (apply (lazy-map-operator lazy-map)
          (mapcar
           (lambda (input)
             (lazy-array-value input index))
-          (inputs lazy-map))))
+          (lazy-array-inputs lazy-map))))
 
 (defmethod lazy-array-value
     ((lazy-multiple-value-map lazy-multiple-value-map) index)
   (multiple-value-list
-   (apply (operator lazy-multiple-value-map)
+   (apply (lazy-map-operator lazy-multiple-value-map)
           (mapcar
            (lambda (input)
              (lazy-array-value input index))
-           (inputs lazy-multiple-value-map)))))
+           (lazy-array-inputs lazy-multiple-value-map)))))
 
 (defmethod lazy-array-value
     ((lazy-multiple-value-ref lazy-multiple-value-ref) index)
   (nth
-   (value-n lazy-multiple-value-ref)
-   (lazy-array-value (input lazy-multiple-value-ref) index)))
+   (lazy-multiple-value-ref-value-n lazy-multiple-value-ref)
+   (lazy-array-value (lazy-array-input lazy-multiple-value-ref) index)))
 
 (defmethod lazy-array-value
     ((lazy-fuse lazy-fuse) index)
   (lazy-array-value
-   (loop for input in (inputs lazy-fuse)
+   (loop for input in (lazy-array-inputs lazy-fuse)
          when (shape-contains (lazy-array-shape input) index)
            return input)
    index))
@@ -83,5 +83,5 @@
 (defmethod lazy-array-value
     ((lazy-reshape lazy-reshape) index)
   (lazy-array-value
-   (input lazy-reshape)
+   (lazy-array-input lazy-reshape)
    (transform index (transformation lazy-reshape))))

@@ -12,8 +12,6 @@
 
 (defgeneric immediatep (object))
 
-(defgeneric reusablep (object))
-
 (defgeneric total-size (array))
 
 (defgeneric element-ntype (array))
@@ -22,25 +20,25 @@
 
 (defgeneric array-shape (array))
 
-(defgeneric inputs (array))
-
-(defgeneric value-n (array))
-
-(defgeneric number-of-values (array))
-
-(defgeneric storage (array))
-
-(defgeneric operator (array))
-
 (defgeneric lazy-array (array))
 
-(defgeneric replace-lazy-array (lazy-array replacement))
+(defgeneric lazy-array-inputs (array))
 
 (defgeneric lazy-array-shape (lazy-array))
 
 (defgeneric lazy-array-refcount (lazy-array))
 
 (defgeneric lazy-array-depth (lazy-array))
+
+(defgeneric replace-lazy-array (lazy-array replacement))
+
+(defgeneric lazy-multiple-value-ref-value-n (array))
+
+(defgeneric lazy-map-operator (array))
+
+(defgeneric lazy-map-number-of-values (array))
+
+(defgeneric array-immediate-storage (array))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -59,7 +57,7 @@
 (defclass non-immediate (lazy-array)
   ((%inputs
     :initarg :inputs
-    :reader inputs
+    :reader lazy-array-inputs
     :type list)))
 
 (defclass empty-array (immediate)
@@ -99,8 +97,8 @@
     :reader reusablep)
    (%storage
     :initarg :storage
-    :type simple-array
-    :reader storage)))
+    :reader array-immediate-storage
+    :type simple-array)))
 
 (defclass range-immediate (non-empty-immediate)
   ())
@@ -108,19 +106,19 @@
 (defclass lazy-map (non-empty-non-immediate)
   ((%operator
     :initarg :operator
-    :reader operator
+    :reader lazy-map-operator
     :type (or function symbol))))
 
 (defclass lazy-multiple-value-map (lazy-map)
   ((%number-of-values
     :initarg :number-of-values
-    :reader number-of-values
+    :reader lazy-map-number-of-values
     :type (integer 0 (#.multiple-values-limit)))))
 
 (defclass lazy-multiple-value-ref (non-empty-non-immediate)
   ((%value-n
     :initarg :value-n
-    :reader value-n
+    :reader lazy-multiple-value-ref-value-n
     :type (integer 0 (#.(1- multiple-values-limit))))))
 
 (defclass lazy-fuse (non-empty-non-immediate)
@@ -163,7 +161,7 @@
     ((non-immediate non-immediate) &key &allow-other-keys)
   (loop
     with computablep = t
-    for input in (inputs non-immediate)
+    for input in (lazy-array-inputs non-immediate)
     maximize (lazy-array-depth input) into lazy-array-depth
     do (incf (%lazy-array-refcount input))
     unless (computablep input) do (setf computablep nil)
@@ -191,16 +189,16 @@
 (defmethod replace-lazy-array ((instance lazy-reshape) (replacement lazy-reshape))
   (reinitialize-instance instance
     :transformation (transformation replacement)
-    :inputs (inputs replacement)))
+    :inputs (lazy-array-inputs replacement)))
 
 (defmethod replace-lazy-array ((instance lazy-array) (replacement lazy-reshape))
   (change-class instance (class-of replacement)
     :transformation (transformation replacement)
-    :inputs (inputs replacement)))
+    :inputs (lazy-array-inputs replacement)))
 
 (defmethod replace-lazy-array ((instance lazy-array) (replacement array-immediate))
   (change-class instance (class-of replacement)
-    :storage (storage replacement)))
+    :storage (array-immediate-storage replacement)))
 
 (defmethod replace-lazy-array ((instance lazy-array) (replacement range-immediate))
   (change-class instance (class-of replacement)))
@@ -282,14 +280,14 @@
 (defmethod rank ((shape shape))
   (shape-rank shape))
 
-(defmethod number-of-values ((lazy-array lazy-array))
-  1)
-
-(defmethod inputs ((object t))
+(defmethod lazy-array-inputs ((object t))
   '())
 
-(defun input (object)
-  (destructuring-bind (input) (inputs object) input))
+(defun lazy-array-input (object)
+  (destructuring-bind (input) (lazy-array-inputs object) input))
+
+(defmethod lazy-map-number-of-values ((lazy-map lazy-map))
+  1)
 
 (defmethod print-object ((empty-array empty-array) stream)
   (print-unreadable-object (empty-array stream :type t :identity t)))

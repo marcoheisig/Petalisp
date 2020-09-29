@@ -68,8 +68,8 @@
 
 (defmethod lisp-datum-from-immediate ((array-immediate array-immediate))
   (if (zerop (rank array-immediate))
-      (aref (storage array-immediate))
-      (storage array-immediate)))
+      (aref (array-immediate-storage array-immediate))
+      (array-immediate-storage array-immediate)))
 
 (defmethod lisp-datum-from-immediate ((range-immediate range-immediate))
   (let* ((shape (array-shape range-immediate))

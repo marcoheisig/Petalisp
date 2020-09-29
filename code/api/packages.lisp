@@ -129,12 +129,13 @@
    #:element-type
    #:rank
    #:total-size
-   #:input
-   #:inputs
-   #:value-n
-   #:operator
+   #:lazy-array-input
+   #:lazy-array-inputs
    #:immediatep
-   #:storage
+   #:lazy-multiple-value-ref-value-n
+   #:lazy-map-operator
+   #:lazy-map-number-of-values
+   #:array-immediate-storage
    #:array-immediate
    #:range-immediate
    #:make-range-immediate

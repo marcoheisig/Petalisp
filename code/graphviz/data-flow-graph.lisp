@@ -28,7 +28,7 @@
     ((graph data-flow-graph)
      (edge data-flow-edge)
      (lazy-array petalisp.core:lazy-array))
-  (petalisp.core:inputs lazy-array))
+  (petalisp.core:lazy-array-inputs lazy-array))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -67,7 +67,7 @@
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
      (array-immediate petalisp.core:array-immediate))
-  `(("storage" . ,(stringify (petalisp.core:storage array-immediate)))))
+  `(("storage" . ,(stringify (petalisp.core:array-immediate-storage array-immediate)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
@@ -77,7 +77,7 @@
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
      (node petalisp.core:lazy-map))
-  `(("operator" . ,(stringify (petalisp.core:operator node)))))
+  `(("operator" . ,(stringify (petalisp.core:lazy-map-operator node)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)

@@ -6,7 +6,8 @@
             (:constructor make-ad-record
                 (lazy-array
                  &aux (input-gradient-caches
-                       (make-array (length (inputs lazy-array)) :initial-element nil))))
+                       (make-array (length (lazy-array-inputs lazy-array))
+                                   :initial-element nil))))
             (:copier nil)
             (:predicate nil))
   (lazy-array nil :type lazy-array :read-only t)
@@ -37,12 +38,12 @@
                (unless (gethash lazy-array table)
                  (setf (gethash lazy-array table)
                        (make-ad-record lazy-array))
-                 (mapc #'ensure-ad-record (inputs lazy-array)))))
+                 (mapc #'ensure-ad-record (lazy-array-inputs lazy-array)))))
       (mapc #'ensure-ad-record outputs))
     ;; Connect all ad-records.
     (maphash
      (lambda (lazy-array record)
-       (loop for input in (inputs lazy-array)
+       (loop for input in (lazy-array-inputs lazy-array)
              for input-ad-record = (gethash input table)
              for index from 0 do
                (push (cons index record)
@@ -122,7 +123,7 @@
 
 (defmethod input-gradient :around
     (lazy-array output-gradient index)
-  (let ((input (nth index (inputs lazy-array)))
+  (let ((input (nth index (lazy-array-inputs lazy-array)))
         (value (call-next-method)))
     (if (petalisp.type-inference:ntype=
          (element-ntype value)
@@ -134,9 +135,9 @@
     ((lazy-map lazy-map)
      (output-gradient lazy-array)
      index)
-  (with-accessors ((inputs inputs)
-                   (operator operator)
-                   (shape array-shape)) lazy-map
+  (with-accessors ((inputs lazy-array-inputs)
+                   (operator lazy-map-operator)
+                   (shape lazy-array-shape)) lazy-map
     (α #'*
        output-gradient
        (petalisp.type-inference:differentiate
@@ -155,7 +156,9 @@
 
 (defmethod input-gradient
     ((lazy-fuse lazy-fuse) (output-gradient lazy-array) index)
-  (reshape output-gradient (array-shape (nth index (inputs lazy-fuse)))))
+  (reshape
+   output-gradient
+   (array-shape (nth index (lazy-array-inputs lazy-fuse)))))
 
 (defun move-axis-to-front (array axis)
   (check-type axis rank)
