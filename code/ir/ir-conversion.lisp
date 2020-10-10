@@ -85,7 +85,9 @@
 
 (defun cluster-ntype (cluster)
   (declare (cluster cluster))
-  (element-ntype (cluster-lazy-array cluster)))
+  (petalisp.type-inference:generalize-ntype
+   (element-ntype
+    (cluster-lazy-array cluster))))
 
 (defun cluster-shape (cluster)
   (declare (cluster cluster))
@@ -161,17 +163,6 @@
             (ir-converter-cons-updates *ir-converter*)))
     dendrite))
 
-(defun mergeable-dendrites-p (d1 d2)
-  (and (eq
-        (dendrite-stem d1)
-        (dendrite-stem d2))
-       (shape-equal
-        (dendrite-shape d1)
-        (dendrite-shape d2))
-       (transformation-equal
-        (dendrite-transformation d1)
-        (dendrite-transformation d2))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; IR Conversion
@@ -183,7 +174,10 @@
     (loop for lazy-array in lazy-arrays do
       (let* ((cluster (make-cluster lazy-array))
              (shape (lazy-array-shape lazy-array))
-             (buffer (make-buffer :shape shape :ntype (element-ntype lazy-array)))
+             (buffer (make-buffer
+                      :shape shape
+                      :ntype (petalisp.type-inference:generalize-ntype
+                              (element-ntype lazy-array))))
              (dendrite (make-dendrite cluster shape (list buffer))))
         (push buffer root-buffers)
         (grow-dendrite dendrite lazy-array)))
@@ -263,6 +257,17 @@
       ;; Otherwise, actually convert the cluster.
       (t (call-next-method)))))
 
+(defun mergeable-dendrites-p (d1 d2)
+  (and (eq
+        (dendrite-stem d1)
+        (dendrite-stem d2))
+       (shape-equal
+        (dendrite-shape d1)
+        (dendrite-shape d2))
+       (transformation-equal
+        (dendrite-transformation d1)
+        (dendrite-transformation d2))))
+
 (defmethod convert-cluster
     ((cluster cluster)
      (non-immediate non-immediate))
@@ -271,7 +276,9 @@
          (buffers
            (loop for (shape . dendrites) in alist
                  collect
-                 (make-buffer :shape shape :ntype (cluster-ntype cluster)))))
+                 (make-buffer
+                  :shape shape
+                  :ntype (cluster-ntype cluster)))))
     ;; Emit one load instruction for each dendrite.
     (loop for (shape . dendrites) in alist for buffer in buffers do
       (loop for dendrite in dendrites do
@@ -315,7 +322,9 @@
                        when (loop for dendrite in dendrites
                                   for value-n = (car (dendrite-cons dendrite))
                                     thereis (= index value-n))
-                         collect (make-buffer :shape shape :ntype ntype)
+                         collect (make-buffer
+                                  :shape shape
+                                  :ntype (petalisp.type-inference:generalize-ntype ntype))
                        else collect nil))))
     ;; Emit one load instruction for each dendrite.
     (loop for (shape . dendrites) in alist for buffers in list-of-buffers do
@@ -503,8 +512,9 @@
                    (cons dendrite-cons)) dendrite
     (let* ((kernel (stem-kernel stem))
            (shape (lazy-array-shape array-immediate))
-           (ntype (element-ntype array-immediate))
            (storage (array-immediate-storage array-immediate))
+           (ntype (petalisp.type-inference:generalize-ntype
+                   (element-ntype array-immediate)))
            (buffer
              (if (zerop (shape-rank shape))
                  (alexandria:ensure-gethash

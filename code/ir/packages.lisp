@@ -99,5 +99,5 @@
 
    ;; Miscellaneous
    #:kernel-instruction-vector
-   #:parse-kernel-blueprint
-   #:check-ir))
+   #:check-ir
+   #:translate-blueprint))

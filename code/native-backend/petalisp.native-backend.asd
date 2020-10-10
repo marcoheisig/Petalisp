@@ -10,8 +10,7 @@
    "petalisp.utilities"
    "petalisp.core"
    "petalisp.ir"
-   "petalisp.scheduler"
-   "petalisp.blueprint-compiler")
+   "petalisp.scheduler")
 
   :serial t
   :components
