@@ -343,7 +343,7 @@
       (rbgs u f h 3) ; solve "exactly"
       (let* ((x (rbgs u f h v1))
              (r (restrict (residual x f h)))
-             (c (v-cycle (reshape 0.0 (array-shape r)) r (* 2 h) v1 v2)))
+             (c (v-cycle (reshape 0d0 (array-shape r)) r (* 2 h) v1 v2)))
         (rbgs (α #'+ x (prolongate c)) f h v2))))
 
 
