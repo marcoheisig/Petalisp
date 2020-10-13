@@ -121,43 +121,10 @@
                                      wrap-in-function-bindings)
                    (translate-function-info instruction-info)
                  ;; Now convert instructions to proxies.
-                 (loop for instruction-number below (length *instructions*) do
-                   (setf
-                    (svref *instructions* instruction-number)
-                    (trivia:ematch (svref *instructions* instruction-number)
-                      ((ucons:ulist* :call number-of-values operator arguments)
-                       (apply
-                        #'ensure-proxy
-                        number-of-values
-                        (or operator (svref *function-proxies* instruction-number))
-                        (ucons:list-from-ulist arguments)))
-                      ((ucons:ulist* :load array-number irefs)
-                       (ensure-proxy
-                        1
-                        'row-major-aref
-                        (svref *source-array-proxies* array-number)
-                        (translate-row-major-index
-                         (svref *source-stride-proxies-vector* array-number)
-                         (svref *offset-proxies-vector* instruction-number)
-                         (svref *scaling-proxies-vector* instruction-number)
-                         irefs)))
-                      ((ucons:ulist* :store input array-number irefs)
-                       (ensure-proxy
-                        0
-                        'setf-row-major-aref
-                        input
-                        (svref *target-array-proxies* array-number)
-                        (translate-row-major-index
-                         (svref *target-stride-proxies-vector* array-number)
-                         (svref *offset-proxies-vector* instruction-number)
-                         (svref *scaling-proxies-vector* instruction-number)
-                         irefs)))
-                      ((ucons:ulist* :iref irefs)
-                       (translate-row-major-index
-                        (vector 1)
-                        (svref *offset-proxies-vector* instruction-number)
-                        (svref *scaling-proxies-vector* instruction-number)
-                        irefs)))))
+                 (loop for instruction across *instructions*
+                       for instruction-number from 0
+                       do (setf (svref *instructions* instruction-number)
+                                (translate-instruction instruction-number)))
                  ;; Finally, convert the proxies of each level to suitable
                  ;; bindings and apply all wrappers.
                  `(lambda (.kernel. .iteration-space.)
@@ -217,6 +184,43 @@
                           :expression expression)))
               (push proxy rproxies)
               proxy))))))
+
+(defun translate-instruction (instruction-number)
+  (let ((instruction (svref *instructions* instruction-number)))
+    (trivia:ematch instruction
+      ((ucons:ulist* :call number-of-values operator arguments)
+       (apply
+        #'ensure-proxy
+        number-of-values
+        (or operator (svref *function-proxies* instruction-number))
+        (ucons:list-from-ulist arguments)))
+      ((ucons:ulist* :load array-number irefs)
+       (ensure-proxy
+        1
+        'row-major-aref
+        (svref *source-array-proxies* array-number)
+        (translate-row-major-index
+         (svref *source-stride-proxies-vector* array-number)
+         (svref *offset-proxies-vector* instruction-number)
+         (svref *scaling-proxies-vector* instruction-number)
+         irefs)))
+      ((ucons:ulist* :store input array-number irefs)
+       (ensure-proxy
+        0
+        'setf-row-major-aref
+        input
+        (svref *target-array-proxies* array-number)
+        (translate-row-major-index
+         (svref *target-stride-proxies-vector* array-number)
+         (svref *offset-proxies-vector* instruction-number)
+         (svref *scaling-proxies-vector* instruction-number)
+         irefs)))
+      ((ucons:ulist* :iref irefs)
+       (translate-row-major-index
+        (vector 1)
+        (svref *offset-proxies-vector* instruction-number)
+        (svref *scaling-proxies-vector* instruction-number)
+        irefs)))))
 
 (defun translate-row-major-index
     (stride-proxies offset-proxies scaling-proxies irefs)
