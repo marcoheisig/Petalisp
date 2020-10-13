@@ -137,6 +137,6 @@
       nil))
 
 (defun offset-blueprint (offset)
-  (if (<= -5 offset 5)
+  (if (<= -3 offset 3)
       offset
       nil))

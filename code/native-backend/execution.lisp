@@ -14,7 +14,7 @@
        (loop for task in tasks do
          (let* ((kernel (petalisp.scheduler:task-kernel task))
                 (workers (petalisp.scheduler:task-workers task))
-                (fn (compile-kernel kernel native-backend)))
+                (fn (compile-kernel-on-backend kernel native-backend)))
            (worker-pool-enqueue
             (lambda (worker-id)
               (invoke-kernel kernel fn workers worker-id))
@@ -43,7 +43,7 @@
     ((lazy-arrays list) (native-backend native-backend))
   (memory-pool-reset (memory-pool native-backend)))
 
-(defun compile-kernel (kernel backend)
+(defun compile-kernel-on-backend (kernel backend)
   (let ((blueprint (kernel-blueprint kernel)))
     (petalisp.utilities:with-hash-table-memoization (blueprint)
         (compile-cache backend)

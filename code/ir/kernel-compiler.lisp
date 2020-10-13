@@ -2,6 +2,9 @@
 
 (in-package #:petalisp.ir)
 
+(defun compile-kernel (kernel)
+  (translate-blueprint (kernel-blueprint kernel)))
+
 ;;; The code in this file handles the translation of a blueprint to the
 ;;; s-expression of a function with two arguments - a kernel with the
 ;;; supplied blueprint and the iteration space to be executed.

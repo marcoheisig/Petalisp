@@ -410,6 +410,13 @@
   (setf (kernel-targets other-kernel) '())
   kernel)
 
+(defun instruction-number-of-values (instruction)
+  (etypecase instruction
+    (call-instruction (call-instruction-number-of-values instruction))
+    (iref-instruction 1)
+    (load-instruction 1)
+    (store-instruction 0)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Computing the Instruction Vector

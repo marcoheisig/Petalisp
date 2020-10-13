@@ -16,5 +16,6 @@
    (:file "ir-checker")
    (:file "ir-conversion")
    (:file "blueprint")
-   (:file "translate-blueprint")
+   (:file "kernel-interpreter")
+   (:file "kernel-compiler")
    (:file "documentation")))

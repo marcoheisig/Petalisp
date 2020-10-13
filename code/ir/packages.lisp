@@ -66,7 +66,7 @@
    #:kernel-iteration-space
    #:kernel-blueprint
    #:kernel-buffers
-   #:kernel-highest-instruction-number
+   #:kernel-instruction-vector
    #:kernel-number-of-loads
    #:kernel-number-of-stores
    #:kernel-cost
@@ -98,6 +98,7 @@
    #:memory-parent-bandwidth
 
    ;; Miscellaneous
-   #:kernel-instruction-vector
    #:check-ir
+   #:interpret-kernel
+   #:compile-kernel
    #:translate-blueprint))

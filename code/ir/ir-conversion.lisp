@@ -195,17 +195,6 @@
     (normalize-ir root-buffers)
     (nreverse root-buffers)))
 
-(defun normalize-ir (root-buffers)
-  (map-buffers #'normalize-buffer root-buffers)
-  (map-kernels #'normalize-kernel root-buffers))
-
-(defun normalize-buffer (buffer)
-  (transform-buffer buffer (collapsing-transformation (buffer-shape buffer))))
-
-(defun normalize-kernel (kernel)
-  (kernel-instruction-vector kernel)
-  (transform-kernel kernel (collapsing-transformation (kernel-iteration-space kernel))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Cluster Conversion
@@ -537,3 +526,22 @@
                    (transformation dendrite-transformation)) dendrite
     (setf (cdr cons)
           (make-iref-instruction transformation))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Normalization
+
+(defun normalize-ir (root-buffers)
+  (map-buffers #'normalize-buffer root-buffers)
+  (map-kernels #'normalize-kernel root-buffers))
+
+(defun normalize-buffer (buffer)
+  (transform-buffer buffer (collapsing-transformation (buffer-shape buffer))))
+
+(defun normalize-kernel (kernel)
+  ;; We use this opportunity to compute the kernel instruction vector,
+  ;; knowing it will be cached for all future invocations.
+  (kernel-instruction-vector kernel)
+  (transform-kernel
+   kernel
+   (normalizing-transformation (kernel-iteration-space kernel))))
