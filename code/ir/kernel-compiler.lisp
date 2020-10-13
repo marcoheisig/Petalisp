@@ -266,30 +266,51 @@
 (defun translate-iteration-space (iteration-space-info)
   (let* ((rank (ucons:ulength iteration-space-info))
          (ranges (loop repeat rank collect (gensym "RANGE")))
+         (starts (loop repeat rank collect (gensym "START")))
+         (steps (loop repeat rank collect (gensym "STEP")))
+         (ends (loop repeat rank collect (gensym "END")))
          (index-proxies (make-index-proxy-vector rank))
          (wrap-in-loop-vector (make-array (1+  rank))))
     ;; The outermost 'loop' is the top level
     (setf (svref wrap-in-loop-vector 0) #'identity)
     (loop for index-proxy across index-proxies
           for range in ranges
+          for start in starts
+          for step in steps
+          for end in ends
           for axis from 0
           for ulist = iteration-space-info then (ucons:ucdr ulist)
           for info = (ucons:ucar ulist)
-          do (let ((range range)
-                   (index (proxy-variable index-proxy)))
+          do (let ((index (proxy-variable index-proxy))
+                   ;; Rebind the loop variables so that they can be closed
+                   ;; over correctly.
+                   (start start)
+                   (step step)
+                   (end end))
                (setf (svref wrap-in-loop-vector (1+ axis))
-                     (lambda (form)
-                       `(loop for ,index from (range-start ,range)
-                              by ,(if (eql info :contiguous) 1 `(range-step ,range))
-                                below (range-end ,range)
-                              do ,form)))))
+                     (if (eql info :contiguous)
+                         (lambda (form)
+                           `(loop for ,index fixnum from ,start below ,end
+                                  do ,form))
+                         (lambda (form)
+                           `(loop for ,index fixnum from ,start by ,step below ,end do
+                                  ,form))))))
     (values
      index-proxies
      (lambda (form)
        `(destructuring-bind ,ranges
             (shape-ranges .iteration-space.)
           (declare (ignorable ,@ranges))
-          ,form))
+          (let ,(loop
+                  for range in ranges
+                  for start in starts
+                  for step in steps
+                  for end in ends
+                  collect `(,start (the fixnum (range-start ,range)))
+                  collect `(,step (the (and fixnum unsigned-byte) (range-step ,range)))
+                  collect `(,end (the fixnum (range-end ,range))))
+            (declare (ignorable ,@starts ,@steps ,@ends))
+            ,form)))
      wrap-in-loop-vector)))
 
 (defun translate-array-info (array-info alist-form)
