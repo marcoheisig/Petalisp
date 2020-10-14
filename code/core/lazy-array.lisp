@@ -91,11 +91,7 @@
   ())
 
 (defclass array-immediate (non-empty-immediate)
-  ((%reusablep
-    :initarg :reusablep
-    :initform nil
-    :reader reusablep)
-   (%storage
+  ((%storage
     :initarg :storage
     :reader array-immediate-storage
     :type simple-array)))
@@ -315,7 +311,7 @@
     :ntype (petalisp.type-inference:ntype-of object)
     :storage (petalisp.type-inference:make-rank-zero-array object)))
 
-(defun make-array-immediate (array &optional reusablep)
+(defun make-array-immediate (array)
   (check-type array array)
   (cond ((zerop (array-total-size array))
          (empty-array))
@@ -325,7 +321,6 @@
          (make-instance 'array-immediate
            :shape (array-shape array)
            :storage (simplify-array array)
-           :reusablep reusablep
            :ntype (petalisp.type-inference:array-element-ntype array)))))
 
 (defun simplify-array (array)

@@ -140,6 +140,7 @@
                            wrap-in-source-array-bindings
                            wrap-in-transformation-bindings
                            wrap-in-function-bindings
+                           ;; Alternate loops and proxy forms.
                            (loop for rproxies across *rproxies-vector*
                                  for wrap-in-loop across wrap-in-loop-vector
                                  collect wrap-in-loop

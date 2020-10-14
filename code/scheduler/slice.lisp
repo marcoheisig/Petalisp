@@ -37,7 +37,7 @@
     (let ((deallocations
             (loop for (buffer . kernels) in active-buffers
                   when (and (null kernels)
-                            (petalisp.ir:buffer-reusablep buffer))
+                            (petalisp.ir:interior-buffer-p buffer))
                     collect buffer))
           (active-buffers
             (delete-if #'null active-buffers :key #'cdr))

@@ -29,6 +29,9 @@
 
    ;; Predicates
    #:bufferp
+   #:leaf-buffer-p
+   #:root-buffer-p
+   #:interior-buffer-p
    #:kernelp
    #:instructionp
    #:call-instruction-p
@@ -61,7 +64,6 @@
    #:buffer-ntype
    #:buffer-readers
    #:buffer-writers
-   #:buffer-reusablep
    #:buffer-storage
    #:kernel-iteration-space
    #:kernel-blueprint

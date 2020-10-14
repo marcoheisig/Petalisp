@@ -35,7 +35,7 @@
        (let ((storage (buffer-storage buffer)))
          (unless (null storage)
            (setf (buffer-storage buffer) nil)
-           (when (buffer-reusablep buffer)
+           (when (petalisp.ir:interior-buffer-p buffer)
              (memory-pool-free memory-pool storage))))))))
 
 ;; Cleanup.

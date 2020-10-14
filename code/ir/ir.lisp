@@ -19,10 +19,18 @@
   ;; An alist whose keys are kernels reading from this buffer, and whose
   ;; values are all load instructions from that kernel into this buffer.
   (readers '() :type list)
-  ;; Whether the buffer can be reused after its last use.
-  (reusablep nil :type boolean)
   ;; An opaque object, representing the allocated memory.
   (storage nil))
+
+(defun leaf-buffer-p (buffer)
+  (null (buffer-writers buffer)))
+
+(defun root-buffer-p (buffer)
+  (null (buffer-readers buffer)))
+
+(defun interior-buffer-p (buffer)
+  (not (or (leaf-buffer-p buffer)
+           (root-buffer-p buffer))))
 
 ;;; A kernel represents a computation that, for each element in its
 ;;; iteration space, reads from some buffers and writes to some buffers.

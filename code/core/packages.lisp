@@ -98,7 +98,6 @@
    #:lazy-array-p
    #:empty-array-p
    #:immediatep
-   #:reusablep
    #:lazy-array
    #:array-shape
    #:parameter
