@@ -3,39 +3,47 @@
 (in-package #:petalisp.core)
 
 (defun lazy-map (shape function inputs)
-  (if (empty-shape-p shape)
-      (empty-array)
-      (petalisp.type-inference:specialize
-       function
-       inputs
-       #'element-ntype
-       (lambda (constant)
-         (lazy-reshape
-          (make-scalar-immediate constant)
-          shape
-          (make-transformation
-           :input-rank (shape-rank shape)
-           :output-rank 0)))
-       (lambda (ntypes function inputs)
-         (make-instance 'lazy-map
-           :operator function
-           :inputs inputs
-           :shape shape
-           :ntype (first ntypes)))
-       (lambda ()
-         (make-instance 'lazy-map
-           :operator function
-           :inputs inputs
-           :shape shape
-           :ntype (petalisp.type-inference:ntype 't))))))
+  (lazy-multiple-value-map 1 shape function inputs))
 
 (defun lazy-multiple-value-map (n-outputs shape function inputs)
-  (case n-outputs
-    (0 (values))
-    (1 (lazy-map shape function inputs))
-    (otherwise
-     (if (empty-shape-p shape)
-         (empty-arrays n-outputs)
+  (if (empty-shape-p shape)
+      (empty-arrays n-outputs)
+      (case n-outputs
+        ;; Handle the case of a lazy map with zero outputs.
+        (0 (values))
+        ;; Handle the case of a lazy map with a single output.  The type
+        ;; inference does most of the work here if we tell it how to obtain
+        ;; the ntype of an array and if we tell it how to represent
+        ;; constants and function calls as lazy arrays.  It is almost as if
+        ;; the type inference was written for this very case :)
+        (1 (petalisp.type-inference:specialize
+            function
+            inputs
+            #'element-ntype
+            (lambda (constant)
+              (lazy-reshape
+               (make-scalar-immediate constant)
+               shape
+               (make-transformation
+                :input-rank (shape-rank shape)
+                :output-rank 0)))
+            (lambda (ntypes function inputs)
+              (make-instance 'lazy-map
+                :operator function
+                :inputs inputs
+                :shape shape
+                :ntype (first ntypes)))
+            (lambda ()
+              (make-instance 'lazy-map
+                :operator function
+                :inputs inputs
+                :shape shape
+                :ntype (petalisp.type-inference:ntype 't)))))
+        ;; Handle the case of a lazy map with multiple outputs.  This case
+        ;; is special in that we don't just generate a possibly specialized
+        ;; tree of lazy arrays representing the operation, but also one
+        ;; instance of a lazy-multiple-value-ref for each of the outputs.
+        (otherwise
          (petalisp.type-inference:specialize
           function
           inputs
@@ -48,8 +56,8 @@
               :input-rank (shape-rank shape)
               :output-rank 0)))
           (lambda (ntypes function inputs)
-            (let* ((default (petalisp.type-inference:ntype 'null))
-                   (ntype (make-list n-outputs :initial-element default))
+            (let* ((default-ntype (petalisp.type-inference:ntype 'null))
+                   (ntype (make-list n-outputs :initial-element default-ntype))
                    (inputs (list (make-instance 'lazy-multiple-value-map
                                    :operator function
                                    :inputs inputs
@@ -66,8 +74,8 @@
                        :shape shape
                        :ntype ntype)))))
           (lambda ()
-            (let* ((default (petalisp.type-inference:ntype t))
-                   (ntype (make-list n-outputs :initial-element default))
+            (let* ((default-ntype (petalisp.type-inference:ntype t))
+                   (ntype (make-list n-outputs :initial-element default-ntype))
                    (inputs (list (make-instance 'lazy-multiple-value-map
                                    :operator function
                                    :inputs inputs
