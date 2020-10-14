@@ -12,7 +12,7 @@
   ;; The shape of the buffer.
   (shape nil :type shape)
   ;; The type code of all elements stored in the buffer.
-  (ntype nil)
+  (ntype nil :type petalisp.type-inference:ntype)
   ;; An alist whose keys are kernels writing to this buffer, and whose
   ;; values are all store instructions from that kernel into this buffer.
   (writers '() :type list)
