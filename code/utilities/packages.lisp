@@ -26,13 +26,13 @@
    ;; defalias.lisp
    #:defalias
 
-   ;; deque.lisp
-   #:deque
-   #:dequep
-   #:make-deque
-   #:deque-push
-   #:deque-pop
-   #:deque-steal
+   ;; wsdeque.lisp
+   #:wsdeque
+   #:wsdequep
+   #:make-wsdeque
+   #:wsdeque-push
+   #:wsdeque-pop
+   #:wsdeque-steal
 
    ;; extended-euclid.lisp
    #:extended-euclid

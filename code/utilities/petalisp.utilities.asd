@@ -13,7 +13,7 @@
   ((:file "packages")
    (:file "documentation")
    (:file "defalias")
-   (:file "deque")
+   (:file "wsdeque")
    (:file "bitfield")
    (:file "identical")
    (:file "memoization")
