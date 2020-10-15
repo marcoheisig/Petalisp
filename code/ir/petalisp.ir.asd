@@ -18,4 +18,5 @@
    (:file "blueprint")
    (:file "kernel-interpreter")
    (:file "kernel-compiler")
+   (:file "ir-backend")
    (:file "documentation")))

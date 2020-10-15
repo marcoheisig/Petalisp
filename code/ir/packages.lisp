@@ -100,6 +100,7 @@
    #:memory-parent-bandwidth
 
    ;; Miscellaneous
+   #:make-ir-backend
    #:check-ir
    #:interpret-kernel
    #:compile-kernel

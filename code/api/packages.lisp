@@ -160,7 +160,7 @@
    #:stack
    #:drop-axes)
 
-  (:shadowing-import-from :petalisp.ir-backend #:make-ir-backend)
+  (:shadowing-import-from :petalisp.ir #:make-ir-backend)
   (:shadowing-import-from :petalisp.native-backend #:make-native-backend))
 
 (in-package #:petalisp.api)

@@ -45,7 +45,7 @@
   ;; instructions referencing that buffer.
   (targets '() :type list)
   ;; A vector of instructions of the kernel, in top-to-bottom order.
-  (instruction-vector-cache nil :type (or null vector)))
+  (instruction-vector #() :type simple-vector))
 
 ;;; This function is a very ad-hoc approximation of the cost of executing
 ;;; the kernel.
@@ -129,6 +129,16 @@
 (defun store-instruction-input (store-instruction)
   (declare (store-instruction store-instruction))
   (first (store-instruction-inputs store-instruction)))
+
+(defgeneric instruction-number-of-values (instruction)
+  (:method ((call-instruction call-instruction))
+    (call-instruction-number-of-values call-instruction))
+  (:method ((iref-instruction iref-instruction))
+    1)
+  (:method ((load-instruction load-instruction))
+    1)
+  (:method ((store-instruction store-instruction))
+    0))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -397,6 +407,8 @@
      (setf (buffer-writers buffer)
            (remove kernel (buffer-writers buffer) :key #'car)))
    kernel)
+  (setf (kernel-instruction-vector kernel)
+        #())
   (values))
 
 (defun merge-kernels (kernel other-kernel)
@@ -417,35 +429,3 @@
   (setf (kernel-sources other-kernel) '())
   (setf (kernel-targets other-kernel) '())
   kernel)
-
-(defun instruction-number-of-values (instruction)
-  (etypecase instruction
-    (call-instruction (call-instruction-number-of-values instruction))
-    (iref-instruction 1)
-    (load-instruction 1)
-    (store-instruction 0)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Computing the Instruction Vector
-
-(defun kernel-instruction-vector (kernel)
-  (or (kernel-instruction-vector-cache kernel)
-      (let ((counter 0))
-        (labels ((clear-instruction-number (instruction)
-                   (unless (= -1 (instruction-number instruction))
-                     (incf counter)
-                     (setf (instruction-number instruction) -1)
-                     (map-instruction-inputs #'clear-instruction-number instruction))))
-          (map-kernel-store-instructions #'clear-instruction-number kernel))
-        (let ((vector (make-array counter))
-              (index 0))
-          (labels ((assign-instruction-number (instruction)
-                     (when (= -1 (instruction-number instruction))
-                       (setf (instruction-number instruction) -2)
-                       (map-instruction-inputs #'assign-instruction-number instruction)
-                       (setf (instruction-number instruction) index)
-                       (setf (svref vector index) instruction)
-                       (incf index))))
-            (map-kernel-store-instructions #'assign-instruction-number kernel))
-          (setf (kernel-instruction-vector-cache kernel) vector)))))

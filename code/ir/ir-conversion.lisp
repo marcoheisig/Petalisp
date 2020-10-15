@@ -203,7 +203,7 @@
 
 ;;; Under certain circumstances, there is no need to convert the current
 ;;; cluster at all.  This around method handles these cases.  It also
-;;; removes all dendrites that have been invalidated.
+;;; removes all dendrites that have been invalidated from the cluster.
 (defmethod convert-cluster :around
     ((cluster cluster)
      (non-immediate non-immediate))
@@ -278,7 +278,7 @@
             (setf (cdr cons) load-instruction)
             (push load-instruction (alexandria:assoc-value (kernel-sources kernel) buffer))
             (push load-instruction (alexandria:assoc-value (buffer-readers buffer) kernel))))))
-    ;; now subdivide the space of all buffers and emit one kernel per
+    ;; Now subdivide the space of all buffers and emit one kernel per
     ;; resulting fragment, plus some copy kernels if the fragment is part
     ;; of the shapes of several buffers.
     (let ((fragments (subdivide-shapes (mapcar #'first alist))))
@@ -372,9 +372,9 @@
     (push `(,kernel ,store) (buffer-writers target-buffer))
     kernel))
 
-;;; compute an alist whose keys are shapes and whose values are dendrites
-;;; that are covered by that shape.  ensure that the dendrites of each
-;;; cover a reasonable portion of that shape.  we use an empirically
+;;; Compute an alist whose keys are shapes and whose values are dendrites
+;;; that are covered by that shape.  Ensure that the dendrites of each
+;;; cover a reasonable portion of that shape.  We use an empirically
 ;;; determined heuristic to decide which dendrites are to be grouped in one
 ;;; entry.
 (defun partition-dendrites (dendrites)
@@ -541,7 +541,25 @@
 (defun normalize-kernel (kernel)
   ;; We use this opportunity to compute the kernel instruction vector,
   ;; knowing it will be cached for all future invocations.
-  (kernel-instruction-vector kernel)
+  (setf (kernel-instruction-vector kernel)
+        (let ((counter 0))
+          (labels ((clear-instruction-number (instruction)
+                     (unless (= -1 (instruction-number instruction))
+                       (incf counter)
+                       (setf (instruction-number instruction) -1)
+                       (map-instruction-inputs #'clear-instruction-number instruction))))
+            (map-kernel-store-instructions #'clear-instruction-number kernel))
+          (let ((vector (make-array counter))
+                (index 0))
+            (labels ((assign-instruction-number (instruction)
+                       (when (= -1 (instruction-number instruction))
+                         (setf (instruction-number instruction) -2)
+                         (map-instruction-inputs #'assign-instruction-number instruction)
+                         (setf (instruction-number instruction) index)
+                         (setf (svref vector index) instruction)
+                         (incf index))))
+              (map-kernel-store-instructions #'assign-instruction-number kernel))
+            (setf (kernel-instruction-vector kernel) vector))))
   (transform-kernel
    kernel
    (normalizing-transformation (kernel-iteration-space kernel))))

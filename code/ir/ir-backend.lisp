@@ -1,10 +1,15 @@
 ;;;; © 2016-2020 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package #:petalisp.ir-backend)
+(in-package #:petalisp.ir)
 
-;;; The purpose of the IR backend is to check that the IR conversion
-;;; preserves semantics.  It is similar to the reference backend, but
-;;; evaluates kernels instead of individual strided arrays.
+;;; The IR backend converts its supplied arrays to an equivalent IR graph,
+;;; binds each buffer to a Lisp array, and directly interprets each kernel
+;;; in an order that respects all data dependencies.
+;;;
+;;; The IR backend is not particularly fast or sophisticated.  Its main
+;;; purpose is for testing.  We compare the solutions computed by the IR
+;;; backend with those computed by the reference backend to ensure that the
+;;; IR conversion preserves semantics.
 
 (defclass ir-backend (backend)
   ())
@@ -16,8 +21,12 @@
 ;;;
 ;;; Data Flow Graph Evaluation
 
+;;; The *NODES* array maps each kernel of the IR to a specifications of its
+;;; users and dependencies.
 (defvar *nodes*)
 
+;;; The *WORKLIST* contains all nodes whose dependencies have already been
+;;; computed, but which haven't been computed themselves.
 (defvar *worklist*)
 
 (defstruct node
@@ -69,7 +78,7 @@
     (with-accessors ((dependencies node-dependencies)) other-node
       (setf dependencies (remove node dependencies))
       (when (null dependencies)
-        (push other-node *worklist*)))))
+        (pushnew other-node *worklist*)))))
 
 (defun immediate-from-buffer (buffer)
   (make-instance 'array-immediate
