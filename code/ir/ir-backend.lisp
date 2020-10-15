@@ -12,10 +12,19 @@
 ;;; IR conversion preserves semantics.
 
 (defclass ir-backend (backend)
-  ())
+  ((%mode
+    :initarg :mode
+    :initform :interpreted
+    :reader ir-backend-mode
+    :type (member :interpreted :compiled))
+   (%compile-cache
+    :initform (make-hash-table)
+    :reader ir-backend-compile-cache
+    :type hash-table)))
 
-(defun make-ir-backend ()
-  (make-instance 'ir-backend))
+(defun make-ir-backend (&key (mode :interpreted))
+  (make-instance 'ir-backend
+    :mode mode))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -32,7 +41,8 @@
 (defstruct node
   (kernel nil :type kernel)
   (dependencies '() :type list)
-  (users '() :type list))
+  (users '() :type list)
+  (fn nil :type (or function null)))
 
 (defmethod compute-immediates ((lazy-arrays list) (ir-backend ir-backend))
   (let ((root-buffers (ir-from-lazy-arrays lazy-arrays))
@@ -49,12 +59,12 @@
                                (buffer-ntype buffer))))))
      ;; Ensure that the dependencies of each kernel are set up properly.
      (lambda (kernel)
-       (let ((node (ensure-node kernel)))
+       (let ((node (ensure-node kernel ir-backend)))
          (map-kernel-inputs
           (lambda (buffer)
             (map-buffer-inputs
              (lambda (other-kernel)
-               (let ((other-node (ensure-node other-kernel)))
+               (let ((other-node (ensure-node other-kernel ir-backend)))
                  (pushnew other-node (node-dependencies node))
                  (pushnew node (node-users other-node))))
              buffer))
@@ -66,10 +76,20 @@
       (execute-node (pop *worklist*)))
     (mapcar #'immediate-from-buffer root-buffers)))
 
-(defun ensure-node (kernel)
+(defun ensure-node (kernel ir-backend)
   (or (gethash kernel *nodes*)
       (setf (gethash kernel *nodes*)
-            (make-node :kernel kernel))))
+            (make-node
+             :kernel kernel
+             :fn (ecase (ir-backend-mode ir-backend)
+                   (:compiled
+                    (let ((blueprint (kernel-blueprint kernel))
+                          (compile-cache (ir-backend-compile-cache ir-backend)))
+                      (or (gethash blueprint compile-cache)
+                          (setf (gethash blueprint compile-cache)
+                                (compile nil (translate-blueprint blueprint))))))
+                   (:interpreted
+                    #'interpret-kernel))))))
 
 (defun execute-node (node)
   (let ((kernel (node-kernel node)))

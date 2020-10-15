@@ -6,9 +6,12 @@
   ((%reference-backend
     :reader reference-backend
     :initform (make-reference-backend))
-   (%ir-backend
-    :reader ir-backend
-    :initform (make-ir-backend))
+   (%ir-backend-interpreted
+    :reader ir-backend-interpreted
+    :initform (make-ir-backend :mode :interpreted))
+   (%ir-backend-compiled
+    :reader ir-backend-compiled
+    :initform (make-ir-backend :mode :compiled))
    (%native-backend
     :reader native-backend
     :initform
@@ -19,15 +22,19 @@
 
 (defmethod compute-immediates ((data-structures list) (testing-backend testing-backend))
   (with-accessors ((reference-backend reference-backend)
-                   (ir-backend ir-backend)
+                   (ir-backend-interpreted ir-backend-interpreted)
+                   (ir-backend-compiled ir-backend-compiled)
                    (native-backend native-backend)) testing-backend
     (let ((reference-solutions
             (compute-immediates data-structures reference-backend))
-          (ir-backend-solutions
-            (compute-immediates data-structures ir-backend))
+          (ir-backend-interpreted-solutions
+            (compute-immediates data-structures ir-backend-interpreted))
+          (ir-backend-compiled-solutions
+            (compute-immediates data-structures ir-backend-compiled))
           (native-backend-solutions
             (compute-immediates data-structures native-backend)))
-      (compare-solutions reference-solutions ir-backend-solutions)
+      (compare-solutions reference-solutions ir-backend-interpreted-solutions)
+      (compare-solutions reference-solutions ir-backend-compiled-solutions)
       (compare-solutions reference-solutions native-backend-solutions)
       reference-solutions)))
 
@@ -40,7 +47,8 @@
 
 (defmethod delete-backend ((testing-backend testing-backend))
   (delete-backend (reference-backend testing-backend))
-  (delete-backend (ir-backend testing-backend))
+  (delete-backend (ir-backend-interpreted testing-backend))
+  (delete-backend (ir-backend-compiled testing-backend))
   (delete-backend (native-backend testing-backend))
   (call-next-method))
 
