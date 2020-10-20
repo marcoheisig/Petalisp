@@ -65,6 +65,7 @@
    #:buffer-readers
    #:buffer-writers
    #:buffer-storage
+   #:buffer-data
    #:kernel-iteration-space
    #:kernel-blueprint
    #:kernel-buffers
@@ -72,6 +73,7 @@
    #:kernel-number-of-loads
    #:kernel-number-of-stores
    #:kernel-cost
+   #:kernel-data
    #:instruction-number
    #:instruction-inputs
    #:instruction-transformation

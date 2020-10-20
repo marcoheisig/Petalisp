@@ -20,7 +20,10 @@
   ;; values are all load instructions from that kernel into this buffer.
   (readers '() :type list)
   ;; An opaque object, representing the allocated memory.
-  (storage nil))
+  (storage nil)
+  ;; A slot that can be used by the backend to attach further information
+  ;; to the buffer.
+  (data nil))
 
 (defun leaf-buffer-p (buffer)
   (null (buffer-writers buffer)))
@@ -45,7 +48,10 @@
   ;; instructions referencing that buffer.
   (targets '() :type list)
   ;; A vector of instructions of the kernel, in top-to-bottom order.
-  (instruction-vector #() :type simple-vector))
+  (instruction-vector #() :type simple-vector)
+  ;; A slot that can be used by the backend to attach further information
+  ;; to the kernel.
+  (data nil))
 
 ;;; This function is a very ad-hoc approximation of the cost of executing
 ;;; the kernel.
