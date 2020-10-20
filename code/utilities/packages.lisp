@@ -26,6 +26,15 @@
    ;; defalias.lisp
    #:defalias
 
+   ;; queue.lisp
+   #:queue
+   #:queuep
+   #:make-queue
+   #:queue-enqueue-front
+   #:queue-enqueue-back
+   #:queue-dequeue
+   #:queue-empty-p
+
    ;; wsdeque.lisp
    #:wsdeque
    #:wsdequep
