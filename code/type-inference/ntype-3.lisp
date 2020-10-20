@@ -46,6 +46,11 @@
   (%ntype-size
    (generalize-ntype ntype)))
 
+(declaim (inline ntype-id))
+(defun ntype-id (ntype)
+  (%ntype-id
+   (generalize-ntype ntype)))
+
 (declaim (inline %ntype=))
 (defun %ntype= (ntype-1 ntype-2)
   (declare (ntype ntype-1 ntype-2))

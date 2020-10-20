@@ -27,8 +27,10 @@
    #:type-specifier
 
    ;; Ntype manipulation.
+   #:*ntypes*
    #:ntype
    #:ntype-size
+   #:ntype-id
    #:ntype=
    #:type-specifier
    #:ntype-of
