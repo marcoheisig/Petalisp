@@ -192,8 +192,45 @@
         (assert (instructionp instruction))
         (loop for other-cons in other-conses do
           (setf (cdr other-cons) instruction))))
-    (normalize-ir root-buffers)
+    (finalize-ir root-buffers)
     (nreverse root-buffers)))
+
+(defun finalize-ir (root-buffers)
+  (map-buffers-and-kernels
+   #'finalize-buffer
+   #'finalize-kernel
+   root-buffers))
+
+(defun finalize-buffer (buffer)
+  (if (interior-buffer-p buffer)
+      (transform-buffer buffer (normalizing-transformation (buffer-shape buffer)))
+      (transform-buffer buffer (collapsing-transformation (buffer-shape buffer)))))
+
+(defun finalize-kernel (kernel)
+  ;; We use this opportunity to compute the kernel instruction vector,
+  ;; knowing it will be cached for all future invocations.
+  (setf (kernel-instruction-vector kernel)
+        (let ((counter 0))
+          (labels ((clear-instruction-number (instruction)
+                     (unless (= -1 (instruction-number instruction))
+                       (incf counter)
+                       (setf (instruction-number instruction) -1)
+                       (map-instruction-inputs #'clear-instruction-number instruction))))
+            (map-kernel-store-instructions #'clear-instruction-number kernel))
+          (let ((vector (make-array counter))
+                (index 0))
+            (labels ((assign-instruction-number (instruction)
+                       (when (= -1 (instruction-number instruction))
+                         (setf (instruction-number instruction) -2)
+                         (map-instruction-inputs #'assign-instruction-number instruction)
+                         (setf (instruction-number instruction) index)
+                         (setf (svref vector index) instruction)
+                         (incf index))))
+              (map-kernel-store-instructions #'assign-instruction-number kernel))
+            (setf (kernel-instruction-vector kernel) vector))))
+  (transform-kernel
+   kernel
+   (normalizing-transformation (kernel-iteration-space kernel))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -526,42 +563,3 @@
                    (transformation dendrite-transformation)) dendrite
     (setf (cdr cons)
           (make-iref-instruction transformation))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Normalization
-
-(defun normalize-ir (root-buffers)
-  (map-buffers #'normalize-buffer root-buffers)
-  (map-kernels #'normalize-kernel root-buffers))
-
-(defun normalize-buffer (buffer)
-  (if (interior-buffer-p buffer)
-      (transform-buffer buffer (normalizing-transformation (buffer-shape buffer)))
-      (transform-buffer buffer (collapsing-transformation (buffer-shape buffer)))))
-
-(defun normalize-kernel (kernel)
-  ;; We use this opportunity to compute the kernel instruction vector,
-  ;; knowing it will be cached for all future invocations.
-  (setf (kernel-instruction-vector kernel)
-        (let ((counter 0))
-          (labels ((clear-instruction-number (instruction)
-                     (unless (= -1 (instruction-number instruction))
-                       (incf counter)
-                       (setf (instruction-number instruction) -1)
-                       (map-instruction-inputs #'clear-instruction-number instruction))))
-            (map-kernel-store-instructions #'clear-instruction-number kernel))
-          (let ((vector (make-array counter))
-                (index 0))
-            (labels ((assign-instruction-number (instruction)
-                       (when (= -1 (instruction-number instruction))
-                         (setf (instruction-number instruction) -2)
-                         (map-instruction-inputs #'assign-instruction-number instruction)
-                         (setf (instruction-number instruction) index)
-                         (setf (svref vector index) instruction)
-                         (incf index))))
-              (map-kernel-store-instructions #'assign-instruction-number kernel))
-            (setf (kernel-instruction-vector kernel) vector))))
-  (transform-kernel
-   kernel
-   (normalizing-transformation (kernel-iteration-space kernel))))
