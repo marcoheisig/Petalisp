@@ -536,7 +536,9 @@
   (map-kernels #'normalize-kernel root-buffers))
 
 (defun normalize-buffer (buffer)
-  (transform-buffer buffer (collapsing-transformation (buffer-shape buffer))))
+  (if (interior-buffer-p buffer)
+      (transform-buffer buffer (normalizing-transformation (buffer-shape buffer)))
+      (transform-buffer buffer (collapsing-transformation (buffer-shape buffer)))))
 
 (defun normalize-kernel (kernel)
   ;; We use this opportunity to compute the kernel instruction vector,
