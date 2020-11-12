@@ -5,6 +5,7 @@
   :depends-on
   ("alexandria"
    "atomics"
+   "bordeaux-threads"
    "trivia"
    "trivial-garbage")
 
