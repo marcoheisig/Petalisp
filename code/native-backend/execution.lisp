@@ -2,8 +2,9 @@
 
 (in-package #:petalisp.native-backend)
 
-(defmethod compute-immediates
-    ((lazy-arrays list) (native-backend native-backend))
+(defmethod backend-compute
+    ((native-backend native-backend)
+     (lazy-arrays list))
   (let ((memory-pool (memory-pool native-backend))
         (worker-pool (worker-pool native-backend)))
     (petalisp.scheduler:schedule-on-workers
@@ -39,8 +40,9 @@
              (memory-pool-free memory-pool storage))))))))
 
 ;; Cleanup.
-(defmethod compute-immediates :after
-    ((lazy-arrays list) (native-backend native-backend))
+(defmethod backend-compute :after
+    ((native-backend native-backend)
+     (lazy-arrays list))
   (memory-pool-reset (memory-pool native-backend)))
 
 (defun compile-kernel-on-backend (kernel backend)

@@ -15,7 +15,9 @@
 
 (defvar *table*)
 
-(defmethod compute-immediates ((lazy-arrays list) (backend reference-backend))
+(defmethod backend-compute
+    ((backend reference-backend)
+     (lazy-arrays list))
   (let ((*table* (make-hash-table :test #'eq)))
     (mapcar #'compute-immediate lazy-arrays)))
 

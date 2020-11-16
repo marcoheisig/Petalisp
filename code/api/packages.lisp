@@ -52,6 +52,7 @@
    #:fuse*
    #:compute
    #:schedule
+   #:wait
    #:array-indices
    #:shape-indices
    #:define-parallel-aliases

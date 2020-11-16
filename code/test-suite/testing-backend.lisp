@@ -20,19 +20,21 @@
 (defun make-testing-backend ()
   (make-instance 'testing-backend))
 
-(defmethod compute-immediates ((data-structures list) (testing-backend testing-backend))
+(defmethod backend-compute
+    ((testing-backend testing-backend)
+     (data-structures list))
   (with-accessors ((reference-backend reference-backend)
                    (ir-backend-interpreted ir-backend-interpreted)
                    (ir-backend-compiled ir-backend-compiled)
                    (native-backend native-backend)) testing-backend
     (let ((reference-solutions
-            (compute-immediates data-structures reference-backend))
+            (backend-compute reference-backend data-structures))
           (ir-backend-interpreted-solutions
-            (compute-immediates data-structures ir-backend-interpreted))
+            (backend-compute ir-backend-interpreted data-structures))
           (ir-backend-compiled-solutions
-            (compute-immediates data-structures ir-backend-compiled))
+            (backend-compute ir-backend-compiled data-structures))
           (native-backend-solutions
-            (compute-immediates data-structures native-backend)))
+            (backend-compute native-backend data-structures)))
       (compare-solutions reference-solutions ir-backend-interpreted-solutions)
       (compare-solutions reference-solutions ir-backend-compiled-solutions)
       (compare-solutions reference-solutions native-backend-solutions)

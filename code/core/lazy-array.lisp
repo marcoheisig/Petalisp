@@ -40,6 +40,8 @@
 
 (defgeneric array-immediate-storage (array))
 
+(defgeneric lisp-datum-from-immediate (lazy-array))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Classes
@@ -300,6 +302,20 @@
    lazy-array
    (transform (array-shape lazy-array) transformation)
    (invert-transformation transformation)))
+
+(defmethod lisp-datum-from-immediate ((array-immediate array-immediate))
+  (if (zerop (rank array-immediate))
+      (aref (array-immediate-storage array-immediate))
+      (array-immediate-storage array-immediate)))
+
+(defmethod lisp-datum-from-immediate ((range-immediate range-immediate))
+  (let* ((shape (array-shape range-immediate))
+         (range (first (shape-ranges shape)))
+         (size (range-size range))
+         (array (make-array size)))
+    (loop for index below size do
+      (setf (aref array index) index))
+    array))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

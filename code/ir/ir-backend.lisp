@@ -44,7 +44,9 @@
   (users '() :type list)
   (fn nil :type (or function null)))
 
-(defmethod compute-immediates ((lazy-arrays list) (ir-backend ir-backend))
+(defmethod backend-compute
+    ((ir-backend ir-backend)
+     (lazy-arrays list))
   (let ((root-buffers (ir-from-lazy-arrays lazy-arrays))
         (*nodes* (make-hash-table :test #'eq))
         (*worklist* '()))

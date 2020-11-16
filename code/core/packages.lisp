@@ -141,16 +141,16 @@
    #:broadcast-list-of-arrays
    #:copy-arrays
    #:substitute-arrays
+   #:lisp-datum-from-immediate
 
    ;; Backend
    #:*backend*
-   #:make-reference-backend
-   #:compute-on-backend
-   #:schedule-on-backend
-   #:compile-network-on-backend
-   #:compute-immediates
-   #:lisp-datum-from-immediate
    #:backend
+   #:backend-compute
+   #:backend-schedule
+   #:backend-wait
    #:delete-backend
+   #:make-reference-backend
    #:compute
-   #:schedule))
+   #:schedule
+   #:wait))

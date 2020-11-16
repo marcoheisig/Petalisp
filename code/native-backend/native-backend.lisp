@@ -39,14 +39,19 @@
            :name (format nil "~A scheduler thread"
                          (class-name (class-of native-backend)))))))
 
-(defmethod schedule-on-backend
-    ((lazy-arrays list)
-     (native-backend native-backend))
+(defmethod backend-schedule
+    ((backend native-backend)
+     (lazy-arrays list)
+     (finalizer function))
   (let ((promise (lparallel.promise:promise)))
     (lparallel.queue:push-queue
      (lambda ()
        (lparallel.promise:fulfill promise
-         (compute-on-backend lazy-arrays native-backend)))
-     (scheduler-queue native-backend))
+         (funcall finalizer (backend-compute backend lazy-arrays))))
+     (scheduler-queue backend))
     promise))
 
+(defmethod backend-wait
+    ((backend native-backend)
+     (promise t))
+  (lparallel.promise:force promise))

@@ -370,14 +370,21 @@ object is that object itself."
 
 (document-function schedule
   "Hints that it would be worthwhile to compute the supplied arguments
-asynchronously.  Semantically, this function does nothing.  But on certain
-backends, a program like
+asynchronously.  Returns an opaque object that can be supplied to WAIT to
+wait until the scheduled operation has been performed.
+
+This function allows speeding up certain programs like
 
  (progn (run-expensive-task)
         (compute array-1 array-2))
 
-can be sped up by rewriting it as
+by rewriting them to something like
 
  (progn (schedule array-1 array-2)
         (run-expensive-task)
         (compute array-1 array-2)).")
+
+(document-function wait
+  "Blocks until the work designated by some SCHEDULE operations has been
+completed.  Each argument must be one of the opaque objects returned by
+calling SCHEDULE.")

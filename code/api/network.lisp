@@ -51,9 +51,9 @@
 (defmethod compile-network-on-backend
     ((network network) (backend backend))
   (lambda (&rest args)
-    (compute-on-backend
+    (backend-compute
+     backend
      (substitute-arrays
       (network-outputs network)
       args
-      (network-parameters network))
-     backend)))
+      (network-parameters network)))))
