@@ -49,7 +49,7 @@
          (lambda (buffer)
            (unless (or (assoc buffer active-buffers)
                        (member buffer allocations))
-             (push (cons buffer (mapcar #'car (petalisp.ir:buffer-readers buffer)))
+             (push (cons buffer (buffer-outputs buffer))
                    active-buffers)
              (push buffer allocations)))
          kernel))
@@ -60,8 +60,8 @@
         (active-buffers '()))
     (petalisp.ir:map-buffers-and-kernels
      (lambda (buffer)
-       (when (leaf-buffer-p buffer)
-         (push (cons buffer (mapcar #'car (petalisp.ir:buffer-readers buffer)))
+       (when (petalisp.ir:leaf-buffer-p buffer)
+         (push (cons buffer (buffer-outputs buffer))
                active-buffers)))
      (lambda (kernel)
        (when (kernel-ready-p kernel)
@@ -85,11 +85,15 @@
   (block result
     (petalisp.ir:map-kernel-inputs
      (lambda (buffer)
-       (unless (leaf-buffer-p buffer)
+       (unless (petalisp.ir:leaf-buffer-p buffer)
          (return-from result nil)))
      kernel)
     t))
 
-(defun leaf-buffer-p (buffer)
-  (null
-   (petalisp.ir:buffer-writers buffer)))
+(defun buffer-outputs (buffer)
+  (petalisp.utilities:with-collectors ((result collect))
+    (petalisp.ir:map-buffer-outputs
+     (lambda (input)
+       (collect input))
+     buffer)
+    (result)))

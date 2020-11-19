@@ -62,14 +62,18 @@
    ;; Accessors
    #:buffer-shape
    #:buffer-ntype
-   #:buffer-readers
-   #:buffer-writers
    #:buffer-storage
    #:buffer-data
+   #:buffer-number-of-inputs
+   #:buffer-number-of-outputs
+   #:buffer-number-of-loads
+   #:buffer-number-of-stores
    #:kernel-iteration-space
    #:kernel-blueprint
    #:kernel-buffers
    #:kernel-instruction-vector
+   #:kernel-number-of-inputs
+   #:kernel-number-of-outputs
    #:kernel-number-of-loads
    #:kernel-number-of-stores
    #:kernel-cost

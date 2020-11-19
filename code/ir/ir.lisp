@@ -2,6 +2,7 @@
 
 (in-package #:petalisp.ir)
 
+
 ;;; A buffer represents a set of memory locations big enough to hold one
 ;;; element of type ELEMENT-TYPE for each index of the buffer's shape.
 ;;; Each buffer is written to by zero or more kernels and read from zero or
@@ -357,25 +358,49 @@
 ;;;
 ;;; Miscellaneous
 
+(declaim (inline count-mapped-elements))
+(defun count-mapped-elements (map-fn what)
+  (let ((counter 0))
+    (declare (type (and fixnum unsigned-byte) counter))
+    (funcall
+     map-fn
+     (lambda (element)
+       (declare (ignore element))
+       (incf counter))
+     what)
+    counter))
+
+(defun buffer-number-of-inputs (buffer)
+  (declare (buffer buffer))
+  (length (buffer-writers buffer)))
+
+(defun buffer-number-of-outputs (buffer)
+  (declare (buffer buffer))
+  (length (buffer-readers buffer)))
+
+(defun buffer-number-of-loads (buffer)
+  (declare (buffer buffer))
+  (count-mapped-elements #'map-buffer-load-instructions buffer))
+
+(defun buffer-number-of-stores (buffer)
+  (declare (buffer buffer))
+  (count-mapped-elements #'map-buffer-store-instructions buffer))
+
+(defun kernel-number-of-inputs (kernel)
+  (declare (kernel kernel))
+  (length (kernel-sources kernel)))
+
+(defun kernel-number-of-outputs (kernel)
+  (declare (kernel kernel))
+  (length (kernel-targets kernel)))
+
 (defun kernel-number-of-loads (kernel)
   (declare (kernel kernel))
-  (let ((counter 0))
-    (declare (fixnum counter))
-    (map-kernel-load-instructions
-     (lambda (_) (declare (ignore _))
-       (incf counter))
-     kernel)
-    counter))
+  (count-mapped-elements #'map-kernel-load-instructions kernel))
 
 (defun kernel-number-of-stores (kernel)
   (declare (kernel kernel))
-  (let ((counter 0))
-    (declare (fixnum counter))
-    (map-kernel-store-instructions
-     (lambda (_) (declare (ignore _))
-       (incf counter))
-     kernel)
-    counter))
+  (count-mapped-elements #'map-kernel-store-instructions kernel))
 
 (defun kernel-highest-instruction-number (kernel)
   (declare (kernel kernel))

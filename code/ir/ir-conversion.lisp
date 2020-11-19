@@ -546,11 +546,17 @@
                  (alexandria:ensure-gethash
                   (aref (array-immediate-storage array-immediate))
                   (ir-converter-scalar-table *ir-converter*)
-                  (make-buffer :shape shape :ntype ntype :storage storage))
+                  (make-buffer
+                   :shape shape
+                   :ntype ntype
+                   :storage storage))
                  (alexandria:ensure-gethash
                   (array-immediate-storage array-immediate)
                   (ir-converter-array-table *ir-converter*)
-                  (make-buffer :shape shape :ntype ntype :storage storage))))
+                  (make-buffer
+                   :shape shape
+                   :ntype ntype
+                   :storage storage))))
            (load-instruction (make-load-instruction buffer transformation)))
       (push load-instruction (alexandria:assoc-value (kernel-sources kernel) buffer))
       (push load-instruction (alexandria:assoc-value (buffer-readers buffer) kernel))
