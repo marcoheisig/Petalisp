@@ -114,16 +114,17 @@
     (loop for lazy-array in lazy-arrays
           for transformation in transformations
           for immediate in immediates
-          for replacement = (lazy-reshape immediate (lazy-array-shape lazy-array) transformation)
-          unless (eq lazy-array replacement)
-            do (replace-lazy-array lazy-array replacement))
+          do (replace-lazy-array
+              lazy-array
+              (lazy-reshape immediate
+                            (lazy-array-shape lazy-array)
+                            transformation)))
     ;; Return the lisp datum corresponding to each immediate.
     (values-list
      (mapcar #'lisp-datum-from-immediate immediates))))
 
 (defun schedule (&rest arguments)
   (let* ((lazy-arrays (mapcar #'lazy-array arguments))
-         (shapes (mapcar #'lazy-array-shape lazy-arrays))
          (transformations
            (loop for lazy-array in lazy-arrays
                  collect
@@ -133,13 +134,14 @@
      *backend*
      (mapcar #'transform lazy-arrays transformations)
      (lambda (immediates)
-       (loop for shape in shapes
+       (loop for lazy-array in lazy-arrays
              for transformation in transformations
-             for lazy-array in lazy-arrays
              for immediate in immediates
-             for replacement = (lazy-reshape immediate shape transformation)
-             unless (eq lazy-array replacement)
-               do (replace-lazy-array lazy-array replacement))))))
+             do (replace-lazy-array
+                 lazy-array
+                 (lazy-reshape immediate
+                               (lazy-array-shape lazy-array)
+                               transformation)))))))
 
 (defun wait (&rest requests)
   (backend-wait *backend* requests)
