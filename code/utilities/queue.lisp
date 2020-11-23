@@ -9,16 +9,29 @@
             (:predicate queuep)
             (:constructor make-queue
                 (&aux (head (list '.head.)) (tail head))))
-  (lock (bordeaux-threads:make-lock) :type bordeaux-threads:lock)
-  (head nil :type list)
-  (tail nil :type list))
+  (lock (bordeaux-threads:make-lock "Queue Lock") :type bordeaux-threads:lock)
+  ;; Invariants:
+  ;;
+  ;; - HEAD and TAIL are always cons cells.
+  ;;
+  ;; - The CAR of HEAD is irrelevant.
+  ;;
+  ;; - HEAD points to the first cons of the list of items in the queue.
+  ;;
+  ;; - TAIL points to the last cons of the list of items in the queue.
+  (head nil :type cons)
+  (tail nil :type cons))
 
 (defun queue-enqueue-front (queue object)
   "Inserts OBJECT at the front of QUEUE."
   (with-accessors ((lock queue-lock)
-                   (head queue-head)) queue
+                   (head queue-head)
+                   (tail queue-tail)) queue
     (bordeaux-threads:with-lock-held (lock)
-      (push object (cdr head))))
+      (let ((new-cons (cons object (cdr head))))
+        (setf (cdr head) new-cons)
+        (when (eq head tail)
+          (setf tail new-cons)))))
   queue)
 
 (defun queue-enqueue-back (queue object)
@@ -27,9 +40,9 @@
                    (head queue-head)
                    (tail queue-tail)) queue
     (bordeaux-threads:with-lock-held (lock)
-      (let ((new-tail (list object)))
-        (setf (cdr tail) new-tail)
-        (setf tail new-tail))))
+      (let ((new-cons (list object)))
+        (setf (cdr tail) new-cons)
+        (setf tail new-cons))))
   queue)
 
 (defun queue-dequeue (queue)
@@ -42,4 +55,6 @@ whether an object was taken from the queue or not."
     (bordeaux-threads:with-lock-held (lock)
       (if (eq head tail)
           (values nil nil)
-          (values (pop (cdr head)) t)))))
+          (multiple-value-prog1 (values (pop (cdr head)) t)
+            (when (endp (cdr head))
+              (setf tail head)))))))
