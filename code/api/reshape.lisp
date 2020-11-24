@@ -64,7 +64,6 @@
               (output-mask (make-array output-rank))
               (offsets (make-array output-rank))
               (scalings (make-array output-rank))
-              (broadcast-p nil)
               (select-p nil))
           (loop for output-range in (shape-ranges output-shape)
                 for input-range in (nthcdr growth (shape-ranges input-shape))
@@ -98,8 +97,7 @@
                       ((size-one-range-p output-range)
                        (setf output-mask-entry nil)
                        (setf offset (range-start output-range))
-                       (setf scaling 0)
-                       (setf broadcast-p t))
+                       (setf scaling 0))
                       ;; The third case is that of mapping an arbitrary range
                       ;; to another one of the same size.
                       ((= (range-size input-range)
@@ -125,16 +123,18 @@
                        (error "~@<Cannot reshape the range ~S ~
                                   to the range ~S.~:@>"
                               input-range output-range)))))
-          (values
-           (make-transformation
-            :input-rank input-rank
-            :output-rank output-rank
-            :input-mask input-mask
-            :output-mask output-mask
-            :offsets offsets
-            :scalings scalings)
-           broadcast-p
-           select-p)))))
+          (let ((transformation
+                  (make-transformation
+                   :input-rank input-rank
+                   :output-rank output-rank
+                   :input-mask input-mask
+                   :output-mask output-mask
+                   :offsets offsets
+                   :scalings scalings)))
+            (values
+             transformation
+             (not (transformation-invertiblep transformation))
+             select-p))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
