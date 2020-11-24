@@ -30,8 +30,7 @@
    #:queue
    #:queuep
    #:make-queue
-   #:queue-enqueue-front
-   #:queue-enqueue-back
+   #:queue-enqueue
    #:queue-dequeue
 
    ;; wsdeque.lisp
