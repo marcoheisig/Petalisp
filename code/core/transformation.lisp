@@ -63,12 +63,12 @@
 
 ;; Forward declaration of the primary transformation constructors, because
 ;; they will be referenced before being defined.
-(declaim (ftype (function (&key (:input-rank rank)
-                                (:output-rank rank)
-                                (:input-mask sequence)
-                                (:output-mask sequence)
-                                (:offsets sequence)
-                                (:scalings sequence)))
+(declaim (ftype (function (&key (:input-rank (or rank null))
+                                (:output-rank (or rank null))
+                                (:input-mask (or sequence null))
+                                (:output-mask (or sequence null))
+                                (:offsets (or sequence null))
+                                (:scalings (or sequence null))))
                 make-transformation)
          (ftype (function (rank))
                 identity-transformation))
