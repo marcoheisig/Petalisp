@@ -62,7 +62,7 @@
    #:*backend*
    #:make-reference-backend
    #:make-ir-backend
-   #:make-native-backend
+   #:make-multicore-backend
 
    ;; Re-exports from petalisp.core
 
@@ -162,8 +162,9 @@
    #:drop-axes)
 
   (:shadowing-import-from :petalisp.ir #:make-ir-backend)
-  (:shadowing-import-from :petalisp.native-backend #:make-native-backend))
+  (:shadowing-import-from :petalisp.native-backend #:make-native-backend)
+  (:shadowing-import-from :petalisp.multicore-backend #:make-multicore-backend))
 
 (in-package #:petalisp.api)
 
-(defvar *backend* (make-native-backend))
+(defvar *backend* (make-multicore-backend))

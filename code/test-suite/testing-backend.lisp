@@ -12,10 +12,10 @@
    (%ir-backend-compiled
     :reader ir-backend-compiled
     :initform (make-ir-backend :mode :compiled))
-   (%native-backend
-    :reader native-backend
+   (%multicore-backend
+    :reader multicore-backend
     :initform
-    (make-native-backend))))
+    (make-multicore-backend))))
 
 (defun make-testing-backend ()
   (make-instance 'testing-backend))
@@ -26,18 +26,18 @@
   (with-accessors ((reference-backend reference-backend)
                    (ir-backend-interpreted ir-backend-interpreted)
                    (ir-backend-compiled ir-backend-compiled)
-                   (native-backend native-backend)) testing-backend
+                   (multicore-backend multicore-backend)) testing-backend
     (let ((reference-solutions
             (backend-compute reference-backend data-structures))
           (ir-backend-interpreted-solutions
             (backend-compute ir-backend-interpreted data-structures))
           (ir-backend-compiled-solutions
             (backend-compute ir-backend-compiled data-structures))
-          (native-backend-solutions
-            (backend-compute native-backend data-structures)))
+          (multicore-backend-solutions
+            (backend-compute multicore-backend data-structures)))
       (compare-solutions reference-solutions ir-backend-interpreted-solutions)
       (compare-solutions reference-solutions ir-backend-compiled-solutions)
-      (compare-solutions reference-solutions native-backend-solutions)
+      (compare-solutions reference-solutions multicore-backend-solutions)
       reference-solutions)))
 
 (defun compare-solutions (solutions-1 solutions-2)
@@ -51,7 +51,7 @@
   (delete-backend (reference-backend testing-backend))
   (delete-backend (ir-backend-interpreted testing-backend))
   (delete-backend (ir-backend-compiled testing-backend))
-  (delete-backend (native-backend testing-backend))
+  (delete-backend (multicore-backend testing-backend))
   (call-next-method))
 
 (defun call-with-testing-backend (thunk)

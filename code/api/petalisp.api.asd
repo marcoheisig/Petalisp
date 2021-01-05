@@ -8,7 +8,8 @@
    "trivia"
    "petalisp.utilities"
    "petalisp.core"
-   "petalisp.native-backend")
+   "petalisp.native-backend"
+   "petalisp.multicore-backend")
 
   :in-order-to ((test-op (test-op "petalisp.test-suite")))
 

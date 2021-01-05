@@ -5,6 +5,7 @@
 
   :depends-on
   ("asdf"
+   "bordeaux-threads"
    "closer-mop"
    "petalisp"
    "petalisp.examples"
@@ -23,5 +24,6 @@
    (:file "generators")
    (:file "run-petalisp-test-suite")
    (:file "petalisp.type-inference")
+   (:file "petalisp.utilities")
    (:file "petalisp.core")
    (:file "petalisp.examples")))

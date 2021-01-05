@@ -75,6 +75,6 @@
   (define-multi-documenter document-functions document-function)
   (define-multi-documenter document-method-combinations document-method-combination)
   (define-multi-documenter document-setf-expanders document-setf-expander)
-  (define-multi-documenter documet-structures document-structure)
+  (define-multi-documenter document-structures document-structure)
   (define-multi-documenter document-types document-type)
   (define-multi-documenter document-variables document-variable))
