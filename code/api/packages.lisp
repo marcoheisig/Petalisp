@@ -62,6 +62,7 @@
    #:*backend*
    #:make-reference-backend
    #:make-ir-backend
+   #:make-native-backend
    #:make-multicore-backend
 
    ;; Re-exports from petalisp.core
