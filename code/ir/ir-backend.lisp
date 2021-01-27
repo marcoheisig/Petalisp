@@ -95,7 +95,7 @@
 
 (defun execute-node (node)
   (let ((kernel (node-kernel node)))
-    (interpret-kernel kernel (kernel-iteration-space kernel)))
+    (funcall (node-fn node) kernel (kernel-iteration-space kernel)))
   (loop for other-node in (node-users node) do
     (with-accessors ((dependencies node-dependencies)) other-node
       (setf dependencies (remove node dependencies))
