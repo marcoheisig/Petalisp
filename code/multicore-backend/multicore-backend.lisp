@@ -35,7 +35,7 @@
 
 (deftype atomic-counter ()
   #+sbcl 'sb-ext:word
-  #-sbcl fixnum)
+  #-sbcl 'fixnum)
 
 (defstruct request
   ;; The backend to which this request was made.
