@@ -61,7 +61,7 @@ This operation must only be carried out by the thread that owns the WSDEQUE."
       (let ((size (- bottom top)))
         (if (zerop size)
             (values nil nil)
-            (values (circular-array-elt circular-array (decf bottom)) t))))))
+            (values (shiftf (circular-array-elt circular-array (decf bottom)) nil) t))))))
 
 (defun wsdeque-steal (wsdeque)
   "Remove the VALUE at the top of the WSDEQUE.  Returns two values: The
@@ -77,6 +77,6 @@ This operation is thread safe."
       (let ((size (- bottom top)))
         (if (zerop size)
             (values nil nil)
-            (let ((object (circular-array-elt circular-array top)))
+            (let ((object (shiftf (circular-array-elt circular-array top) nil)))
               (incf top)
               (values object t)))))))

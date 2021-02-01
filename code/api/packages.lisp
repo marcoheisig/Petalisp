@@ -95,6 +95,7 @@
    #:shape-difference-list
    #:shape-intersection
    #:shape-intersectionp
+   #:shape-dimensions
    #:map-shape
    #:shape-contains
    #:shrink-shape

@@ -22,4 +22,5 @@
      (:static-file "test-labels.npy")
      (:static-file "train-images.npy")
      (:static-file "train-labels.npy")))
-   (:file "machine-learning")))
+   (:file "machine-learning")
+   (:file "mnist")))

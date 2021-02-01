@@ -43,4 +43,3 @@
       (setf (circular-array-elt new index)
             (circular-array-elt circular-array index)))
     new))
-

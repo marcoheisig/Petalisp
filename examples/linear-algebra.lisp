@@ -5,6 +5,10 @@
    #:common-lisp
    #:petalisp)
   (:export
+   #:coerce-to-matrix
+   #:coerce-to-scalar
+   #:matrix
+   #:square-matrix
    #:matrix
    #:square-matrix
    #:zeros
