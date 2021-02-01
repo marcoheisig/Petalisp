@@ -48,9 +48,10 @@
 (defun sigmoid-d (x)
   (α #'* x (α #'1- x)))
 
+;;; We only ship a very tiny subset of the MNIST data with Petalisp.  This
+;;; also means that learning will probably not work as expected.  You can
+;;; download the full data set at http://yann.lecun.com/exdb/mnist/.
 (defparameter *mnist*
-  (asdf:find-system "mnist")
-  #+(or)
   (asdf:find-component
    (asdf:find-system "petalisp.examples")
    "mnist-data"))
@@ -70,7 +71,7 @@
 
 (defparameter *test-labels* (load-array "test-labels.npy"))
 
-(defun main (&key (batch-size 256) (learning-rate (/ 0.01 batch-size)))
+(defun main (&key (batch-size 64) (learning-rate (/ 0.01 batch-size)))
   (destructuring-bind (n w h) (shape-dimensions (array-shape *train-images*))
     (let ((W1 (random-array (~ (* w h) ~ 128)))
           (W2 (random-array (~ 128 ~ 64)))
