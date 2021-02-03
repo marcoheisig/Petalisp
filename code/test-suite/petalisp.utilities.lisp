@@ -5,9 +5,9 @@
 (check-package '#:petalisp.utilities)
 
 (define-test wsdeque-test
-  (loop repeat 100 do
+  (loop repeat 50 do
     (let* ((n-threads (petalisp.utilities:number-of-cpus))
-           (iterations (random 50000))
+           (iterations (random 20000))
            (wsdeque (petalisp.utilities:make-wsdeque))
            (threads
              (loop for index below n-threads
