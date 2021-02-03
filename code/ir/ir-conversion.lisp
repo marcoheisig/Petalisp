@@ -189,9 +189,11 @@
     ;; immediately at cluster conversion time.
     (loop for (cons . other-conses) in (ir-converter-cons-updates *ir-converter*) do
       (let ((instruction (cdr cons)))
-        (assert (instructionp instruction))
-        (loop for other-cons in other-conses do
-          (setf (cdr other-cons) instruction))))
+        ;; The cdr might not contain an instruction if the corresponding
+        ;; dendrite has been invalidated in the meantime.
+        (when (instructionp instruction)
+          (loop for other-cons in other-conses do
+            (setf (cdr other-cons) instruction)))))
     (finalize-ir root-buffers)
     (nreverse root-buffers)))
 
@@ -249,47 +251,66 @@
   ;; is no need to keep the current cluster in the cluster table.  No new
   ;; dendrites will ever reach it.
   (remhash non-immediate (ir-converter-cluster-table *ir-converter*))
-  ;; Now we remove all invalid dendrites.  Recall that dendrites can become
-  ;; invalid if they, or another dendrite with the same stem, reach more
-  ;; than one input of a lazy fuse array.
-  (let ((valid-dendrites (remove-if-not #'dendrite-validp (cluster-dendrites cluster))))
-    (setf (cluster-dendrites cluster) valid-dendrites)
-    (cond
-      ;; If there are zero valid dendrites, the cluster can be ignored
-      ((null valid-dendrites)
-       (values))
-      ;; If all dendrites have the same stem, shape, and transformation,
-      ;; there is no need to convert this cluster at all.  We can simply
-      ;; continue growing from here.
-      ((and (petalisp.utilities:identical valid-dendrites :test #'mergeable-dendrites-p)
-            (transformation-invertiblep (dendrite-transformation (first valid-dendrites))))
-       (let* ((dendrite (first valid-dendrites))
-              (other-dendrites (rest valid-dendrites))
-              (cons (dendrite-cons dendrite)))
-         (setf (dendrite-depth dendrite)
-               (lazy-array-depth non-immediate))
-         (grow-dendrite dendrite non-immediate)
-         ;; After growing, it is important to copy the next instruction to
-         ;; the cons cells of all abandoned dendrites.  If the instruction
-         ;; is known right after growing, this can be done immediately.
-         ;; Otherwise, the copying is postponed to a later pass.
-         (unless (null other-dendrites)
-           (if (instructionp (cdr cons))
-               (loop for other-dendrite in other-dendrites do
-                 (setf (cdr (dendrite-cons other-dendrite))
-                       (cdr cons)))
-               (push (list* cons (mapcar #'dendrite-cons other-dendrites))
-                     (ir-converter-cons-updates *ir-converter*))))))
-      ;; Otherwise, actually convert the cluster.
-      (t (call-next-method)))))
+  ;; Remove all dendrites that have become invalid because their stem has
+  ;; been abandoned after encountering a lazy-fuse node.
+  (setf (cluster-dendrites cluster)
+        (remove-if-not #'dendrite-validp (cluster-dendrites cluster)))
+  ;; Don't try anything smart if there is at least one dendrite with a
+  ;; non-invertible transformation.
+  (if (find-if-not #'transformation-invertiblep (cluster-dendrites cluster)
+                     :key #'dendrite-transformation)
+      (call-next-method)
+      ;; If every transformation is invertible, we can try to merge
+      ;; dendrites with the same stem, transformation and referenced value
+      ;; number.
+      (let ((mergeable-dendrites '()))
+        (loop for dendrite in (cluster-dendrites cluster) do
+          (let ((entry (find dendrite mergeable-dendrites
+                             :key #'first
+                             :test #'mergeable-dendrites-p)))
+            (if (consp entry)
+                (push dendrite (cdr entry))
+                (push (list dendrite) mergeable-dendrites))))
+        (trivia:match mergeable-dendrites
+          ;; If there are zero mergeable dendrites left, we do nothing.
+          ((list))
+          ;; If there is exactly one list of mergeable dendrites remaining,
+          ;; we don't even have to call the next method.  Instead, we can
+          ;; simply continue growing the first one, knowing that the others
+          ;; will be patched up later.
+          ((list (list* dendrite _))
+           (setf (dendrite-depth dendrite)
+                 (lazy-array-depth non-immediate))
+           (grow-dendrite dendrite non-immediate))
+          ;; If there is more than one list of mergeable dendrites, we have
+          ;; to go through the regular cluster conversion.  However, we can
+          ;; still pull one trick: We can hide all but one dendrite of each
+          ;; list of mergeable dendrites, knowing that the others will be
+          ;; patched up later.
+          (_
+           (setf (cluster-dendrites cluster)
+                 (mapcar #'first mergeable-dendrites))
+           (call-next-method)))
+        ;; Patch up the remaining dendrites.
+        (loop for (dendrite . other-dendrites) in mergeable-dendrites do
+          (let ((cons (dendrite-cons dendrite)))
+            ;; If we know the instruction corresponding to the first
+            ;; dendrite, we copy it right away.  Otherwise, we delay that
+            ;; copying till later.
+            (if (instructionp (cdr cons))
+                (loop for other-dendrite in other-dendrites do
+                  (setf (cdr (dendrite-cons other-dendrite))
+                        (cdr cons)))
+                (push (list* cons (mapcar #'dendrite-cons other-dendrites))
+                      (ir-converter-cons-updates *ir-converter*))))))))
 
 (defun mergeable-dendrites-p (d1 d2)
   (and (eq
         (dendrite-stem d1)
         (dendrite-stem d2))
-       (shape-equal
-        (dendrite-shape d1)
-        (dendrite-shape d2))
+       (eql
+        (car (dendrite-cons d1))
+        (car (dendrite-cons d2)))
        (transformation-equal
         (dendrite-transformation d1)
         (dendrite-transformation d2))))
@@ -411,7 +432,7 @@
 
 ;;; Compute an alist whose keys are shapes and whose values are dendrites
 ;;; that are covered by that shape.  Ensure that the dendrites of each
-;;; cover a reasonable portion of that shape.  We use an empirically
+;;; entry cover a reasonable portion of that shape.  We use an empirically
 ;;; determined heuristic to decide which dendrites are to be grouped in one
 ;;; entry.
 (defun partition-dendrites (dendrites)
