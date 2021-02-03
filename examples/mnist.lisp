@@ -71,13 +71,13 @@
 
 (defparameter *test-labels* (load-array "test-labels.npy"))
 
-(defun main (&key (batch-size 64) (learning-rate (/ 0.01 batch-size)))
+(defun main (&key (batch-size 64) (learning-rate (/ 0.01 batch-size)) (iterations 10))
   (destructuring-bind (n w h) (shape-dimensions (array-shape *train-images*))
     (let ((W1 (random-array (~ (* w h) ~ 128)))
           (W2 (random-array (~ 128 ~ 64)))
           (W3 (random-array (~ 64 ~ 10))))
       (format t "~&Training the model ...~%")
-      (loop for i below 10000 do
+      (loop for i below iterations do
         ;; Pick a random batch of images and labels.
         (let* ((batch-start (random (- n batch-size)))
                (batch-end (+ batch-start batch-size))
@@ -106,10 +106,6 @@
                (dz1 (α #'* (matmul dz2 (transpose w2)) (relu-prime a1)))
                ;; dW1 = X.T * dz1
                (dW1 (matmul (transpose train-images) dz1)))
-          #+(or)
-          (petalisp.graphviz:view
-           (petalisp.ir:ir-from-lazy-arrays
-            (list a1 a2 yhat)))
           ;; Update the parameters.
           (setf (values W1 W2 W3)
                 (compute
