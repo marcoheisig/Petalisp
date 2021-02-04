@@ -152,5 +152,7 @@
    #:delete-backend
    #:make-reference-backend
    #:compute
+   #:compute-list-of-arrays
    #:schedule
+   #:schedule-list-of-arrays
    #:wait))

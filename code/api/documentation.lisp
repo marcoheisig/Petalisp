@@ -361,15 +361,30 @@ if additional network inputs are reachable from the network outputs.")
 
 (document-function compute
   "Returns, as multiple values, the computed result of each supplied
-argument.  The computed result of a lazy array is a standard Common Lisp
-array with the same rank and dimensions.  The computed result of any other
-object is that object itself."
+argument.
+
+The computed result of an array or lazy array with rank zero is the one
+element contained in this array.  The computed result of any other array or
+lazy array is an array with the same rank and dimensions.  The computed
+result of any other object is that object itself."
   (compute (α #'+ 2 #(3 4)))
   (compute (reshape #2a((1 2) (3 4)) (τ (i j) (j i))))
   (compute 2 #0A3 #(4)))
 
+(document-function compute-list-of-arrays
+  "Returns a list of computed results - one for each element in the list
+of supplied arrays.
+
+The computed result of an array or lazy array with rank zero is the one
+element contained in this array.  The computed result of any other array or
+lazy array is an array with the same rank and dimensions.  The computed
+result of any other object is that object itself."
+  (compute-list-of-arrays (list (α #'+ 2 #(3 4))))
+  (compute-list-of-arrays (list (reshape #2a((1 2) (3 4)) (τ (i j) (j i)))))
+  (compute-list-of-arrays (list 2 #0A3 #(4))))
+
 (document-function schedule
-  "Hints that it would be worthwhile to compute the supplied arguments
+  "Hints that it would be worthwhile to compute the supplied arrays
 asynchronously.  Returns an opaque object that can be supplied to WAIT to
 wait until the scheduled operation has been performed.
 
@@ -383,6 +398,22 @@ by rewriting them to something like
  (progn (schedule array-1 array-2)
         (run-expensive-task)
         (compute array-1 array-2)).")
+
+(document-function schedule-list-of-arrays
+  "Hints that it would be worthwhile to compute all arrays in the supplied
+list of arrays asynchronously.  Returns an opaque object that can be
+supplied to WAIT to wait until the scheduled operation has been performed.
+
+This function allows speeding up certain programs like
+
+ (progn (run-expensive-task)
+        (compute-list-of-arrays l))
+
+by rewriting them to something like
+
+ (progn (schedule-list-of-arrays l)
+        (run-expensive-task)
+        (compute-list-of-arrays l)).")
 
 (document-function wait
   "Blocks until the work designated by some SCHEDULE operations has been

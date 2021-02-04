@@ -51,7 +51,9 @@
    #:fuse
    #:fuse*
    #:compute
+   #:compute-list-of-arrays
    #:schedule
+   #:schedule-list-of-arrays
    #:wait
    #:prepare
    #:prepare-list-of-arrays

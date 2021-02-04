@@ -93,9 +93,13 @@
 ;;;
 ;;; API
 
-(defun compute (&rest arguments)
+(defun compute (&rest arrays)
+  (values-list
+   (compute-list-of-arrays arrays)))
+
+(defun compute-list-of-arrays (arrays)
   ;; Collapse all arguments so that they can be represented as Lisp arrays.
-  (let* ((lazy-arrays (mapcar #'lazy-array arguments))
+  (let* ((lazy-arrays (mapcar #'lazy-array arrays))
          (transformations
            (loop for lazy-array in lazy-arrays
                  collect
@@ -120,11 +124,13 @@
                             (lazy-array-shape lazy-array)
                             transformation)))
     ;; Return the lisp datum corresponding to each immediate.
-    (values-list
-     (mapcar #'lisp-datum-from-immediate immediates))))
+    (mapcar #'lisp-datum-from-immediate immediates)))
 
-(defun schedule (&rest arguments)
-  (let* ((lazy-arrays (mapcar #'lazy-array arguments))
+(defun schedule (&rest arrays)
+  (schedule-list-of-arrays arrays))
+
+(defun schedule-list-of-arrays (arrays)
+  (let* ((lazy-arrays (mapcar #'lazy-array arrays))
          (transformations
            (loop for lazy-array in lazy-arrays
                  collect
