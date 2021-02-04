@@ -129,7 +129,7 @@
     ((backend multicore-backend)
      (lazy-arrays list))
   (let ((request (backend-schedule backend lazy-arrays #'dummy-finalizer)))
-    (backend-wait backend request)
+    (backend-wait backend (list request))
     (mapcar (alexandria:compose #'lazy-array #'petalisp.ir:buffer-storage)
             (request-ir-roots request))))
 
@@ -150,15 +150,15 @@
 
 (defmethod backend-wait
     ((backend multicore-backend)
-     (request request))
-  (declare (optimize debug))
-  (with-accessors ((lock request-lock)
-                   (cvar request-cvar)
-                   (pending-roots request-pending-roots)) request
-    (unless (zerop pending-roots)
-      (bordeaux-threads:with-lock-held (lock)
-        (bordeaux-threads:condition-wait cvar lock)
-        (assert (zerop pending-roots))))))
+     (requests list))
+  (loop for request in requests do
+    (with-accessors ((lock request-lock)
+                     (cvar request-cvar)
+                     (pending-roots request-pending-roots)) request
+      (unless (zerop pending-roots)
+        (bordeaux-threads:with-lock-held (lock)
+          (bordeaux-threads:condition-wait cvar lock)
+          (assert (zerop pending-roots)))))))
 
 (defvar *available-kernels*)
 (defvar *request*)
@@ -314,6 +314,9 @@
                ;; been completed.
                (when (zerop (atomics:atomic-decf (request-pending-roots request)))
                  (bordeaux-threads:with-lock-held ((request-lock request))
+                   (funcall (request-finalizer request)
+                            (mapcar #'petalisp.ir:buffer-storage
+                                    (request-ir-roots request)))
                    (bordeaux-threads:condition-notify (request-cvar request))))
                ;; If we are dealing with an interior buffer, we decrement
                ;; the number of pending buffers of each kernel that reads

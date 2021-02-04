@@ -116,7 +116,7 @@
           for immediate in immediates
           do (replace-lazy-array
               lazy-array
-              (lazy-reshape immediate
+              (lazy-reshape (lazy-array immediate)
                             (lazy-array-shape lazy-array)
                             transformation)))
     ;; Return the lisp datum corresponding to each immediate.
@@ -139,7 +139,7 @@
              for immediate in immediates
              do (replace-lazy-array
                  lazy-array
-                 (lazy-reshape immediate
+                 (lazy-reshape (lazy-array immediate)
                                (lazy-array-shape lazy-array)
                                transformation)))))))
 
