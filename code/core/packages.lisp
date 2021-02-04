@@ -141,7 +141,7 @@
    #:broadcast-list-of-arrays
    #:copy-arrays
    #:substitute-arrays
-   #:lisp-datum-from-immediate
+   #:array-from-immediate
 
    ;; Backend
    #:*backend*

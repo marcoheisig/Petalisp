@@ -93,6 +93,12 @@
 ;;;
 ;;; API
 
+(defun lisp-datum-from-immediate (immediate)
+  (let ((array (array-from-immediate immediate)))
+    (if (zerop (array-rank array))
+        (aref array)
+        array)))
+
 (defun compute (&rest arrays)
   (values-list
    (compute-list-of-arrays arrays)))

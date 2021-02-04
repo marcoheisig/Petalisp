@@ -40,7 +40,7 @@
 
 (defgeneric array-immediate-storage (array))
 
-(defgeneric lisp-datum-from-immediate (lazy-array))
+(defgeneric array-from-immediate (lazy-array))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -296,19 +296,16 @@
             (element-type lazy-array)
             (array-shape lazy-array))))
 
-;; TODO remove this function?
 (defmethod transform ((lazy-array lazy-array) (transformation transformation))
   (lazy-reshape
    lazy-array
    (transform (array-shape lazy-array) transformation)
    (invert-transformation transformation)))
 
-(defmethod lisp-datum-from-immediate ((array-immediate array-immediate))
-  (if (zerop (rank array-immediate))
-      (aref (array-immediate-storage array-immediate))
-      (array-immediate-storage array-immediate)))
+(defmethod array-from-immediate ((array-immediate array-immediate))
+  (array-immediate-storage array-immediate))
 
-(defmethod lisp-datum-from-immediate ((range-immediate range-immediate))
+(defmethod array-from-immediate ((range-immediate range-immediate))
   (let* ((shape (array-shape range-immediate))
          (range (first (shape-ranges shape)))
          (size (range-size range))

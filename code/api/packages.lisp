@@ -146,7 +146,6 @@
    #:array-immediate
    #:range-immediate
    #:make-range-immediate
-   #:lisp-datum-from-immediate
 
    ;; Network
    #:network

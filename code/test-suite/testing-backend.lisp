@@ -44,8 +44,8 @@
   (loop for immediate-1 in solutions-1
         for immediate-2 in solutions-2 do
           (is (approximately-equal
-               (lisp-datum-from-immediate immediate-1)
-               (lisp-datum-from-immediate immediate-2)))))
+               (array-from-immediate immediate-1)
+               (array-from-immediate immediate-2)))))
 
 (defmethod delete-backend ((testing-backend testing-backend))
   (delete-backend (reference-backend testing-backend))
