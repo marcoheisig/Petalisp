@@ -29,6 +29,7 @@
    (:file "interior" :depends-on ("packages"))
    (:file "network" :depends-on ("alpha" "reshape"))
    (:file "packages")
+   (:file "prepare" :depends-on ("packages"))
    (:file "reshape" :depends-on ("shape-syntax"))
    (:file "shape-syntax" :depends-on ("packages"))
    (:file "slice" :depends-on ("packages"))
@@ -49,6 +50,7 @@
      "interior"
      "network"
      "packages"
+     "prepare"
      "reshape"
      "drop-axes"
      "shape-syntax"

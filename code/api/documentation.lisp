@@ -388,3 +388,15 @@ by rewriting them to something like
   "Blocks until the work designated by some SCHEDULE operations has been
 completed.  Each argument must be one of the opaque objects returned by
 calling SCHEDULE.")
+
+(document-function prepare
+  "Returns, as multiple values, the array immediates corresponding to the
+supplied arrays."
+  (prepare 1 #(2 3))
+  (prepare (α #'+ 2 3)))
+
+(document-function prepare-list-of-arrays
+  "Returns a list of array immediates, one for each array in the supplied
+list of arrays."
+  (prepare-list-of-arrays (list 1 #(2 3)))
+  (prepare-list-of-arrays (list (α #'+ 2 3))))

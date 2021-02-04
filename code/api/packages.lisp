@@ -53,6 +53,8 @@
    #:compute
    #:schedule
    #:wait
+   #:prepare
+   #:prepare-list-of-arrays
    #:array-indices
    #:shape-indices
    #:define-parallel-aliases
