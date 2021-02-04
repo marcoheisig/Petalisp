@@ -288,10 +288,10 @@
   1)
 
 (defmethod print-object ((empty-array empty-array) stream)
-  (print-unreadable-object (empty-array stream :type t :identity t)))
+  (print-unreadable-object (empty-array stream :type t :identity nil)))
 
 (defmethod print-object ((lazy-array lazy-array) stream)
-  (print-unreadable-object (lazy-array stream :type t :identity t)
+  (print-unreadable-object (lazy-array stream :type t :identity nil)
     (format stream "~S ~S"
             (element-type lazy-array)
             (array-shape lazy-array))))
