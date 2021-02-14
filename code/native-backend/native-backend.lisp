@@ -53,5 +53,5 @@
 
 (defmethod backend-wait
     ((backend native-backend)
-     (promise t))
-  (lparallel.promise:force promise))
+     (requests list))
+  (mapcar #'lparallel.promise:force requests))
