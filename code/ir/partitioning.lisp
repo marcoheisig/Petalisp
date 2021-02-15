@@ -37,7 +37,7 @@
                             ;; than the size of the kernel iteration space,
                             ;; we scale down the number of transferred
                             ;; bytes accordingly.
-                            (* (float (shape-size (buffer-shape buffer)))
+                            (* (float (buffer-size buffer))
                                (/ (float size))
                                (float
                                 (petalisp.type-inference:ntype-size

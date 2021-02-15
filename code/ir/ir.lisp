@@ -36,6 +36,9 @@
   (not (or (leaf-buffer-p buffer)
            (root-buffer-p buffer))))
 
+(defun buffer-size (buffer)
+  (shape-size (buffer-shape buffer)))
+
 ;;; A kernel represents a computation that, for each element in its
 ;;; iteration space, reads from some buffers and writes to some buffers.
 (defstruct (kernel
@@ -78,6 +81,7 @@
 ;;; values of the cdr is being referenced.
 (defstruct (instruction
             (:predicate instructionp)
+            (:copier nil)
             (:constructor nil))
   (number 0 :type fixnum)
   (inputs '() :type list))
@@ -87,6 +91,7 @@
 (defstruct (call-instruction
             (:include instruction)
             (:predicate call-instruction-p)
+            (:copier nil)
             (:constructor make-call-instruction (number-of-values operator inputs)))
   (operator nil :type (or function symbol))
   (number-of-values nil :type (integer 0 (#.multiple-values-limit))))
@@ -96,6 +101,7 @@
 (defstruct (iterating-instruction
             (:include instruction)
             (:predicate iterating-instruction-p)
+            (:copier nil)
             (:constructor nil)
             (:conc-name instruction-))
   (transformation nil :type transformation))
@@ -107,6 +113,7 @@
 (defstruct (iref-instruction
             (:include iterating-instruction)
             (:predicate iref-instruction-p)
+            (:copier nil)
             (:constructor make-iref-instruction
                 (transformation))))
 
@@ -117,9 +124,16 @@
 (defstruct (load-instruction
             (:include iterating-instruction)
             (:predicate load-instruction-p)
-            (:constructor make-load-instruction
+            (:copier nil)
+            (:constructor %make-load-instruction
                 (buffer transformation)))
   (buffer nil :type buffer))
+
+(defun make-load-instruction (kernel buffer transformation)
+  (let ((load-instruction (%make-load-instruction buffer transformation)))
+    (push load-instruction (alexandria:assoc-value (kernel-sources kernel) buffer))
+    (push load-instruction (alexandria:assoc-value (buffer-readers buffer) kernel))
+    load-instruction))
 
 ;;; A store instruction represents a write to main memory.  It stores its
 ;;; one and only input at the entry of the buffer storage specified by the
@@ -128,10 +142,16 @@
 (defstruct (store-instruction
             (:include iterating-instruction)
             (:predicate store-instruction-p)
-            (:constructor make-store-instruction
-                (value buffer transformation
-                 &aux (inputs (list value)))))
+            (:copier nil)
+            (:constructor %make-store-instruction
+                (inputs buffer transformation)))
   (buffer nil :type buffer))
+
+(defun make-store-instruction (kernel input buffer transformation)
+  (let ((store-instruction (%make-store-instruction (list input) buffer transformation)))
+    (push store-instruction (alexandria:assoc-value (kernel-targets kernel) buffer))
+    (push store-instruction (alexandria:assoc-value (buffer-writers buffer) kernel))
+    store-instruction))
 
 (defun store-instruction-input (store-instruction)
   (declare (store-instruction store-instruction))
@@ -427,6 +447,10 @@
      kernel)
     (nreverse buffers)))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; IR Modifications
+
 (defun delete-kernel (kernel)
   (map-kernel-inputs
    (lambda (buffer)
@@ -441,22 +465,3 @@
   (setf (kernel-instruction-vector kernel)
         #())
   (values))
-
-(defun merge-kernels (kernel other-kernel)
-  (map-kernel-inputs
-   (lambda (buffer)
-     (loop for entry in (buffer-readers buffer)
-           when (eq (car entry) other-kernel)
-             do (setf (car entry) kernel)))
-   other-kernel)
-  (map-kernel-outputs
-   (lambda (buffer)
-     (loop for entry in (buffer-writers buffer)
-           when (eq (car entry) other-kernel)
-             do (setf (car entry) kernel)))
-   other-kernel)
-  (alexandria:appendf (kernel-sources kernel) (kernel-sources other-kernel))
-  (alexandria:appendf (kernel-targets kernel) (kernel-targets other-kernel))
-  (setf (kernel-sources other-kernel) '())
-  (setf (kernel-targets other-kernel) '())
-  kernel)

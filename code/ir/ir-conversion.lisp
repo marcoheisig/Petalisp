@@ -52,7 +52,14 @@
   (scalar-table (make-hash-table :test #'eql) :type hash-table)
   ;; A list of lists of conses that need to be updated by writing the value
   ;; of the cdr of the first cons to the cdr of each remaining cons.
-  (cons-updates '() :type list))
+  (cons-updates '() :type list)
+  ;; The maximum size we allow a kernel to grow during buffer pruning.
+  (kernel-size-threshold nil :type unsigned-byte :read-only t)
+  ;; An list of potentially superfluous buffers, i.e., buffer where all
+  ;; dendrites are disjoint and cover the entire buffer.  Cluster
+  ;; conversion also makes sure that the data slot of each potentially
+  ;; superfluous buffer contains the list of dendrites reaching it.
+  (potentially-superfluous-buffers '() :type list))
 
 (defun ir-converter-next-cluster (ir-converter)
   (priority-queue:pqueue-pop
@@ -147,17 +154,13 @@
                  for index from 0
                  unless (null buffer)
                    collect
-                   (make-store-instruction (cons index nil) buffer transformation)))
+                   (make-store-instruction kernel (cons index nil) buffer transformation)))
          (dendrite (%make-dendrite
                     :stem stem
                     :shape shape
                     :transformation transformation
                     :depth (lazy-array-depth (cluster-lazy-array cluster))
                     :cons (store-instruction-input (first store-instructions)))))
-    (loop for store-instruction in store-instructions do
-      (let ((buffer (store-instruction-buffer store-instruction)))
-        (push store-instruction (alexandria:assoc-value (kernel-targets kernel) buffer))
-        (push store-instruction (alexandria:assoc-value (buffer-writers buffer) kernel))))
     (unless (null (rest store-instructions))
       (push (mapcar #'store-instruction-input store-instructions)
             (ir-converter-cons-updates *ir-converter*)))
@@ -167,8 +170,8 @@
 ;;;
 ;;; IR Conversion
 
-(defun ir-from-lazy-arrays (lazy-arrays)
-  (let ((*ir-converter* (make-ir-converter))
+(defun ir-from-lazy-arrays (lazy-arrays &key (kernel-size-threshold 32))
+  (let ((*ir-converter* (make-ir-converter :kernel-size-threshold kernel-size-threshold))
         (root-buffers '()))
     ;; Create and grow one dendrite for each root array.
     (loop for lazy-array in lazy-arrays do
@@ -194,6 +197,12 @@
         (when (instructionp instruction)
           (loop for other-cons in other-conses do
             (setf (cdr other-cons) instruction)))))
+    (prune-superfluous-buffers
+     (ir-converter-potentially-superfluous-buffers *ir-converter*))
+    ;; Collapse each buffer's shape, remove all ranges with size one from
+    ;; interior buffers, and ensure that each kernel has an instruction
+    ;; vector, and that each instruction has a number that is an index into
+    ;; that vector.
     (finalize-ir root-buffers)
     (nreverse root-buffers)))
 
@@ -204,11 +213,13 @@
    root-buffers))
 
 (defun finalize-buffer (buffer)
+  (setf (buffer-data buffer) nil)
   (if (interior-buffer-p buffer)
       (transform-buffer buffer (normalizing-transformation (buffer-shape buffer)))
       (transform-buffer buffer (collapsing-transformation (buffer-shape buffer)))))
 
 (defun finalize-kernel (kernel)
+  (setf (kernel-data kernel) nil)
   ;; We use this opportunity to compute the kernel instruction vector,
   ;; knowing it will be cached for all future invocations.
   (setf (kernel-instruction-vector kernel)
@@ -318,48 +329,52 @@
 (defmethod convert-cluster
     ((cluster cluster)
      (non-immediate non-immediate))
-  (let* ((alist (partition-dendrites (cluster-dendrites cluster)))
-         ;; Create one buffer for each alist entry.
-         (buffers
-           (loop for (shape . dendrites) in alist
+  (let* ((shape-dendrites-alist (partition-dendrites (cluster-dendrites cluster)))
+         ;; Create one buffer for each shape-dendrites-alist entry.
+         (buffer-dendrites-alist
+           (loop for (shape . dendrites) in shape-dendrites-alist
                  collect
-                 (make-buffer
-                  :shape shape
-                  :ntype (cluster-ntype cluster)))))
+                 (cons
+                  (make-buffer
+                   :shape shape
+                   :ntype (cluster-ntype cluster))
+                  dendrites))))
     ;; Emit one load instruction for each dendrite.
-    (loop for (shape . dendrites) in alist for buffer in buffers do
+    (loop for (buffer . dendrites) in buffer-dendrites-alist do
       (loop for dendrite in dendrites do
         (with-accessors ((cons dendrite-cons)
                          (kernel dendrite-kernel)
                          (transformation dendrite-transformation)) dendrite
-          (let ((load-instruction (make-load-instruction buffer transformation)))
-            (setf (cdr cons) load-instruction)
-            (push load-instruction (alexandria:assoc-value (kernel-sources kernel) buffer))
-            (push load-instruction (alexandria:assoc-value (buffer-readers buffer) kernel))))))
+          (setf (cdr cons) (make-load-instruction kernel buffer transformation)))))
     ;; Now subdivide the space of all buffers and emit one kernel per
     ;; resulting fragment, plus some copy kernels if the fragment is part
     ;; of the shapes of several buffers.
-    (let ((fragments (subdivide-shapes (mapcar #'first alist))))
+    (let ((fragments (subdivide-shapes (mapcar #'first shape-dendrites-alist))))
       (loop for (shape . bitmask) in fragments do
-        (let ((target-buffers
-                (loop for buffer in buffers
-                      for index from 0
-                      when (logbitp index bitmask)
-                        collect buffer)))
-          (let ((main-buffer (first target-buffers)))
-            (grow-dendrite (make-dendrite cluster shape (list main-buffer)) non-immediate)
-            ;; finally, emit copy kernels from the main buffer to all the
-            ;; other buffers.
-            (loop for other-buffer in (rest target-buffers) do
-              (insert-copy-kernel shape other-buffer main-buffer))))))))
+        (trivia:ematch (select-masked-elements buffer-dendrites-alist bitmask)
+          ((list* (list* main-buffer dendrites) other-entries)
+           ;; Check whether the main buffer is potentially superfluous.  If
+           ;; so, track this buffer for the later pruning phase.  Also,
+           ;; (ab)use the data slot of the buffer to record all its
+           ;; dendrites.
+           (when (and (null other-entries)
+                      (potentially-superfluous-buffer-p main-buffer dendrites))
+             (setf (buffer-data main-buffer) dendrites)
+             (push main-buffer (ir-converter-potentially-superfluous-buffers *ir-converter*)))
+           ;; Ensure that the elements of the main buffer are being computed.
+           (grow-dendrite (make-dendrite cluster shape (list main-buffer)) non-immediate)
+           ;; Emit copy kernels from the main buffer to all the other
+           ;; buffers.
+           (loop for (other-buffer . nil) in other-entries do
+             (insert-copy-kernel shape other-buffer main-buffer))))))))
 
 (defmethod convert-cluster
     ((cluster cluster)
      (lazy-multiple-value-map lazy-multiple-value-map))
-  (let* ((alist (partition-dendrites (cluster-dendrites cluster)))
-         ;; Create one set of buffers for each alist entry.
+  (let* ((shape-dendrites-alist (partition-dendrites (cluster-dendrites cluster)))
+         ;; Create one set of buffers for each shape-dendrites-alist entry.
          (list-of-buffers
-           (loop for (shape . dendrites) in alist
+           (loop for (shape . dendrites) in shape-dendrites-alist
                  collect
                  ;; Remember that we abuse the ntype slot of a lazy
                  ;; multiple value map to store a list of ntypes.
@@ -374,21 +389,18 @@
                                   :ntype (petalisp.type-inference:generalize-ntype ntype))
                        else collect nil))))
     ;; Emit one load instruction for each dendrite.
-    (loop for (shape . dendrites) in alist for buffers in list-of-buffers do
+    (loop for (shape . dendrites) in shape-dendrites-alist for buffers in list-of-buffers do
       (loop for dendrite in dendrites do
         (with-accessors ((cons dendrite-cons)
                          (kernel dendrite-kernel)
                          (transformation dendrite-transformation)) dendrite
-          (let* ((buffer (nth (car cons) buffers))
-                 (load-instruction (make-load-instruction buffer transformation)))
+          (let* ((buffer (nth (car cons) buffers)))
             (setf (car cons) 0)
-            (setf (cdr cons) load-instruction)
-            (push load-instruction (alexandria:assoc-value (kernel-sources kernel) buffer))
-            (push load-instruction (alexandria:assoc-value (buffer-readers buffer) kernel))))))
+            (setf (cdr cons) (make-load-instruction kernel buffer transformation))))))
     ;; Now subdivide the space of all buffers and emit one kernel per
     ;; resulting fragment, plus some copy kernels if the fragment is part
     ;; of the shapes of several buffers.
-    (let ((fragments (subdivide-shapes (mapcar #'first alist))))
+    (let ((fragments (subdivide-shapes (mapcar #'first shape-dendrites-alist))))
       (loop for (shape . bitmask) in fragments do
         ;; Initialize a vector of buffer lists with one entry per value
         ;; returned by the underlying lazy multiple value map operation.
@@ -413,21 +425,31 @@
                      (loop for other-buffer in (rest other-buffers) do
                        (insert-copy-kernel shape other-buffer main-buffer)))))))))
 
+(defun select-masked-elements (list bitmask)
+  (loop for element in list
+        for index from 0
+        when (logbitp index bitmask)
+          collect element))
+
+(defun potentially-superfluous-buffer-p (buffer dendrites)
+  (declare (buffer buffer) (list dendrites))
+  (and (<= (loop for dendrite in dendrites sum (shape-size (dendrite-shape dendrite)))
+           (buffer-size buffer))
+       (loop for (d1 . rest) on dendrites
+             never
+             (loop for d2 in rest
+                     thereis
+                     (shape-intersectionp (dendrite-shape d1) (dendrite-shape d2))))))
+
 (defun insert-copy-kernel (iteration-space target-buffer source-buffer)
   (let* ((rank (shape-rank iteration-space))
          (transformation (identity-transformation rank))
-         (load (make-load-instruction source-buffer transformation))
-         (store (make-store-instruction
-                 (cons 0 load)
-                 target-buffer
-                 (identity-transformation (shape-rank iteration-space))))
-         (kernel
-           (make-kernel
-            :iteration-space iteration-space
-            :sources `((,source-buffer ,load))
-            :targets `((,target-buffer ,store)))))
-    (push `(,kernel ,load) (buffer-readers source-buffer))
-    (push `(,kernel ,store) (buffer-writers target-buffer))
+         (kernel (make-kernel :iteration-space iteration-space)))
+    (make-store-instruction
+     kernel
+     (cons 0 (make-load-instruction kernel source-buffer transformation))
+     target-buffer
+     transformation)
     kernel))
 
 ;;; Compute an alist whose keys are shapes and whose values are dendrites
@@ -493,11 +515,11 @@
         (1 (let ((input (nth (position-if-not #'empty-shape-p intersections) inputs)))
              (grow-dendrite dendrite input)))
         (otherwise
+         ;; Invalidate the current kernel and its dendrites.
          (setf (stem-validp stem) nil)
          (delete-kernel kernel)
-         ;; Invalidate the current kernel and its dendrites.  Try growing
-         ;; from the cluster again, but with one stem for each reachable
-         ;; fusion input.
+         ;; Try growing from the cluster again, but with one stem for each
+         ;; reachable fusion input.
          (loop for input in inputs
                for intersection in intersections
                unless (empty-shape-p intersection)
@@ -577,11 +599,9 @@
                   (make-buffer
                    :shape shape
                    :ntype ntype
-                   :storage storage))))
-           (load-instruction (make-load-instruction buffer transformation)))
-      (push load-instruction (alexandria:assoc-value (kernel-sources kernel) buffer))
-      (push load-instruction (alexandria:assoc-value (buffer-readers buffer) kernel))
-      (setf (cdr cons) load-instruction))))
+                   :storage storage)))))
+      (setf (cdr cons)
+            (make-load-instruction kernel buffer transformation)))))
 
 (defmethod grow-dendrite
     ((dendrite dendrite)
@@ -590,3 +610,247 @@
                    (transformation dendrite-transformation)) dendrite
     (setf (cdr cons)
           (make-iref-instruction transformation))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Buffer Pruning
+;;;
+;;; The IR conversion occasionally inserts superfluous buffers,
+;;; i.e. buffers that could be removed altogether by substituting all loads
+;;; to it with copies of one of the kernels storing to it.
+;;;
+;;; We could perform this optimization during cluster conversion, but then
+;;; there would be no limit on the size of the generated kernels.  So
+;;; instead we delay this pruning step until after the entire graph is
+;;; converted, and we stop pruning before kernels grow too large.  To make
+;;; most of the limited number of consecutive prunes, we perform the
+;;; pruning from the largest prunes to the smallest ones.
+
+;;; Each individual prune describes how a copy of one writer kernel can be
+;;; incorporated into one reader kernel.
+(defstruct prune
+  ;; The number of elements that would be removed by applying that prune.
+  (size nil :type unsigned-byte :read-only t)
+  ;; An alist where each key is a kernel, and where each value is a list of
+  ;; entries of the form (dendrite writer store-instruction).
+  (buffers '() :type list :read-only t))
+
+(defun prune-superfluous-buffers (potentially-superfluous-buffers)
+  ;; Determine the list of valid prunes, and sort them by size in
+  ;; descending order.  This way, later steps automatically start with the
+  ;; largest and most promising prunes.
+  (mapc
+   #'maybe-prune
+   (sort (loop for buffer in potentially-superfluous-buffers
+               when (find-prune buffer) collect it)
+         #'> :key #'prune-size)))
+
+(defvar *prune*)
+
+(defun maybe-prune (prune)
+  (let ((*prune* prune)
+        (readers '())
+        (writers '())
+        (substitutes '()))
+    ;; Determine all kernels reading from any of the prune's buffers.
+    (loop for buffer in (prune-buffers prune) do
+      (map-buffer-outputs
+       (lambda (reader) (pushnew reader readers))
+       buffer))
+    ;; Determine all kernels writing to any of the prune's buffers.
+    (loop for buffer in (prune-buffers prune) do
+      (map-buffer-inputs
+       (lambda (writer) (pushnew writer writers))
+       buffer))
+    ;; For each reader that is not also a writer, we compute a new kernel
+    ;; where any reference to a superfluous buffer is replaced by a copy of
+    ;; the kernel writing to the referenced part of the superfluous buffer.
+    (loop for reader in (set-difference readers writers) do
+      (multiple-value-bind (substitute substitute-size)
+          (make-substitute-kernel reader)
+        (push substitute substitutes)
+        ;; If any of the new kernels has grown too large, we give up.
+        (when (> substitute-size (ir-converter-kernel-size-threshold *ir-converter*))
+          (mapc #'delete-kernel substitutes)
+          (return-from maybe-prune))))
+    ;; Remove all readers and writers.
+    (mapc #'delete-kernel readers)
+    (mapc #'delete-kernel writers)))
+
+;;; Returns a prune involving the supplied buffer, or NIL, if there is no
+;;; valid prune associated with that buffer.
+(defun find-prune (buffer)
+  (let (;; An alist where each key is a buffer that may be rendered
+        ;; obsolete by the prune, and where the corresponding value is a
+        ;; list of all dendrites that have reached that buffer.
+        (buffer-dendrites-alist '())
+        ;; The sum of the number of elements of all the buffers that are
+        ;; rendered obsolete by this prune.
+        (size 0))
+    ;; Populate the buffer dendrites alist and clear each buffer's data
+    ;; slot.
+    (labels ((scan-buffer (buffer)
+               (when (buffer-data buffer)
+                 (push (list* buffer (shiftf (buffer-data buffer) nil))
+                       buffer-dendrites-alist)
+                 (map-buffer-outputs
+                  (lambda (reader)
+                    (map-kernel-inputs
+                     (lambda (buffer)
+                       (scan-buffer buffer))
+                     reader))
+                  buffer))))
+      (scan-buffer buffer))
+    (when (null buffer-dendrites-alist)
+      (return-from find-prune nil))
+    ;; Ensure that each dendrite has a unique associated writer.
+    (loop for (buffer . dendrites) in buffer-dendrites-alist do
+      (incf size (buffer-size buffer))
+      (loop for dendrite in dendrites do
+        (assert (eq buffer (load-instruction-buffer (cdr (dendrite-cons dendrite)))))
+        (block check-one-dendrite
+          (map-buffer-inputs
+           (lambda (writer)
+             (map-kernel-store-instructions
+              (lambda (store-instruction)
+                (when (and (eq (store-instruction-buffer store-instruction) buffer)
+                           (subshapep (dendrite-shape dendrite)
+                                      (transform (kernel-iteration-space writer)
+                                                 (store-instruction-transformation store-instruction))))
+                  (return-from check-one-dendrite)))
+              writer))
+           buffer)
+          ;; If we reach this point, it means we haven't found a unique
+          ;; writer for this particular dendrite.  Give up.
+          (return-from find-prune nil))))
+    (make-prune
+     :size size
+     :buffers
+     ;; Mark each buffer that is part of a prune as superfluous.
+     (mapcar #'car buffer-dendrites-alist))))
+
+;;; An alist whose keys are of the form (kernel . transformation), and
+;;; whose values are hash tables mapping from old instructions to their
+;;; copies.
+(defvar *instruction-tables*)
+
+;;; A hash table mapping from old instructions to their copies.
+(defvar *instruction-table*)
+
+(defun ensure-instruction-table (kernel transformation)
+  (loop for (entry . table) in *instruction-tables* do
+    (when (and (eq (car entry) kernel)
+               (transformation-equal (cdr entry) transformation))
+      (return-from ensure-instruction-table table)))
+  (let ((instruction-table (make-hash-table :test #'eq)))
+    (push (cons (cons kernel transformation) instruction-table)
+          *instruction-tables*)
+    instruction-table))
+
+(defmacro ensure-instruction-clone (instruction clone-form)
+  (alexandria:once-only (instruction)
+    `(or (gethash ,instruction *instruction-table*)
+         (setf (gethash ,instruction *instruction-table*)
+               ,clone-form))))
+
+;;; Create a copy of KERNEL, but where each reference to a superfluous
+;;; buffer is replaced by a copy of the instructions of the kernel
+;;; producing the elements of that buffer.  Returns the size of the
+;;; resulting kernel as a second argument.
+(defun make-substitute-kernel (kernel)
+  (let* ((*instruction-tables* '())
+         (*instruction-table* (make-hash-table :test #'eq))
+         (iteration-space (kernel-iteration-space kernel))
+         (substitute-kernel (make-kernel :iteration-space iteration-space)))
+    (loop for (buffer . store-instructions) in (kernel-targets kernel) do
+      (loop for store-instruction in store-instructions do
+        (let* ((input (store-instruction-input store-instruction))
+               (buffer (store-instruction-buffer store-instruction))
+               (transformation (identity-transformation (shape-rank iteration-space))))
+          (make-store-instruction
+           substitute-kernel
+           (clone-reference (car input) (cdr input) substitute-kernel transformation)
+           buffer
+           (store-instruction-transformation store-instruction)))))
+    (values
+     substitute-kernel
+     (+ (hash-table-count *instruction-table*)
+        (loop for (entry . instruction-table) in *instruction-tables*
+              sum (hash-table-count instruction-table))))))
+
+;;; Copy an reference to an instruction from another kernel into KERNEL,
+;;; using the supplied instruction table to avoid cloning an instruction
+;;; twice.
+(defgeneric clone-reference (value-n instruction kernel transformation))
+
+(defmethod clone-reference
+    ((value-n integer)
+     (call-instruction call-instruction)
+     (kernel kernel)
+     (transformation transformation))
+  (cons
+   value-n
+   (ensure-instruction-clone
+    call-instruction
+    (make-call-instruction
+     (call-instruction-number-of-values call-instruction)
+     (call-instruction-operator call-instruction)
+     (loop for (value-n . instruction) in (call-instruction-inputs call-instruction)
+           collect
+           (clone-reference value-n instruction kernel transformation))))))
+
+(defmethod clone-reference
+    ((value-n (eql 0))
+     (iref-instruction iref-instruction)
+     (kernel kernel)
+     (transformation transformation))
+  (cons
+   value-n
+   (ensure-instruction-clone
+    iref-instruction
+    (make-iref-instruction
+     (compose-transformations
+      (iref-instruction-transformation iref-instruction)
+      transformation)))))
+
+(defmethod clone-reference
+    ((value-n (eql 0))
+     (load-instruction load-instruction)
+     (kernel kernel)
+     (transformation transformation))
+  (let* ((buffer (load-instruction-buffer load-instruction))
+         (transformation
+           (compose-transformations
+            (load-instruction-transformation load-instruction)
+            transformation)))
+    (if (member buffer (prune-buffers *prune*))
+        ;; If the buffer is to be pruned, we replace the load instruction
+        ;; by a clone of the matching store instruction.
+        (let ((reader-shape (transform (kernel-iteration-space kernel) transformation)))
+          (map-buffer-inputs
+           (lambda (writer)
+             (loop for (store-buffer . store-instructions) in (kernel-targets writer) do
+               (when (eq store-buffer buffer)
+                 (loop for store-instruction in store-instructions do
+                   (when (subshapep
+                          reader-shape
+                          (transform (kernel-iteration-space writer)
+                                     (store-instruction-transformation store-instruction)))
+                     (let* ((input (store-instruction-input store-instruction))
+                            (transformation
+                              (compose-transformations
+                               (invert-transformation
+                                (store-instruction-transformation store-instruction))
+                               transformation))
+                            (*instruction-table* (ensure-instruction-table writer transformation)))
+                       (return-from clone-reference
+                         (clone-reference (car input) (cdr input) kernel transformation))))))))
+           buffer)
+          (error "Invalid prune."))
+        ;; If the buffer is not to be pruned, simply create a new load
+        ;; instruction and register it with the kernel and the buffer.
+        (cons
+         value-n
+         (ensure-instruction-clone
+          load-instruction
+          (make-load-instruction kernel buffer transformation))))))

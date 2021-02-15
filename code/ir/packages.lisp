@@ -61,6 +61,7 @@
 
    ;; Accessors
    #:buffer-shape
+   #:buffer-size
    #:buffer-ntype
    #:buffer-storage
    #:buffer-data
