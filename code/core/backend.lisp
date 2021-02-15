@@ -84,7 +84,7 @@
 (defmethod backend-wait
     ((backend backend)
      (requests list))
-  (mapcar #'funcall requests))
+  (mapc #'funcall requests))
 
 (defmethod delete-backend ((backend backend))
   (change-class backend 'deleted-backend))
