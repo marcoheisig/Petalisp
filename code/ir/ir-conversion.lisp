@@ -704,31 +704,10 @@
   (let (;; An alist where each key is a buffer that may be rendered
         ;; obsolete by the prune, and where the corresponding value is a
         ;; list of all dendrites that have reached that buffer.
-        (buffer-dendrites-alist '())
+        (buffer-dendrites-alist (collect-prune-buffer-dendrites-alist buffer))
         ;; The sum of the number of elements of all the buffers that are
         ;; rendered obsolete by this prune.
         (size 0))
-    ;; Populate the buffer dendrites alist and clear each buffer's data
-    ;; slot.
-    (labels ((scan-buffer (buffer)
-               (when (buffer-data buffer)
-                 (push (list* buffer (shiftf (buffer-data buffer) nil))
-                       buffer-dendrites-alist)
-                 (map-buffer-outputs
-                  (lambda (reader)
-                    (map-kernel-inputs
-                     (lambda (buffer)
-                       (scan-buffer buffer))
-                     reader))
-                  buffer)
-                 (map-buffer-inputs
-                  (lambda (writer)
-                    (map-kernel-outputs
-                     (lambda (buffer)
-                       (scan-buffer buffer))
-                     writer))
-                  buffer))))
-      (scan-buffer buffer))
     (when (null buffer-dendrites-alist)
       (return-from find-prune nil))
     ;; Ensure that each dendrite has a unique associated writer.
@@ -756,6 +735,41 @@
      :buffers
      ;; Mark each buffer that is part of a prune as superfluous.
      (mapcar #'car buffer-dendrites-alist))))
+
+;; Collect the buffer dendrites alist for the current buffer and all
+;; potentially superfluous buffers that have a chain of neighbors
+;; connecting them to the current buffer.  While collecting, clear the data
+;; slot of each scanned buffer.  (Recall that the data slot stores all
+;; dendrites into that buffer if and only if that buffer is potentially
+;; superfluous.)
+(defun collect-prune-buffer-dendrites-alist (buffer)
+  (let ((buffer-dendrites-alist '()))
+    (labels ((scan-buffer (buffer)
+               (when (buffer-data buffer)
+                 (push (list* buffer (shiftf (buffer-data buffer) nil))
+                       buffer-dendrites-alist)
+                 (scan-neighbors buffer)))
+             (scan-neighbors (buffer)
+               ;; Scan all buffers that are read by a kernel that also
+               ;; reads the current buffer.
+               (map-buffer-outputs
+                (lambda (reader)
+                  (map-kernel-inputs
+                   (lambda (buffer)
+                     (scan-buffer buffer))
+                   reader))
+                buffer)
+               ;; Scan all buffers that are written to by a kernel that
+               ;; also writes to the current buffer.
+               (map-buffer-inputs
+                (lambda (writer)
+                  (map-kernel-outputs
+                   (lambda (buffer)
+                     (scan-buffer buffer))
+                   writer))
+                buffer)))
+      (scan-buffer buffer))
+    buffer-dendrites-alist))
 
 ;;; An alist whose keys are of the form (kernel . transformation), and
 ;;; whose values are hash tables mapping from old instructions to their
