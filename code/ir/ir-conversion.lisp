@@ -141,6 +141,9 @@
   (declare (dendrite dendrite))
   (stem-validp (dendrite-stem dendrite)))
 
+(defun dendrite-value-n (dendrite)
+  (car (dendrite-cons dendrite)))
+
 (defun make-dendrite (cluster shape buffers)
   (declare (cluster cluster) (shape shape) (list buffers))
   (let* ((transformation (identity-transformation (shape-rank shape)))
@@ -368,62 +371,80 @@
            (loop for (other-buffer . nil) in other-entries do
              (insert-copy-kernel shape other-buffer main-buffer))))))))
 
+;;; This method is quite similar to the one for general non-immediate
+;;; arrays, but the differences have proven to be too large to combine both
+;;; methods.  The main difference is that we need to allocate buffers for
+;;; each of the resulting values of the instruction.
 (defmethod convert-cluster
     ((cluster cluster)
      (lazy-multiple-value-map lazy-multiple-value-map))
+  ;; During partitioning, we treat all dendrites as if they'd write into
+  ;; the same buffer, although in practice the buffer they write to is
+  ;; determined by their value number.  The reason is that we want 
   (let* ((shape-dendrites-alist (partition-dendrites (cluster-dendrites cluster)))
-         ;; Create one set of buffers for each shape-dendrites-alist entry.
-         (list-of-buffers
-           (loop for (shape . dendrites) in shape-dendrites-alist
+         ;; A list of buffer-dendrites alists, one for each value returned
+         ;; by the lazy multiple value map instruction.  Each
+         ;; buffer-dendrites alist has the same length as the shape
+         ;; dendrites alist.  Entries of a buffer-dendrites alist are NIL
+         ;; in case the corresponding buffer is never referenced.
+         (list-of-buffer-dendrites-alists
+           ;; Remember that we abuse the ntype slot of a lazy multiple
+           ;; value map to store a list of ntypes - one for each of its
+           ;; multiple values.
+           (loop for element-ntype in (element-ntype lazy-multiple-value-map)
+                 for buffer-ntype = (petalisp.type-inference:generalize-ntype element-ntype)
+                 for value-n from 0
                  collect
-                 ;; Remember that we abuse the ntype slot of a lazy
-                 ;; multiple value map to store a list of ntypes.
-                 (loop for ntype in (element-ntype lazy-multiple-value-map)
-                       for index from 0
-                       ;; Don't create buffers that are never referenced.
-                       when (loop for dendrite in dendrites
-                                  for value-n = (car (dendrite-cons dendrite))
-                                    thereis (= index value-n))
-                         collect (make-buffer
-                                  :shape shape
-                                  :ntype (petalisp.type-inference:generalize-ntype ntype))
-                       else collect nil))))
+                 (loop for entry in shape-dendrites-alist
+                       for dendrites = (remove value-n (cdr entry)
+                                               :key #'dendrite-value-n
+                                               :test #'/=)
+                       collect
+                       (if (null dendrites)
+                           nil
+                           (cons (make-buffer
+                                  :shape (car entry)
+                                  :ntype buffer-ntype)
+                                 dendrites))))))
     ;; Emit one load instruction for each dendrite.
-    (loop for (shape . dendrites) in shape-dendrites-alist for buffers in list-of-buffers do
-      (loop for dendrite in dendrites do
-        (with-accessors ((cons dendrite-cons)
-                         (kernel dendrite-kernel)
-                         (transformation dendrite-transformation)) dendrite
-          (let* ((buffer (nth (car cons) buffers)))
-            (setf (car cons) 0)
-            (setf (cdr cons) (make-load-instruction kernel buffer transformation))))))
+    (loop for buffer-dendrites-alist in list-of-buffer-dendrites-alists do
+      (loop for entry in buffer-dendrites-alist do
+        (when (consp entry)
+          (loop for dendrite in (cdr entry) do
+            (with-accessors ((cons dendrite-cons)
+                             (kernel dendrite-kernel)
+                             (transformation dendrite-transformation)) dendrite
+              (setf (car cons) 0)
+              (setf (cdr cons) (make-load-instruction kernel (car entry) transformation)))))))
     ;; Now subdivide the space of all buffers and emit one kernel per
     ;; resulting fragment, plus some copy kernels if the fragment is part
     ;; of the shapes of several buffers.
-    (let ((fragments (subdivide-shapes (mapcar #'first shape-dendrites-alist))))
-      (loop for (shape . bitmask) in fragments do
-        ;; Initialize a vector of buffer lists with one entry per value
-        ;; returned by the underlying lazy multiple value map operation.
-        (let* ((n (lazy-map-number-of-values lazy-multiple-value-map))
-               (vector-of-buffers (make-sequence 'vector n :initial-element '())))
-          (loop for buffers in list-of-buffers
-                for index from 0
-                when (logbitp index bitmask)
-                  do (loop for buffer in buffers
-                           for index from 0
-                           unless (null buffer)
-                             do (push buffer (svref vector-of-buffers index))))
-          (let* ((main-buffers (map 'list #'first vector-of-buffers))
-                 (dendrite (make-dendrite cluster shape main-buffers)))
-            (grow-dendrite dendrite lazy-multiple-value-map))
-          ;; Finally, emit copy kernels from the main buffers to all the
-          ;; other buffers.
-          (loop for index from 0
-                for buffers across vector-of-buffers
-                do (let ((main-buffer (first buffers))
-                         (other-buffers (rest buffers)))
-                     (loop for other-buffer in (rest other-buffers) do
-                       (insert-copy-kernel shape other-buffer main-buffer)))))))))
+    (loop for (shape . bitmask) in (subdivide-shapes (mapcar #'first shape-dendrites-alist)) do
+      (let* ((list-of-filtered-buffer-dendrites-alists
+               (loop for buffer-dendrites-alist in list-of-buffer-dendrites-alists
+                     collect
+                     (remove nil (select-masked-elements buffer-dendrites-alist bitmask))))
+             (main-buffers (mapcar #'caar list-of-filtered-buffer-dendrites-alists))
+             (dendrite (make-dendrite cluster shape main-buffers)))
+        ;; Check whether the main buffers are potentially superfluous.  If
+        ;; so, track them for the later pruning phase.  Also, (ab)use the
+        ;; data slot of each main buffer to record all its dendrites.
+        (when (loop for buffer-dendrites-alist in list-of-filtered-buffer-dendrites-alists
+                    always (and (= 1 (length buffer-dendrites-alist))
+                                (potentially-superfluous-buffer-p
+                                 (car (first buffer-dendrites-alist))
+                                 (cdr (first buffer-dendrites-alist)))))
+          (loop for ((main-buffer . dendrites)) in list-of-filtered-buffer-dendrites-alists do
+            (setf (buffer-data main-buffer) dendrites)
+            (push main-buffer (ir-converter-potentially-superfluous-buffers *ir-converter*))))
+        ;; Ensure that the elements of the main buffers are being computed.
+        (grow-dendrite dendrite lazy-multiple-value-map)
+        ;; Emit copy kernels from the main buffers to all the other
+        ;; buffers.
+        (loop for buffer-dendrites-alist in list-of-filtered-buffer-dendrites-alists do
+          (let ((main-buffer (car (first buffer-dendrites-alist))))
+            (loop for (other-buffer . nil) in (rest buffer-dendrites-alist) do
+              (insert-copy-kernel shape other-buffer main-buffer))))))))
 
 (defun select-masked-elements (list bitmask)
   (loop for element in list
@@ -699,6 +720,13 @@
                      (lambda (buffer)
                        (scan-buffer buffer))
                      reader))
+                  buffer)
+                 (map-buffer-inputs
+                  (lambda (writer)
+                    (map-kernel-outputs
+                     (lambda (buffer)
+                       (scan-buffer buffer))
+                     writer))
                   buffer))))
       (scan-buffer buffer))
     (when (null buffer-dendrites-alist)
@@ -846,7 +874,7 @@
                        (return-from clone-reference
                          (clone-reference (car input) (cdr input) kernel transformation))))))))
            buffer)
-          (error "Invalid prune."))
+          (error "Invalid prune:~%~S" *prune*))
         ;; If the buffer is not to be pruned, simply create a new load
         ;; instruction and register it with the kernel and the buffer.
         (cons
