@@ -64,6 +64,7 @@
 
    ;; Backends
    #:*backend*
+   #:with-backend
    #:make-reference-backend
    #:make-ir-backend
    #:make-native-backend

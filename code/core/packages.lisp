@@ -145,6 +145,7 @@
 
    ;; Backend
    #:*backend*
+   #:with-backend
    #:backend
    #:backend-compute
    #:backend-schedule

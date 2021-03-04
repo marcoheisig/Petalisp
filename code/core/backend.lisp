@@ -93,6 +93,11 @@
 ;;;
 ;;; API
 
+(defmacro with-backend (backend-creation-form &body body)
+  `(let ((*backend* ,backend-creation-form))
+     (unwind-protect (progn ,@body)
+       (delete-backend *backend*))))
+
 (defun lisp-datum-from-immediate (immediate)
   (let ((array (array-from-immediate immediate)))
     (if (zerop (array-rank array))
