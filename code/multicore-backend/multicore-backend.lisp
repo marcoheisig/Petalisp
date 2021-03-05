@@ -77,7 +77,12 @@
    :type atomic-counter)
   ;; The number of kernels that have yet to read from this buffer.
   (pending-outputs nil
-   :type atomic-counter))
+   :type atomic-counter)
+  ;; A buffer that has the same shape and ntype as this buffer, and that
+  ;; appears later (i.e., closer to one of the IR roots) than this buffer.
+  ;; A descendant of NIL means there is no such buffer.
+  (descendant nil
+   :type (or null petalisp.ir:buffer)))
 
 (defstruct kernel-data
   ;; The request that this kernel is being part of.
@@ -162,17 +167,20 @@
 
 (defvar *available-kernels*)
 (defvar *request*)
+(defvar *allocation-table*)
 
 (defun handle-request (request)
   (with-accessors ((lazy-arrays request-lazy-arrays)
                    (ir-roots request-ir-roots)) request
     (let ((*available-kernels* '())
-          (*request* request))
+          (*request* request)
+          (*allocation-table* (make-allocation-table)))
       (setf ir-roots (petalisp.ir:ir-from-lazy-arrays lazy-arrays))
       ;; Initialize the DATA slot of each buffer and each kernel.  Also,
       ;; push all kernels with zero unevaluated dependencies to the special
       ;; variable *AVAILABLE-KERNELS*.
       (mapc #'initialize-buffer ir-roots)
+      (setf *allocation-table* nil)
       ;; Start processing kernels.
       (mapcar
        (lambda (kernel)
@@ -187,14 +195,23 @@
        *available-kernels*))))
 
 (defun initialize-buffer (buffer)
-  (when (null (petalisp.ir:buffer-data buffer))
-    (allocate-buffer buffer)
-    (setf (petalisp.ir:buffer-data buffer)
-          (make-buffer-data
-           :request *request*
-           :pending-inputs (petalisp.ir:buffer-number-of-inputs buffer)
-           :pending-outputs (petalisp.ir:buffer-number-of-outputs buffer)))
-    (petalisp.ir:map-buffer-inputs #'initialize-kernel buffer)))
+  (with-accessors ((shape petalisp.ir:buffer-shape)
+                   (ntype petalisp.ir:buffer-ntype)
+                   (data petalisp.ir:buffer-data)) buffer
+    (when (null data)
+      (let ((descendant
+              ;; We only track descendants of 'large' buffers.
+              (if (< (shape-size shape) 200)
+                  nil
+                  (shiftf (allocation-table-value *allocation-table* shape ntype)
+                          buffer))))
+        (setf (petalisp.ir:buffer-data buffer)
+              (make-buffer-data
+               :request *request*
+               :descendant descendant
+               :pending-inputs (petalisp.ir:buffer-number-of-inputs buffer)
+               :pending-outputs (petalisp.ir:buffer-number-of-outputs buffer))))
+      (petalisp.ir:map-buffer-inputs #'initialize-kernel buffer))))
 
 (defun initialize-kernel (kernel)
   (with-accessors ((kernel-data petalisp.ir:kernel-data)
@@ -239,6 +256,7 @@
           (:preprocessing)
           (:preprocessed
            (when (atomics:cas state :preprocessed :executing)
+             (petalisp.ir:map-kernel-outputs #'allocate-buffer kernel)
              (mapc #'enqueue-thunk tasks))
            (loop-finish))
           ((:executing :executed) (loop-finish)))))))
@@ -299,6 +317,16 @@
   (assert (atomics:cas (kernel-data-state (petalisp.ir:kernel-data kernel))
                        :executing
                        :executed))
+  ;; Decrement the number of pending outputs of each output buffer.
+  (petalisp.ir:map-kernel-inputs
+   (lambda (buffer)
+     (with-accessors ((buffer-data petalisp.ir:buffer-data)) buffer
+       (with-accessors ((pending-outputs buffer-data-pending-outputs)
+                        (request buffer-data-request)) buffer-data
+         (when (zerop (atomics:atomic-decf pending-outputs))
+           (unless (petalisp.ir:leaf-buffer-p buffer)
+             (deallocate-buffer buffer))))))
+   kernel)
   ;; Decrement the number of pending inputs of each output buffer.
   (petalisp.ir:map-kernel-outputs
    (lambda (buffer)
@@ -340,7 +368,20 @@
       (let* ((element-type (petalisp.type-inference:type-specifier ntype))
              (array (make-array (shape-dimensions shape)
                                 :element-type element-type)))
-        (setf storage array)))))
+        (atomics:cas storage nil array)))))
+
+(defun deallocate-buffer (buffer)
+  (with-accessors ((storage petalisp.ir:buffer-storage)) buffer
+    (labels ((donate-memory (memory descendant)
+               (unless (null descendant)
+                 (unless (atomics:cas (petalisp.ir:buffer-storage descendant) nil memory)
+                   (donate-memory
+                    memory
+                    (buffer-data-descendant
+                     (petalisp.ir:buffer-data descendant)))))))
+      (donate-memory
+       (shiftf storage nil)
+       (buffer-data-descendant (petalisp.ir:buffer-data buffer))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

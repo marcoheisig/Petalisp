@@ -220,3 +220,38 @@
              append
              (fragment-difference-list fragment (first fragment-list2)))
        (rest fragment-list2))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Shape Table
+;;;
+;;; The shape table provides O(1) lookup and deletion of entries whose keys
+;;; are shapes.
+
+(defstruct (shape-table
+            (:copier nil)
+            (:predicate shape-table-p)
+            (:constructor make-shape-table ()))
+  (ht (make-hash-table :test #'equalp)
+   :type hash-table
+   :read-only t))
+
+(defun shape-table-value (shape-table shape &optional (default nil))
+  (declare (shape-table shape-table)
+           (shape shape))
+  (gethash shape (shape-table-ht shape-table) default))
+
+(defun (setf shape-table-value) (value shape-table shape &optional (default nil))
+  (declare (shape-table shape-table)
+           (shape shape))
+  (setf (gethash shape (shape-table-ht shape-table) default)
+        value))
+
+(defun remove-shape-table-entry (shape-table shape)
+  (declare (shape-table shape-table)
+           (shape shape))
+  (remhash shape (shape-table-ht shape-table)))
+
+(defun clear-shape-table (shape-table)
+  (declare (shape-table shape-table))
+  (clrhash (shape-table-ht shape-table)))

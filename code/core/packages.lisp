@@ -67,6 +67,12 @@
    #:subdivide-shapes
    #:subshapep
    #:fuse-shapes
+   #:shape-table
+   #:shape-table-p
+   #:make-shape-table
+   #:shape-table-value
+   #:remove-shape-table-entry
+   #:clear-shape-table
 
    ;; Transformations
    #:τ

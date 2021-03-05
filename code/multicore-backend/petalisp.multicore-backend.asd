@@ -15,4 +15,5 @@
   :components
   ((:file "packages")
    (:file "worker-pool")
+   (:file "allocation-table")
    (:file "multicore-backend")))

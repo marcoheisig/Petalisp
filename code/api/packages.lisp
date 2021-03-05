@@ -110,6 +110,12 @@
    #:subdivide-shapes
    #:array-shape
    #:define-shape-syntax
+   #:shape-table
+   #:shape-table-p
+   #:make-shape-table
+   #:shape-table-value
+   #:remove-shape-table-entry
+   #:clear-shape-table
 
    ;; Transformations
    #:transformation
