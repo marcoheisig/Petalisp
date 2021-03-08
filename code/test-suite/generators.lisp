@@ -62,7 +62,7 @@
       (loop for index below (array-total-size array) do
         (setf (row-major-aref array index)
               (funcall element-generator)))
-      (reshape array shape))))
+      (lazy-reshape array shape))))
 
 (defun ndarray (rank)
   (generate-lazy-array
@@ -94,9 +94,10 @@
   (let* ((lazy-array (lazy-array array))
          (rank (rank lazy-array))
          (generator (make-integer-generator :min -20 :max 21)))
-    (reshape lazy-array
-             (make-transformation
-              :input-rank rank
-              :output-rank rank
-              :scalings (loop repeat rank collect (funcall generator))
-              :output-mask (alexandria:shuffle (alexandria:iota rank))))))
+    (lazy-reshape
+     lazy-array
+     (make-transformation
+      :input-rank rank
+      :output-rank rank
+      :scalings (loop repeat rank collect (funcall generator))
+      :output-mask (alexandria:shuffle (alexandria:iota rank))))))

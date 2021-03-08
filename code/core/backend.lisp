@@ -120,7 +120,7 @@
          (immediates
            (backend-compute
             *backend*
-            (mapcar #'transform lazy-arrays transformations))))
+            (mapcar #'transform-lazy-array lazy-arrays transformations))))
     ;; Project the results back to the shape of the original arguments, and
     ;; replace these arguments with the newly computed stuff.  This is the
     ;; only side-effect that we ever perform on data flow graphs, but it is
@@ -131,9 +131,9 @@
           for immediate in immediates
           do (replace-lazy-array
               lazy-array
-              (lazy-reshape (lazy-array immediate)
-                            (lazy-array-shape lazy-array)
-                            transformation)))
+              (lazy-ref (lazy-array immediate)
+                        (lazy-array-shape lazy-array)
+                        transformation)))
     ;; Return the lisp datum corresponding to each immediate.
     (mapcar #'lisp-datum-from-immediate immediates)))
 
@@ -149,16 +149,16 @@
                   (lazy-array-shape lazy-array)))))
     (backend-schedule
      *backend*
-     (mapcar #'transform lazy-arrays transformations)
+     (mapcar #'transform-lazy-array lazy-arrays transformations)
      (lambda (immediates)
        (loop for lazy-array in lazy-arrays
              for transformation in transformations
              for immediate in immediates
              do (replace-lazy-array
                  lazy-array
-                 (lazy-reshape (lazy-array immediate)
-                               (lazy-array-shape lazy-array)
-                               transformation)))))))
+                 (lazy-ref (lazy-array immediate)
+                           (lazy-array-shape lazy-array)
+                           transformation)))))))
 
 (defun wait (&rest requests)
   (backend-wait *backend* requests)

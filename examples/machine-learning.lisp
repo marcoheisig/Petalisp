@@ -37,8 +37,8 @@
 ;;; Machine Learning Building Blocks
 
 (defun average (array)
-  (α #'/
-     (β* #'+ 0 array)
+  (lazy #'/
+     (lazy-allreduce #'+ array)
      (total-size array)))
 
 (defun make-random-array (dimensions &key (element-type 't))
@@ -49,32 +49,33 @@
     array))
 
 (defun softmax (array)
-  (let ((totals (α #'exp array)))
-    (α #'/ totals (β* #'+ 0 totals))))
+  (let ((totals (lazy #'exp array)))
+    (lazy #'/ totals (lazy-allreduce #'+ totals))))
 
 (defun relu (array)
-  (α #'max (coerce 0 (element-type array)) array))
+  (lazy #'max (coerce 0 (element-type array)) array))
 
 (defun make-fully-connected-layer (array output-shape)
   (let* ((m (shape-size output-shape))
          (n (total-size array))
          (weights
            (make-trainable-parameter
-            (α #'/
-               (make-random-array (list m n) :element-type (element-type array))
-               (* m n))))
+            (lazy #'/
+                  (make-random-array (list m n) :element-type (element-type array))
+                  (* m n))))
          (biases
            (make-trainable-parameter
-            (α #'/
-               (make-random-array m :element-type (element-type array))
-               m))))
-    (reshape
-     (α #'+
-        (β #'+
-           (α #'*
-              (reshape weights (τ (m n) (n m)))
-              (reshape (flatten array) (τ (n) (n 0)))))
-        biases)
+            (lazy #'/
+                  (make-random-array m :element-type (element-type array))
+                  m))))
+    (lazy-reshape
+     (lazy #'+
+           (lazy-reduce
+            #'+
+            (lazy #'*
+                  (lazy-reshape weights (transform m n to n m))
+                  (lazy-reshape (lazy-flatten array) (transform n to n 0))))
+           biases)
      output-shape)))
 
 (define-modify-macro minf (&rest numbers) min)
@@ -119,14 +120,14 @@
                      (make-list rank :initial-element 1))
               :element-type (element-type array)))))
       ;; Compute the result.
-      (collapse
-       (apply #'α #'+
+      (lazy-collapse
+       (apply #'lazy #'+
               (loop for offsets in stencil
                     for index from 0
                     collect
-                    (α #'*
-                       (slice filters index)
-                       (reshape
+                    (lazy #'*
+                       (lazy-slice filters index)
+                       (lazy-reshape
                         array
                         (make-transformation
                          :offsets
@@ -153,11 +154,11 @@
                        (range (+ (range-start range) offset)
                               (range-end range)
                               (* (range-step range) pooling-factor))))))
-    (collapse
-     (apply #'α #'max
+    (lazy-collapse
+     (apply #'lazy #'max
             (apply #'alexandria:map-product
                    (lambda (&rest ranges)
-                     (reshape array (~l ranges)))
+                     (lazy-reshape array (~l ranges)))
                    pooling-ranges)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -180,13 +181,13 @@
             (loop for output in (network-outputs network)
                   for output-parameter in output-parameters
                   collect
-                  (α #'- output output-parameter))))
+                  (lazy #'- output output-parameter))))
          (training-network
            (apply #'make-network
                   (loop for trainable-parameter in trainable-parameters
                         collect
-                        (α #'- trainable-parameter
-                           (α #'* learning-rate
+                        (lazy #'- trainable-parameter
+                           (lazy #'* learning-rate
                               (funcall gradient trainable-parameter))))))
          (n nil))
     ;; Determine the training data size.
@@ -208,12 +209,12 @@
         (alexandria:doplist (parameter data training-data-plist)
             (unless (symbolp parameter)
               (push parameter args)
-              (push (slice data index) args)))
+              (push (lazy-slice data index) args)))
         ;; Outputs.
         (loop for data in output-training-data
               for output-parameter in output-parameters do
                 (push output-parameter args)
-                (push (slice data index) args))
+                (push (lazy-slice data index) args))
         ;; Trainable parameters.
         (dolist (trainable-parameter trainable-parameters)
           (push trainable-parameter args)
@@ -281,18 +282,18 @@
       (make-mnist-classification-network)
     (loop for offset below n by batch-size do
       (let* ((batch-range (range offset (+ offset 99)))
-             (batch-data (slices *train-images* batch-range))
-             (batch-labels (slices *train-labels* batch-range))
+             (batch-data (lazy-slices *train-images* batch-range))
+             (batch-labels (lazy-slices *train-labels* batch-range))
              (input-data
                (compute
-                (collapse
-                 (α #'/ batch-data 255.0))))
+                (lazy-collapse
+                 (lazy #'/ batch-data 255.0))))
              (output-data
                (compute
-                (collapse
-                 (α 'coerce
-                    (α (lambda (n i) (if (= n i) 1.0 0.0))
-                       (reshape batch-labels (τ (i) (i 0)))
+                (lazy-collapse
+                 (lazy 'coerce
+                    (lazy (lambda (n i) (if (= n i) 1.0 0.0))
+                       (lazy-reshape batch-labels (transform i to i 0))
                        #(0 1 2 3 4 5 6 7 8 9))
                     'single-float)))))
         (format t "Training batch ~S.~%" batch-range)
@@ -303,11 +304,11 @@
 
 (defun check-test-data (network index)
   (format t "Label: ~S Prediction: ~S~%"
-          (compute (slice *test-labels* index))
+          (compute (lazy-slice *test-labels* index))
           (apply #'call-network
                  network
                  (loop for parameter in (network-parameters network)
                        collect parameter
                        collect (if (trainable-parameter-p parameter)
                                    (trainable-parameter-value parameter)
-                                   (slice *train-images* index))))))
+                                   (lazy-slice *train-images* index))))))

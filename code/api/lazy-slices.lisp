@@ -2,17 +2,18 @@
 
 (in-package #:petalisp.api)
 
-(defun slices (array range &optional (axis 0))
-  (setf array (lazy-array array))
-  (let ((rank (rank array))
-        (ranges (shape-ranges (array-shape array))))
+(defun lazy-slices (array range &optional (axis 0))
+  (let* ((lazy-array (lazy-array array))
+         (shape (lazy-array-shape lazy-array))
+         (rank (shape-rank shape))
+         (ranges (shape-ranges shape)))
     (unless (< -1 axis rank)
       (error "~@<Invalid slices axis ~S for the array ~S.~:@>"
              axis array))
     (unless (null (range-difference-list range (nth axis ranges)))
       (error "~@<Invalid slices range ~S for the axis ~S of the array ~S~:@>"
              range axis array))
-    (reshape
+    (lazy-reshape
      array
      (make-shape
       (petalisp.utilities:with-collectors ((ranges collect-range))

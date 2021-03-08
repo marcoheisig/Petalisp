@@ -60,11 +60,11 @@
                        :shape (array-shape output)
                        :ntype (element-ntype output)))
                     (t
-                     (reshape
-                      (α 'coerce gradient
-                         (petalisp.type-inference:type-specifier
-                          (petalisp.type-inference:generalize-ntype
-                           (element-ntype output))))
+                     (lazy-reshape
+                      (lazy 'coerce gradient
+                            (petalisp.type-inference:type-specifier
+                             (petalisp.type-inference:generalize-ntype
+                              (element-ntype output))))
                       (array-shape output))))))
     ;; Return the two differentiating closures.
     (labels ((ad-record (lazy-array)
@@ -93,21 +93,22 @@
                (alist (ad-record-alist ad-record))
                (gradients
                  (list*
-                  (reshape (coerce 0 (element-type lazy-array)) (array-shape lazy-array))
+                  (lazy-reshape
+                   (coerce 0 (element-type lazy-array)) (array-shape lazy-array))
                   (loop for (index . record) in alist
                         collect
                         (ad-record-input-gradient record index)))))
           (setf (ad-record-output-gradient-cache ad-record)
                 (apply
-                 #'fuse
+                 #'lazy-fuse
                  (loop for (shape . bitmask) in (subdivide-arrays gradients)
                        collect
                        (apply
-                        #'α #'+
+                        #'lazy #'+
                         (loop for gradient in gradients
                               for index from 0
                               when (logbitp index bitmask)
-                                collect (reshape gradient shape))))))))))
+                                collect (lazy-reshape gradient shape))))))))))
 
 (defun ad-record-input-gradient (ad-record index)
   (let ((cached-value (ad-record-input-gradient-cache ad-record index)))
@@ -129,7 +130,7 @@
          (element-ntype value)
          (element-ntype input))
         value
-        (α #'coerce value (element-type input)))))
+        (lazy #'coerce value (element-type input)))))
 
 (defmethod input-gradient
     ((lazy-map lazy-map)
@@ -138,39 +139,40 @@
   (with-accessors ((inputs lazy-array-inputs)
                    (operator lazy-map-operator)
                    (shape lazy-array-shape)) lazy-map
-    (α #'*
-       output-gradient
-       (petalisp.type-inference:differentiate
-        operator
-        inputs
-        #'element-ntype
-        (lambda (constant)
-          (reshape constant shape))
-        (lambda (ntypes function inputs)
-          (make-instance 'lazy-map
-            :operator function
-            :inputs inputs
-            :shape shape
-            :ntype (elt ntypes 0)))
-        index))))
+    (lazy #'*
+          output-gradient
+          (petalisp.type-inference:differentiate
+           operator
+           inputs
+           #'element-ntype
+           (lambda (constant)
+             (lazy-reshape constant shape))
+           (lambda (ntypes function inputs)
+             (make-instance 'lazy-map
+               :operator function
+               :inputs inputs
+               :shape shape
+               :ntype (elt ntypes 0)))
+           index))))
 
 (defmethod input-gradient
     ((lazy-fuse lazy-fuse) (output-gradient lazy-array) index)
-  (reshape
+  (lazy-reshape
    output-gradient
    (array-shape (nth index (lazy-array-inputs lazy-fuse)))))
 
 (defun move-axis-to-front (array axis)
   (check-type axis rank)
-  (reshape array
-           (make-transformation
-            :output-mask
-            (loop for index below (rank array)
-                  collect
-                  (cond
-                    ((= index 0) axis)
-                    ((<= index axis) (1- index))
-                    ((> index axis) index))))))
+  (lazy-reshape
+   array
+   (make-transformation
+    :output-mask
+    (loop for index below (rank array)
+          collect
+          (cond
+            ((= index 0) axis)
+            ((<= index axis) (1- index))
+            ((> index axis) index))))))
 
 (defmethod input-gradient
     ((lazy-reshape lazy-reshape)
@@ -179,7 +181,7 @@
   (with-accessors ((transformation transformation)
                    (shape array-shape)) lazy-reshape
     (if (transformation-invertiblep transformation)
-        (reshape output-gradient (transformation lazy-reshape))
+        (lazy-reshape output-gradient (transformation lazy-reshape))
         ;; The input gradient of a broadcasting reference is the sum of all
         ;; incoming gradients.  We do so by summing the gradients along
         ;; each broadcast axis, and by replacing each corresponding input
@@ -195,7 +197,7 @@
                (setf output-gradient (sum-axis output-gradient input-index))
                (setf (elt input-mask input-index) 0)))
            transformation)
-          (reshape
+          (lazy-reshape
            output-gradient
            (make-transformation
             :input-mask input-mask
@@ -203,8 +205,8 @@
             :offsets (petalisp.core:transformation-offsets transformation)))))))
 
 (defun sum-axis (array axis)
-  (reshape
-   (β #'+ (move-axis-to-front array axis))
+  (lazy-reshape
+   (lazy-reduce #'+ (move-axis-to-front array axis))
    (make-transformation
     :input-rank (1- (rank array))
     :output-mask

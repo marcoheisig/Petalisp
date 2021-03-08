@@ -86,4 +86,4 @@
     ((lazy-reshape lazy-reshape) index)
   (lazy-array-value
    (lazy-array-input lazy-reshape)
-   (transform index (transformation lazy-reshape))))
+   (transform-sequence index (transformation lazy-reshape))))

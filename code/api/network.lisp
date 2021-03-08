@@ -34,14 +34,14 @@
   (let ((args (loop for parameter in (network-parameters network)
                     for value = (getf plist parameter '.missing.)
                     collect
-                    (reshape
-                     (α #'coerce
-                        (if (eq value '.missing.)
-                            (if (typep parameter 'optional-parameter)
-                                (optional-parameter-value parameter)
-                                (error "Missing parameter: ~S." parameter))
-                            value)
-                        (element-type parameter))
+                    (lazy-reshape
+                     (lazy #'coerce
+                           (if (eq value '.missing.)
+                               (if (typep parameter 'optional-parameter)
+                                   (optional-parameter-value parameter)
+                                   (error "Missing parameter: ~S." parameter))
+                               value)
+                           (element-type parameter))
                      (array-shape parameter)))))
     (apply (compile-network-on-backend network *backend*) args)))
 

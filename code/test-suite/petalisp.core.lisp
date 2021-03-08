@@ -70,10 +70,10 @@
   (let* ((shape (~ 10))
          (x1 (make-instance 'parameter :shape shape :element-type 'double-float))
          (x2 (make-instance 'parameter :shape shape :element-type 'double-float))
-         (v1 (α #'+
-                (α #'coerce (α #'log x1) 'double-float)
-                (α #'* x1 x2)
-                (α #'sin x2)))
+         (v1 (lazy #'+
+                (lazy #'coerce (lazy #'log x1) 'double-float)
+                (lazy #'* x1 x2)
+                (lazy #'sin x2)))
          (network
            (make-network v1))
          (g1 (make-instance 'parameter
@@ -93,47 +93,47 @@
 
 (define-test lazy-map-test
   (compute
-   (α #'+ 2 3))
+   (lazy #'+ 2 3))
   (compute
-   (α #'+ #(2 3 4) #(5 4 3)))
+   (lazy #'+ #(2 3 4) #(5 4 3)))
   (compute
-   (α #'+ #2A((1 2) (3 4)) #2A((4 3) (2 1))))
+   (lazy #'+ #2A((1 2) (3 4)) #2A((4 3) (2 1))))
   (compute
-   (α #'floor #(1 2.5 1/2) 2)))
+   (lazy #'floor #(1 2.5 1/2) 2)))
 
 (define-test reduction-test
   (compute
-   (β #'+ #(1 2 3)))
+   (lazy-reduce #'+ #(1 2 3)))
   (compute
-   (β #'+ #2A((1 2 3) (6 5 4))))
+   (lazy-reduce #'+ #2A((1 2 3) (6 5 4))))
   (compute
-   (β (lambda (lmax lmin rmax rmin)
+   (lazy-reduce (lambda (lmax lmin rmax rmin)
         (values (max lmax rmax) (min lmin rmin)))
       #(+1 -1 +2 -2 +3 -3)
       #(+1 -1 +2 -2 +3 -3)))
   (compute
-   (β (lambda (a b) (values a b)) #(3 2 1))
-   (β (lambda (a b) (values b a)) #(3 2 1))))
+   (lazy-reduce (lambda (a b) (values a b)) #(3 2 1))
+   (lazy-reduce (lambda (a b) (values b a)) #(3 2 1))))
 
 (define-test fusion-test
   (compute
-   (fuse (reshape (vector 4 5 6) (τ (i) ((+ i 3))))
-         (vector 1 2 3)))
+   (lazy-fuse (lazy-reshape (vector 4 5 6) (transform i to (+ i 3)))
+              (vector 1 2 3)))
   (compute
-   (fuse* (reshape 0.0 (~ 2 5 ~ 2 5))
-          (reshape 1.0 (~ 3 4 ~ 3 4)))))
+   (lazy-overwrite (lazy-reshape 0.0 (~ 2 5 ~ 2 5))
+                   (lazy-reshape 1.0 (~ 3 4 ~ 3 4)))))
 
 (define-test reshape-test
-  (compute (reshape 4 (~ 5)))
-  (compute (reshape #(1 2 3) (τ (i) ((- i)))) #(3 2 1))
-  (compute (reshape #(1 2 3 4) (~ 1 3)))
-  (compute (reshape (shape-indices (~ 1 10)) (~ 3 ~ 3)))
-  (compute (reshape #2A((1 2) (3 4)) (τ (i j) (j i))))
-  (compute (reshape #(1 2 3 4) (~ 1 3) (~ 0 2 ~ 0 2)))
+  (compute (lazy-reshape 4 (~ 5)))
+  (compute (lazy-reshape #(1 2 3) (transform i to (- i))) #(3 2 1))
+  (compute (lazy-reshape #(1 2 3 4) (~ 1 3)))
+  (compute (lazy-reshape (lazy-shape-indices (~ 1 10)) (~ 3 ~ 3)))
+  (compute (lazy-reshape #2A((1 2) (3 4)) (transform i j to j i)))
+  (compute (lazy-reshape #(1 2 3 4) (~ 1 3) (~ 0 2 ~ 0 2)))
   (alexandria:map-permutations
    (lambda (shapes)
      (compute
-      (apply #'reshape (shape-indices (~ 1 101)) shapes)))
+      (apply #'lazy-reshape (lazy-shape-indices (~ 1 101)) shapes)))
    (list (~ 0 5 ~ 0 5 ~ 0 4)
          (~ 0 2 ~ 0 5 ~ 0 1 ~ 0 2 ~ 0 5)
          (~ 1 3 ~ 1 6 ~ 1 3 ~ 1 6)
@@ -142,47 +142,52 @@
   (alexandria:map-permutations
    (lambda (shapes)
      (compute
-      (apply #'reshape (shape-indices (~ 1 201)) shapes)))
+      (apply #'lazy-reshape (lazy-shape-indices (~ 1 201)) shapes)))
    (list (~ 0 2 ~ 0 5 ~ 0 5 ~ 0 4)
          (~ 0 2 ~ 0 2 ~ 0 5 ~ 0 1 ~ 0 2 ~ 0 5)
          (~ 0 2 ~ 0 100)))
   (alexandria:map-permutations
    (lambda (shapes)
      (compute
-      (apply #'reshape (shape-indices (~ 1 201)) shapes)))
+      (apply #'lazy-reshape (lazy-shape-indices (~ 1 201)) shapes)))
    (list (~ 0 5 ~ 0 5 ~ 0 4 ~ 0 2)
          (~ 0 2 ~ 0 5 ~ 0 1 ~ 0 2 ~ 0 5 ~ 0 2)
          (~ 0 100 ~ 0 2)))
   (compute
-   (fuse*
-    (reshape #2A((1 2 3) (4 5 6)) (τ (i j) ((+ 2 i) (+ 3 j))))
-    (reshape 9 (τ () (3 4)))))
+   (lazy-overwrite
+    (lazy-reshape #2A((1 2 3) (4 5 6)) (transform i j to (+ 2 i) (+ 3 j)))
+    (lazy-reshape 9 (transform to 3 4))))
   (signals error
-    (compute (reshape #(1 2 3 4) (~ -1 4)))))
+    (compute (lazy-reshape #(1 2 3 4) (~ -1 4)))))
 
 (define-test multiple-arguments
-  (compute 1 2 3 4 5 6 7 8 9 (α #'+ 5 5) (β #'+ #(1 2 3 4 1))))
+  (compute 1 2 3 4 5 6 7 8 9 (lazy #'+ 5 5) (lazy-reduce #'+ #(1 2 3 4 1))))
 
 (define-test indices-test
-  (compute (array-indices #(5 6 7)))
+  (compute (lazy-array-indices #(5 6 7)))
   (let ((a (make-array '(2 3 4))))
-    (compute (array-indices a 1))
-    (compute (α #'+
-                (array-indices a 0)
-                (array-indices a 1)
-                (array-indices a 2)))))
+    (compute (lazy-array-indices a 1))
+    (compute (lazy #'+
+                (lazy-array-indices a 0)
+                (lazy-array-indices a 1)
+                (lazy-array-indices a 2)))))
 
 
 (define-test sum-of-pairs
   (let* ((size 10)
          (a (lazy-array (make-array size :initial-element 0))))
     (compute
-     (β #'+ (fuse (reshape a (~ 0 (- size 1))
-                           (τ (i) (0 i)))
-                  (reshape a (~ 1 size)
-                           (τ (i) (1 (1- i)))))))))
+     (lazy-reduce
+      #'+
+      (lazy-fuse (lazy-reshape a (~ 0 (- size 1))
+                               (transform i to 0 i))
+                 (lazy-reshape a (~ 1 size)
+                               (transform i to 1 (1- i))))))))
 
 (define-test reduction-of-fusions
   (compute
-   (β #'+ (fuse #(1 2 3)
-                (reshape #(4 5 6) (τ (i) ((+ i 3))))))))
+   (lazy-reduce
+    #'+
+    (lazy-fuse
+     #(1 2 3)
+     (lazy-reshape #(4 5 6) (transform i to (+ i 3)))))))

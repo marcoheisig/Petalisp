@@ -2,5 +2,5 @@
 
 (in-package #:petalisp.api)
 
-(defun flatten (array)
-  (reshape array (~ 0 (shape-size (array-shape array)))))
+(defun lazy-array-indices (array &optional (axis 0))
+  (lazy-shape-indices (array-shape array) axis))

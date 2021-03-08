@@ -2,7 +2,7 @@
 
 (in-package #:petalisp.core)
 
-(defun lazy-fuse (arrays)
+(defun lazy-fuse (&rest arrays)
   (let ((lazy-arrays
           (loop for array in arrays
                 unless (empty-array-p array)
@@ -55,7 +55,7 @@
                   ;; that constant.  Otherwise, we create a regular lazy-fuse
                   ;; object.
                   (if (petalisp.type-inference:eql-ntype-p ntype)
-                      (lazy-reshape
+                      (lazy-ref
                        (make-scalar-immediate ntype)
                        shape
                        (make-transformation

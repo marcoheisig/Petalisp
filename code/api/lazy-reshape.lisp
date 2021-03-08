@@ -2,37 +2,32 @@
 
 (in-package #:petalisp.api)
 
-(defun reshape (array &rest modifiers)
-  (reduce (lambda (lazy-array modifier)
-            (typecase modifier
-              (transformation (reshape-using-transformation lazy-array modifier))
-              (shape (reshape-using-shape lazy-array modifier))
-              (otherwise (reshape-using-shape lazy-array (array-shape modifier)))))
-          modifiers
-          :initial-value (lazy-array array)))
+(defun lazy-reshape (array &rest modifiers)
+  (reduce
+   (lambda (lazy-array modifier)
+     (typecase modifier
+       (transformation (transform-lazy-array lazy-array modifier))
+       (shape (lazy-reshape-using-shape lazy-array modifier))
+       (otherwise (lazy-reshape-using-shape lazy-array (array-shape modifier)))))
+   modifiers
+   :initial-value (lazy-array array)))
 
-(defun reshape-using-transformation (lazy-array transformation)
-  (lazy-reshape
-   lazy-array
-   (transform (array-shape lazy-array) transformation)
-   (invert-transformation transformation)))
-
-(defun reshape-using-shape (lazy-array shape)
-  (let ((array-shape (array-shape lazy-array)))
-    (if (and (= (shape-size array-shape)
+(defun lazy-reshape-using-shape (lazy-array shape)
+  (let ((lazy-array-shape (lazy-array-shape lazy-array)))
+    (if (and (= (shape-size lazy-array-shape)
                 (shape-size shape)))
         ;; Case 1 - Reshaping while preserving the number of elements.
         (change-shape lazy-array shape)
         ;; Case 2 - Broadcasting or selection of a subspace.
         (multiple-value-bind (transformation broadcast-p select-p)
-            (make-shape-transformation shape array-shape)
+            (make-shape-transformation shape lazy-array-shape)
           ;; We do not allow transformations that broadcast some ranges, but
           ;; shrink others.  Otherwise, we would risk ambiguity with case 1.
           (unless (not (and broadcast-p select-p))
             (error "~@<Cannot reshape the array ~S ~
                  to the shape ~S.~:@>"
                    lazy-array shape))
-          (lazy-reshape lazy-array shape transformation)))))
+          (lazy-ref lazy-array shape transformation)))))
 
 ;;; The function MAKE-SHAPE-TRANSFORMATION returns three values:
 ;;;
@@ -144,10 +139,10 @@
 (defun change-shape (lazy-array shape)
   (let ((n1 (normalizing-transformation (array-shape lazy-array)))
         (n2 (normalizing-transformation shape)))
-    (reshape
+    (lazy-reshape
      (change-shape/normalized
-      (reshape lazy-array n1)
-      (transform shape n2))
+      (lazy-reshape lazy-array n1)
+      (transform-shape shape n2))
      (invert-transformation n2))))
 
 (defun change-shape/normalized (lazy-array output-shape)
@@ -206,7 +201,7 @@
             (loop for prime-factor in (rest prime-factors) do
               (setf lazy-array (insert-axis-before lazy-array (1+ index) prime-factor))
               (setf lazy-array (remove-axis-after lazy-array index))))
-    (lazy-reshape
+    (lazy-ref
      lazy-array
      shape
      (make-shape-transformation shape (array-shape lazy-array)))))
@@ -240,10 +235,11 @@
          (range (nth axis ranges))
          (suffix (subseq ranges (1+ axis)))
          (range-2 (range 0 (/ (range-size range) k))))
-    (lazy-fuse
+    (apply
+     #'lazy-fuse
      (loop for offset below k
            collect
-           (lazy-reshape
+           (lazy-ref
             lazy-array
             (~l prefix ~ offset (1+ offset) ~r range-2 ~l suffix)
             (let ((input-mask (make-array (1+ rank) :initial-element nil))
@@ -271,10 +267,11 @@
          (suffix (subseq ranges (1+ axis)))
          (n (range-size (nth axis ranges)))
          (range-1 (range 0 (/ n k))))
-    (lazy-fuse
+    (apply
+     #'lazy-fuse
      (loop for offset below k
            collect
-           (lazy-reshape
+           (lazy-ref
             lazy-array
             (~l prefix ~r range-1 ~ offset (1+ offset) ~l suffix)
             (let ((input-mask (make-array (1+ rank) :initial-element nil))
@@ -305,10 +302,11 @@
          (range-2 (nth axis ranges))
          (size-1 (range-size range-1))
          (size-2 (range-size range-2)))
-    (lazy-fuse
+    (apply
+     #'lazy-fuse
      (loop for offset below size-1
            collect
-           (lazy-reshape
+           (lazy-ref
             lazy-array
             (~l prefix ~ (* offset size-2) (* (1+ offset) size-2) ~l suffix)
             (let ((input-mask (make-array (1- rank) :initial-element nil))
@@ -337,10 +335,11 @@
          (range-2 (nth (1+ axis) ranges))
          (size-1 (range-size range-1))
          (size-2 (range-size range-2)))
-    (lazy-fuse
+    (apply
+     #'lazy-fuse
      (loop for offset below size-2
            collect
-           (lazy-reshape
+           (lazy-ref
             lazy-array
             (~l prefix ~ offset (* size-1 size-2) size-2 ~l suffix)
             (let ((input-mask (make-array (1- rank) :initial-element nil))

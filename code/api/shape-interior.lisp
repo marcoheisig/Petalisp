@@ -13,7 +13,3 @@
               (new-end (- end (* step width))))
           (range new-start new-end step))))
     (shape-ranges shape))))
-
-(defun array-interior (array &optional (width 1))
-  (check-type width unsigned-byte)
-  (reshape array (shape-interior (array-shape array) width)))

@@ -25,31 +25,35 @@
   (:export
 
    ;; High-level API
-   #:α
-   #:a
-   #:alpha
-   #:α*
-   #:a*
-   #:alpha*
-   #:β
-   #:b
-   #:beta
-   #:β*
-   #:b*
-   #:beta*
+   #:lazy-array-indices
+   #:lazy-array-interior
+   #:lazy-broadcast-to
+   #:lazy-broadcast-arrays
+   #:lazy-broadcast-list-of-arrays
+   #:lazy-collapse
+   #:lazy-drop-axes
+   #:lazy-flatten
+   #:lazy-fuse
+   #:lazy
+   #:lazy-multiple-value
+   #:lazy-overwrite
+   #:lazy-reduce
+   #:lazy-allreduce
+   #:lazy-reshape
+   #:lazy-shape-indices
+   #:lazy-slice
+   #:lazy-slices
+   #:lazy-stack
    #:~
    #:~l
    #:~s
    #:~r
-   #:broadcast
-   #:broadcast-arrays
-   #:broadcast-list-of-arrays
-   #:reshape
    #:transform
-   #:τ
-   #:tau
-   #:fuse
-   #:fuse*
+   #:to
+   #:transform-sequence
+   #:transform-shape
+   #:transform-axis
+   #:transform-lazy-array
    #:compute
    #:compute-list-of-arrays
    #:schedule
@@ -57,9 +61,6 @@
    #:wait
    #:prepare
    #:prepare-list-of-arrays
-   #:array-indices
-   #:shape-indices
-   #:define-parallel-aliases
    #:vectorize
 
    ;; Backends
@@ -101,6 +102,7 @@
    #:shape-intersection
    #:shape-intersectionp
    #:shape-dimensions
+   #:shape-interior
    #:map-shape
    #:shape-contains
    #:shrink-shape
@@ -136,22 +138,16 @@
    ;; Strided Arrays
    #:lazy-array
    #:lazy-array-p
+   #:empty-array-p
+   #:immediatep
    #:parameter
    #:optional-parameter
    #:optional-parameter-value
-   #:empty-array-p
    #:element-type
    #:rank
    #:total-size
    #:lazy-array-input
    #:lazy-array-inputs
-   #:immediatep
-   #:lazy-multiple-value-ref-value-n
-   #:lazy-map-operator
-   #:lazy-map-number-of-values
-   #:array-immediate-storage
-   #:array-immediate
-   #:range-immediate
    #:make-range-immediate
 
    ;; Network
@@ -164,14 +160,7 @@
 
    ;; Utilities
    #:move-axis-to-front
-   #:array-interior
-   #:shape-interior
-   #:collapse
-   #:flatten
-   #:slice
-   #:slices
-   #:stack
-   #:drop-axes)
+   )
 
   (:shadowing-import-from :petalisp.ir #:make-ir-backend)
   (:shadowing-import-from :petalisp.native-backend #:make-native-backend)

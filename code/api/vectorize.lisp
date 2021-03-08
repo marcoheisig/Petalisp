@@ -5,4 +5,4 @@
 (declaim (inline vectorize))
 (defun vectorize (function &optional (arity 1))
   (lambda (&rest args)
-    (apply #'α* arity function args)))
+    (apply #'lazy-multiple-value function arity args)))

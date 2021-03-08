@@ -2,7 +2,7 @@
 
 (in-package #:petalisp.api)
 
-(defun drop-axes (array &rest axes)
+(defun lazy-drop-axes (array &rest axes)
   (let* ((lazy-array (lazy-array array))
          (shape (array-shape lazy-array))
          (input-rank (shape-rank shape))
@@ -23,7 +23,7 @@
         (when (null (svref input-mask input-index))
           (setf (svref output-mask output-index) input-index)
           (incf output-index)))
-      (reshape
+      (lazy-reshape
        lazy-array
        (make-transformation
         :input-mask input-mask

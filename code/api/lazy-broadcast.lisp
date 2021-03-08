@@ -2,7 +2,7 @@
 
 (in-package #:petalisp.api)
 
-(defun broadcast-list-of-arrays (list-of-arrays)
+(defun lazy-broadcast-list-of-arrays (list-of-arrays)
   ;; As a first step, we create an alist whose keys are shapes, and whose
   ;; value is initially NIL and later set to a suitable transformation from
   ;; that shape to the common broadcast shape.
@@ -28,7 +28,7 @@
         (values
          (loop for lazy-array in lazy-arrays
                collect
-               (lazy-reshape
+               (lazy-ref
                 lazy-array
                 broadcast-shape
                 (cdr (assoc (array-shape lazy-array) alist :test #'shape-equal))))
@@ -45,15 +45,15 @@
          (error "~@<Cannot broadcast the ranges ~S and ~S.~:@>"
                 range-1 range-2))))
 
-(defun broadcast-arrays (&rest arrays)
+(defun lazy-broadcast-arrays (&rest arrays)
   (values-list
-   (broadcast-list-of-arrays arrays)))
+   (lazy-broadcast-list-of-arrays arrays)))
 
-(defun broadcast (array shape)
+(defun lazy-broadcast-to (array shape)
   (let* ((lazy-array (lazy-array array))
          (array-shape (array-shape lazy-array))
          (shape (array-shape shape)))
-    (lazy-reshape
+    (lazy-ref
      lazy-array
      shape
      (make-broadcast-transformation shape array-shape))))

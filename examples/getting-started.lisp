@@ -9,9 +9,7 @@
 (in-package #:petalisp.examples.getting-started)
 
 (defun present (&rest arrays)
-  (format t "~{~& => ~A~}"
-          (multiple-value-list
-           (apply #'compute arrays))))
+  (format t "~{~& => ~A~}" (compute-list-of-arrays arrays)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -34,7 +32,7 @@
 
 (present
  (reshape #2a((1 2 3 4) (5 6 7 8))
-          (τ (i j) (j i)))) ; transforming
+          (transform i j to j i))) ; transforming
 
 ;; arrays can be merged with fuse
 
@@ -58,24 +56,24 @@
 (present
  (chessboard 8 8))
 
-;; α applies a Lisp function element-wise
+;; lazy applies a Lisp function element-wise
 
 (present
- (α #'+ #(1 2 3) #(1 1 1)))
+ (lazy #'+ #(1 2 3) #(1 1 1)))
 
 (present
- (α #'* 2 3)) ; scalar are treated as rank zero arrays
+ (lazy #'* 2 3)) ; scalar are treated as rank zero arrays
 
 (present
- (α #'* 2 #(1 2 3))) ; α broadcasts automatically
+ (lazy #'* 2 #(1 2 3))) ; lazy broadcasts automatically
 
-;; β reduces array elements
-
-(present
- (β #'+ #(1 2 3 4 5 6 7 8 9 10)))
+;; lazy-reduce reduces array elements
 
 (present
- (β #'+
+ (lazy-reduce #'+ #(1 2 3 4 5 6 7 8 9 10)))
+
+(present
+ (lazy-reduce #'+
     ;; only the axis zero is reduced
     #2A((1 2 3) (4 5 6))))
 
@@ -84,10 +82,10 @@
 ;;;  Matrix multiplication
 
 (defun matmul (A B)
-  (β #'+
-     (α #'*
-        (reshape A (τ (m n) (n m 0)))
-        (reshape B (τ (n k) (n 0 k))))))
+  (lazy-reduce #'+
+     (lazy #'*
+        (reshape A (transform m n to n m 0))
+        (reshape B (transform n k to n 0 k)))))
 
 (defparameter MI #2a((1.0 0.0)
                      (0.0 1.0)))
@@ -110,7 +108,7 @@
 (present M)
 
 (present
- (matmul M (reshape M (τ (m n) (n m)))))
+ (matmul M (reshape M (transform m n to n m))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -120,12 +118,12 @@
   (let ((interior (array-interior grid)))
     (fuse*
      grid
-     (α #'* 1/4
-        (α #'+
-           (reshape grid (τ (i j) ((1+ i) j)) interior)
-           (reshape grid (τ (i j) ((1- i) j)) interior)
-           (reshape grid (τ (i j) (i (1+ j))) interior)
-           (reshape grid (τ (i j) (i (1- j))) interior))))))
+     (lazy #'* 1/4
+        (lazy #'+
+           (reshape grid (transform i j to (1+ i) j) interior)
+           (reshape grid (transform i j to (1- i) j) interior)
+           (reshape grid (transform i j to i (1+ j)) interior)
+           (reshape grid (transform i j to i (1- j)) interior))))))
 
 (defparameter domain
   (fuse* (reshape 1.0 (~ 10 ~ 10))

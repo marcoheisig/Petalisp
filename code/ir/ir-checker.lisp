@@ -64,8 +64,9 @@
         (check-reverse-link store-instruction kernel #'map-kernel-store-instructions)
         (incf number-of-writes
               (shape-size
-               (transform (kernel-iteration-space kernel)
-                          (store-instruction-transformation store-instruction))))))
+               (transform-shape
+                (kernel-iteration-space kernel)
+                (store-instruction-transformation store-instruction))))))
     ;; Ensure that all elements of the buffer are actually written to.
     (unless (buffer-storage buffer)
       (assert (= number-of-writes (buffer-size buffer))))

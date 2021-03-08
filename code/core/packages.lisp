@@ -75,11 +75,12 @@
    #:clear-shape-table
 
    ;; Transformations
-   #:τ
    #:transformation
    #:transformationp
-   #:transform
+   #:transform-sequence
+   #:transform-shape
    #:transform-axis
+   #:transform-lazy-array
    #:identity-transformation-p
    #:transformation-input-rank
    #:transformation-output-rank
@@ -128,6 +129,7 @@
    #:lazy-multiple-value-map
    #:lazy-multiple-value-ref
    #:lazy-reshape
+   #:lazy-ref
    #:lazy-fuse
    #:immediate
    #:non-immediate
@@ -142,9 +144,6 @@
    #:empty-array
    #:make-array-immediate
    #:make-range-immediate
-   #:broadcast
-   #:broadcast-arrays
-   #:broadcast-list-of-arrays
    #:copy-arrays
    #:substitute-arrays
    #:array-from-immediate

@@ -17,32 +17,33 @@ with Petalisp will be like.
 
 Example 1: transposing a matrix
 #+BEGIN_SRC lisp
-(defun transpose (A)
-  (reshape A (τ (m n) (n m))))
+(defun lazy-transpose (A)
+  (lazy-reshape A (tranform m n to n m)))
 #+END_SRC
 
 Example 2: matrix-matrix multiplication
 #+BEGIN_SRC lisp
 (defun matrix-multiplication (A B)
-  (β #'+
-     (α #'*
-        (reshape A (τ (m n) (n m 1)))
-        (reshape B (τ (n k) (n 1 k))))))
+  (lazy-reduce
+   #'+
+   (lazy #'*
+         (lazy-reshape A (transform m n to n m 1))
+         (lazy-reshape B (transform n k to n 1 k)))))
 #+END_SRC
 
 Example 3: the numerical Jacobi scheme in two dimensions
 #+BEGIN_SRC lisp
-(defun jacobi-2d (grid iterations)
+(defun lazy-jacobi-2d (grid iterations)
   (let ((interior (interior grid)))
     (if (zerop iterations) grid
-        (jacobi-2d
-         (fuse x
-               (α #'* 0.25
-                  (α #'+
-                     (reshape x (τ (i0 i1) ((+ i0 1) i1)) interior)
-                     (reshape x (τ (i0 i1) ((- i0 1) i1)) interior)
-                     (reshape x (τ (i0 i1) (i0 (+ i1 1))) interior)
-                     (reshape x (τ (i0 i1) (i0 (- i1 1))) interior))))
+        (lazy-jacobi-2d
+         (lazy-fuse x
+               (lazy #'* 0.25
+                  (lazy #'+
+                     (lazy-reshape x (transform i0 i1 to (+ i0 1) i1) interior)
+                     (lazy-reshape x (transform i0 i1 to (- i0 1) i1) interior)
+                     (lazy-reshape x (transform i0 i1 to i0 (+ i1 1)) interior)
+                     (lazy-reshape x (transform i0 i1 to i0 (- i1 1)) interior))))
          (- iterations 1)))))
 #+END_SRC
 
@@ -71,18 +72,6 @@ why I am also working on some [[https://github.com/marcoheisig/petalisp-for-pyth
 
 But: If you ever have time to learn Lisp, do it!  It is an enlightening
 experience.
-
-*** Why the Greek letters?
-There are several reasons:
-1. It underlines the beautiful, mathematical nature of this programming model.
-2. The α and β functions are a tribute to Connection Machine Lisp.
-3. Compared to programming a computer with billions of transistors and
-   terabytes of memory, typing Greek letters is easy. Right?
-
-Note: Following community feedback, it is now also possible to write =a=
-instead of =α= and =b= instead of =β=.  But as a convention, please use the
-ASCII aliases only as a shortcut for scripting.  If I ever see =a= and =b=
-being called in a Quicklisp project, I will remove them from the API :)
 
 *** Why is Petalisp licensed under AGPL?
 I am aware that this license prevents some people from using or

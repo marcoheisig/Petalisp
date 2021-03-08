@@ -296,12 +296,6 @@
             (element-type lazy-array)
             (array-shape lazy-array))))
 
-(defmethod transform ((lazy-array lazy-array) (transformation transformation))
-  (lazy-reshape
-   lazy-array
-   (transform (array-shape lazy-array) transformation)
-   (invert-transformation transformation)))
-
 (defmethod array-from-immediate ((array-immediate array-immediate))
   (array-immediate-storage array-immediate))
 
@@ -319,6 +313,7 @@
 ;;; Immediate Constructors
 
 (defun make-scalar-immediate (object)
+  (check-type object (and (not lazy-array) (not (cons lazy-array))))
   (make-instance 'array-immediate
     :shape (load-time-value (make-shape '()))
     :ntype (petalisp.type-inference:ntype-of object)
@@ -348,7 +343,7 @@
 
 (defun make-range-immediate (range)
   (if (size-one-range-p range)
-      (lazy-reshape
+      (lazy-ref
        (make-scalar-immediate (range-start range))
        (make-shape (list range))
        (make-transformation

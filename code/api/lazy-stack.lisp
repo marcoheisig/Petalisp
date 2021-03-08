@@ -2,7 +2,7 @@
 
 (in-package #:petalisp.api)
 
-(defun stack (axis &rest arrays)
+(defun lazy-stack (axis &rest arrays)
   (let ((lazy-arrays (mapcar #'lazy-array arrays))
         (stack-rank nil)
         (stack-width nil))
@@ -36,7 +36,7 @@
       (setf stack-width 1))
     ;; Now stack the arrays.
     (apply
-     #'fuse
+     #'lazy-fuse
      (mapcar
       (let ((position nil))
         (lambda (lazy-array)
@@ -55,5 +55,5 @@
                            (- position start))
                      (setf position
                            (+ last stack-width))
-                     (reshape lazy-array (make-transformation :offsets offsets))))))))
+                     (lazy-reshape lazy-array (make-transformation :offsets offsets))))))))
       lazy-arrays))))

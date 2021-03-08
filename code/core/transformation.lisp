@@ -95,8 +95,11 @@
 
 (defgeneric enlarge-transformation (transformation scale offset))
 
-(defgeneric transform (object transformation)
-  (:argument-precedence-order transformation object))
+(defgeneric transform-sequence (sequence transformation)
+  (:argument-precedence-order transformation sequence))
+
+(defgeneric transform-shape (shape transformation)
+  (:argument-precedence-order transformation shape))
 
 (defgeneric transform-axis (axis transformation))
 
@@ -381,18 +384,20 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; TRANSFORM
+;;; TRANSFORM-SEQUENCE
 
-(defmethod transform :before ((sequence sequence)
-                              (transformation transformation))
+(defmethod transform-sequence :before
+    ((sequence sequence)
+     (transformation transformation))
   (unless (= (length sequence) (transformation-input-rank transformation))
     (error "~@<Cannot transform the sequence ~S of length ~D ~
                with the transformation ~S of input rank ~S.~:@>"
            sequence (length sequence)
            transformation (transformation-input-rank transformation))))
 
-(defmethod transform :before ((sequence sequence)
-                              (transformation hairy-transformation))
+(defmethod transform-sequence :before
+    ((sequence sequence)
+     (transformation hairy-transformation))
   (map nil (lambda (constraint element)
              (unless (or (null constraint)
                          (not (numberp element))
@@ -403,12 +408,14 @@
        (transformation-input-mask transformation)
        sequence))
 
-(defmethod transform ((sequence sequence)
-                      (operator identity-transformation))
+(defmethod transform-sequence
+    ((sequence sequence)
+     (transformation identity-transformation))
   sequence)
 
-(defmethod transform ((list list)
-                      (transformation hairy-transformation))
+(defmethod transform-sequence
+    ((list list)
+     (transformation hairy-transformation))
   (let ((result '()))
     (flet ((push-output-expression (output-index input-index a b)
              (declare (ignore output-index))
@@ -428,17 +435,23 @@
       (map-transformation-outputs #'push-output-expression transformation)
       (nreverse result))))
 
-(defmethod transform :before ((shape shape)
-                              (transformation transformation))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; TRANSFORM-SHAPE
+
+(defmethod transform-shape :before
+    ((shape shape)
+     (transformation transformation))
   (assert (= (shape-rank shape)
              (transformation-input-rank transformation)) ()
-          "~@<Cannot apply the transformation ~A with input rank ~R ~
+             "~@<Cannot apply the transformation ~A with input rank ~R ~
               to the index shape ~A with rank ~R.~:@>"
-    transformation (transformation-input-rank transformation)
-    shape (shape-rank shape)))
+             transformation (transformation-input-rank transformation)
+             shape (shape-rank shape)))
 
-(defmethod transform :before ((shape shape)
-                              (transformation hairy-transformation))
+(defmethod transform-shape :before
+    ((shape shape)
+     (transformation hairy-transformation))
   (let ((input-mask (transformation-input-mask transformation)))
     (loop for range in (shape-ranges shape)
           for constraint across input-mask
@@ -448,12 +461,16 @@
                            (= constraint (range-start range)))
                 (error "~@<The ~:R axis of the shape ~W violates ~
                            the input constraint ~W of the transformation ~W.~:@>"
-                 (1+ index) shape constraint transformation))))))
+                       (1+ index) shape constraint transformation))))))
 
-(defmethod transform ((shape shape) (operator identity-transformation))
+(defmethod transform-shape
+    ((shape shape)
+     (operator identity-transformation))
   shape)
 
-(defmethod transform ((shape shape) (transformation hairy-transformation))
+(defmethod transform-shape
+    ((shape shape)
+     (transformation hairy-transformation))
   (let ((output-ranges (make-list (transformation-output-rank transformation)))
         (input-ranges (shape-ranges shape)))
     (flet ((store-output-range (output-index input-index scaling offset)
@@ -487,29 +504,6 @@
 (defmethod transform-axis ((axis integer)
                            (hairy-transformation hairy-transformation))
   (position axis (transformation-output-mask hairy-transformation)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; PRINT-OBJECT
-
-(defparameter *alphabet*
-  #(:a :b :c :d :e :f :g :h :i :j :k :l :m :n :o :p :q :r :s :t :u :v :w :x :y :z))
-
-(defmethod print-object ((transformation transformation) stream)
-  (let ((inputs '()))
-    (map-transformation-inputs
-     (lambda (input-index input-constraint output-index)
-       (declare (ignore output-index))
-       (let ((input
-               (if (not (null input-constraint))
-                   input-constraint
-                   (if (array-in-bounds-p *alphabet* input-index)
-                       (svref *alphabet* input-index)
-                       (alexandria:format-symbol :keyword "I~D" input-index)))))
-         (push input inputs)))
-     transformation
-     :from-end t)
-    (princ `(τ ,inputs ,(transform inputs transformation)) stream)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

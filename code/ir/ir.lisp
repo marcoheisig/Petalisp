@@ -349,7 +349,7 @@
   (declare (buffer buffer)
            (transformation transformation))
   (setf (buffer-shape buffer)
-        (transform (buffer-shape buffer) transformation))
+        (transform-shape (buffer-shape buffer) transformation))
   ;; After rotating a buffer, rotate all loads and stores referencing the
   ;; buffer to preserve the semantics of the IR.
   (map-buffer-store-instructions
@@ -367,7 +367,7 @@
            (transformation transformation))
   (unless (identity-transformation-p transformation)
     (setf (kernel-iteration-space kernel)
-          (transform (kernel-iteration-space kernel) transformation))
+          (transform-shape (kernel-iteration-space kernel) transformation))
     (let ((inverse (invert-transformation transformation)))
       (map-instructions
        (lambda (instruction)

@@ -16,11 +16,11 @@
 (defun solve-wave-equation (&key (n 20) (timesteps 0) (dt 0.01) (verbose nil))
   (let* ((dx (/ (1- n)))
          (shape (~ 0 (1- n) ~ 0 (1- n)))
-         (X (α #'/ (shape-indices shape 0) (coerce n 'single-float)))
-         (Y (α #'/ (shape-indices shape 1) (coerce n 'single-float)))
-         (Z (α #'*
-               (α #'sin (α #'* 2 X pi))
-               (α #'sin (α #'* 2 Y pi)))))
+         (X (lazy #'/ (lazy-shape-indices shape 0) (coerce n 'single-float)))
+         (Y (lazy #'/ (lazy-shape-indices shape 1) (coerce n 'single-float)))
+         (Z (lazy #'*
+               (lazy #'sin (lazy #'* 2 X pi))
+               (lazy #'sin (lazy #'* 2 Y pi)))))
     (let ((prev Z) (curr Z))
       (when verbose (print-domain curr *trace-output*))
       (loop repeat timesteps do
@@ -32,26 +32,26 @@
       curr)))
 
 (defun simulate-one-step (prev curr dx dt N E S W)
-  (let ((interior (array-interior curr)))
-    (fuse*
+  (let ((interior (lazy-array-interior curr)))
+    (lazy-overwrite
      curr
-     (α #'+
-        (α #'*
-           (α #'+
-              (reshape (α #'* curr (α #'+ W E) 0.5)
-                       (τ (i j) ((1- i) j)) interior)
-              (reshape (α #'* curr (α #'+ W E) 0.5)
-                       (τ (i j) ((1+ i) j)) interior)
-              (reshape (α #'* curr (α #'+ N S) 0.5)
-                       (τ (i j) (i (1- j))) interior)
-              (reshape (α #'* curr (α #'+ N S) 0.5)
-                       (τ (i j) (i (1+ j))) interior)
-              (reshape (α #'* curr (α #'- (α #'+ N E S W)) 1.0)
-                       interior))
-           (reshape (α #'/ (α #'* dt dt) (α #'* dx dx))
-                    interior))
-        (α #'- (reshape prev interior))
-        (α #'* 2.0 (reshape curr interior))))))
+     (lazy #'+
+           (lazy #'*
+                 (lazy #'+
+                       (lazy-reshape (lazy #'* curr (lazy #'+ W E) 0.5)
+                                     (transform i j to (1- i) j) interior)
+                       (lazy-reshape (lazy #'* curr (lazy #'+ W E) 0.5)
+                                     (transform i j to (1+ i) j) interior)
+                       (lazy-reshape (lazy #'* curr (lazy #'+ N S) 0.5)
+                                     (transform i j to i (1- j)) interior)
+                       (lazy-reshape (lazy #'* curr (lazy #'+ N S) 0.5)
+                                     (transform i j to i (1+ j)) interior)
+                       (lazy-reshape (lazy #'* curr (lazy #'- (lazy #'+ N E S W)) 1.0)
+                                     interior))
+                 (lazy-reshape (lazy #'/ (lazy #'* dt dt) (lazy #'* dx dx))
+                               interior))
+           (lazy #'- (lazy-reshape prev interior))
+           (lazy #'* 2.0 (lazy-reshape curr interior))))))
 
 (defun print-domain (domain stream)
   (setf domain (compute domain))

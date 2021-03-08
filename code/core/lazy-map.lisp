@@ -2,10 +2,12 @@
 
 (in-package #:petalisp.core)
 
-(defun lazy-map (shape function inputs)
-  (lazy-multiple-value-map 1 shape function inputs))
+(defun lazy-map (function shape inputs)
+  (lazy-multiple-value-map function 1 shape inputs))
 
-(defun lazy-multiple-value-map (n-outputs shape function inputs)
+(defun lazy-multiple-value-map (function n-outputs shape inputs)
+  (check-type n-outputs unsigned-byte)
+  (check-type shape shape)
   (if (empty-shape-p shape)
       (empty-arrays n-outputs)
       (case n-outputs
@@ -21,7 +23,7 @@
             inputs
             #'element-ntype
             (lambda (constant)
-              (lazy-reshape
+              (lazy-ref
                (make-scalar-immediate constant)
                shape
                (make-transformation
@@ -49,7 +51,7 @@
           inputs
           #'element-ntype
           (lambda (constant)
-            (lazy-reshape
+            (lazy-ref
              (make-scalar-immediate constant)
              shape
              (make-transformation

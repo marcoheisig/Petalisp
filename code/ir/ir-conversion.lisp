@@ -547,7 +547,7 @@
                  do (grow-dendrite
                      (make-dendrite
                       (stem-cluster stem)
-                      (transform intersection (invert-transformation transformation))
+                      (transform-shape intersection (invert-transformation transformation))
                       (stem-buffers stem))
                      (cluster-lazy-array (stem-cluster stem)))))))))
 
@@ -556,7 +556,7 @@
      (lazy-reshape lazy-reshape))
   (with-accessors ((shape dendrite-shape)
                    (transformation dendrite-transformation)) dendrite
-    (setf shape (transform
+    (setf shape (transform-shape
                  (shape-intersection shape (lazy-array-shape lazy-reshape))
                  (transformation lazy-reshape)))
     (setf transformation (compose-transformations
@@ -722,8 +722,9 @@
               (lambda (store-instruction)
                 (when (and (eq (store-instruction-buffer store-instruction) buffer)
                            (subshapep (dendrite-shape dendrite)
-                                      (transform (kernel-iteration-space writer)
-                                                 (store-instruction-transformation store-instruction))))
+                                      (transform-shape
+                                       (kernel-iteration-space writer)
+                                       (store-instruction-transformation store-instruction))))
                   (return-from check-one-dendrite)))
               writer))
            buffer)
@@ -868,7 +869,7 @@
     (if (member buffer (prune-buffers *prune*))
         ;; If the buffer is to be pruned, we replace the load instruction
         ;; by a clone of the matching store instruction.
-        (let ((reader-shape (transform (kernel-iteration-space kernel) transformation)))
+        (let ((reader-shape (transform-shape (kernel-iteration-space kernel) transformation)))
           (map-buffer-inputs
            (lambda (writer)
              (loop for (store-buffer . store-instructions) in (kernel-targets writer) do
@@ -876,8 +877,8 @@
                  (loop for store-instruction in store-instructions do
                    (when (subshapep
                           reader-shape
-                          (transform (kernel-iteration-space writer)
-                                     (store-instruction-transformation store-instruction)))
+                          (transform-shape (kernel-iteration-space writer)
+                                           (store-instruction-transformation store-instruction)))
                      (let* ((input (store-instruction-input store-instruction))
                             (transformation
                               (compose-transformations
