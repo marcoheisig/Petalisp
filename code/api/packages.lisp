@@ -135,7 +135,7 @@
    #:enlarge-transformation
    #:map-transformation-outputs
 
-   ;; Strided Arrays
+   ;; Lazy Arrays
    #:lazy-array
    #:lazy-array-p
    #:empty-array-p
@@ -146,6 +146,7 @@
    #:element-type
    #:rank
    #:total-size
+   #:lazy-array-shape
    #:lazy-array-input
    #:lazy-array-inputs
    #:make-range-immediate
