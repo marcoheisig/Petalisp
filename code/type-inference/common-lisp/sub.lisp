@@ -116,4 +116,4 @@
 
 (define-differentiator 1- (number) index
   (declare (ignore number))
-  (wrap -1))
+  (wrap 1))
