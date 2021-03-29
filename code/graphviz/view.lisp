@@ -3,6 +3,9 @@
 (in-package #:petalisp.graphviz)
 
 (defparameter *graphviz-default-viewer*
+  #+windows
+  "chrome"
+  #-windows
   (flet ((program-in-path-p (program)
            (multiple-value-bind (out err exit-code)
                (uiop:run-program
