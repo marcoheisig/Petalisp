@@ -6,6 +6,7 @@
   :depends-on
   ("alexandria"
    "uiop"
+   "trivial-features"
    "petalisp.utilities"
    "petalisp.core"
    "petalisp.ir"
