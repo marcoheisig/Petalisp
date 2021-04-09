@@ -18,9 +18,9 @@
 ;;; Optimization: Compose consecutive references.
 (defmethod lazy-ref-aux
     ((lazy-reshape lazy-reshape)
-     (shape non-empty-shape)
+     (shape shape)
      (transformation transformation)
-     (relevant-shape non-empty-shape))
+     (relevant-shape shape))
   (lazy-ref-aux
    (lazy-array-input lazy-reshape)
    shape
@@ -32,9 +32,9 @@
 ;;; Optimization: Drop references with no effect.
 (defmethod lazy-ref-aux
     ((lazy-array lazy-array)
-     (shape non-empty-shape)
+     (shape shape)
      (identity-transformation identity-transformation)
-     (relevant-shape non-empty-shape))
+     (relevant-shape shape))
   (if (and (shape-equal (lazy-array-shape lazy-array) shape)
            ;; Don't drop references to range immediates.  The reason for
            ;; this is that we never want these immediates to appear as
@@ -47,29 +47,21 @@
 ;;; entirely within a single input of that fusion.
 (defmethod lazy-ref-aux
     ((lazy-fuse lazy-fuse)
-     (shape non-empty-shape)
+     (shape shape)
      (transformation transformation)
-     (relevant-shape non-empty-shape))
+     (relevant-shape shape))
   (loop for input in (lazy-array-inputs lazy-fuse)
         when (subshapep relevant-shape (lazy-array-shape input)) do
           (return-from lazy-ref-aux
             (lazy-ref-aux input shape transformation relevant-shape)))
   (call-next-method))
 
-;;; Handle empty shapes.
-(defmethod lazy-ref-aux
-    ((lazy-array lazy-array)
-     (empty-shape empty-shape)
-     (transformation transformation)
-     (relevant-shape non-empty-shape))
-  (empty-array))
-
 ;;; Default: Construct a new reference.
 (defmethod lazy-ref-aux
     ((lazy-array lazy-array)
-     (shape non-empty-shape)
+     (shape shape)
      (transformation transformation)
-     (relevant-shape non-empty-shape))
+     (relevant-shape shape))
   (make-instance 'lazy-reshape
     :ntype (element-ntype lazy-array)
     :inputs (list lazy-array)

@@ -5,10 +5,7 @@
 ;;; A shape of rank D is the Cartesian product of D ranges.  That means
 ;;; each element of a shape is a D-tuple of integers, such that the first
 ;;; integer is an element of the first range, the second integer is an
-;;; element of the second range and so on.  If any of the ranges of a shape
-;;; is empty, that shape is the empty shape.  The empty shape must not be
-;;; confused with the shape that is the product of zero ranges, which has a
-;;; size of one.
+;;; element of the second range and so on.
 
 (deftype rank ()
   `(integer 0 (,array-rank-limit)))
@@ -16,26 +13,10 @@
 (defstruct (shape
             (:predicate shapep)
             (:copier nil)
-            (:constructor nil))
+            (:constructor %make-shape (ranges rank size)))
   (ranges nil :type list :read-only t)
   (rank nil :type rank :read-only t)
   (size nil :type unsigned-byte :read-only t))
-
-(defstruct (empty-shape
-            (:include shape)
-            (:predicate empty-shape-p)
-            (:copier nil)
-            (:constructor make-empty-shape
-                (rank
-                 &aux
-                   (size 0)
-                   (ranges (make-list rank :initial-element (make-empty-range)))))))
-
-(defstruct (non-empty-shape
-            (:include shape)
-            (:predicate non-empty-shape-p)
-            (:copier nil)
-            (:constructor make-non-empty-shape (ranges rank size))))
 
 (defun make-shape (ranges)
   (let ((size 1)
@@ -45,9 +26,12 @@
     (loop for range in ranges do
       (setf size (* size (range-size range)))
       (incf rank))
-    (if (zerop size)
-        (make-empty-shape rank)
-        (make-non-empty-shape ranges rank size))))
+    (%make-shape ranges rank size)))
+
+(declaim (inline empty-shape-p))
+(defun empty-shape-p (shape)
+  (declare (shape shape))
+  (zerop (shape-size shape)))
 
 (defun shape-range (shape axis)
   (declare (shape shape))
@@ -68,17 +52,17 @@
 
 (defun shape-intersection (shape1 shape2)
   (declare (shape shape1 shape2))
-  (if (/= (shape-rank shape1)
-          (shape-rank shape2))
-      (make-empty-shape (shape-rank shape1)) ; TODO should we signal an error here?
-      (make-shape
-       (loop with rank = (shape-rank shape1)
-             for range1 in (shape-ranges shape1)
-             for range2 in (shape-ranges shape2)
-             for intersection = (range-intersection range1 range2)
-             when (empty-range-p intersection) do
-               (return-from shape-intersection (make-empty-shape rank))
-             collect intersection))))
+  (unless (= (shape-rank shape1)
+             (shape-rank shape2))
+    (error "~@<Can only compute the intersection of shapes with equal rank. ~
+               The supplied shapes are ~S, with rank ~D, and ~S, with rank ~D.~:@>"
+           shape1 (shape-rank shape1)
+           shape2 (shape-rank shape2)))
+  (make-shape
+   (mapcar
+    #'range-intersection
+    (shape-ranges shape1)
+    (shape-ranges shape2))))
 
 (defun shape-intersectionp (shape1 shape2)
   (declare (shape shape1 shape2))

@@ -263,9 +263,6 @@
          collect
          (range (array-dimension array axis)))))
 
-(defmethod array-shape ((empty-array empty-array))
-  (make-empty-shape 0))
-
 (defmethod rank ((object t))
   0)
 

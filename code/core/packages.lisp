@@ -46,10 +46,7 @@
    #:shape
    #:shapep
    #:make-shape
-   #:empty-shape
    #:empty-shape-p
-   #:non-empty-shape
-   #:non-empty-shape-p
    #:shape-rank
    #:shape-range
    #:shape-ranges
