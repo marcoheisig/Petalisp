@@ -14,7 +14,7 @@
       (error "~@<Invalid slice index ~S for the axis ~S of the array ~S~:@>"
              index axis array))
     (lazy-ref
-     array
+     lazy-array
      (make-shape
       (petalisp.utilities:with-collectors ((ranges collect-range))
         (do ((rest ranges (cdr rest))
