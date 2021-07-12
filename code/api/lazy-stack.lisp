@@ -3,12 +3,15 @@
 (in-package #:petalisp.api)
 
 (defun lazy-stack (axis &rest arrays)
+  (unless (typep axis 'rank)
+    (error "Not a valid array axis: ~S." axis))
   (let ((lazy-arrays (mapcar #'lazy-array arrays))
         (stack-rank nil)
-        (stack-width nil))
+        (stack-step nil))
     ;; Loop over all arrays to validate the input and to determine a
     ;; suitable stack width.
-    (loop for lazy-array in lazy-arrays and index from 0 do
+    (loop for lazy-array in lazy-arrays
+          for index from 0 do
       (let* ((shape (array-shape lazy-array))
              (rank (shape-rank shape)))
         ;; Determine the stack rank.
@@ -24,36 +27,37 @@
                  axis (nth index arrays)))
         (let ((range (nth axis (shape-ranges shape))))
           (unless (size-one-range-p range)
-            (cond ((null stack-width)
-                   (setf stack-width (range-step range)))
-                  ((= stack-width (range-step range))
+            (cond ((null stack-step)
+                   (setf stack-step (range-step range)))
+                  ((= stack-step (range-step range))
                    (values))
                   (t
                    (error "~@<Cannot stack arrays with varying step sizes.~:@>")))))))
     ;; If there are no arrays with a size larger than one in the specified
     ;; axis, we pick a reasonable default.
-    (when (null stack-width)
-      (setf stack-width 1))
+    (when (null stack-step)
+      (setf stack-step 1))
     ;; Now stack the arrays.
     (apply
      #'lazy-fuse
-     (mapcar
-      (let ((position nil))
+     (let ((position nil))
+       (mapcar
         (lambda (lazy-array)
           (with-accessors ((start range-start)
                            (last range-last))
               (nth axis (shape-ranges (array-shape lazy-array)))
             (cond ((null position)
-                   (setf position (+ last stack-width))
+                   (setf position (+ last stack-step))
                    lazy-array)
                   ((= position start)
-                   (setf position (+ last stack-width))
+                   (setf position (+ last stack-step))
                    lazy-array)
                   (t
-                   (let ((offsets (make-array stack-rank :initial-element 0)))
+                   (let* ((offsets (make-array stack-rank :initial-element 0))
+                          (offset (- position start)))
                      (setf (aref offsets axis)
-                           (- position start))
+                           offset)
                      (setf position
-                           (+ last stack-width))
-                     (lazy-reshape lazy-array (make-transformation :offsets offsets))))))))
-      lazy-arrays))))
+                           (+ last offset stack-step))
+                     (lazy-reshape lazy-array (make-transformation :offsets offsets)))))))
+        lazy-arrays)))))

@@ -568,9 +568,10 @@ are contained in the supplied RANGE."
             1)))
 
 (document-function lazy-stack
-  "Stacks multiple array next to each other along the specified AXIS.  That
-  means that along this axis, the leftmost array will have the lowest
-  indices, and the rightmost array will have the highest indices."
+  "Stacks multiple array next to each other along the specified AXIS such
+that along this axis, the leftmost array will have the lowest indices, and
+the rightmost array will have the highest indices."
+  (compute (lazy-stack 0 #(1) #(2) #(3)))
   (compute (lazy-stack 0 #(1 2) #(3 4) #(5 6)))
   (compute (lazy-stack 0 #2A((1 2) (3 4)) #2A((5 6) (7 8))))
   (compute (lazy-stack 1 #2A((1 2) (3 4)) #2A((5 6) (7 8)))))
