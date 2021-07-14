@@ -2,7 +2,6 @@
 
 (in-package #:petalisp.ir)
 
-
 ;;; A buffer represents a set of memory locations big enough to hold one
 ;;; element of type ELEMENT-TYPE for each index of the buffer's shape.
 ;;; Each buffer is written to by zero or more kernels and read from zero or

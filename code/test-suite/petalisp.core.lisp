@@ -68,17 +68,17 @@
 
 (define-test network-test
   (let* ((shape (~ 10))
-         (x1 (make-instance 'parameter :shape shape :element-type 'double-float))
-         (x2 (make-instance 'parameter :shape shape :element-type 'double-float))
+         (x1 (make-unknown :shape shape :element-type 'double-float))
+         (x2 (make-unknown :shape shape :element-type 'double-float))
          (v1 (lazy #'+
-                (lazy #'coerce (lazy #'log x1) 'double-float)
-                (lazy #'* x1 x2)
-                (lazy #'sin x2)))
+                   (lazy #'coerce (lazy #'log x1) 'double-float)
+                   (lazy #'* x1 x2)
+                   (lazy #'sin x2)))
          (network
            (make-network v1))
-         (g1 (make-instance 'parameter
-               :shape (array-shape v1)
-               :element-type (element-type v1)))
+         (g1 (make-unknown
+              :shape (lazy-array-shape v1)
+              :element-type (lazy-array-element-type v1)))
          (gradient-fn (differentiator (list v1) (list g1)))
          (gradient-network
            (make-network

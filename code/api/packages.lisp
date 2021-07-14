@@ -138,18 +138,11 @@
    ;; Lazy Arrays
    #:lazy-array
    #:lazy-array-p
-   #:empty-array-p
-   #:immediatep
-   #:parameter
-   #:optional-parameter
-   #:optional-parameter-value
-   #:element-type
-   #:rank
-   #:total-size
    #:lazy-array-shape
-   #:lazy-array-input
-   #:lazy-array-inputs
-   #:make-range-immediate
+   #:lazy-array-element-type
+   #:lazy-array-rank
+   #:lazy-array-size
+   #:make-unknown
 
    ;; Network
    #:network

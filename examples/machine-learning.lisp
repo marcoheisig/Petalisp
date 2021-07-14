@@ -22,10 +22,11 @@
   ((%value :initarg :value :accessor trainable-parameter-value)))
 
 (defun make-trainable-parameter (initial-value)
-  (let ((value (lazy-array initial-value)))
+  (let* ((value (lazy-array initial-value))
+         (element-type (lazy-array-element-type value)))
     (make-instance 'trainable-parameter
-      :shape (array-shape initial-value)
-      :element-type (upgraded-array-element-type (element-type value))
+      :shape (lazy-array-shape value)
+      :element-type (upgraded-array-element-type element-type)
       :value value)))
 
 (declaim (inline trainable-parameter-p))
@@ -37,9 +38,10 @@
 ;;; Machine Learning Building Blocks
 
 (defun average (array)
-  (lazy #'/
-     (lazy-allreduce #'+ array)
-     (total-size array)))
+  (let ((lazy-array (lazy-array array)))
+    (lazy #'/
+          (lazy-allreduce #'+ lazy-array)
+          (lazy-array-size lazy-array))))
 
 (defun make-random-array (dimensions &key (element-type 't))
   (let ((array (make-array dimensions :element-type element-type)))
@@ -53,20 +55,24 @@
     (lazy #'/ totals (lazy-allreduce #'+ totals))))
 
 (defun relu (array)
-  (lazy #'max (coerce 0 (element-type array)) array))
+  (let ((lazy-array (lazy-array array)))
+    (lazy #'max (coerce 0 (lazy-array-element-type lazy-array))
+          lazy-array)))
 
 (defun make-fully-connected-layer (array output-shape)
-  (let* ((m (shape-size output-shape))
-         (n (total-size array))
+  (let* ((lazy-array (lazy-array array))
+         (element-type (lazy-array-element-type lazy-array))
+         (m (shape-size output-shape))
+         (n (lazy-array-size lazy-array))
          (weights
            (make-trainable-parameter
             (lazy #'/
-                  (make-random-array (list m n) :element-type (element-type array))
+                  (make-random-array (list m n) :element-type element-type)
                   (* m n))))
          (biases
            (make-trainable-parameter
             (lazy #'/
-                  (make-random-array m :element-type (element-type array))
+                  (make-random-array m :element-type element-type)
                   m))))
     (lazy-reshape
      (lazy #'+
@@ -82,7 +88,8 @@
 (define-modify-macro maxf (&rest numbers) max)
 
 (defun make-convolutional-layer (array &key (stencil '()) (n-filters 1))
-  (let* ((rank (rank array))
+  (let* ((lazy-array (lazy-array array))
+         (rank (lazy-array-rank array))
          (n-weights (length stencil))
          (lower-bounds (make-array rank :initial-element 0))
          (upper-bounds (make-array rank :initial-element 0))
@@ -103,7 +110,7 @@
             (~ 1 ~l
                (loop for lb across lower-bounds
                      for ub across upper-bounds
-                     for range in (shape-ranges (array-shape array))
+                     for range in (shape-ranges (lazy-array-shape lazy-array))
                      collect
                      (if (and (integerp lb)
                               (integerp ub))
@@ -118,7 +125,7 @@
               (list* n-weights
                      n-filters
                      (make-list rank :initial-element 1))
-              :element-type (element-type array)))))
+              :element-type (lazy-array-element-type lazy-array)))))
       ;; Compute the result.
       (lazy-collapse
        (apply #'lazy #'+
@@ -128,7 +135,7 @@
                     (lazy #'*
                        (lazy-slice filters index)
                        (lazy-reshape
-                        array
+                        lazy-array
                         (make-transformation
                          :offsets
                          (append
@@ -138,16 +145,16 @@
 
 (defun make-maxpool-layer (array pooling-factors)
   (let* ((pooling-factors (coerce pooling-factors 'vector))
-         (array (lazy-array array))
+         (lazy-array (lazy-array array))
          (pooling-ranges
            (loop for pooling-factor across pooling-factors
-                 for range in (shape-ranges (array-shape array))
+                 for range in (shape-ranges (lazy-array-shape lazy-array))
                  for index from 1 do
                    (check-type pooling-factor (integer 1 *) "a positive integer")
                    (unless (zerop (mod (range-size range) pooling-factor))
                      (error "~@<The ~:R range of the shape ~S is not ~
                          divisible by the corresponding pooling factor ~S.~:@>"
-                            index (array-shape array) pooling-factor))
+                            index (lazy-array-shape lazy-array) pooling-factor))
                  collect
                  (loop for offset below pooling-factor
                        collect
@@ -158,7 +165,7 @@
      (apply #'lazy #'max
             (apply #'alexandria:map-product
                    (lambda (&rest ranges)
-                     (lazy-reshape array (~l ranges)))
+                     (lazy-reshape lazy-array (~l ranges)))
                    pooling-ranges)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -173,8 +180,8 @@
          (output-parameters
            (loop for output in (network-outputs network)
                  collect (make-instance 'parameter
-                           :element-type (element-type output)
-                           :shape (array-shape output))))
+                           :element-type (lazy-array-element-type output)
+                           :shape (lazy-array-shape output))))
          (gradient
            (differentiator
             (network-outputs network)
@@ -193,11 +200,11 @@
     ;; Determine the training data size.
     (dolist (data output-training-data)
       (if (null n)
-          (setf n (range-size (first (shape-ranges (array-shape data)))))
-          (assert (= n (range-size (first (shape-ranges (array-shape data))))))))
+          (setf n (range-size (first (shape-ranges (lazy-array-shape data)))))
+          (assert (= n (range-size (first (shape-ranges (lazy-array-shape data))))))))
     (alexandria:doplist (parameter data training-data-plist) ()
       (unless (symbolp parameter)
-        (assert (= n (range-size (first (shape-ranges (array-shape data))))))))
+        (assert (= n (range-size (first (shape-ranges (lazy-array-shape data))))))))
     ;; Iterate over the training data.
     (loop for index below n do
       (when (and (plusp index)

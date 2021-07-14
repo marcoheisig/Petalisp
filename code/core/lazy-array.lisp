@@ -2,332 +2,242 @@
 
 (in-package #:petalisp.core)
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Generic Functions
+(defstruct (lazy-array
+            (:predicate lazy-array-p)
+            (:copier nil))
+  ;; The shape of a lazy array describes the set of indices for which the
+  ;; lazy array has associated values.
+  (shape (alexandria:required-argument :shape)
+   :type shape
+   :read-only t)
+  ;; The ntype of a lazy array is a conservative estimate on the the type
+  ;; of each individual element.
+  (ntype (alexandria:required-argument :ntype)
+   :type t
+   :read-only t)
+  ;; The depth of a lazy array that is the result of wrapping an actual
+  ;; Common Lisp array or scalar is zero.  The depth of any other lazy
+  ;; array is one more than the maximum depth of the arrays it depends on.
+  (depth 0
+   :type (and unsigned-byte fixnum)
+   :read-only t)
+  ;; The refcount of a lazy array is an integer that is incremented
+  ;; whenever the lazy array is referenced by another lazy array.  If a
+  ;; lazy array has a refcount of one, we know that each of its elements is
+  ;; only accessed at most once, and we can usually optimize it away during
+  ;; IR conversion.
+  (refcount 0
+   :type (and unsigned-byte fixnum)
+   :read-only nil)
+  ;; The delayed action of a lazy array describes how its elements can be
+  ;; computed.  This is not a constant slot - invoking 'schedule' or
+  ;; 'compute' on a lazy array will change the delayed action, and backends
+  ;; are also permitted to add and use their own delayed actions.  But any
+  ;; new delayed must produce the very same elements as the one it
+  ;; replaces.
+  (delayed-action (alexandria:required-argument :delayed-action)
+   :type delayed-action
+   :read-only nil))
 
-(defgeneric lazy-array-p (object))
-
-(defgeneric empty-array-p (object))
-
-(defgeneric immediatep (object))
-
-(defgeneric total-size (array))
-
-(defgeneric element-ntype (array))
-
-(defgeneric element-type (array))
-
-(defgeneric array-shape (array))
-
-(defgeneric lazy-array (array))
-
-(defgeneric lazy-array-inputs (array))
-
-(defgeneric lazy-array-shape (lazy-array))
-
-(defgeneric lazy-array-refcount (lazy-array))
-
-(defgeneric lazy-array-depth (lazy-array))
-
-(defgeneric replace-lazy-array (lazy-array replacement))
-
-(defgeneric lazy-multiple-value-ref-value-n (array))
-
-(defgeneric lazy-map-operator (array))
-
-(defgeneric lazy-map-number-of-values (array))
-
-(defgeneric array-immediate-storage (array))
-
-(defgeneric array-from-immediate (lazy-array))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Classes
-
-(defclass lazy-array ()
-  ((%computable
-    :initarg :computable
-    :reader computablep
-    :accessor %computablep)))
-
-(defclass immediate (lazy-array)
-  ()
-  (:default-initargs :computable t))
-
-(defclass non-immediate (lazy-array)
-  ((%inputs
-    :initarg :inputs
-    :reader lazy-array-inputs
-    :type list)))
-
-(defclass empty-array (immediate)
-  ())
-
-(defclass non-empty-array (lazy-array)
-  ((%shape
-    :initarg :shape
-    :initform (alexandria:required-argument :shape)
-    :reader array-shape
-    :reader lazy-array-shape)
-   (%ntype
-    :initarg :ntype
-    :initform (alexandria:required-argument :ntype)
-    :reader element-ntype)
-   (%refcount
-    :reader lazy-array-refcount
-    :accessor %lazy-array-refcount
-    :type unsigned-byte
-    :initform 0)
-   (%depth
-    :reader lazy-array-depth
-    :accessor %lazy-array-depth
-    :type unsigned-byte
-    :initform 0)))
-
-(defclass non-empty-immediate (non-empty-array immediate)
-  ())
-
-(defclass non-empty-non-immediate (non-empty-array non-immediate)
-  ())
-
-(defclass array-immediate (non-empty-immediate)
-  ((%storage
-    :initarg :storage
-    :reader array-immediate-storage
-    :type simple-array)))
-
-(defclass range-immediate (non-empty-immediate)
-  ())
-
-(defclass lazy-map (non-empty-non-immediate)
-  ((%operator
-    :initarg :operator
-    :reader lazy-map-operator
-    :type (or function symbol))))
-
-(defclass lazy-multiple-value-map (lazy-map)
-  ((%number-of-values
-    :initarg :number-of-values
-    :reader lazy-map-number-of-values
-    :type (integer 0 (#.multiple-values-limit)))))
-
-(defclass lazy-multiple-value-ref (non-empty-non-immediate)
-  ((%value-n
-    :initarg :value-n
-    :reader lazy-multiple-value-ref-value-n
-    :type (integer 0 (#.(1- multiple-values-limit))))))
-
-(defclass lazy-fuse (non-empty-non-immediate)
-  ())
-
-(defclass lazy-reshape (non-empty-non-immediate)
-  ((%transformation
-    :initarg :transformation
-    :reader transformation)))
-
-(defclass parameter (non-empty-immediate)
-  ()
-  (:default-initargs :computable nil))
-
-(defclass optional-parameter (parameter)
-  ((%value
-    :initarg :value
-    :initform nil
-    :accessor optional-parameter-value)))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Methods
-
-;;; Turn any supplied :element-type argument into a suitable :ntype.
-(defmethod shared-initialize
-    ((instance non-empty-array) slot-names
-     &rest args
-     &key
-       (element-type nil element-type-supplied-p))
-  (if (and element-type-supplied-p
-           (or (eql slot-names 't)
-               (member '%ntype slot-names)))
-      (apply #'call-next-method instance slot-names
-             :ntype (petalisp.type-inference:ntype element-type)
-             args)
-      (call-next-method)))
-
-(defmethod initialize-instance :after
-    ((non-immediate non-immediate) &key &allow-other-keys)
-  (loop
-    with computablep = t
-    for input in (lazy-array-inputs non-immediate)
-    maximize (lazy-array-depth input) into lazy-array-depth
-    do (incf (%lazy-array-refcount input))
-    unless (computablep input) do (setf computablep nil)
-      finally
-         (setf (%computablep non-immediate)
-               computablep)
-         (setf (%lazy-array-depth non-immediate)
-               (1+ lazy-array-depth))))
-
-(defmethod lazy-array ((lazy-array lazy-array))
-  lazy-array)
-
-(defmethod lazy-array ((array array))
-  (make-array-immediate array))
-
-(defmethod lazy-array ((object t))
-  (make-scalar-immediate object))
-
-(defmethod replace-lazy-array
-    ((instance empty-array)
-     (replacement empty-array))
-  ;; TODO
-  instance)
-
-(defmethod replace-lazy-array ((instance lazy-reshape) (replacement lazy-reshape))
-  (reinitialize-instance instance
-    :transformation (transformation replacement)
-    :inputs (lazy-array-inputs replacement)))
-
-(defmethod replace-lazy-array ((instance lazy-array) (replacement lazy-reshape))
-  (change-class instance (class-of replacement)
-    :transformation (transformation replacement)
-    :inputs (lazy-array-inputs replacement)))
-
-(defmethod replace-lazy-array ((instance lazy-array) (replacement array-immediate))
-  (change-class instance (class-of replacement)
-    :storage (array-immediate-storage replacement)))
-
-(defmethod replace-lazy-array ((instance lazy-array) (replacement range-immediate))
-  (change-class instance (class-of replacement)))
-
-(defmethod lazy-array-p ((object t))
-  (declare (ignore object))
-  nil)
-
-(defmethod lazy-array-p ((lazy-array lazy-array))
-  (declare (ignore lazy-array))
-  t)
-
-(defmethod empty-array-p ((object t))
-  (declare (ignore object))
-  nil)
-
-(defmethod empty-array-p ((array array))
-  (zerop (array-total-size array)))
-
-(defmethod empty-array-p ((empty-array empty-array))
-  (declare (ignore empty-array))
-  t)
-
-(defmethod immediatep ((object t))
-  (declare (ignore object))
-  nil)
-
-(defmethod immediatep ((immediate immediate))
-  (declare (ignore immediate))
-  t)
-
-(defmethod total-size ((object t))
-  1)
-
-(defmethod total-size ((array array))
-  (array-total-size array))
-
-(defmethod total-size ((empty-array empty-array))
-  0)
-
-(defmethod total-size ((non-empty-array non-empty-array))
-  (shape-size (array-shape non-empty-array)))
-
-(defmethod element-type ((object t))
+(defun lazy-array-element-type (lazy-array)
+  (declare (lazy-array lazy-array))
   (petalisp.type-inference:type-specifier
-   (element-ntype object)))
+   (lazy-array-ntype lazy-array)))
 
-(defmethod element-ntype ((object t))
-  (petalisp.type-inference:ntype-of object))
+(declaim (inline lazy-array-rank))
+(defun lazy-array-rank (lazy-array)
+  (declare (lazy-array lazy-array))
+  (shape-rank
+   (lazy-array-shape lazy-array)))
 
-(defmethod element-ntype ((array array))
-  (petalisp.type-inference:array-element-ntype array))
+(declaim (inline lazy-array-size))
+(defun lazy-array-size (lazy-array)
+  (declare (lazy-array lazy-array))
+  (shape-size
+   (lazy-array-shape lazy-array)))
 
-(defmethod element-ntype ((empty-array empty-array))
-  (petalisp.type-inference:ntype 'nil))
+(declaim (inline lazy-array-ranges))
+(defun lazy-array-ranges (lazy-array)
+  (declare (lazy-array lazy-array))
+  (shape-ranges
+   (lazy-array-shape lazy-array)))
 
-(defmethod array-shape ((object t))
-  (load-time-value
-   (make-shape '())))
-
-(defmethod array-shape ((array array))
-  (make-shape
-   (loop for axis below (array-rank array)
-         collect
-         (range (array-dimension array axis)))))
-
-(defmethod rank ((object t))
-  0)
-
-(defmethod rank ((array array))
-  (array-rank array))
-
-(defmethod rank ((lazy-array lazy-array))
-  (shape-rank (array-shape lazy-array)))
-
-(defmethod rank ((shape shape))
-  (shape-rank shape))
-
-(defmethod lazy-array-inputs ((object t))
-  '())
-
-(defun lazy-array-input (object)
-  (destructuring-bind (input) (lazy-array-inputs object) input))
-
-(defmethod lazy-map-number-of-values ((lazy-map lazy-map))
-  1)
-
-(defmethod print-object ((empty-array empty-array) stream)
-  (print-unreadable-object (empty-array stream :type t :identity nil)))
+(defun lazy-array-inputs (lazy-array)
+  (declare (lazy-array lazy-array))
+  (delayed-action-inputs
+   (lazy-array-delayed-action lazy-array)))
 
 (defmethod print-object ((lazy-array lazy-array) stream)
   (print-unreadable-object (lazy-array stream :type t :identity nil)
     (format stream "~S ~S"
-            (element-type lazy-array)
-            (array-shape lazy-array))))
+            (lazy-array-element-type lazy-array)
+            (lazy-array-shape lazy-array))))
 
-(defmethod array-from-immediate ((array-immediate array-immediate))
-  (array-immediate-storage array-immediate))
-
-(defmethod array-from-immediate ((range-immediate range-immediate))
-  (let* ((shape (array-shape range-immediate))
-         (range (first (shape-ranges shape)))
-         (size (range-size range))
-         (array (make-array size)))
-    (loop for index below size do
-      (setf (aref array index) index))
-    array))
+(defmethod shape-designator-shape ((lazy-array lazy-array))
+  (lazy-array-shape lazy-array))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Immediate Constructors
+;;; Delayed Actions
+;;;
+;;; A delayed action describes how the elements of a lazy array can be
+;;; computed if necessary.  This can range from extremely simple actions
+;;; like accessing the corresponding elements of a Common Lisp array to
+;;; more complicated actions like accessing the nth value of the multiple
+;;; values returned by a function when applied to some arguments.
+;;;
+;;; We also amend the constructor of each delayed action to automatically
+;;; increment the refcount of each referenced lazy array.
 
-(defun make-scalar-immediate (object)
-  (check-type object (and (not lazy-array) (not (cons lazy-array))))
-  (make-instance 'array-immediate
-    :shape (load-time-value (make-shape '()))
-    :ntype (petalisp.type-inference:ntype-of object)
-    :storage (petalisp.type-inference:make-rank-zero-array object)))
+(defstruct (delayed-action
+            (:predicate delayed-action-p)
+            (:copier nil)
+            (:constructor nil)))
 
-(defun make-array-immediate (array)
-  (check-type array array)
-  (cond ((zerop (array-total-size array))
-         (empty-array))
-        ((zerop (array-rank array))
-         (make-scalar-immediate (aref array)))
-        (t
-         (make-instance 'array-immediate
-           :shape (array-shape array)
-           :storage (simplify-array array)
-           :ntype (petalisp.type-inference:array-element-ntype array)))))
+;;; A delayed map action is executed by applying the specified operator
+;;; element-wise to the specified inputs.
+(defstruct (delayed-map
+            (:include delayed-action)
+            (:constructor %make-delayed-map))
+  (operator (alexandria:required-argument :operator)
+   :type (or function symbol))
+  (inputs (alexandria:required-argument :inputs)
+   :type list))
 
+(declaim (inline make-delayed-map))
+(defun make-delayed-map (&key operator inputs)
+  (dolist (input inputs)
+    (incf (lazy-array-refcount input)))
+  (%make-delayed-map :operator operator :inputs inputs))
+
+;;; A delayed multiple value map is the same as a delayed map, but for a
+;;; function that produces multiple values.  Because of the nature of its
+;;; return values, a lazy array whose delayed action is a delayed multiple
+;;; value map must only appear as the input of a delayed nth value action
+;;; and never be visible to the user.
+(defstruct (delayed-multiple-value-map
+            (:include delayed-map)
+            (:constructor %make-delayed-multiple-value-map))
+  ;; A list of ntypes, one for each return value.
+  (ntypes (alexandria:required-argument :ntypes)
+   :type list))
+
+(declaim (inline make-delayed-multiple-value-map))
+(defun make-delayed-multiple-value-map (&key operator inputs ntypes)
+  (dolist (input inputs)
+    (incf (lazy-array-refcount input)))
+  (%make-delayed-multiple-value-map :operator operator :inputs inputs :ntypes ntypes))
+
+;;; A delayed nth-value action is executed by referencing the nth value of
+;;; the targeted delayed multiple value map.
+(defstruct (delayed-nth-value
+            (:include delayed-action)
+            (:constructor %make-delayed-nth-value))
+  (number (alexandria:required-argument :number)
+   :type petalisp.type-inference:argument-index)
+  (input (alexandria:required-argument :input)
+   :type lazy-array))
+
+(declaim (inline make-delayed-nth-value))
+(defun make-delayed-nth-value (&key number input)
+  (incf (lazy-array-refcount input))
+  (%make-delayed-nth-value :number number :input input))
+
+;;; A delayed reshape action is executed by assigning each index the value
+;;; of the specified input lazy array at the position that is obtained by
+;;; applying the specified transformation to the index.
+(defstruct (delayed-reshape
+            (:include delayed-action)
+            (:constructor %make-delayed-reshape))
+  (transformation (alexandria:required-argument :transformation)
+   :type transformation)
+  (input (alexandria:required-argument :input)
+   :type lazy-array))
+
+(declaim (inline make-delayed-reshape))
+(defun make-delayed-reshape (&key transformation input)
+  ;; The elements of an input of a broadcasting reference (which we
+  ;; implement as a delayed reshape operation with a non-invertible
+  ;; transformation) are referenced more than once, so we increment the
+  ;; refcount by a number larger than one to warn the IR conversion.
+  (incf (lazy-array-refcount input)
+        (if (transformation-invertiblep transformation) 1 2))
+  (%make-delayed-reshape :transformation transformation :input input))
+
+;;; A delayed fuse action is executed by assigning each index the unique
+;;; value of the same index in on of the specified inputs.
+(defstruct (delayed-fuse
+            (:include delayed-action)
+            (:constructor %make-delayed-fuse))
+  (inputs (alexandria:required-argument :inputs)
+   :type list))
+
+(declaim (inline delayed-fuse))
+(defun make-delayed-fuse (&key inputs)
+  (dolist (input inputs)
+    (incf (lazy-array-refcount input)))
+  (%make-delayed-fuse :inputs inputs))
+
+;;; A delayed range action is executed by assigning each index a value that
+;;; is that index.
+(defstruct (delayed-range
+            (:include delayed-action)))
+
+;;; A delayed array action is executed by accessing the values of the
+;;; underlying storage array.
+(defstruct (delayed-array
+            (:include delayed-action))
+  (storage (alexandria:required-argument :storage)
+   :type simple-array))
+
+;;; A delayed thunk action can be completed by executing its thunk.  Doing
+;;; so will return another delayed action that can then be used as a
+;;; replacement for the delayed thunk action.
+(defstruct (delayed-thunk
+            (:include delayed-action)
+            (:constructor %make-delayed-thunk))
+  (thunk (alexandria:required-argument :thunk)
+   :type function))
+
+;;; A delayed nop action is inserted as the delayed action of an empty
+;;; lazy array.
+(defstruct (delayed-nop
+            (:include delayed-action)))
+
+;;; A delayed unknown cannot be executed.  It is the delayed action of lazy
+;;; arrays that serve as formal parameters only.
+(defstruct (delayed-unknown
+            (:include delayed-action)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Lazy Array Constructors
+
+(defun lazy-array (object)
+  (typecase object
+    (lazy-array object)
+    (array (lazy-array-from-array object))
+    (t (lazy-array-from-scalar object))))
+
+(defun lazy-array-from-scalar (object)
+  (make-lazy-array
+   :shape (load-time-value (make-shape '()))
+   :ntype (petalisp.type-inference:ntype-of object)
+   :delayed-action
+   (make-delayed-array
+    :storage (petalisp.type-inference:make-rank-zero-array object))))
+
+(defun lazy-array-from-array (array)
+  (declare (array array))
+  (if (zerop (array-rank array))
+      (lazy-array-from-scalar (aref array))
+      (make-lazy-array
+       :shape (array-shape array)
+       :ntype (petalisp.type-inference:array-element-ntype array)
+       :delayed-action
+       (make-delayed-array :storage (simplify-array array)))))
+
+;;; Turn arrays into simple arrays.
 (defun simplify-array (array)
   (if (typep array 'simple-array)
       array
@@ -338,36 +248,116 @@
                 (row-major-aref array index)))
         copy)))
 
-(defun make-range-immediate (range)
+(defun lazy-array-from-range (range)
   (if (size-one-range-p range)
       (lazy-ref
-       (make-scalar-immediate (range-start range))
+       (lazy-array-from-scalar (range-start range))
        (make-shape (list range))
        (make-transformation
         :input-rank 1
         :output-rank 0))
-      (make-instance 'range-immediate
-        :shape (make-shape (list range))
-        :ntype (petalisp.type-inference:ntype-union
-                (petalisp.type-inference:ntype-of (range-start range))
-                (petalisp.type-inference:ntype-of (range-last range))))))
+      (make-lazy-array
+       :shape (make-shape (list range))
+       :ntype (petalisp.type-inference:ntype-union
+               (petalisp.type-inference:ntype-of (range-start range))
+               (petalisp.type-inference:ntype-of (range-last range)))
+       :delayed-action (make-delayed-range))))
 
-(defun empty-array ()
-  (load-time-value
-   (make-instance 'empty-array)))
+(defun empty-lazy-arrays (n shape)
+  (if (zerop n)
+      (values)
+      (let ((empty-array (empty-lazy-array shape)))
+        (case n
+          (1 (values empty-array))
+          (2 (values empty-array empty-array))
+          (3 (values empty-array empty-array empty-array))
+          (otherwise
+           (values-list
+            (make-list n :initial-element empty-array)))))))
 
-(defun empty-arrays (n)
-  (case n
-    (0 (values))
-    (1 (values (empty-array)))
-    (2 (values (empty-array) (empty-array)))
-    (otherwise (values-list (make-list n :initial-element (empty-array))))))
+(defun empty-lazy-array (shape)
+  (unless (empty-shape-p shape)
+    (error "Cannot create an empty array from the non-empty shape ~S."
+           shape))
+  (make-lazy-array
+   :shape shape
+   :ntype nil
+   :delayed-action (load-time-value (make-delayed-nop))))
+
+(declaim (inline make-unknown))
+(defun make-unknown (&key shape element-type)
+  (make-lazy-array
+   :shape shape
+   :ntype (petalisp.type-inference:ntype element-type)
+   :delayed-action (make-delayed-unknown)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Pattern Matching
+;;; Miscellaneous
 
-(trivia:defpattern lazy-array (shape)
-  (alexandria:with-gensyms (it)
-    `(trivia:guard1 ,it (lazy-array-p ,it)
-                    (shape ,it) ,shape)))
+(defun subdivide-arrays (arrays)
+  (subdivide-shapes
+   (loop for array in arrays
+         collect
+         (etypecase array
+           (array (array-shape array))
+           (lazy-array (lazy-array-shape array))))))
+
+(defun delayed-map-number-of-values (delayed-map)
+  (declare (delayed-map delayed-map))
+  (if (delayed-multiple-value-map-p delayed-map)
+      (length (delayed-multiple-value-map-ntypes delayed-map))
+      1))
+
+(defun maxdepth (lazy-arrays)
+  (let ((maxdepth 0))
+    (declare (fixnum maxdepth))
+    (dolist (lazy-array lazy-arrays)
+      (let ((depth (lazy-array-depth lazy-array)))
+        (when (> depth maxdepth)
+          (setf maxdepth depth))))
+    maxdepth))
+
+;;; Computing the inputs of a delayed action.
+(defgeneric delayed-action-inputs (delayed-action)
+  (:method ((delayed-action delayed-action))
+    '())
+  (:method ((delayed-map delayed-map))
+    (delayed-map-inputs delayed-map))
+  (:method ((delayed-nth-value delayed-nth-value))
+    (list (delayed-nth-value-input delayed-nth-value)))
+  (:method ((delayed-reshape delayed-reshape))
+    (list (delayed-reshape-input delayed-reshape)))
+  (:method ((delayed-fuse delayed-fuse))
+    (delayed-fuse-inputs delayed-fuse)))
+
+(defun lazy-thunks-and-unknowns (graph-roots)
+  (let ((table (make-hash-table :test #'eq))
+        (delayed-thunks '())
+        (delayed-unknowns '()))
+    (labels ((scan (lazy-array)
+               (cond ((= 1 (lazy-array-refcount lazy-array))
+                      (process lazy-array))
+                     ((not (gethash lazy-array table))
+                      (setf (gethash lazy-array table) t)
+                      (process lazy-array))))
+             (process (lazy-array)
+               (typecase (lazy-array-delayed-action lazy-array)
+                 (delayed-thunk (push lazy-array delayed-thunks))
+                 (delayed-unknown (push lazy-array delayed-unknowns))
+                 (otherwise (mapc #'scan (lazy-array-inputs lazy-array))))))
+      (mapc #'scan graph-roots))
+    (values delayed-thunks delayed-unknowns)))
+
+(defun force-lazy-thunk (lazy-thunk)
+  (declare (lazy-array lazy-thunk))
+  (let ((delayed-action (lazy-array-delayed-action lazy-thunk)))
+    (when (delayed-thunk-p delayed-action)
+      (let ((new (funcall (delayed-thunk-thunk delayed-action))))
+        (unless (and (delayed-action-p new)
+                     (not (delayed-thunk-p new)))
+          (error "A delayed thunk must return a delayed action that is not a delayed thunk, got ~S."
+                 new))
+        (setf (lazy-array-delayed-action lazy-thunk)
+              new))))
+  lazy-thunk)

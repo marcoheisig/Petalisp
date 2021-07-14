@@ -3,70 +3,55 @@
 (in-package #:petalisp.core)
 
 (defun lazy-ref (input shape transformation)
-  (let* ((relevant-shape (transform-shape shape transformation))
-         (input-shape (lazy-array-shape input)))
+  (declare (lazy-array input)
+           (shape shape)
+           (transformation transformation))
+  (let ((relevant-shape (transform-shape shape transformation))
+        (input-shape (lazy-array-shape input)))
     (unless (and (= (shape-rank relevant-shape)
                     (shape-rank input-shape))
                  (subshapep relevant-shape input-shape))
       (error "~@<Invalid reference to ~S with shape ~S and transformation ~S.~:@>"
              input shape transformation))
-    (lazy-ref-aux input shape transformation relevant-shape)))
-
-(defgeneric lazy-ref-aux (input shape transformation relevant-shape )
-  (:argument-precedence-order transformation shape input relevant-shape))
-
-;;; Optimization: Compose consecutive references.
-(defmethod lazy-ref-aux
-    ((lazy-reshape lazy-reshape)
-     (shape shape)
-     (transformation transformation)
-     (relevant-shape shape))
-  (lazy-ref-aux
-   (lazy-array-input lazy-reshape)
-   shape
-   (compose-transformations
-    (transformation lazy-reshape)
-    transformation)
-   (transform-shape relevant-shape (transformation lazy-reshape))))
-
-;;; Optimization: Drop references with no effect.
-(defmethod lazy-ref-aux
-    ((lazy-array lazy-array)
-     (shape shape)
-     (identity-transformation identity-transformation)
-     (relevant-shape shape))
-  (if (and (shape-equal (lazy-array-shape lazy-array) shape)
-           ;; Don't drop references to range immediates.  The reason for
-           ;; this is that we never want these immediates to appear as
-           ;; roots of a data flow graph.
-           (not (typep lazy-array 'range-immediate)))
-      lazy-array
-      (call-next-method)))
-
-;;; Optimization: Skip references to lazy fuse operations in case they fall
-;;; entirely within a single input of that fusion.
-(defmethod lazy-ref-aux
-    ((lazy-fuse lazy-fuse)
-     (shape shape)
-     (transformation transformation)
-     (relevant-shape shape))
-  (loop for input in (lazy-array-inputs lazy-fuse)
-        when (subshapep relevant-shape (lazy-array-shape input)) do
-          (return-from lazy-ref-aux
-            (lazy-ref-aux input shape transformation relevant-shape)))
-  (call-next-method))
-
-;;; Default: Construct a new reference.
-(defmethod lazy-ref-aux
-    ((lazy-array lazy-array)
-     (shape shape)
-     (transformation transformation)
-     (relevant-shape shape))
-  (make-instance 'lazy-reshape
-    :ntype (element-ntype lazy-array)
-    :inputs (list lazy-array)
-    :shape shape
-    :transformation (add-transformation-constraints shape transformation)))
+    (labels
+        ((ref (lazy-array relevant-shape transformation)
+           (declare (lazy-array lazy-array)
+                    (shape relevant-shape)
+                    (transformation transformation))
+           ;; Optimization: Drop references with no effect.
+           (when (and (identity-transformation-p transformation)
+                      (shape-equal (lazy-array-shape lazy-array) shape))
+             (return-from ref lazy-array))
+           ;; Optimization: Compose consecutive lazy reshapes.
+           (when (delayed-reshape-p (lazy-array-delayed-action lazy-array))
+             (let ((delayed-reshape (lazy-array-delayed-action lazy-array)))
+               (return-from ref
+                 (ref
+                  (delayed-reshape-input delayed-reshape)
+                  (transform-shape
+                   relevant-shape
+                   (delayed-reshape-transformation delayed-reshape))
+                  (compose-transformations
+                   (delayed-reshape-transformation delayed-reshape)
+                   transformation)))))
+           ;; Optimization: Skip references to lazy fuse operations in case
+           ;; they fall entirely within a single input of that fusion.
+           (when (delayed-fuse-p (lazy-array-delayed-action lazy-array))
+             (let ((delayed-fuse (lazy-array-delayed-action lazy-array)))
+               (loop for input in (delayed-fuse-inputs delayed-fuse)
+                     when (subshapep relevant-shape (lazy-array-shape input)) do
+                       (return-from ref
+                         (ref input relevant-shape transformation)))))
+           ;; Default: Construct a new reference.
+           (make-lazy-array
+            :shape shape
+            :ntype (lazy-array-ntype lazy-array)
+            :depth (1+ (lazy-array-depth lazy-array))
+            :delayed-action
+            (make-delayed-reshape
+             :input lazy-array
+             :transformation (add-transformation-constraints shape transformation)))))
+      (ref input relevant-shape transformation))))
 
 ;;; We can turn each axis of the resulting shape that consists of a single
 ;;; element into an additional input constraint for the transformation.
@@ -95,3 +80,9 @@
    lazy-array
    (transform-shape (lazy-array-shape lazy-array) transformation)
    (invert-transformation transformation)))
+
+(defun lazy-collapse (array)
+  (let* ((lazy-array (lazy-array array))
+         (shape (lazy-array-shape lazy-array)))
+    (transform-lazy-array lazy-array (collapsing-transformation shape))))
+

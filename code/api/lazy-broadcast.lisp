@@ -8,8 +8,8 @@
   ;; that shape to the common broadcast shape.
   (let ((lazy-arrays (mapcar #'lazy-array list-of-arrays))
         (alist '()))
-    (loop for lazy-array in list-of-arrays do
-      (let* ((shape (array-shape lazy-array))
+    (loop for lazy-array in lazy-arrays do
+      (let* ((shape (lazy-array-shape lazy-array))
              (entry (assoc shape alist :test #'shape-equal)))
         (when (null entry)
           (push (cons shape nil) alist))))
@@ -31,7 +31,7 @@
                (lazy-ref
                 lazy-array
                 broadcast-shape
-                (cdr (assoc (array-shape lazy-array) alist :test #'shape-equal))))
+                (cdr (assoc (lazy-array-shape lazy-array) alist :test #'shape-equal))))
          broadcast-shape)))))
 
 (defun broadcast-ranges (range-1 range-2)
@@ -49,14 +49,13 @@
   (values-list
    (lazy-broadcast-list-of-arrays arrays)))
 
-(defun lazy-broadcast-to (array shape)
+(defun lazy-broadcast-to (array shape-designator)
   (let* ((lazy-array (lazy-array array))
-         (array-shape (array-shape lazy-array))
-         (shape (array-shape shape)))
+         (target-shape (shape-designator-shape shape-designator)))
     (lazy-ref
      lazy-array
-     shape
-     (make-broadcast-transformation shape array-shape))))
+     target-shape
+     (make-broadcast-transformation target-shape (lazy-array-shape lazy-array)))))
 
 (defun make-broadcast-transformation (input-shape output-shape)
   (multiple-value-bind (transformation broadcast-p select-p)

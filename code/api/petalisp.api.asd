@@ -19,7 +19,6 @@
    (:file "lazy-array-indices" :depends-on ("lazy-shape-indices"))
    (:file "lazy-array-interior" :depends-on ("shape-interior"))
    (:file "lazy-broadcast" :depends-on ("lazy-reshape"))
-   (:file "lazy-collapse" :depends-on ("lazy-reshape"))
    (:file "lazy-drop-axes" :depends-on ("lazy-reshape"))
    (:file "lazy-flatten" :depends-on ("lazy-reshape"))
    (:file "lazy" :depends-on ("lazy-broadcast"))
@@ -45,7 +44,6 @@
      "lazy-array-indices"
      "lazy-array-interior"
      "lazy-broadcast"
-     "lazy-collapse"
      "lazy-drop-axes"
      "lazy-flatten"
      "lazy"

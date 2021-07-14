@@ -7,7 +7,7 @@
     (unless (<= 0 axis (1- rank))
       (error "~@<Invalid axis ~A for a shape with rank ~D.~:@>" axis rank))
     (lazy-ref
-     (make-range-immediate (nth axis (shape-ranges shape)))
+     (lazy-array-from-range (nth axis (shape-ranges shape)))
      shape
      (make-transformation
       :input-rank rank

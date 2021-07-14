@@ -15,15 +15,17 @@
 
 (defvar *table*)
 
+(defvar *lazy-array*)
+
 (defmethod backend-compute
     ((backend reference-backend)
      (lazy-arrays list))
   (let ((*table* (make-hash-table :test #'eq)))
-    (mapcar #'compute-immediate lazy-arrays)))
+    (mapcar #'compute-delayed-array lazy-arrays)))
 
-(defun compute-immediate (lazy-array)
+(defun compute-delayed-array (lazy-array)
   (with-accessors ((shape lazy-array-shape)
-                   (element-type element-type))
+                   (element-type lazy-array-element-type))
       lazy-array
     (let ((array (make-array (shape-dimensions shape) :element-type element-type)))
       (map-shape
@@ -31,59 +33,70 @@
          (setf (apply #'aref array index)
                (lazy-array-value lazy-array index)))
        shape)
-      (make-array-immediate array))))
+      array)))
 
-(defgeneric lazy-array-value (lazy-array index))
-
-(defmethod lazy-array-value :around (lazy-array index)
+(defun lazy-array-value (lazy-array index)
   (alexandria:ensure-gethash
    index
    (alexandria:ensure-gethash
     lazy-array *table*
     (make-hash-table :test #'equal))
-   (call-next-method)))
+   (let ((*lazy-array* lazy-array))
+     (delayed-action-value (lazy-array-delayed-action lazy-array) index))))
 
-(defmethod lazy-array-value
-    ((array-immediate array-immediate) index)
-  (apply #'aref (array-immediate-storage array-immediate) index))
-
-(defmethod lazy-array-value
-    ((range-immediate range-immediate) index)
-  (first index))
-
-(defmethod lazy-array-value
-    ((lazy-map lazy-map) index)
-  (apply (lazy-map-operator lazy-map)
+(defmethod delayed-action-value
+    ((delayed-map delayed-map) index)
+  (apply (delayed-map-operator delayed-map)
          (mapcar
           (lambda (input)
             (lazy-array-value input index))
-          (lazy-array-inputs lazy-map))))
+          (delayed-map-inputs delayed-map))))
 
-(defmethod lazy-array-value
-    ((lazy-multiple-value-map lazy-multiple-value-map) index)
+(defmethod delayed-action-value
+    ((delayed-multiple-value-map delayed-multiple-value-map) index)
   (multiple-value-list
-   (apply (lazy-map-operator lazy-multiple-value-map)
+   (apply (delayed-multiple-value-map-operator delayed-multiple-value-map)
           (mapcar
            (lambda (input)
              (lazy-array-value input index))
-           (lazy-array-inputs lazy-multiple-value-map)))))
+           (delayed-multiple-value-map-inputs delayed-multiple-value-map)))))
 
-(defmethod lazy-array-value
-    ((lazy-multiple-value-ref lazy-multiple-value-ref) index)
+(defmethod delayed-action-value
+    ((delayed-nth-value delayed-nth-value) index)
   (nth
-   (lazy-multiple-value-ref-value-n lazy-multiple-value-ref)
-   (lazy-array-value (lazy-array-input lazy-multiple-value-ref) index)))
+   (delayed-nth-value-number delayed-nth-value)
+   (lazy-array-value (delayed-nth-value-input delayed-nth-value) index)))
 
-(defmethod lazy-array-value
-    ((lazy-fuse lazy-fuse) index)
+(defmethod delayed-action-value
+    ((delayed-reshape delayed-reshape) index)
   (lazy-array-value
-   (loop for input in (lazy-array-inputs lazy-fuse)
+   (delayed-reshape-input delayed-reshape)
+   (transform-sequence index (delayed-reshape-transformation delayed-reshape))))
+
+(defmethod delayed-action-value
+    ((delayed-fuse delayed-fuse) index)
+  (lazy-array-value
+   (loop for input in (delayed-fuse-inputs delayed-fuse)
          when (shape-contains (lazy-array-shape input) index)
            return input)
    index))
 
-(defmethod lazy-array-value
-    ((lazy-reshape lazy-reshape) index)
-  (lazy-array-value
-   (lazy-array-input lazy-reshape)
-   (transform-sequence index (transformation lazy-reshape))))
+(defmethod delayed-action-value
+    ((delayed-range delayed-range) index)
+  (first index))
+
+(defmethod delayed-action-value
+    ((delayed-array delayed-array) index)
+  (apply #'aref (delayed-array-storage delayed-array) index))
+
+(defmethod delayed-action-value
+    ((delayed-thunk delayed-thunk) index)
+  (delayed-action-value (funcall (delayed-thunk-thunk delayed-thunk))))
+
+(defmethod delayed-action-value
+    ((delayed-nop delayed-nop) index)
+  (error "A delayed NOP should never be executed."))
+
+(defmethod delayed-action-value
+    ((delayed-unknown delayed-unknown) index)
+  (error "Attempt to evaluate a graph that contains unknowns."))

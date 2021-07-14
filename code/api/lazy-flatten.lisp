@@ -3,4 +3,5 @@
 (in-package #:petalisp.api)
 
 (defun lazy-flatten (array)
-  (lazy-reshape array (~ 0 (shape-size (array-shape array)))))
+  (let ((lazy-array (lazy-array array)))
+    (lazy-reshape lazy-array (~ 0 (shape-size (lazy-array-shape lazy-array))))))

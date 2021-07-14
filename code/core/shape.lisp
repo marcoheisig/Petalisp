@@ -151,13 +151,24 @@
           do (assert (= 0 (range-start range)))
              (assert (= 1 (range-step range)))))
 
+(defun array-shape (array)
+  (declare (array array))
+  (make-shape
+   (loop for axis below (array-rank array)
+         collect
+         (range (array-dimension array axis)))))
+
+(defgeneric shape-designator-shape (shape-designator)
+  (:method ((object t))
+    (error "Not a valid shape designator: ~S." object))
+  (:method ((shape shape))
+    shape)
+  (:method ((array array))
+    (array-shape array)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Subdivide
-
-(defun subdivide-arrays (arrays)
-  (subdivide-shapes
-   (mapcar #'array-shape arrays)))
 
 (defun subdivide-shapes (shapes)
   (reduce #'subdivide-aux

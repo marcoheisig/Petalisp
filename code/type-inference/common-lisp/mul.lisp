@@ -22,9 +22,7 @@
           (cond
             ((or (zero-ntype-p ntype-of-a)
                  (zero-ntype-p ntype-of-b))
-             (funcall (specializer 'coerce)
-                      0
-                      (wrap-constant (type-specifier result-ntype))))
+             (wrap-constant (coerce 0 (type-specifier result-ntype))))
             ((one-ntype-p ntype-of-a)
              (funcall (specializer 'coerce)
                       b

@@ -9,41 +9,23 @@
    (%outputs :initarg :outputs :reader network-outputs)))
 
 (defun make-network (&rest outputs)
-  (make-instance 'network
-    :parameters (derive-parameters outputs)
-    :outputs outputs))
+  (multiple-value-bind (lazy-thunks lazy-unknowns)
+      (lazy-thunks-and-unknowns outputs)
+    (mapc #'force-lazy-thunk lazy-thunks)
+    (make-instance 'network
+      :parameters lazy-unknowns
+      :outputs outputs)))
 
-(defun derive-parameters (outputs)
-  (let ((table (make-hash-table :test #'eq))
-        (parameters '()))
-    (labels ((scan (lazy-array)
-               (cond ((= 1 (lazy-array-refcount lazy-array))
-                      (process lazy-array))
-                     ((not (gethash lazy-array table))
-                      (setf (gethash lazy-array table) t)
-                      (process lazy-array))))
-             (process (lazy-array)
-               (cond ((typep lazy-array 'parameter)
-                      (push lazy-array parameters))
-                     (t
-                      (mapc #'scan (lazy-array-inputs lazy-array))))))
-      (mapc #'scan outputs))
-    parameters))
-
-(defun call-network (network &rest plist &key &allow-other-keys)
-  (let ((args (loop for parameter in (network-parameters network)
-                    for value = (getf plist parameter '.missing.)
-                    collect
-                    (lazy-reshape
-                     (lazy #'coerce
-                           (if (eq value '.missing.)
-                               (if (typep parameter 'optional-parameter)
-                                   (optional-parameter-value parameter)
-                                   (error "Missing parameter: ~S." parameter))
-                               value)
-                           (element-type parameter))
-                     (array-shape parameter)))))
-    (apply (compile-network-on-backend network *backend*) args)))
+(defun call-network (network &rest plist)
+  (apply (compile-network-on-backend network *backend*)
+         (loop for parameter in (network-parameters network)
+               for value = (getf plist parameter '.missing.)
+               when (eq value '.missing.) do
+                 (error "Missing parameter: ~S" parameter)
+               collect
+               (lazy-reshape
+                (lazy #'coerce value (lazy-array-element-type parameter))
+                (lazy-array-shape parameter)))))
 
 ;;; This is a simple, albeit slow way of compiling a network.  We simply
 ;;; return a closure that substitutes all networks parameters with the provided
@@ -53,7 +35,7 @@
   (lambda (&rest args)
     (backend-compute
      backend
-     (substitute-arrays
+     (substitute-lazy-arrays
       (network-outputs network)
       args
       (network-parameters network)))))

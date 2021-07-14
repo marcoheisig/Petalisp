@@ -25,12 +25,8 @@
           (setf current-slice next-slice))))
     ;; Return the results.
     (loop for root-buffer in root-buffers
-          for lazy-array in lazy-arrays
           collect
-          (if (immediatep lazy-array)
-              lazy-array
-              (lazy-array
-               (petalisp.ir:buffer-storage root-buffer))))))
+          (petalisp.ir:buffer-storage root-buffer))))
 
 ;;; Return a suitable next slice, or NIL, if all work is done.
 (defun compute-next-slice (slice)

@@ -3,4 +3,8 @@
 (in-package #:petalisp.api)
 
 (defun lazy-array-indices (array &optional (axis 0))
-  (lazy-shape-indices (array-shape array) axis))
+  (lazy-shape-indices
+   (etypecase array
+     (array (array-shape array))
+     (lazy-array (lazy-array-shape array)))
+   axis))

@@ -17,6 +17,7 @@
    #:radix
    #:character-code
    #:arity
+   #:argument-index
    #:byte-specifier
    #:complex-short-float
    #:complex-single-float

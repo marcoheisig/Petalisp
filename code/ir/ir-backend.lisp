@@ -76,7 +76,7 @@
      root-buffers)
     (loop until (null *worklist*) do
       (execute-node (pop *worklist*)))
-    (mapcar #'immediate-from-buffer root-buffers)))
+    (mapcar #'petalisp.ir:buffer-storage root-buffers)))
 
 (defun ensure-node (kernel ir-backend)
   (or (gethash kernel *nodes*)
@@ -101,9 +101,3 @@
       (setf dependencies (remove node dependencies))
       (when (null dependencies)
         (pushnew other-node *worklist*)))))
-
-(defun immediate-from-buffer (buffer)
-  (make-instance 'array-immediate
-    :ntype (buffer-ntype buffer)
-    :shape (buffer-shape buffer)
-    :storage (buffer-storage buffer)))

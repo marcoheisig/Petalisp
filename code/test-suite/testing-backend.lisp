@@ -40,12 +40,10 @@
       (compare-solutions reference-solutions multicore-backend-solutions)
       reference-solutions)))
 
-(defun compare-solutions (solutions-1 solutions-2)
-  (loop for immediate-1 in solutions-1
-        for immediate-2 in solutions-2 do
-          (is (approximately-equal
-               (array-from-immediate immediate-1)
-               (array-from-immediate immediate-2)))))
+(defun compare-solutions (solutions1 solutions2)
+  (loop for solution1 in solutions1
+        for solution2 in solutions2 do
+          (is (approximately-equal solution1 solution2))))
 
 (defmethod delete-backend ((testing-backend testing-backend))
   (delete-backend (reference-backend testing-backend))

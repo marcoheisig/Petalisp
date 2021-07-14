@@ -10,22 +10,22 @@
 ;;;
 ;;; Generic Functions
 
-;;; The generic function BACKEND-COMPUTE is invoked whenever some lazy
-;;; arrays have to be turned into immediates in a blocking fashion.
-;;; Backend developers can rely on the fact that the second argument is
-;;; always a list of either CL:ARRAYS or collapsed lazy arrays, i.e., lazy
-;;; arrays whose shape consists only of ranges with a start of zero and a
-;;; stride of one.
+;;; The generic function BACKEND-COMPUTE is invoked to force the evaluation
+;;; of some lazy arrays in a blocking fashion.  Backend developers can rely
+;;; on the fact that the second argument is always a list of collapsed lazy
+;;; arrays, i.e., lazy arrays whose shape consists only of ranges with a
+;;; start of zero and a stride of one.  This function must return one
+;;; delayed array for each supplied lazy array.
 (defgeneric backend-compute (backend lazy-arrays))
 
-;;; The generic function BACKEND-SHEDULE recognizes the task of computing
-;;; some lazy arrays in some backend-specific way and returns an opaque
-;;; object that can later be passed to BACKEND-WAIT to obtain the actual
-;;; results.
+;;; The generic function BACKEND-SHEDULE is invoked to force the evaluation
+;;; of some lazy arrays in a non-blocking fashion.  This function must
+;;; return an opaque object that can later be passed to BACKEND-WAIT to
+;;; obtain the actual results.
 ;;;
-;;; The third argument is a function that replaces lazy arrays with their
-;;; computed immediates.  Backend developers must invoke this function with
-;;; the list of computed immediates once these immediates are available.
+;;; The third argument is a function that expects a list of delayed actions
+;;; -- one for each of the supplied lazy arrays -- and will use these as a
+;;; replacement for the original delayed actions.
 (defgeneric backend-schedule (backend lazy-arrays fixup))
 
 ;;; The generic function BACKEND-WAIT receives as its second argument a
@@ -53,23 +53,6 @@
 ;;;
 ;;; Methods
 
-(defmethod backend-compute :before
-    ((backend backend)
-     (lazy-arrays list))
-  (loop for lazy-array in lazy-arrays do
-    (unless (computablep lazy-array)
-      (error "Attempt to compute the non-computible array ~S."
-             lazy-array))))
-
-(defmethod backend-schedule :before
-    ((backend backend)
-     (lazy-arrays list)
-     (finalizer function))
-  (loop for lazy-array in lazy-arrays do
-    (unless (computablep lazy-array)
-      (error "Attempt to schedule the non-computible array ~S."
-             lazy-array))))
-
 ;;; The default methods for BACKEND-SHEDULE and BACKEND-WAIT are very
 ;;; primitive and don't perform any asynchronous work at all.  Backend
 ;;; developers are encouraged to override both methods with something
@@ -79,7 +62,10 @@
      (lazy-arrays list)
      (finalizer function))
   (lambda ()
-    (funcall finalizer (backend-compute backend lazy-arrays))))
+    (funcall
+     finalizer
+     (mapcar (lambda (array) (make-delayed-array :storage array))
+             (backend-compute backend lazy-arrays)))))
 
 (defmethod backend-wait
     ((backend backend)
@@ -98,12 +84,6 @@
      (unwind-protect (progn ,@body)
        (delete-backend *backend*))))
 
-(defun lisp-datum-from-immediate (immediate)
-  (let ((array (array-from-immediate immediate)))
-    (if (zerop (array-rank array))
-        (aref array)
-        array)))
-
 (defun compute (&rest arrays)
   (values-list
    (compute-list-of-arrays arrays)))
@@ -116,11 +96,11 @@
                  collect
                  (collapsing-transformation
                   (lazy-array-shape lazy-array))))
-         ;; Have the backend perform the actual work.
-         (immediates
-           (backend-compute
-            *backend*
-            (mapcar #'transform-lazy-array lazy-arrays transformations))))
+         (collapsed-lazy-arrays
+           (mapcar #'transform-lazy-array lazy-arrays transformations))
+         ;; Tell the backend to compute the supplied lazy arrays after
+         ;; collapsing them.
+         (result-arrays (backend-compute *backend* collapsed-lazy-arrays)))
     ;; Project the results back to the shape of the original arguments, and
     ;; replace these arguments with the newly computed stuff.  This is the
     ;; only side-effect that we ever perform on data flow graphs, but it is
@@ -128,14 +108,26 @@
     ;; for each data flow graph it appears in.
     (loop for lazy-array in lazy-arrays
           for transformation in transformations
-          for immediate in immediates
-          do (replace-lazy-array
-              lazy-array
-              (lazy-ref (lazy-array immediate)
-                        (lazy-array-shape lazy-array)
-                        transformation)))
+          for collapsed-lazy-array in collapsed-lazy-arrays
+          for result-array in result-arrays
+          do (setf (lazy-array-delayed-action collapsed-lazy-array)
+                   (make-delayed-array :storage result-array))
+             (unless (eq lazy-array collapsed-lazy-array)
+               (setf (lazy-array-delayed-action lazy-array)
+                     (make-delayed-reshape
+                      :transformation transformation
+                      :input collapsed-lazy-array))))
     ;; Return the lisp datum corresponding to each immediate.
-    (mapcar #'lisp-datum-from-immediate immediates)))
+    (mapcar #'array-value result-arrays)))
+
+(defun array-value (array)
+  (declare (array array))
+  (if (zerop (array-rank array))
+      (aref array)
+      array))
+
+(declaim (bordeaux-threads:lock *schedule-lock*))
+(defvar *schedule-lock* (bordeaux-threads:make-lock "Petalisp Schedule Lock"))
 
 (defun schedule (&rest arrays)
   (schedule-list-of-arrays arrays))
@@ -146,21 +138,27 @@
            (loop for lazy-array in lazy-arrays
                  collect
                  (collapsing-transformation
-                  (lazy-array-shape lazy-array)))))
+                  (lazy-array-shape lazy-array))))
+         (collapsed-lazy-arrays
+           (mapcar #'transform-lazy-array lazy-arrays transformations)))
     (backend-schedule
      *backend*
-     (mapcar #'transform-lazy-array lazy-arrays transformations)
-     (lambda (immediates)
+     collapsed-lazy-arrays
+     (lambda (results)
        (loop for lazy-array in lazy-arrays
+             for collapsed-lazy-array in collapsed-lazy-arrays
              for transformation in transformations
-             for immediate in immediates
-             do (replace-lazy-array
-                 lazy-array
-                 (lazy-ref (lazy-array immediate)
-                           (lazy-array-shape lazy-array)
-                           transformation)))))))
+             for result in results
+             do (setf (lazy-array-delayed-action collapsed-lazy-array)
+                      (etypecase result
+                        (delayed-action result)
+                        (array (make-delayed-array :storage result))))
+                (unless (eq lazy-array collapsed-lazy-array)
+                  (setf (lazy-array-delayed-action lazy-array)
+                        (make-delayed-reshape
+                         :transformation transformation
+                         :input collapsed-lazy-array))))))))
 
 (defun wait (&rest requests)
   (backend-wait *backend* requests)
   nil)
-

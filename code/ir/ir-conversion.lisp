@@ -93,7 +93,7 @@
 (defun cluster-ntype (cluster)
   (declare (cluster cluster))
   (petalisp.type-inference:generalize-ntype
-   (element-ntype
+   (lazy-array-ntype
     (cluster-lazy-array cluster))))
 
 (defun cluster-shape (cluster)
@@ -183,14 +183,16 @@
              (buffer (make-buffer
                       :shape shape
                       :ntype (petalisp.type-inference:generalize-ntype
-                              (element-ntype lazy-array))))
+                              (lazy-array-ntype lazy-array))))
              (dendrite (make-dendrite cluster shape (list buffer))))
         (push buffer root-buffers)
         (grow-dendrite dendrite lazy-array)))
     ;; Successively convert all clusters.
     (loop until (ir-converter-empty-p *ir-converter*)
           for cluster = (ir-converter-next-cluster *ir-converter*)
-          do (convert-cluster cluster (cluster-lazy-array cluster)))
+          for lazy-array = (cluster-lazy-array cluster)
+          for delayed-action = (lazy-array-delayed-action lazy-array)
+          do (convert-cluster cluster lazy-array delayed-action))
     ;; Update all cons cells whose instruction couldn't be determined
     ;; immediately at cluster conversion time.
     (loop for (cons . other-conses) in (ir-converter-cons-updates *ir-converter*) do
@@ -252,19 +254,20 @@
 ;;;
 ;;; Cluster Conversion
 
-(defgeneric convert-cluster (cluster lazy-array))
+(defgeneric convert-cluster (cluster lazy-array delayed-action))
 
 ;;; Under certain circumstances, there is no need to convert the current
 ;;; cluster at all.  This around method handles these cases.  It also
 ;;; removes all dendrites that have been invalidated from the cluster.
 (defmethod convert-cluster :around
     ((cluster cluster)
-     (non-immediate non-immediate))
+     (lazy-array lazy-array)
+     (delayed-action delayed-action))
   ;; Since clusters are converted in depth-first order, and since all
   ;; further lazy arrays have a depth less than the current cluster, there
   ;; is no need to keep the current cluster in the cluster table.  No new
   ;; dendrites will ever reach it.
-  (remhash non-immediate (ir-converter-cluster-table *ir-converter*))
+  (remhash lazy-array (ir-converter-cluster-table *ir-converter*))
   ;; Remove all dendrites that have become invalid because their stem has
   ;; been abandoned after encountering a lazy-fuse node.
   (setf (cluster-dendrites cluster)
@@ -294,8 +297,8 @@
           ;; will be patched up later.
           ((list (list* dendrite _))
            (setf (dendrite-depth dendrite)
-                 (lazy-array-depth non-immediate))
-           (grow-dendrite dendrite non-immediate))
+                 (lazy-array-depth lazy-array))
+           (grow-dendrite dendrite lazy-array))
           ;; If there is more than one list of mergeable dendrites, we have
           ;; to go through the regular cluster conversion.  However, we can
           ;; still pull one trick: We can hide all but one dendrite of each
@@ -331,7 +334,8 @@
 
 (defmethod convert-cluster
     ((cluster cluster)
-     (non-immediate non-immediate))
+     (lazy-array lazy-array)
+     (delayed-action delayed-action))
   (let* ((shape-dendrites-alist (partition-dendrites (cluster-dendrites cluster)))
          ;; Create one buffer for each shape-dendrites-alist entry.
          (buffer-dendrites-alist
@@ -365,7 +369,7 @@
              (setf (buffer-data main-buffer) dendrites)
              (push main-buffer (ir-converter-potentially-superfluous-buffers *ir-converter*)))
            ;; Ensure that the elements of the main buffer are being computed.
-           (grow-dendrite (make-dendrite cluster shape (list main-buffer)) non-immediate)
+           (grow-dendrite (make-dendrite cluster shape (list main-buffer)) lazy-array)
            ;; Emit copy kernels from the main buffer to all the other
            ;; buffers.
            (loop for (other-buffer . nil) in other-entries do
@@ -377,10 +381,14 @@
 ;;; each of the resulting values of the instruction.
 (defmethod convert-cluster
     ((cluster cluster)
-     (lazy-multiple-value-map lazy-multiple-value-map))
+     (lazy-array lazy-array)
+     (delayed-multiple-value-map delayed-multiple-value-map))
   ;; During partitioning, we treat all dendrites as if they'd write into
   ;; the same buffer, although in practice the buffer they write to is
-  ;; determined by their value number.  The reason is that we want 
+  ;; determined by their value number.  The reason is that we don't want to
+  ;; introduce additional fragmentation.  The price is slightly inefficient
+  ;; code when some return values of a multiple valued function are used in
+  ;; a wildly different way than others.
   (let* ((shape-dendrites-alist (partition-dendrites (cluster-dendrites cluster)))
          ;; A list of buffer-dendrites alists, one for each value returned
          ;; by the lazy multiple value map instruction.  Each
@@ -388,10 +396,7 @@
          ;; dendrites alist.  Entries of a buffer-dendrites alist are NIL
          ;; in case the corresponding buffer is never referenced.
          (list-of-buffer-dendrites-alists
-           ;; Remember that we abuse the ntype slot of a lazy multiple
-           ;; value map to store a list of ntypes - one for each of its
-           ;; multiple values.
-           (loop for element-ntype in (element-ntype lazy-multiple-value-map)
+           (loop for element-ntype in (delayed-multiple-value-map-ntypes delayed-multiple-value-map)
                  for buffer-ntype = (petalisp.type-inference:generalize-ntype element-ntype)
                  for value-n from 0
                  collect
@@ -438,7 +443,7 @@
             (setf (buffer-data main-buffer) dendrites)
             (push main-buffer (ir-converter-potentially-superfluous-buffers *ir-converter*))))
         ;; Ensure that the elements of the main buffers are being computed.
-        (grow-dendrite dendrite lazy-multiple-value-map)
+        (grow-dendrite dendrite lazy-array)
         ;; Emit copy kernels from the main buffers to all the other
         ;; buffers.
         (loop for buffer-dendrites-alist in list-of-filtered-buffer-dendrites-alists do
@@ -499,83 +504,98 @@
 ;;;
 ;;; Dendrite Growing
 
-(defgeneric grow-dendrite (dendrite lazy-array))
+(defun grow-dendrite (dendrite lazy-array)
+  (grow-dendrite-aux dendrite lazy-array (lazy-array-delayed-action lazy-array)))
 
-(defmethod grow-dendrite :around
+(defgeneric grow-dendrite-aux (dendrite lazy-array delayed-action))
+
+(defmethod grow-dendrite-aux :around
     ((dendrite dendrite)
-     (non-immediate non-immediate))
-  (if (and (< (lazy-array-depth non-immediate)
+     (lazy-array lazy-array)
+     (delayed-action delayed-action))
+  (if (and (< (lazy-array-depth lazy-array)
               (dendrite-depth dendrite))
-           (> (lazy-array-refcount non-immediate) 1))
-      ;; We employ a trick here - if the multiply referenced non-immediate
-      ;; is a lazy multiple value ref, we don't create a cluster for it but
-      ;; for its parent.
-      (if (typep non-immediate 'lazy-multiple-value-ref)
+           (> (lazy-array-refcount lazy-array) 1))
+      ;; We employ a trick here - if the multiply referenced lazy-array is
+      ;; an nth-value reference, we don't create a cluster for it but for
+      ;; its parent.
+      (if (delayed-nth-value-p delayed-action)
           (with-accessors ((cons dendrite-cons)) dendrite
             (setf (car cons)
-                  (lazy-multiple-value-ref-value-n non-immediate))
-            (push dendrite (cluster-dendrites (ensure-cluster (lazy-array-input non-immediate)))))
-          (push dendrite (cluster-dendrites (ensure-cluster non-immediate))))
+                  (delayed-nth-value-number delayed-action))
+            (push dendrite (cluster-dendrites (ensure-cluster (delayed-nth-value-input delayed-action)))))
+          (push dendrite (cluster-dendrites (ensure-cluster lazy-array))))
       (call-next-method)))
 
-(defmethod grow-dendrite
+(defmethod grow-dendrite-aux
     ((dendrite dendrite)
-     (lazy-fuse lazy-fuse))
+     (lazy-array lazy-array)
+     (delayed-fuse delayed-fuse))
   (with-accessors ((shape dendrite-shape)
                    (transformation dendrite-transformation)
                    (stem dendrite-stem)
                    (kernel dendrite-kernel)
                    (cons dendrite-cons)) dendrite
-    (let* ((inputs (lazy-array-inputs lazy-fuse))
+    (let* ((inputs (delayed-fuse-inputs delayed-fuse))
            (intersections
              (loop for input in inputs
                    for intersection = (shape-intersection shape (lazy-array-shape input))
                    collect intersection)))
       (case (count-if-not #'empty-shape-p intersections)
         (0 (error "Erroneous fusion."))
+        ;; If only a single input intersects with the dendrite's shape, we
+        ;; can continue growing along that input.
         (1 (let ((input (nth (position-if-not #'empty-shape-p intersections) inputs)))
              (grow-dendrite dendrite input)))
+        ;; In case the dendrite's shape intersects with more than one
+        ;; input, we project each of these intersections back to the stem
+        ;; and retry with this projected shape.  By construction, this new
+        ;; shape will only reach a single input of this fusion.
         (otherwise
          ;; Invalidate the current kernel and its dendrites.
          (setf (stem-validp stem) nil)
          (delete-kernel kernel)
          ;; Try growing from the cluster again, but with one stem for each
          ;; reachable fusion input.
-         (loop for input in inputs
-               for intersection in intersections
-               unless (empty-shape-p intersection)
-                 do (grow-dendrite
-                     (make-dendrite
-                      (stem-cluster stem)
-                      (transform-shape intersection (invert-transformation transformation))
-                      (stem-buffers stem))
-                     (cluster-lazy-array (stem-cluster stem)))))))))
+         (let* ((cluster (stem-cluster stem))
+                (lazy-array (cluster-lazy-array cluster)))
+           (loop for input in inputs
+                 for intersection in intersections
+                 unless (empty-shape-p intersection)
+                   do (grow-dendrite
+                       (make-dendrite
+                        cluster
+                        (transform-shape intersection (invert-transformation transformation))
+                        (stem-buffers stem))
+                       lazy-array))))))))
 
-(defmethod grow-dendrite
+(defmethod grow-dendrite-aux
     ((dendrite dendrite)
-     (lazy-reshape lazy-reshape))
+     (lazy-array lazy-array)
+     (delayed-reshape delayed-reshape))
   (with-accessors ((shape dendrite-shape)
                    (transformation dendrite-transformation)) dendrite
     (setf shape (transform-shape
-                 (shape-intersection shape (lazy-array-shape lazy-reshape))
-                 (transformation lazy-reshape)))
+                 (shape-intersection shape (lazy-array-shape lazy-array))
+                 (delayed-reshape-transformation delayed-reshape)))
     (setf transformation (compose-transformations
-                          (transformation lazy-reshape)
+                          (delayed-reshape-transformation delayed-reshape)
                           transformation))
-    (grow-dendrite dendrite (lazy-array-input lazy-reshape))))
+    (grow-dendrite dendrite (delayed-reshape-input delayed-reshape))))
 
-(defmethod grow-dendrite
+(defmethod grow-dendrite-aux
     ((dendrite dendrite)
-     (lazy-map lazy-map))
+     (lazy-array lazy-array)
+     (delayed-map delayed-map))
   (with-accessors ((shape dendrite-shape)
                    (transformation dendrite-transformation)
                    (cons dendrite-cons)) dendrite
-    (let* ((inputs (lazy-array-inputs lazy-map))
+    (let* ((inputs (delayed-map-inputs delayed-map))
            (input-conses (loop for input in inputs collect (cons 0 input))))
       (setf (cdr cons)
             (make-call-instruction
-             (lazy-map-number-of-values lazy-map)
-             (lazy-map-operator lazy-map)
+             (delayed-map-number-of-values delayed-map)
+             (delayed-map-operator delayed-map)
              input-conses))
       ;; If our function has zero inputs, we are done.  Otherwise we create
       ;; one dendrite for each input and continue growing.
@@ -585,37 +605,40 @@
                 (setf (dendrite-cons new-dendrite) input-cons)
                 (grow-dendrite new-dendrite input))))))
 
-(defmethod grow-dendrite
+(defmethod grow-dendrite-aux
     ((dendrite dendrite)
-     (lazy-multiple-value-ref lazy-multiple-value-ref))
+     (lazy-array lazy-array)
+     (delayed-nth-value delayed-nth-value))
   (with-accessors ((cons dendrite-cons)) dendrite
-    (setf (car cons)
-          (lazy-multiple-value-ref-value-n lazy-multiple-value-ref)))
-  (grow-dendrite dendrite (lazy-array-input lazy-multiple-value-ref)))
+    (with-accessors ((input delayed-nth-value-input)
+                     (number delayed-nth-value-number)) delayed-nth-value
+      (setf (car cons) number)
+      (grow-dendrite dendrite input))))
 
-(defmethod grow-dendrite
+(defmethod grow-dendrite-aux
     ((dendrite dendrite)
-     (array-immediate array-immediate))
+     (lazy-array lazy-array)
+     (delayed-array delayed-array))
   (with-accessors ((shape dendrite-shape)
                    (transformation dendrite-transformation)
                    (stem dendrite-stem)
                    (cons dendrite-cons)) dendrite
     (let* ((kernel (stem-kernel stem))
-           (shape (lazy-array-shape array-immediate))
-           (storage (array-immediate-storage array-immediate))
+           (shape (lazy-array-shape lazy-array))
+           (storage (delayed-array-storage delayed-array))
            (ntype (petalisp.type-inference:generalize-ntype
-                   (element-ntype array-immediate)))
+                   (lazy-array-ntype lazy-array)))
            (buffer
              (if (zerop (shape-rank shape))
                  (alexandria:ensure-gethash
-                  (aref (array-immediate-storage array-immediate))
+                  (aref (delayed-array-storage delayed-array))
                   (ir-converter-scalar-table *ir-converter*)
                   (make-buffer
                    :shape shape
                    :ntype ntype
                    :storage storage))
                  (alexandria:ensure-gethash
-                  (array-immediate-storage array-immediate)
+                  (delayed-array-storage delayed-array)
                   (ir-converter-array-table *ir-converter*)
                   (make-buffer
                    :shape shape
@@ -624,9 +647,10 @@
       (setf (cdr cons)
             (make-load-instruction kernel buffer transformation)))))
 
-(defmethod grow-dendrite
+(defmethod grow-dendrite-aux
     ((dendrite dendrite)
-     (range-immediate range-immediate))
+     (lazy-array lazy-array)
+     (delayed-range delayed-range))
   (with-accessors ((cons dendrite-cons)
                    (transformation dendrite-transformation)) dendrite
     (setf (cdr cons)

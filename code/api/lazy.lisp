@@ -3,6 +3,4 @@
 (in-package #:petalisp.api)
 
 (defun lazy (function &rest arrays)
-  (multiple-value-bind (inputs shape)
-      (lazy-broadcast-list-of-arrays arrays)
-    (lazy-map function shape inputs)))
+  (lazy-map function (lazy-broadcast-list-of-arrays arrays)))

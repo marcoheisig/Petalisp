@@ -70,6 +70,8 @@
    #:shape-table-value
    #:remove-shape-table-entry
    #:clear-shape-table
+   #:array-shape
+   #:shape-designator-shape
 
    ;; Transformations
    #:transformation
@@ -99,51 +101,76 @@
    #:map-transformation-outputs
 
    ;; Lazy Arrays
-   #:lazy-array-p
-   #:empty-array-p
-   #:immediatep
    #:lazy-array
-   #:array-shape
-   #:parameter
-   #:optional-parameter
-   #:optional-parameter-value
-   #:replace-lazy-array
-   #:total-size
-   #:element-type
-   #:element-ntype
-   #:rank
-   #:lazy-array-input
-   #:lazy-array-inputs
-   #:lazy-multiple-value-ref-value-n
-   #:lazy-map-operator
-   #:lazy-map-number-of-values
-   #:lazy-array-refcount
-   #:lazy-array-depth
+   #:lazy-array-p
    #:lazy-array-shape
+   #:lazy-array-ntype
+   #:lazy-array-depth
+   #:lazy-array-refcount
+   #:lazy-array-delayed-action
+   #:lazy-array-element-type
+   #:lazy-array-rank
+   #:lazy-array-size
+   #:lazy-array-ranges
+   #:lazy-array-inputs
    #:lazy-array
    #:lazy-map
-   #:array-immediate-storage
    #:lazy-multiple-value-map
-   #:lazy-multiple-value-ref
    #:lazy-reshape
    #:lazy-ref
    #:lazy-fuse
-   #:immediate
-   #:non-immediate
-   #:empty-array
-   #:empty-arrays
-   #:non-empty-array
-   #:non-empty-immediate
-   #:non-empty-non-immediate
-   #:array-immediate
-   #:range-immediate
+   #:lazy-collapse
+   #:make-unknown
+   #:lazy-thunks-and-unknowns
+   #:force-lazy-thunk
+   #:empty-lazy-array
+   #:empty-lazy-arrays
    #:move-axis-to-front
-   #:empty-array
-   #:make-array-immediate
-   #:make-range-immediate
-   #:copy-arrays
-   #:substitute-arrays
-   #:array-from-immediate
+   #:lazy-array-from-array
+   #:lazy-array-from-scalar
+   #:lazy-array-from-range
+   #:copy-lazy-arrays
+   #:substitute-lazy-arrays
+   #:substitute-lazy-array
+   #:substitute-delayed-action
+
+   ;; Delayed Actions
+   #:delayed-action
+   #:delayed-action-p
+   #:delayed-action-inputs
+   #:delayed-map
+   #:delayed-map-p
+   #:delayed-map-operator
+   #:delayed-map-inputs
+   #:delayed-map-number-of-values
+   #:delayed-multiple-value-map
+   #:delayed-multiple-value-map-p
+   #:delayed-multiple-value-map-operator
+   #:delayed-multiple-value-map-inputs
+   #:delayed-multiple-value-map-ntypes
+   #:delayed-nth-value
+   #:delayed-nth-value-p
+   #:delayed-nth-value-number
+   #:delayed-nth-value-input
+   #:delayed-reshape
+   #:delayed-reshape-p
+   #:delayed-reshape-transformation
+   #:delayed-reshape-input
+   #:delayed-fuse
+   #:delayed-fuse-p
+   #:delayed-fuse-inputs
+   #:delayed-range
+   #:delayed-range-p
+   #:delayed-array
+   #:delayed-array-p
+   #:delayed-array-storage
+   #:delayed-thunk
+   #:delayed-thunk-p
+   #:delayed-thunk-thunk
+   #:delayed-unknown
+   #:delayed-unknown-p
+   #:delayed-nop
+   #:delayed-nop-p
 
    ;; Backend
    #:*backend*

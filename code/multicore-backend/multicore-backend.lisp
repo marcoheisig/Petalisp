@@ -135,8 +135,7 @@
      (lazy-arrays list))
   (let ((request (backend-schedule backend lazy-arrays #'dummy-finalizer)))
     (backend-wait backend (list request))
-    (mapcar (alexandria:compose #'lazy-array #'petalisp.ir:buffer-storage)
-            (request-ir-roots request))))
+    (mapcar #'petalisp.ir:buffer-storage (request-ir-roots request))))
 
 (defmethod backend-schedule
     ((backend multicore-backend)

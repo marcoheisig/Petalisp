@@ -7,4 +7,4 @@
   (let ((lazy-array (lazy-array array)))
     (lazy-reshape
      lazy-array
-     (shape-interior (lazy-array-shape array) width))))
+     (shape-interior (lazy-array-shape lazy-array) width))))

@@ -21,7 +21,7 @@
   (let* ((u (lazy-array u))
          (f (lazy-array f))
          (interior (lazy-array-interior u)))
-    (ecase (rank u)
+    (ecase (lazy-array-rank u)
       (1
        (loop repeat iterations do
          (setf u (lazy-overwrite
@@ -98,7 +98,7 @@
                                 (mapcar (alexandria:curry #'cons range-1) black)
                                 (mapcar (alexandria:curry #'cons range-2) red))
                                (rest ranges)))))))))
-      (red-black-shapes '(()) '() (reverse (shape-ranges (array-shape lazy-array)))))))
+      (red-black-shapes '(()) '() (reverse (shape-ranges (lazy-array-shape lazy-array)))))))
 
 (defun rbgs (u f h &optional (iterations 1))
   "Iteratively solve the Poisson equation -Δu = f for a given uniform grid
@@ -106,7 +106,7 @@
   (let* ((u (lazy-array u))
          (f (lazy-array f))
          (stencil
-           (ecase (rank u)
+           (ecase (lazy-array-rank u)
              (1 (lambda (space)
                   (lazy #'* (float 1/2)
                         (lazy #'+
@@ -149,11 +149,11 @@
     (lazy-reshape
      array
      (make-transformation
-            :scalings (make-array (rank lazy-array) :initial-element factor)))))
+            :scalings (make-array (lazy-array-rank lazy-array) :initial-element factor)))))
 
 (defun prolongate (u)
   (let ((u* (scale-array u 2)))
-    (trivia:ematch (array-shape u*)
+    (trivia:ematch (lazy-array-shape u*)
       ((~ start-1 end-1 2)
        (let ((space-1 (~ (1+ start-1) end-1 2)))
          (lazy-fuse
@@ -235,7 +235,7 @@
 
 (defun restrict (u)
   (let ((u (lazy-array u)))
-    (trivia:ematch (array-shape u)
+    (trivia:ematch (lazy-array-shape u)
       ((~ start-1 end-1)
        (let* ((selection (~ start-1 end-1 2))
               (interior (shape-interior selection)))
@@ -315,10 +315,10 @@
   (let* ((u (lazy-array u))
          (b (lazy-array b))
          (interior (lazy-array-interior u)))
-    (ecase (rank u)
+    (ecase (lazy-array-rank u)
       (1
        (lazy-overwrite
-        (lazy-reshape 0d0 (array-shape u))
+        (lazy-reshape 0d0 (lazy-array-shape u))
         (lazy #'- (lazy-reshape b interior)
               (lazy #'* (/ 1 (* h h))
                     (lazy #'-
@@ -327,7 +327,7 @@
                           (lazy-reshape u (transform i to (1- i)) interior))))))
       (2
        (lazy-overwrite
-        (lazy-reshape 0d0 (array-shape u))
+        (lazy-reshape 0d0 (lazy-array-shape u))
         (lazy #'- (lazy-reshape b interior)
               (lazy #'* (/ 1 (* h h))
                     (lazy #'-
@@ -338,7 +338,7 @@
                           (lazy-reshape u (transform i j to i (1- j)) interior))))))
       (3
        (lazy-overwrite
-        (lazy-reshape 0d0 (array-shape u))
+        (lazy-reshape 0d0 (lazy-array-shape u))
         (lazy #'- (lazy-reshape b interior)
               (lazy #'* (/ 1 (* h h))
                     (lazy #'-
@@ -351,11 +351,11 @@
                           (lazy-reshape u (transform i j k to i j (1- k)) interior)))))))))
 
 (defun v-cycle (u f h v1 v2)
-  (if (<= (range-size (first (shape-ranges (array-shape u)))) 3)
+  (if (<= (range-size (first (shape-ranges (lazy-array-shape u)))) 3)
       (rbgs u f h 3) ; solve "exactly"
       (let* ((x (rbgs u f h v1))
              (r (restrict (residual x f h)))
-             (c (v-cycle (lazy-reshape 0d0 (array-shape r)) r (* 2 h) v1 v2)))
+             (c (v-cycle (lazy-reshape 0d0 (lazy-array-shape r)) r (* 2 h) v1 v2)))
         (rbgs (lazy #'+ x (prolongate c)) f h v2))))
 
 

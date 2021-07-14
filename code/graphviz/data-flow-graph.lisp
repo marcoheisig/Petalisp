@@ -36,22 +36,27 @@
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (immediate petalisp.core:array-immediate))
+     (node petalisp.core:lazy-array))
+  (graphviz-node-attributes graph (petalisp.core:lazy-array-delayed-action node)))
+
+(defmethod graphviz-node-attributes
+    ((graph data-flow-graph)
+     (node petalisp.core:delayed-array))
   `(:fillcolor "cadetblue1"))
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (immediate petalisp.core:lazy-map))
+     (node petalisp.core:delayed-map))
   `(:fillcolor "burlywood1"))
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (node petalisp.core:lazy-fuse))
+     (node petalisp.core:delayed-fuse))
   `(:fillcolor "cyan3"))
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
-     (node petalisp.core:lazy-reshape))
+     (node petalisp.core:delayed-reshape))
   `(:fillcolor "gray"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -60,26 +65,22 @@
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (lazy-array petalisp.core:lazy-array))
-  `(("shape" . ,(stringify (petalisp.core:array-shape lazy-array)))
-    ("element-type" . ,(stringify (petalisp.core:element-type lazy-array)))))
+     (node petalisp.core:lazy-array))
+  `(("shape" . ,(stringify (petalisp.core:lazy-array-shape node)))
+    ("element-type" . ,(stringify (petalisp.core:lazy-array-element-type node)))
+    ,@(graphviz-node-properties graph (petalisp.core:lazy-array-delayed-action node))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (array-immediate petalisp.core:array-immediate))
-  `(("storage" . ,(stringify (petalisp.core:array-immediate-storage array-immediate)))))
+     (delayed-array petalisp.core:delayed-array))
+  `(("storage" . ,(stringify (petalisp.core:delayed-array-storage delayed-array)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (range-immediate petalisp.core:range-immediate))
-  `())
+     (node petalisp.core:delayed-map))
+  `(("operator" . ,(stringify (petalisp.core:delayed-map-operator node)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
-     (node petalisp.core:lazy-map))
-  `(("operator" . ,(stringify (petalisp.core:lazy-map-operator node)))))
-
-(defmethod graphviz-node-properties append
-    ((graph data-flow-graph)
-     (node petalisp.core:lazy-reshape))
-  `(("transformation" . ,(stringify (petalisp.core:transformation node)))))
+     (node petalisp.core:delayed-reshape))
+  `(("transformation" . ,(stringify (petalisp.core:delayed-reshape-transformation node)))))

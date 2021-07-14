@@ -7,8 +7,7 @@
    (lambda (lazy-array modifier)
      (typecase modifier
        (transformation (transform-lazy-array lazy-array modifier))
-       (shape (lazy-reshape-using-shape lazy-array modifier))
-       (otherwise (lazy-reshape-using-shape lazy-array (array-shape modifier)))))
+       (otherwise (lazy-reshape-using-shape lazy-array (shape-designator-shape modifier)))))
    modifiers
    :initial-value (lazy-array array)))
 
@@ -137,7 +136,7 @@
 ;;; Size-Preserving Reshape
 
 (defun change-shape (lazy-array shape)
-  (let ((n1 (normalizing-transformation (array-shape lazy-array)))
+  (let ((n1 (normalizing-transformation (lazy-array-shape lazy-array)))
         (n2 (normalizing-transformation shape)))
     (lazy-reshape
      (change-shape/normalized
@@ -150,7 +149,7 @@
   ;; suffix of the ranges of LAZY-ARRAY matches a prefix or suffix of the
   ;; ranges of SHAPE.  If so, they are left unchanged for the entire
   ;; procedure.
-  (let* ((input-shape (array-shape lazy-array))
+  (let* ((input-shape (lazy-array-shape lazy-array))
          (input-rank (shape-rank input-shape))
          (output-rank (shape-rank output-shape))
          (input-ranges (shape-ranges input-shape))
@@ -167,7 +166,7 @@
 
 (defun reshape/flatten (lazy-array start end)
   (multiple-value-bind (vector-of-prime-factors pivot)
-      (factorize-shape (array-shape lazy-array) start end)
+      (factorize-shape (lazy-array-shape lazy-array) start end)
     ;; Flatten all ranges above PIVOT.
     (loop for index from (1+ pivot) below end
           for prime-factors = (aref vector-of-prime-factors (- index start)) do
@@ -204,7 +203,7 @@
     (lazy-ref
      lazy-array
      shape
-     (make-shape-transformation shape (array-shape lazy-array)))))
+     (make-shape-transformation shape (lazy-array-shape lazy-array)))))
 
 ;;; Return a vector with the prime factors of SHAPE bounded by START and
 ;;; END, and the axis with the larges sum of prime factors therein.
@@ -228,8 +227,8 @@
 ;; Turn the range at the supplied AXIS with size N into a range of size K,
 ;; followed by a range of size N / K.
 (defun insert-axis-before (lazy-array axis k)
-  (let* ((shape (array-shape lazy-array))
-         (rank (rank shape))
+  (let* ((shape (lazy-array-shape lazy-array))
+         (rank (shape-rank shape))
          (ranges (shape-ranges shape))
          (prefix (subseq ranges 0 axis))
          (range (nth axis ranges))
@@ -260,8 +259,8 @@
 ;; Turn the range at axis I with size N into a range of size N / K,
 ;; followed by a range of size K.
 (defun insert-axis-after (lazy-array axis k)
-  (let* ((shape (array-shape lazy-array))
-         (rank (rank shape))
+  (let* ((shape (lazy-array-shape lazy-array))
+         (rank (shape-rank shape))
          (ranges (shape-ranges shape))
          (prefix (subseq ranges 0 axis))
          (suffix (subseq ranges (1+ axis)))
@@ -293,7 +292,7 @@
                :scalings scalings)))))))
 
 (defun remove-axis-before (lazy-array axis)
-  (let* ((shape (array-shape lazy-array))
+  (let* ((shape (lazy-array-shape lazy-array))
          (rank (shape-rank shape))
          (ranges (shape-ranges shape))
          (prefix (subseq ranges 0 (1- axis)))
@@ -326,7 +325,7 @@
                :offsets offsets)))))))
 
 (defun remove-axis-after (lazy-array axis)
-  (let* ((shape (array-shape lazy-array))
+  (let* ((shape (lazy-array-shape lazy-array))
          (rank (shape-rank shape))
          (ranges (shape-ranges shape))
          (prefix (subseq ranges 0 axis))

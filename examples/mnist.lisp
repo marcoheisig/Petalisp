@@ -73,7 +73,7 @@
 (defparameter *test-labels* (load-array "test-labels.npy"))
 
 (defun main (&key (batch-size 64) (learning-rate (/ 0.01 batch-size)) (iterations 10))
-  (destructuring-bind (n w h) (shape-dimensions (array-shape *train-images*))
+  (destructuring-bind (n w h) (shape-dimensions (lazy-array-shape *train-images*))
     (let ((W1 (random-array (~ (* w h) ~ 128)))
           (W2 (random-array (~ 128 ~ 64)))
           (W3 (random-array (~ 64 ~ 10))))
