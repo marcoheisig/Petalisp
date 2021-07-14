@@ -351,11 +351,14 @@
                           (lazy-reshape u (transform i j k to i j (1- k)) interior)))))))))
 
 (defun v-cycle (u f h v1 v2)
-  (if (<= (range-size (first (shape-ranges (lazy-array-shape u)))) 3)
-      (rbgs u f h 3) ; solve "exactly"
-      (let* ((x (rbgs u f h v1))
-             (r (restrict (residual x f h)))
-             (c (v-cycle (lazy-reshape 0d0 (lazy-array-shape r)) r (* 2 h) v1 v2)))
-        (rbgs (lazy #'+ x (prolongate c)) f h v2))))
+  (let ((u (lazy-array u))
+        (f (lazy-array f))
+        (h (lazy-array h)))
+    (if (<= (range-size (first (shape-ranges (lazy-array-shape u)))) 3)
+        (rbgs u f h 3) ; solve "exactly"
+        (let* ((x (rbgs u f h v1))
+               (r (restrict (residual x f h)))
+               (c (v-cycle (lazy-reshape 0d0 (lazy-array-shape r)) r (* 2 h) v1 v2)))
+          (rbgs (lazy #'+ x (prolongate c)) f h v2)))))
 
 
