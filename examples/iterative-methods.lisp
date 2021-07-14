@@ -352,8 +352,7 @@
 
 (defun v-cycle (u f h v1 v2)
   (let ((u (lazy-array u))
-        (f (lazy-array f))
-        (h (lazy-array h)))
+        (f (lazy-array f)))
     (if (<= (range-size (first (shape-ranges (lazy-array-shape u)))) 3)
         (rbgs u f h 3) ; solve "exactly"
         (let* ((x (rbgs u f h v1))
