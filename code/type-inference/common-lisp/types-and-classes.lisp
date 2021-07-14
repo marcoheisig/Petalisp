@@ -27,7 +27,7 @@
           (let ((ntype (ntype type-specifier-ntype)))
             (cond ((ntype-subtypep object-ntype ntype)
                    (wrap-default (ntype '(not null))))
-                  ((ntype-subtypepc1 object-ntype ntype)
+                  ((ntype-subtypepc2 object-ntype ntype)
                    (wrap nil))
                   (t (wrap-default (ntype 'generalized-boolean)))))
           (wrap-default (ntype 'generalized-boolean))))))

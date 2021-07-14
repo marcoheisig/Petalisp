@@ -45,7 +45,7 @@
    #:eql-ntype-p
    #:ntype-union
    #:ntype-subtypep
-   #:ntype-subtypepc1
+   #:ntype-subtypepc2
    #:list-ntypes
 
    ;; Type inference.
