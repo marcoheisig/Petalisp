@@ -113,6 +113,7 @@
   (or (find-class symbol nil)
       (boundp symbol)
       (fboundp symbol)
+      (fboundp `(setf ,symbol))
       (macro-function symbol)
       (special-operator-p symbol)
       (type-specifier-p symbol)))
