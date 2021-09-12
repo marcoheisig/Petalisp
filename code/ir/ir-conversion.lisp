@@ -656,6 +656,18 @@
     (setf (cdr cons)
           (make-iref-instruction transformation))))
 
+(defmethod grow-dendrite-aux
+    ((dendrite dendrite)
+     (lazy-array lazy-array)
+     (delayed-unknown delayed-unknown))
+  (with-accessors ((cons dendrite-cons)
+                   (transformation dendrite-transformation)) dendrite
+    (setf (cdr cons)
+          (make-call-instruction 1 'reference-to-delayed-unknown '()))))
+
+(defun reference-to-delayed-unknown ()
+  (error "Attempt to evaluate an unknown lazy array."))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Buffer Pruning
