@@ -15,8 +15,6 @@
 
 (defvar *table*)
 
-(defvar *lazy-array*)
-
 (defmethod backend-compute
     ((backend reference-backend)
      (lazy-arrays list))
@@ -41,8 +39,7 @@
    (alexandria:ensure-gethash
     lazy-array *table*
     (make-hash-table :test #'equal))
-   (let ((*lazy-array* lazy-array))
-     (delayed-action-value (lazy-array-delayed-action lazy-array) index))))
+   (delayed-action-value (lazy-array-delayed-action lazy-array) index)))
 
 (defmethod delayed-action-value
     ((delayed-map delayed-map) index)
@@ -88,10 +85,6 @@
 (defmethod delayed-action-value
     ((delayed-array delayed-array) index)
   (apply #'aref (delayed-array-storage delayed-array) index))
-
-(defmethod delayed-action-value
-    ((delayed-thunk delayed-thunk) index)
-  (delayed-action-value (funcall (delayed-thunk-thunk delayed-thunk))))
 
 (defmethod delayed-action-value
     ((delayed-nop delayed-nop) index)

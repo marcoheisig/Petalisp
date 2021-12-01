@@ -9,12 +9,9 @@
    (%outputs :initarg :outputs :reader network-outputs)))
 
 (defun make-network (&rest outputs)
-  (multiple-value-bind (lazy-thunks lazy-unknowns)
-      (lazy-thunks-and-unknowns outputs)
-    (mapc #'force-lazy-thunk lazy-thunks)
-    (make-instance 'network
-      :parameters lazy-unknowns
-      :outputs outputs)))
+  (make-instance 'network
+    :parameters (lazy-unknowns outputs)
+    :outputs outputs))
 
 (defun call-network (network &rest plist)
   (apply (compile-network-on-backend network *backend*)

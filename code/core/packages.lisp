@@ -121,8 +121,7 @@
    #:lazy-fuse
    #:lazy-collapse
    #:make-unknown
-   #:lazy-thunks-and-unknowns
-   #:force-lazy-thunk
+   #:lazy-unknowns
    #:empty-lazy-array
    #:empty-lazy-arrays
    #:move-axis-to-front
@@ -164,9 +163,6 @@
    #:delayed-array
    #:delayed-array-p
    #:delayed-array-storage
-   #:delayed-thunk
-   #:delayed-thunk-p
-   #:delayed-thunk-thunk
    #:delayed-unknown
    #:delayed-unknown-p
    #:delayed-nop
