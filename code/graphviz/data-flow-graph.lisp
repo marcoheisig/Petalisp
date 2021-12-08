@@ -42,22 +42,31 @@
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
      (node petalisp.core:delayed-array))
-  `(:fillcolor "cadetblue1"))
+  `(:fillcolor "#ABCEE3" :style (:filled :diagonals)))
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
      (node petalisp.core:delayed-map))
-  `(:fillcolor "burlywood1"))
+  `(:fillcolor "#B2DF8A"))
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
      (node petalisp.core:delayed-fuse))
-  `(:fillcolor "cyan3"))
+  `(:fillcolor "#1F78B3"))
 
 (defmethod graphviz-node-attributes
     ((graph data-flow-graph)
      (node petalisp.core:delayed-reshape))
-  `(:fillcolor "gray"))
+  `(:fillcolor "#ABCEE3"))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Node Captions
+
+(defmethod graphviz-node-caption
+    ((graph data-flow-graph)
+     (node petalisp.core:lazy-array))
+  (graphviz-node-caption graph (petalisp.core:lazy-array-delayed-action node)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

@@ -19,8 +19,16 @@
 (defmethod graphviz-node-attributes
     ((graph petalisp-graph)
      (node t))
-  `(:shape :box :style :filled))
+  `(:shape :box :style :filled :penwidth 2.0))
 
 (defmethod graphviz-graph-attributes
     ((graph petalisp-graph))
   `())
+
+(defmethod graphviz-edge-attributes
+    ((graph petalisp-graph)
+     (edge petalisp-edge)
+     (form t)
+     (to t)
+     edge-number)
+  '(:penwidth 2.0))
