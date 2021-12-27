@@ -18,7 +18,7 @@ with Petalisp will be like.
 Example 1: transposing a matrix
 #+BEGIN_SRC lisp
 (defun lazy-transpose (A)
-  (lazy-reshape A (tranform m n to n m)))
+  (lazy-reshape A (transform m n to n m)))
 #+END_SRC
 
 Example 2: matrix-matrix multiplication

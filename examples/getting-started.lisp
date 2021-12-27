@@ -41,7 +41,7 @@
   (lazy-reshape 5 (~ 0 3))
   (lazy-reshape 1 (~ 3 6))))
 
-;; arrays can be overwritten with fuse*
+;; arrays can be overwritten with lazy-overwrite
 
 (present
  (lazy-overwrite
