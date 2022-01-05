@@ -1,4 +1,4 @@
-;;;; © 2016-2021 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
+;;;; © 2016-2022 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 ;;;;
 ;;;; The allocation table provides O(1) lookup and deletion of entries
 ;;;; whose keys are pairs of an ntype and a shape.
