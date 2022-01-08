@@ -668,6 +668,18 @@
 (defun reference-to-delayed-unknown ()
   (error "Attempt to evaluate an unknown lazy array."))
 
+(defmethod grow-dendrite-aux
+    ((dendrite dendrite)
+     (lazy-array lazy-array)
+     (delayed-wait delayed-wait))
+  (grow-dendrite-aux dendrite lazy-array (delayed-wait-delayed-action delayed-wait)))
+
+(defmethod grow-dendrite-aux
+    ((dendrite dendrite)
+     (lazy-array lazy-array)
+     (delayed-failure delayed-failure))
+  (error (delayed-failure-condition delayed-failure)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Buffer Pruning

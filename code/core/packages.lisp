@@ -101,6 +101,7 @@
    #:map-transformation-outputs
 
    ;; Lazy Arrays
+   #:*lazy-array-lock*
    #:lazy-array
    #:lazy-array-p
    #:lazy-array-shape
@@ -160,6 +161,7 @@
    #:delayed-fuse-inputs
    #:delayed-range
    #:delayed-range-p
+   #:make-delayed-array
    #:delayed-array
    #:delayed-array-p
    #:delayed-array-storage
@@ -167,18 +169,33 @@
    #:delayed-unknown-p
    #:delayed-nop
    #:delayed-nop-p
+   #:delayed-wait
+   #:delayed-wait-p
+   #:delayed-wait-request
+   #:delayed-wait-delayed-action
+   #:delayed-failure
+   #:delayed-failure-p
+   #:delayed-failure-condition
 
-   ;; Backend
+   ;; Evaluation
    #:*backend*
    #:with-backend
    #:backend
+   #:delete-backend
    #:backend-compute
    #:backend-schedule
-   #:backend-wait
-   #:delete-backend
-   #:make-reference-backend
+   #:make-request
+   #:request
+   #:requestp
+   #:request-backend
+   #:request-lazy-arrays
+   #:request-wait
+   #:request-finish
+   #:request-finishedp
    #:compute
    #:compute-list-of-arrays
    #:schedule
-   #:schedule-list-of-arrays
-   #:wait))
+   #:wait
+
+   ;; Reference Backend
+   #:make-reference-backend))

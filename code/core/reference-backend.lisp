@@ -22,16 +22,15 @@
     (mapcar #'compute-delayed-array lazy-arrays)))
 
 (defun compute-delayed-array (lazy-array)
-  (with-accessors ((shape lazy-array-shape)
-                   (element-type lazy-array-element-type))
-      lazy-array
-    (let ((array (make-array (shape-dimensions shape) :element-type element-type)))
-      (map-shape
-       (lambda (index)
-         (setf (apply #'aref array index)
-               (lazy-array-value lazy-array index)))
-       shape)
-      array)))
+  (let* ((shape (lazy-array-shape lazy-array))
+         (element-type (lazy-array-element-type lazy-array))
+         (array (make-array (shape-dimensions shape) :element-type element-type)))
+    (map-shape
+     (lambda (index)
+       (setf (apply #'aref array index)
+             (lazy-array-value lazy-array index)))
+     shape)
+    array))
 
 (defun lazy-array-value (lazy-array index)
   (alexandria:ensure-gethash
@@ -93,3 +92,14 @@
 (defmethod delayed-action-value
     ((delayed-unknown delayed-unknown) index)
   (error "Attempt to evaluate a graph that contains unknowns."))
+
+(defmethod delayed-action-value
+    ((delayed-wait delayed-wait) index)
+  (wait (delayed-wait-request delayed-wait))
+  (delayed-action-value
+   (delayed-wait-delayed-action delayed-wait)
+   index))
+
+(defmethod delayed-action-value
+    ((delayed-failure delayed-failure) index)
+  (error (delayed-failure-condition delayed-failure)))

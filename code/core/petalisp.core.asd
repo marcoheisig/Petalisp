@@ -4,13 +4,9 @@
 
   :depends-on
   ("alexandria"
-   "split-sequence"
-   "trivial-macroexpand-all"
-   "trivial-garbage"
    "bordeaux-threads"
    "lparallel"
    "trivia"
-   "ucons"
    "petalisp.utilities"
    "petalisp.type-inference")
 
@@ -27,6 +23,6 @@
    (:file "lazy-ref")
    (:file "lazy-fuse")
    (:file "lazy-map")
-   (:file "backend")
+   (:file "evaluation")
    (:file "reference-backend")
    (:file "substitute-lazy-arrays")))

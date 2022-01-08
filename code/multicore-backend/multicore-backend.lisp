@@ -26,8 +26,8 @@
     :worker-pool (make-worker-pool threads)))
 
 (defmethod delete-backend ((backend multicore-backend))
-  (delete-worker-pool
-   (multicore-backend-worker-pool backend)))
+  (delete-worker-pool (multicore-backend-worker-pool backend))
+  (call-next-method))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -45,10 +45,6 @@
   ;; The roots of the data flow graph whose execution has been requested.
   (lazy-arrays nil
    :type list
-   :read-only t)
-  ;; The third argument that was passed to BACKEND-SCHEDULE.
-  (finalizer nil
-   :type function
    :read-only t)
   ;; The lock and cvar are used to communicate whether the request has been
   ;; finished.
@@ -83,6 +79,31 @@
   ;; A descendant of NIL means there is no such buffer.
   (descendant nil
    :type (or null petalisp.ir:buffer)))
+
+(defmethod petalisp.core:make-request ((backend multicore-backend) lazy-arrays)
+  (make-request
+   :backend backend
+   :lazy-arrays lazy-arrays
+   :pending-roots (length lazy-arrays)))
+
+(defmethod petalisp.core:requestp ((request request))
+  t)
+
+(defmethod petalisp.core:request-backend ((request request))
+  (request-backend request))
+
+(defmethod petalisp.core:request-lazy-arrays ((request request))
+  (request-lazy-arrays request))
+
+(defmethod petalisp.core:request-finishedp ((request request))
+  (zerop (request-pending-roots request)))
+
+(defmethod petalisp.core:request-wait ((request request))
+  (let ((lock (request-lock request))
+        (cvar (request-cvar request)))
+    (loop until (zerop (request-pending-roots request)) do
+      (bordeaux-threads:with-lock-held (lock)
+        (bordeaux-threads:condition-wait cvar lock)))))
 
 (defstruct kernel-data
   ;; The request that this kernel is being part of.
@@ -127,42 +148,37 @@
 ;;;
 ;;; Execution
 
-(defun dummy-finalizer (immediates)
-  (declare (ignore immediates)))
-
 (defmethod backend-compute
     ((backend multicore-backend)
      (lazy-arrays list))
-  (let ((request (backend-schedule backend lazy-arrays #'dummy-finalizer)))
-    (backend-wait backend (list request))
+  (let ((request (make-request backend lazy-arrays)))
+    (backend-schedule request)
+    (wait request)
     (mapcar #'petalisp.ir:buffer-storage (request-ir-roots request))))
 
 (defmethod backend-schedule
     ((backend multicore-backend)
-     (lazy-arrays list)
-     (finalizer function))
-  (let ((request (make-request
-                  :backend backend
-                  :lazy-arrays lazy-arrays
-                  :finalizer finalizer
-                  :pending-roots (length lazy-arrays))))
-    (worker-pool-enqueue-thunk
-     (multicore-backend-worker-pool backend)
-     (lambda ()
-       (handle-request request)))
-    request))
+     (request request))
+  (worker-pool-enqueue-thunk
+   (multicore-backend-worker-pool backend)
+   (lambda () (handle-request request))))
 
-(defmethod backend-wait
-    ((backend multicore-backend)
-     (requests list))
-  (loop for request in requests do
-    (with-accessors ((lock request-lock)
-                     (cvar request-cvar)
-                     (pending-roots request-pending-roots)) request
-      (unless (zerop pending-roots)
-        (bordeaux-threads:with-lock-held (lock)
-          (bordeaux-threads:condition-wait cvar lock)
-          (assert (zerop pending-roots)))))))
+(defmethod request-finish ((request request))
+  (assert (zerop (request-pending-roots request)))
+  (bordeaux-threads:with-recursive-lock-held (*lazy-array-lock*)
+    (loop for lazy-array in (request-lazy-arrays request)
+          for ir-root in (request-ir-roots request)
+          for delayed-wait = (lazy-array-delayed-action lazy-array)
+          for storage = (petalisp.ir:buffer-storage ir-root)
+          for delayed-array = (make-delayed-array :storage storage)
+          do (setf (delayed-wait-delayed-action delayed-wait)
+                   delayed-array)
+             (setf (lazy-array-delayed-action lazy-array)
+                   delayed-array)))
+  (let ((lock (request-lock request))
+        (cvar (request-cvar request)))
+    (bordeaux-threads:with-lock-held (lock)
+      (bordeaux-threads:condition-notify cvar))))
 
 (defvar *available-kernels*)
 (defvar *request*)
@@ -340,11 +356,7 @@
                ;; If we are dealing with a root buffer, signal that it has
                ;; been completed.
                (when (zerop (atomics:atomic-decf (request-pending-roots request)))
-                 (bordeaux-threads:with-lock-held ((request-lock request))
-                   (funcall (request-finalizer request)
-                            (mapcar #'petalisp.ir:buffer-storage
-                                    (request-ir-roots request)))
-                   (bordeaux-threads:condition-notify (request-cvar request))))
+                 (request-finish request))
                ;; If we are dealing with an interior buffer, we decrement
                ;; the number of pending buffers of each kernel that reads
                ;; from it.

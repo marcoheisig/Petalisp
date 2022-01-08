@@ -659,22 +659,6 @@ by rewriting them to something like
         (run-expensive-task)
         (compute array-1 array-2)).")
 
-(document-function schedule-list-of-arrays
-  "Hints that it would be worthwhile to compute all arrays in the supplied
-list of arrays asynchronously.  Returns an opaque object that can be
-supplied to WAIT to wait until the scheduled operation has been performed.
-
-This function allows speeding up certain programs like
-
- (progn (run-expensive-task)
-        (compute-list-of-arrays l))
-
-by rewriting them to something like
-
- (progn (schedule-list-of-arrays l)
-        (run-expensive-task)
-        (compute-list-of-arrays l)).")
-
 (document-function wait
   "Blocks until the work designated by some SCHEDULE operations has been
 completed.  Each argument must be one of the opaque objects returned by

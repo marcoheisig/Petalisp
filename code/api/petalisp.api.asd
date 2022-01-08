@@ -6,6 +6,8 @@
   :depends-on
   ("alexandria"
    "trivia"
+   "split-sequence"
+   "trivial-macroexpand-all"
    "petalisp.utilities"
    "petalisp.core"
    "petalisp.native-backend"

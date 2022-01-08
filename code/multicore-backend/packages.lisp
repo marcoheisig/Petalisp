@@ -6,5 +6,12 @@
   (:use
    #:common-lisp
    #:petalisp.core)
+  (:shadow
+   #:make-request
+   #:request
+   #:requestp
+   #:request-backend
+   #:request-lazy-arrays
+   #:request-wait)
   (:export
    #:make-multicore-backend))

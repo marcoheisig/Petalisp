@@ -4,6 +4,7 @@
 
   :depends-on
   ("alexandria"
+   "ucons"
    "priority-queue"
    "petalisp.utilities"
    "petalisp.core")

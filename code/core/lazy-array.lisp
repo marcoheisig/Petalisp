@@ -2,6 +2,10 @@
 
 (in-package #:petalisp.core)
 
+;;; This lock must be held when mutating lazy array delayed actions.
+(defvar *lazy-array-lock*
+  (bordeaux-threads:make-recursive-lock "Petalisp Lazy Array Lock"))
+
 (defstruct (delayed-action
             (:predicate delayed-action-p)
             (:copier nil)
@@ -199,6 +203,28 @@
 ;;; arrays that serve as formal parameters only.
 (defstruct (delayed-unknown
             (:include delayed-action)))
+
+;;; A delayed wait is executed by calling WAIT on the request, and then
+;;; executing the delayed action of it.
+(defstruct (delayed-wait
+            (:include delayed-action))
+  (request (alexandria:required-argument :request)
+   :type t
+   :read-only t)
+  ;; Initially, this slot holds the delayed action of that lazy array
+  ;; before it was scheduled.  Later, once the request has completed, the
+  ;; slot is updated to the delayed action of the computed result.
+  (delayed-action (alexandria:required-argument :delayed-action)
+   :type delayed-action))
+
+;;; A delayed failure is executed by raising its condition via ERROR.  This
+;;; kind of delayed action is generated when a serious condition is raised
+;;; in the asynchronous execution after a SCHEDULE operation.
+(defstruct (delayed-failure
+            (:include delayed-action))
+  (condition (alexandria:required-argument :condition)
+   :type condition
+   :read-only t))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
