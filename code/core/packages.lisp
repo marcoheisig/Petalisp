@@ -177,21 +177,23 @@
    #:delayed-failure-p
    #:delayed-failure-condition
 
-   ;; Evaluation
-   #:*backend*
-   #:with-backend
-   #:backend
-   #:delete-backend
-   #:backend-compute
-   #:backend-schedule
-   #:make-request
+   ;; Request
    #:request
+   #:make-request
    #:requestp
    #:request-backend
    #:request-lazy-arrays
    #:request-wait
    #:request-finish
    #:request-finishedp
+
+   ;; Backend
+   #:*backend*
+   #:with-backend
+   #:backend
+   #:delete-backend
+   #:backend-compute
+   #:backend-schedule
    #:compute
    #:compute-list-of-arrays
    #:schedule

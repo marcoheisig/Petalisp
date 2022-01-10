@@ -41,42 +41,14 @@
 ;;; scheduling infrastructure.
 (defgeneric backend-schedule (backend request))
 
-;;; The generic function MAKE-REQUEST is invoked by the SCHEDULE function
-;;; to prepare a list of lazy arrays for asynchronous execution.  This
-;;; function must return an opaque object that can be supplied to the
-;;; various REQUEST- functions.
-;;;
-;;; Backend developers can rely on the fact that the second argument is
-;;; always a list of collapsed lazy arrays, i.e., lazy arrays whose shape
-;;; consists only of ranges with a start of zero and a stride of one.
-(defgeneric make-request (backend lazy-arrays))
+;;; Returns whether the lazy arrays's collapsed value can be obtained at
+;;; O(1) cost, so that we don't have to do any work during COMPUTE or
+;;; SCHEDULE.
+(defgeneric trivial-lazy-array-p (lazy-array delayed-action))
 
-;;; Returns whether the supplied object is a valid request object.
-(defgeneric requestp (request))
-
-;;; Returns the backend on which the request shall be executed.
-(defgeneric request-backend (request))
-
-;;; Returns the lazy arrays whose computation has been requested.
-(defgeneric request-lazy-arrays (request))
-
-;;; Check whether the supplied REQUEST has already been computed.
-(defgeneric request-finishedp (request))
-
-;;; Block until REQUEST is finished.
-(defgeneric request-wait (request))
-
-;;; Signal that the supplied REQUEST is finished.
-(defgeneric request-finish (request))
-
-;;; Returns whether the arrays's collapsed value can be obtained at O(1)
-;;; cost, so that we don't have to do any work during COMPUTE or SCHEDULE.
-;;; Only lazy arrays can be non-trivial.
-(defgeneric trivial-array-p (object))
-
-;;; Obtain the computed value of an array that is trivial in the sense of
-;;; TRIVIAL-ARRAY-P.
-(defgeneric trivial-array-value (object))
+;;; Obtain the computed value of an lazy array that is trivial in the sense
+;;; of TRIVIAL-LAZY-ARRAY-P.
+(defgeneric trivial-lazy-array-value (lazy-array delayed-action))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -88,28 +60,6 @@
 (defclass deleted-backend ()
   ())
 
-(defclass request ()
-  ((%backend
-    :initarg :backend
-    :initform (alexandria:required-argument :backend)
-    :type backend
-    :reader simple-request-backend)
-   (%lazy-arrays
-    :initarg :lazy-arrays
-    :initform (alexandria:required-argument :lazy-arrays)
-    :type list
-    :reader simple-request-lazy-arrays)
-   (%lock
-    :initform (bordeaux-threads:make-lock "Petalisp Request Lock")
-    :reader request-lock)
-   (%cvar
-    :initform (bordeaux-threads:make-condition-variable)
-    :reader request-cvar)
-   (%finishedp
-    :initform nil
-    :reader request-finishedp
-    :writer (setf %request-finishedp))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Methods
@@ -117,8 +67,10 @@
 (defmethod delete-backend ((backend backend))
   (change-class backend 'deleted-backend))
 
+;;; In case a more specific method of BACKEND-SCHEDULE signals an error,
+;;; handle it by replacing the delayed actions of all lazy arrays of the
+;;; request with delayed failures.
 (defmethod backend-schedule :around (backend request)
-  (assert (eq backend (request-backend request)))
   (handler-case (call-next-method)
     (serious-condition (condition)
       (let ((delayed-failure (make-delayed-failure :condition condition))
@@ -131,6 +83,8 @@
               (setf (delayed-wait-delayed-action delayed-wait)
                     delayed-failure))))))))
 
+;;; This default method that implements BACKEND-SCHEDULE by suitably
+;;; calling BACKEND-COMPUTE.
 (defmethod backend-schedule (backend request)
   (let* ((lazy-arrays (request-lazy-arrays request))
          (temporaries
@@ -156,82 +110,37 @@
                        delayed-action))))
     (request-finish request)))
 
-(defmethod print-object ((request request) stream)
-  (print-unreadable-object (request stream :type t :identity t)
-    (format stream "~S ~A" :finishedp (request-finishedp request))))
-
-(defmethod requestp ((object t))
+(defmethod trivial-lazy-array-p
+    ((lazy-array lazy-array)
+     (delayed-action delayed-action))
   nil)
 
-(defmethod requestp ((request request))
-  t)
+(defmethod trivial-lazy-array-p
+    ((lazy-array lazy-array)
+     (delayed-array delayed-array))
+  (array-value
+   (delayed-array-storage delayed-array)))
 
-(defmethod make-request (backend lazy-arrays)
-  (make-instance 'request
-    :backend backend
-    :lazy-arrays lazy-arrays))
+(defmethod trivial-lazy-array-p
+    ((lazy-array lazy-array)
+     (delayed-reshape delayed-reshape))
+  (let ((transformation (delayed-reshape-transformation delayed-reshape)))
+    (and (transformation-invertiblep transformation)
+         ;; Check that the transformation is non-permuting.
+         (loop for output across (transformation-output-mask transformation)
+               for axis from 0
+               always (eql output axis))
+         (trivial-array-p (delayed-reshape-input delayed-reshape)))))
 
-(defmethod request-wait ((request request))
-  (unless (request-finishedp request)
-    (let ((lock (request-lock request))
-          (cvar (request-cvar request)))
-      (bordeaux-threads:with-lock-held (lock)
-        (unless (request-finishedp request)
-          (bordeaux-threads:condition-wait cvar lock))))))
+(defmethod trivial-lazy-array-value
+    ((lazy-array lazy-array)
+     (delayed-array delayed-array))
+  (array-value (delayed-array-storage delayed-array)))
 
-(defmethod request-finish ((request request))
-  (unless (request-finishedp request)
-    (let ((lock (request-lock request))
-          (cvar (request-cvar request)))
-      (bordeaux-threads:with-lock-held (lock)
-        (setf (%request-finishedp request) t)
-        (bordeaux-threads:condition-notify cvar)))))
-
-(defmethod trivial-array-p ((lazy-array lazy-array))
-  (let ((delayed-action (lazy-array-delayed-action lazy-array)))
-    (typecase delayed-action
-      (delayed-array t)
-      (delayed-reshape
-       (let* ((input (delayed-reshape-input delayed-action))
-              (shape (lazy-array-shape input))
-              (transformation (delayed-reshape-transformation delayed-action)))
-         (and (typep (lazy-array-delayed-action input) 'delayed-array)
-              (transformation-invertiblep transformation)
-              (loop for output across (transformation-output-mask transformation)
-                    for axis from 0
-                    always (eql output axis))
-              (loop for range in (shape-ranges shape)
-                    always (and (= 0 (range-start range))
-                                (= 1 (range-step range)))))))
-      (otherwise nil))))
-
-(defmethod trivial-array-p ((object t))
-  t)
-
-(defmethod trivial-array-value ((array array))
-  (array-value array))
-
-(defmethod trivial-array-value ((lazy-array lazy-array))
-  (let ((delayed-action (lazy-array-delayed-action lazy-array)))
-    (typecase delayed-action
-      (delayed-array
-       (array-value
-        (delayed-array-storage delayed-action)))
-      (delayed-reshape
-       (array-value
-        (delayed-array-storage
-         (lazy-array-delayed-action
-          (delayed-reshape-input delayed-action)))))
-      (otherwise nil))))
-
-(defmethod trivial-array-value ((object t))
-  object)
-
-(defun array-value (array)
-  (declare (array array))
-  (if (zerop (array-rank array))
-      (aref array)
-      array))
+(defmethod trivial-lazy-array-value
+    ((lazy-array lazy-array)
+     (delayed-reshape delayed-reshape))
+  (trivial-array-value (delayed-reshape-input delayed-reshape)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -289,6 +198,9 @@
          (collapsed-lazy-arrays
            (mapcar #'transform-lazy-array lazy-arrays transformations))
          (request (make-request backend collapsed-lazy-arrays)))
+    ;; Ensure that REQUEST is well formed.
+    (assert (requestp request))
+    (assert (eq (request-backend request) backend))
     ;; Mutate the affected lazy arrays so that they won't be scheduled or
     ;; computed repeatedly.
     (bordeaux-threads:with-recursive-lock-held (*lazy-array-lock*)
@@ -310,6 +222,23 @@
 (defun wait (&rest requests)
   (mapc #'request-wait requests)
   nil)
+
+(defun trivial-array-p (array)
+  (typecase array
+    (lazy-array (trivial-lazy-array-p array (lazy-array-delayed-action array)))
+    (otherwise t)))
+
+(defun trivial-array-value (array)
+  (typecase array
+    (array (array-value array))
+    (lazy-array (trivial-lazy-array-value array (lazy-array-delayed-action array)))
+    (otherwise array)))
+
+(defun array-value (array)
+  (declare (array array))
+  (if (zerop (array-rank array))
+      (aref array)
+      array))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
