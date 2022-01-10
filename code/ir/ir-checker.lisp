@@ -67,6 +67,9 @@
                (transform-shape
                 (kernel-iteration-space kernel)
                 (store-instruction-transformation store-instruction))))))
+    ;; Ensure that the buffer's task is well formed (if it is defined).
+    (when (taskp (buffer-task buffer))
+      (check-ir-node-eventually (buffer-task buffer)))
     ;; Ensure that all elements of the buffer are actually written to.
     (unless (buffer-storage buffer)
       (assert (= number-of-writes (buffer-size buffer))))
@@ -74,6 +77,7 @@
     (assert (typep (buffer-data buffer) *ir-checker-buffer-data-type*))))
 
 (defmethod check-ir-node ((kernel kernel))
+  ;; Ensure that all load instructions are wired correctly.
   (loop for (buffer . load-instructions) in (kernel-sources kernel) do
     (check-ir-node-eventually buffer)
     (assert (null (duplicates load-instructions)))
@@ -81,6 +85,7 @@
       (check-ir-node-eventually load-instruction)
       (assert (eq (load-instruction-buffer load-instruction) buffer))
       (check-reverse-link load-instruction buffer #'map-buffer-load-instructions)))
+  ;; Ensure that all store instructions are wired correctly.
   (loop for (buffer . store-instructions) in (kernel-targets kernel) do
     (check-ir-node-eventually buffer)
     (assert (null (duplicates store-instructions)))
@@ -88,6 +93,9 @@
       (check-ir-node-eventually store-instruction)
       (assert (eq (store-instruction-buffer store-instruction) buffer))
       (check-reverse-link store-instruction buffer #'map-buffer-store-instructions)))
+  ;; Ensure that the kernel's task is well formed (if it is defined).
+  (when (taskp (kernel-task kernel))
+    (check-ir-node-eventually (kernel-task kernel)))
   ;; Ensure that the kernel's data slot has a sane value.
   (assert (typep (kernel-data kernel) *ir-checker-kernel-data-type*)))
 
@@ -99,3 +107,29 @@
     (unless (zerop value-n)
       (assert (typep other-instruction 'call-instruction))
       (assert (< value-n (call-instruction-number-of-values other-instruction))))))
+
+(defmethod check-ir-node ((task task))
+  ;; Ensure that the task's inputs and outputs are defined correctly.
+  (let ((expected-inputs '())
+        (expected-outputs '()))
+    (loop for kernel in (task-kernels task) do
+      (assert (eq (kernel-task kernel) task))
+      (map-kernel-inputs
+       (lambda (buffer)
+         (assert (eq (buffer-task buffer) task))
+         (pushnew buffer expected-inputs))
+       kernel)
+      (map-kernel-outputs
+       (lambda (buffer)
+         (assert (eq (buffer-task buffer) task))
+         (pushnew buffer expected-outputs))
+       kernel))
+    (assert (null (set-difference (task-inputs task) expected-inputs)))
+    (assert (null (set-difference (task-outputs task) expected-outputs))))
+  ;; Ensure that all kernels writing to an output buffer are part of the
+  ;; same task.
+  (loop for buffer in (task-outputs task) do
+    (map-buffer-inputs
+     (lambda (kernel)
+       (assert (member kernel (task-kernels task))))
+     buffer)))

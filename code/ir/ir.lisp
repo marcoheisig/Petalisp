@@ -19,6 +19,8 @@
   ;; An alist whose keys are kernels reading from this buffer, and whose
   ;; values are all load instructions from that kernel into this buffer.
   (readers '() :type list)
+  ;; The task that defines this buffer.
+  (task nil :type (or null task))
   ;; An opaque object, representing the allocated memory.
   (storage nil)
   ;; A slot that can be used by the backend to attach further information
@@ -52,15 +54,29 @@
   (targets '() :type list)
   ;; A vector of instructions of the kernel, in top-to-bottom order.
   (instruction-vector #() :type simple-vector)
+  ;; The task that contains this kernel.
+  (task nil :type (or null task))
   ;; A slot that can be used by the backend to attach further information
   ;; to the kernel.
   (data nil))
 
-;;; This function is a very ad-hoc approximation of the cost of executing
-;;; the kernel.
-(defun kernel-cost (kernel)
-  (max 1 (* (shape-size (kernel-iteration-space kernel))
-            (kernel-highest-instruction-number kernel))))
+;;; A task is a collection of kernels that fully define a set of buffers.
+(defstruct (task
+            (:predicate taskp)
+            (:constructor make-task))
+  ;; The tasks this task depends on.
+  (predecessors '() :type list)
+  ;; The tasks that depend on this task.
+  (successors '() :type list)
+  ;; This task's kernels.
+  (kernels '() :type list)
+  ;; The union of all this task's kernels' input buffers.
+  (inputs '() :type list)
+  ;; The union of all this task's kernels' output buffers.
+  (outputs '() :type list)
+  ;; All buffers that are defined by this task or a predecessor of this
+  ;; task, and that are used by this task or a successor of this task.
+  (live-buffers '() :type list))
 
 ;;; The behavior of a kernel is described by its iteration space and its
 ;;; instructions.  The instructions form a DAG, whose leaves are load
@@ -445,6 +461,12 @@
        (pushnew (store-instruction-buffer store-instruction) buffers))
      kernel)
     (nreverse buffers)))
+
+;;; This function is a very ad-hoc approximation of the cost of executing
+;;; the kernel.
+(defun kernel-cost (kernel)
+  (max 1 (* (shape-size (kernel-iteration-space kernel))
+            (kernel-highest-instruction-number kernel))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

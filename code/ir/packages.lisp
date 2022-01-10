@@ -20,6 +20,7 @@
    #:instruction
    #:buffer
    #:kernel
+   #:task
    #:instruction
    #:iterating-instruction
    #:call-instruction
@@ -33,6 +34,7 @@
    #:root-buffer-p
    #:interior-buffer-p
    #:kernelp
+   #:taskp
    #:instructionp
    #:call-instruction-p
    #:iterating-instruction-p
@@ -43,6 +45,7 @@
    ;; Constructors
    #:make-kernel
    #:make-buffer
+   #:make-task
 
    ;; Mapping
    #:map-buffers-and-kernels
@@ -79,6 +82,12 @@
    #:kernel-number-of-stores
    #:kernel-cost
    #:kernel-data
+   #:task-predecessors
+   #:task-successors
+   #:task-kernels
+   #:task-inputs
+   #:task-outputs
+   #:task-live-buffers
    #:instruction-number
    #:instruction-inputs
    #:instruction-transformation
