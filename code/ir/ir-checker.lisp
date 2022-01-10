@@ -13,7 +13,8 @@
 (defgeneric check-ir-node (node))
 
 (defun check-ir-node-eventually (node)
-  (push node *ir-checker-worklist*))
+  (unless (gethash node *ir-checker-table*)
+    (push node *ir-checker-worklist*)))
 
 (defun check-ir (nodes &key (kernel-data-type 't) (buffer-data-type 't))
   (let ((*ir-checker-table* (make-hash-table :test #'eq))
@@ -95,6 +96,7 @@
       (check-reverse-link store-instruction buffer #'map-buffer-store-instructions)))
   ;; Ensure that the kernel's task is well formed (if it is defined).
   (when (taskp (kernel-task kernel))
+    (check-reverse-link kernel (kernel-task kernel) #'map-task-kernels)
     (check-ir-node-eventually (kernel-task kernel)))
   ;; Ensure that the kernel's data slot has a sane value.
   (assert (typep (kernel-data kernel) *ir-checker-kernel-data-type*)))
@@ -109,27 +111,25 @@
       (assert (< value-n (call-instruction-number-of-values other-instruction))))))
 
 (defmethod check-ir-node ((task task))
-  ;; Ensure that the task's inputs and outputs are defined correctly.
-  (let ((expected-inputs '())
-        (expected-outputs '()))
+  (loop for buffer in (task-defined-buffers task) do
+    (check-ir-node-eventually buffer)
+    (assert (eq (buffer-task buffer) task))
+    ;; Ensure that all kernels writing to one of the buffers defined by a
+    ;; task belong to that task.
+    (map-buffer-inputs
+     (lambda (kernel)
+       (assert (eq (kernel-task kernel) task)))
+     buffer))
+  ;; Ensure that the task's buffers are live.
+  (let ((live-buffers '()))
     (loop for kernel in (task-kernels task) do
-      (assert (eq (kernel-task kernel) task))
+      (check-ir-node-eventually kernel)
       (map-kernel-inputs
        (lambda (buffer)
-         (assert (eq (buffer-task buffer) task))
-         (pushnew buffer expected-inputs))
+         (pushnew buffer live-buffers))
        kernel)
       (map-kernel-outputs
        (lambda (buffer)
-         (assert (eq (buffer-task buffer) task))
-         (pushnew buffer expected-outputs))
+         (pushnew buffer live-buffers))
        kernel))
-    (assert (null (set-difference (task-inputs task) expected-inputs)))
-    (assert (null (set-difference (task-outputs task) expected-outputs))))
-  ;; Ensure that all kernels writing to an output buffer are part of the
-  ;; same task.
-  (loop for buffer in (task-outputs task) do
-    (map-buffer-inputs
-     (lambda (kernel)
-       (assert (member kernel (task-kernels task))))
-     buffer)))
+    (assert (null (set-difference live-buffers (task-live-buffers task))))))

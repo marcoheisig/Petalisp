@@ -70,10 +70,8 @@
   (successors '() :type list)
   ;; This task's kernels.
   (kernels '() :type list)
-  ;; The union of all this task's kernels' input buffers.
-  (inputs '() :type list)
-  ;; The union of all this task's kernels' output buffers.
-  (outputs '() :type list)
+  ;; The buffers defined by this task.
+  (defined-buffers '() :type list)
   ;; All buffers that are defined by this task or a predecessor of this
   ;; task, and that are used by this task or a successor of this task.
   (live-buffers '() :type list))
@@ -333,6 +331,9 @@
   (let ((vector (kernel-instruction-vector kernel)))
     (declare (simple-vector vector))
     (map nil function vector)))
+
+(defun map-task-kernels (function task)
+  (mapc function (task-kernels task)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

@@ -61,6 +61,7 @@
    #:map-kernel-outputs
    #:map-instruction-inputs
    #:map-instructions
+   #:map-task-kernels
 
    ;; Accessors
    #:buffer-shape
@@ -85,8 +86,7 @@
    #:task-predecessors
    #:task-successors
    #:task-kernels
-   #:task-inputs
-   #:task-outputs
+   #:task-defined-buffers
    #:task-live-buffers
    #:instruction-number
    #:instruction-inputs
