@@ -327,7 +327,7 @@
 (defun map-kernels (function root-buffers)
   (map-buffers-and-kernels #'identity function root-buffers))
 
-(defun map-instructions (function kernel)
+(defun map-kernel-instructions (function kernel)
   (let ((vector (kernel-instruction-vector kernel)))
     (declare (simple-vector vector))
     (map nil function vector)))
@@ -385,7 +385,7 @@
     (setf (kernel-iteration-space kernel)
           (transform-shape (kernel-iteration-space kernel) transformation))
     (let ((inverse (invert-transformation transformation)))
-      (map-instructions
+      (map-kernel-instructions
        (lambda (instruction)
          (transform-instruction-input instruction inverse))
        kernel))))

@@ -59,8 +59,8 @@
    #:map-kernel-load-instructions
    #:map-kernel-inputs
    #:map-kernel-outputs
+   #:map-kernel-instructions
    #:map-instruction-inputs
-   #:map-instructions
    #:map-task-kernels
 
    ;; Accessors

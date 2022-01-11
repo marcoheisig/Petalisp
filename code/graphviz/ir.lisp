@@ -106,7 +106,7 @@
      (kernel petalisp.ir:kernel))
   `(("iteration-space" . ,(stringify (petalisp.ir:kernel-iteration-space kernel)))
     ,@(let ((instructions '()))
-        (petalisp.ir:map-instructions
+        (petalisp.ir:map-kernel-instructions
          (lambda (instruction)
            (push instruction instructions))
          kernel)
