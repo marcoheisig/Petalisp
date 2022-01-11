@@ -81,7 +81,8 @@
               (setf (lazy-array-delayed-action lazy-array)
                     delayed-failure)
               (setf (delayed-wait-delayed-action delayed-wait)
-                    delayed-failure))))))))
+                    delayed-failure))))
+        (request-finish request)))))
 
 ;;; This default method that implements BACKEND-SCHEDULE by suitably
 ;;; calling BACKEND-COMPUTE.
