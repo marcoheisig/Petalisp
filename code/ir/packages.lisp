@@ -75,7 +75,6 @@
    #:buffer-number-of-stores
    #:kernel-iteration-space
    #:kernel-blueprint
-   #:kernel-buffers
    #:kernel-instruction-vector
    #:kernel-number-of-inputs
    #:kernel-number-of-outputs

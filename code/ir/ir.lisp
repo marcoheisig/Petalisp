@@ -451,18 +451,6 @@
      kernel)
     max))
 
-(defun kernel-buffers (kernel)
-  (let ((buffers '()))
-    (map-kernel-load-instructions
-     (lambda (load-instruction)
-       (pushnew (load-instruction-buffer load-instruction) buffers))
-     kernel)
-    (map-kernel-store-instructions
-     (lambda (store-instruction)
-       (pushnew (store-instruction-buffer store-instruction) buffers))
-     kernel)
-    (nreverse buffers)))
-
 ;;; This function is a very ad-hoc approximation of the cost of executing
 ;;; the kernel.
 (defun kernel-cost (kernel)
