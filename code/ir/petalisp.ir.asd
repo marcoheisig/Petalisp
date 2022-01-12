@@ -6,6 +6,7 @@
   ("alexandria"
    "ucons"
    "priority-queue"
+   "split-sequence"
    "petalisp.utilities"
    "petalisp.core")
 
