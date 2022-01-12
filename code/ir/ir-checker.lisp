@@ -111,25 +111,58 @@
       (assert (< value-n (call-instruction-number-of-values other-instruction))))))
 
 (defmethod check-ir-node ((task task))
+  ;; Ensure that all kernels writing to a buffer with task T also have the
+  ;; task T.
   (loop for buffer in (task-defined-buffers task) do
-    (check-ir-node-eventually buffer)
     (assert (eq (buffer-task buffer) task))
-    ;; Ensure that all kernels writing to one of the buffers defined by a
-    ;; task belong to that task.
+    (check-ir-node-eventually buffer)
     (map-buffer-inputs
      (lambda (kernel)
        (assert (eq (kernel-task kernel) task)))
      buffer))
+  ;; Ensure that all buffers written to by a kernel with task T have the
+  ;; task T.
+  (loop for kernel in (task-kernels task) do
+    (assert (eq (kernel-task kernel) task))
+    (check-ir-node-eventually kernel)
+    (map-kernel-outputs
+     (lambda (buffer)
+       (assert (eq (buffer-task buffer) task)))
+     kernel))
+  ;; Ensure that a buffer that is used by a kernel in T and that depends on
+  ;; a buffer in T is also in T.
+  (let* ((max-depth (reduce #'max (task-defined-buffers task)
+                            :key #'buffer-depth
+                            :initial-value 0))
+         (event-horizon (event-horizon (task-defined-buffers task) max-depth)))
+    (map-task-kernels
+     (lambda (kernel)
+       (map-kernel-inputs
+        (lambda (buffer)
+          (when (member buffer event-horizon)
+            (assert (eq (buffer-task buffer) task))))
+        kernel))
+     task))
+  ;; Ensure that the tasks of all kernels that read from a buffer defined
+  ;; by this task are successors of this task.
+  (map-task-defined-buffers
+   (lambda (buffer)
+     (map-buffer-outputs
+      (lambda (kernel)
+        (let ((successor (kernel-task kernel)))
+          (unless (eq successor task)
+            (assert (member successor (task-successors task)))
+            (assert (member task (task-predecessors successor))))))
+      buffer))
+   task)
   ;; Ensure that the task's buffers are live.
-  (let ((live-buffers '()))
-    (loop for kernel in (task-kernels task) do
-      (check-ir-node-eventually kernel)
-      (map-kernel-inputs
-       (lambda (buffer)
-         (pushnew buffer live-buffers))
-       kernel)
-      (map-kernel-outputs
-       (lambda (buffer)
-         (pushnew buffer live-buffers))
-       kernel))
-    (assert (null (set-difference live-buffers (task-live-buffers task))))))
+  #+(or)
+  (loop for kernel in (task-kernels task) do
+    (map-kernel-inputs
+     (lambda (buffer)
+       (assert (member buffer (task-live-buffers task))))
+     kernel)
+    (map-kernel-outputs
+     (lambda (buffer)
+       (assert (member buffer (task-live-buffers task))))
+     kernel)))

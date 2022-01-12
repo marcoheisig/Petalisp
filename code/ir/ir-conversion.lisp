@@ -182,6 +182,7 @@
              (shape (lazy-array-shape lazy-array))
              (buffer (make-buffer
                       :shape shape
+                      :depth (lazy-array-depth lazy-array)
                       :ntype (petalisp.type-inference:generalize-ntype
                               (lazy-array-ntype lazy-array))))
              (dendrite (make-dendrite cluster shape (list buffer))))
@@ -204,6 +205,8 @@
             (setf (cdr other-cons) instruction)))))
     (prune-superfluous-buffers
      (ir-converter-potentially-superfluous-buffers *ir-converter*))
+    (assign-tasks root-buffers)
+    (check-ir root-buffers)
     ;; Collapse each buffer's shape, remove all ranges with size one from
     ;; interior buffers, and ensure that each kernel has an instruction
     ;; vector, and that each instruction has a number that is an index into
@@ -337,6 +340,7 @@
      (lazy-array lazy-array)
      (delayed-action delayed-action))
   (let* ((shape-dendrites-alist (partition-dendrites (cluster-dendrites cluster)))
+         (depth (lazy-array-depth lazy-array))
          ;; Create one buffer for each shape-dendrites-alist entry.
          (buffer-dendrites-alist
            (loop for (shape . dendrites) in shape-dendrites-alist
@@ -344,6 +348,7 @@
                  (cons
                   (make-buffer
                    :shape shape
+                   :depth depth
                    :ntype (cluster-ntype cluster))
                   dendrites))))
     ;; Emit one load instruction for each dendrite.
@@ -390,6 +395,7 @@
   ;; code when some return values of a multiple valued function are used in
   ;; a wildly different way than others.
   (let* ((shape-dendrites-alist (partition-dendrites (cluster-dendrites cluster)))
+         (depth (lazy-array-depth lazy-array))
          ;; A list of buffer-dendrites alists, one for each value returned
          ;; by the lazy multiple value map instruction.  Each
          ;; buffer-dendrites alist has the same length as the shape
@@ -409,6 +415,7 @@
                            nil
                            (cons (make-buffer
                                   :shape (car entry)
+                                  :depth depth
                                   :ntype buffer-ntype)
                                  dendrites))))))
     ;; Emit one load instruction for each dendrite.
@@ -626,6 +633,7 @@
     (let* ((kernel (stem-kernel stem))
            (shape (lazy-array-shape lazy-array))
            (storage (delayed-array-storage delayed-array))
+           (depth (lazy-array-depth lazy-array))
            (ntype (petalisp.type-inference:generalize-ntype
                    (lazy-array-ntype lazy-array)))
            (buffer
@@ -636,6 +644,7 @@
                   (make-buffer
                    :shape shape
                    :ntype ntype
+                   :depth depth
                    :storage storage))
                  (alexandria:ensure-gethash
                   (delayed-array-storage delayed-array)
@@ -643,6 +652,7 @@
                   (make-buffer
                    :shape shape
                    :ntype ntype
+                   :depth depth
                    :storage storage)))))
       (setf (cdr cons)
             (make-load-instruction kernel buffer transformation)))))
@@ -679,6 +689,122 @@
      (lazy-array lazy-array)
      (delayed-failure delayed-failure))
   (error (delayed-failure-condition delayed-failure)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Task Partitioning
+;;;
+;;; This pass takes an IR and ensures that each buffer and kernel therein
+;;; has an associated task, and that the successors and predecessors of
+;;; each task are set up correctly.
+
+(defun assign-tasks (root-buffers)
+  ;; Ensure that each kernel and buffer has a task.
+  (let ((leaf-task (make-task))
+        (root-tasks '()))
+    (let ((worklist root-buffers))
+      (loop until (null worklist) for buffer = (pop worklist) do
+        (when (null (buffer-task buffer))
+          (if (leaf-buffer-p buffer)
+              (progn (setf (buffer-task buffer) leaf-task)
+                     (push buffer (task-defined-buffers leaf-task)))
+              (progn (assign-buffer-task buffer)
+                     (map-task-kernels
+                      (lambda (kernel)
+                        (map-kernel-inputs
+                         (lambda (buffer)
+                           (when (null (buffer-task buffer))
+                             (pushnew buffer worklist)))
+                         kernel))
+                      (buffer-task buffer))
+                     (when (root-buffer-p buffer)
+                       (pushnew (buffer-task buffer) root-tasks)))))))
+    ;; Determine the predecessors and successors of each task.
+    (let ((worklist root-tasks))
+      (loop until (null worklist) for task = (pop worklist) do
+        ;; A task with successors has already been processed.
+        (unless (task-successors task)
+          ;; Determine all successors.
+          (map-task-defined-buffers
+           (lambda (buffer)
+             (map-buffer-outputs
+              (lambda (kernel)
+                (let ((successor (kernel-task kernel)))
+                  (unless (eq successor task)
+                    (pushnew successor (task-successors task)))))
+              buffer))
+           task)
+          ;; Determine all predecessors.
+          (map-task-kernels
+           (lambda (kernel)
+             (map-kernel-inputs
+              (lambda (buffer)
+                (let ((predecessor (buffer-task buffer)))
+                  (unless (eq predecessor task)
+                    (pushnew predecessor (task-predecessors task)))))
+              kernel))
+           task)
+          ;; Enqueue all predecessors that haven't been processed so far.
+          (loop for predecessor in (task-predecessors task) do
+            (unless (task-successors predecessor)
+              (push predecessor worklist))))))))
+
+(defun assign-buffer-task (buffer)
+  (let ((task (make-task))
+        (max-depth (buffer-depth buffer))
+        (kernel-worklist '())
+        (buffer-worklist (list buffer)))
+    (loop until (and (null buffer-worklist) (null kernel-worklist)) do
+      (loop until (and (null buffer-worklist) (null kernel-worklist)) do
+        (loop until (null buffer-worklist) for buffer = (pop buffer-worklist) do
+          (unless (eq (buffer-task buffer) task)
+            (unless (null (buffer-task buffer))
+              (error "Attempt to assign a task to a buffer that already has a task."))
+            (setf (buffer-task buffer) task)
+            (push buffer (task-defined-buffers task))
+            (setf max-depth (max max-depth (buffer-depth buffer)))
+            (map-buffer-inputs
+             (lambda (kernel) (pushnew kernel kernel-worklist))
+             buffer)))
+        (loop until (null kernel-worklist) for kernel = (pop kernel-worklist) do
+          (unless (eq (kernel-task kernel) task)
+            (unless (null (kernel-task kernel))
+              (error "Attempt to assign a task to a kernel that already has a task."))
+            (setf (kernel-task kernel) task)
+            (push kernel (task-kernels task))
+            (map-kernel-outputs
+             (lambda (buffer) (pushnew buffer buffer-worklist))
+             kernel))))
+      ;; Compute the event horizon of all buffers in this task, and ensure
+      ;; that any buffer in the event horizon that also appears as an input
+      ;; of any of the task's kernels is also added to the task.
+      (let ((event-horizon (event-horizon (task-defined-buffers task) max-depth)))
+        (loop for kernel in (task-kernels task) do
+          (map-kernel-inputs
+           (lambda (buffer)
+             (when (member buffer event-horizon)
+               (push buffer buffer-worklist)))
+           kernel))))
+    task))
+
+;;; The event horizon of a set of buffers are all buffers that depend,
+;;; directly or indirectly, on the contents of those buffers and that have
+;;; less than the supplied depth.
+(defun event-horizon (buffers depth)
+  (let ((result '())
+        (worklist buffers))
+    (loop until (null worklist) for buffer = (pop worklist) do
+      (when (< (buffer-depth buffer) depth)
+        (unless (member buffer result)
+          (push buffer result)
+          (map-buffer-outputs
+           (lambda (kernel)
+             (map-kernel-outputs
+              (lambda (buffer)
+                (pushnew buffer worklist))
+              kernel))
+           buffer))))
+    result))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

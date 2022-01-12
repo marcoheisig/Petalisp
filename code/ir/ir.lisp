@@ -9,10 +9,12 @@
 (defstruct (buffer
             (:predicate bufferp)
             (:constructor make-buffer))
-  ;; The shape of the buffer.
+  ;; The shape of this buffer.
   (shape nil :type shape)
-  ;; The type code of all elements stored in the buffer.
+  ;; The type code of all elements stored in this buffer.
   (ntype nil :type petalisp.type-inference:ntype)
+  ;; The depth of the corresponding lazy array of this buffer.
+  (depth nil :type (and unsigned-byte fixnum))
   ;; An alist whose keys are kernels writing to this buffer, and whose
   ;; values are all store instructions from that kernel into this buffer.
   (writers '() :type list)
@@ -61,6 +63,14 @@
   (data nil))
 
 ;;; A task is a collection of kernels that fully define a set of buffers.
+;;; The rules for task membership are:
+;;;
+;;; 1. All kernels writing to a buffer B with task T have task T.
+;;;
+;;; 2. All buffers written to by a kernel K with task T have task T.
+;;;
+;;; 3. A buffer that is used by a kernel in T and that depends on a buffer
+;;;    in T is also in T.
 (defstruct (task
             (:predicate taskp)
             (:constructor make-task))
@@ -334,6 +344,9 @@
 
 (defun map-task-kernels (function task)
   (mapc function (task-kernels task)))
+
+(defun map-task-defined-buffers (function task)
+  (mapc function (task-defined-buffers task)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

@@ -62,11 +62,13 @@
    #:map-kernel-instructions
    #:map-instruction-inputs
    #:map-task-kernels
+   #:map-task-defined-buffers
 
    ;; Accessors
    #:buffer-shape
    #:buffer-size
    #:buffer-ntype
+   #:buffer-depth
    #:buffer-storage
    #:buffer-data
    #:buffer-number-of-inputs

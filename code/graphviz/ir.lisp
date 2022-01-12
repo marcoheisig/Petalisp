@@ -92,6 +92,7 @@
      (buffer petalisp.ir:buffer))
   `(("shape" . ,(stringify (petalisp.ir:buffer-shape buffer)))
     ("type" . ,(stringify (petalisp.type-inference:type-specifier (petalisp.ir:buffer-ntype buffer))))
+    ("depth" . ,(stringify (petalisp.ir:buffer-depth buffer)))
     ("storage" . ,(stringify (type-of (petalisp.ir:buffer-storage buffer))))))
 
 (defun hide-buffers (references)
