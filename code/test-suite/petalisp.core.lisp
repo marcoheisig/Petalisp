@@ -107,10 +107,28 @@
   (compute
    (lazy-reduce #'+ #2A((1 2 3) (6 5 4))))
   (compute
-   (lazy-reduce (lambda (lmax lmin rmax rmin)
-        (values (max lmax rmax) (min lmin rmin)))
-      #(+1 -1 +2 -2 +3 -3)
-      #(+1 -1 +2 -2 +3 -3)))
+   (lazy-reduce
+    (lambda (lmax lmin rmax rmin)
+      (values (max lmax rmax) (min lmin rmin)))
+    #(+1 -1 +2 -2 +3 -3)
+    #(+1 -1 +2 -2 +3 -3)))
+  (loop for n from 1 to 111 do
+    (let* ((v (make-array n :initial-element 1 :element-type '(signed-byte 32)))
+           (i (lazy-array-indices v)))
+      (multiple-value-bind (max imax min imin)
+          (lazy-reduce
+           (lambda (lmax limax lmin limin rmax rimax rmin rimin)
+             (multiple-value-bind (max imax)
+                 (if (> rmax lmax)
+                     (values rmax rimax)
+                     (values lmax limax))
+               (multiple-value-bind (min imin)
+                   (if (< rmin lmin)
+                       (values rmin rimin)
+                       (values lmin limin))
+                 (values max imax min imin))))
+           v i v i)
+        (compute max imax min imin))))
   (compute
    (lazy-reduce (lambda (a b) (values a b)) #(3 2 1))
    (lazy-reduce (lambda (a b) (values b a)) #(3 2 1))))
