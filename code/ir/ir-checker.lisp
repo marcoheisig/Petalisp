@@ -154,15 +154,4 @@
             (assert (member successor (task-successors task)))
             (assert (member task (task-predecessors successor))))))
       buffer))
-   task)
-  ;; Ensure that the task's buffers are live.
-  #+(or)
-  (loop for kernel in (task-kernels task) do
-    (map-kernel-inputs
-     (lambda (buffer)
-       (assert (member buffer (task-live-buffers task))))
-     kernel)
-    (map-kernel-outputs
-     (lambda (buffer)
-       (assert (member buffer (task-live-buffers task))))
-     kernel)))
+   task))

@@ -81,10 +81,7 @@
   ;; This task's kernels.
   (kernels '() :type list)
   ;; The buffers defined by this task.
-  (defined-buffers '() :type list)
-  ;; All buffers that are defined by this task or a predecessor of this
-  ;; task, and that are used by this task or a successor of this task.
-  (live-buffers '() :type list))
+  (defined-buffers '() :type list))
 
 ;;; The behavior of a kernel is described by its iteration space and its
 ;;; instructions.  The instructions form a DAG, whose leaves are load

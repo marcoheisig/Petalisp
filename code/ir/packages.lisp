@@ -90,7 +90,6 @@
    #:task-successors
    #:task-kernels
    #:task-defined-buffers
-   #:task-live-buffers
    #:instruction-number
    #:instruction-inputs
    #:instruction-transformation
