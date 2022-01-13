@@ -13,7 +13,7 @@
     ,(isqrt most-positive-fixnum)))
 
 (defun extended-euclid (u v)
-  "Given nonnegative integers u and v, return the values u1 and u3 such
+  "Given nonnegative integers u and v, returns the values u1 and u3 such
 that u*u1 + v*u2 = u3 = gcd(u,v)."
   (declare (alexandria:non-negative-integer u v))
   ;; This is a variant of Knuth's Algorithm X from TAOCP Volume 2, but

@@ -72,4 +72,7 @@
 
    ;; number-of-cpus.lisp
    #:number-of-cpus
+
+   ;; topological-sort.lisp
+   #:topological-sort
    ))

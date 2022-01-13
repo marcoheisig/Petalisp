@@ -26,4 +26,5 @@
    (:file "prime-factors")
    (:file "weak-set")
    (:file "with-collectors")
-   (:file "number-of-cpus")))
+   (:file "number-of-cpus")
+   (:file "topological-sort")))
