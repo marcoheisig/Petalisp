@@ -61,6 +61,8 @@
    #:map-kernel-outputs
    #:map-kernel-instructions
    #:map-instruction-inputs
+   #:map-task-successors
+   #:map-task-predecessors
    #:map-task-kernels
    #:map-task-defined-buffers
 

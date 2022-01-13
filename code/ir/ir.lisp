@@ -74,9 +74,9 @@
 (defstruct (task
             (:predicate taskp)
             (:constructor make-task))
-  ;; The tasks this task depends on.
+  ;; The tasks that must be completed before this task can run.
   (predecessors '() :type list)
-  ;; The tasks that depend on this task.
+  ;; The tasks that have this one as their predecessor.
   (successors '() :type list)
   ;; This task's kernels.
   (kernels '() :type list)
@@ -337,14 +337,25 @@
 (defun map-kernels (function root-buffers)
   (map-buffers-and-kernels #'identity function root-buffers))
 
+(declaim (inline map-kernel-instructions))
 (defun map-kernel-instructions (function kernel)
   (let ((vector (kernel-instruction-vector kernel)))
     (declare (simple-vector vector))
     (map nil function vector)))
 
+(declaim (inline map-task-successors))
+(defun map-task-successors (function task)
+  (mapc function (task-successors task)))
+
+(declaim (inline map-task-predecessors))
+(defun map-task-predecessors (function task)
+  (mapc function (task-predecessors task)))
+
+(declaim (inline map-task-kernels))
 (defun map-task-kernels (function task)
   (mapc function (task-kernels task)))
 
+(declaim (inline map-task-defined-buffers))
 (defun map-task-defined-buffers (function task)
   (mapc function (task-defined-buffers task)))
 
