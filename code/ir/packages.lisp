@@ -17,10 +17,10 @@
    #:ir-from-lazy-arrays
 
    ;; Structs
-   #:instruction
+   #:program
+   #:task
    #:buffer
    #:kernel
-   #:task
    #:instruction
    #:iterating-instruction
    #:call-instruction
@@ -29,12 +29,13 @@
    #:iref-instruction
 
    ;; Predicates
+   #:programp
+   #:taskp
    #:bufferp
    #:leaf-buffer-p
    #:root-buffer-p
    #:interior-buffer-p
    #:kernelp
-   #:taskp
    #:instructionp
    #:call-instruction-p
    #:iterating-instruction-p
@@ -43,11 +44,17 @@
    #:store-instruction-p
 
    ;; Constructors
+   #:make-program
+   #:make-task
    #:make-kernel
    #:make-buffer
-   #:make-task
 
    ;; Mapping
+   #:map-program-tasks
+   #:map-task-successors
+   #:map-task-predecessors
+   #:map-task-kernels
+   #:map-task-defined-buffers
    #:map-buffers-and-kernels
    #:map-kernels
    #:map-buffers
@@ -61,12 +68,12 @@
    #:map-kernel-outputs
    #:map-kernel-instructions
    #:map-instruction-inputs
-   #:map-task-successors
-   #:map-task-predecessors
-   #:map-task-kernels
-   #:map-task-defined-buffers
 
    ;; Accessors
+   #:program-initial-task
+   #:program-final-task
+   #:program-task-vector
+   #:task-program
    #:buffer-shape
    #:buffer-size
    #:buffer-ntype
@@ -86,10 +93,6 @@
    #:kernel-number-of-stores
    #:kernel-cost
    #:kernel-data
-   #:task-predecessors
-   #:task-successors
-   #:task-kernels
-   #:task-defined-buffers
    #:instruction-number
    #:instruction-inputs
    #:instruction-transformation

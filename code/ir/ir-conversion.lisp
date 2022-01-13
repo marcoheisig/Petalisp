@@ -205,8 +205,6 @@
             (setf (cdr other-cons) instruction)))))
     (prune-superfluous-buffers
      (ir-converter-potentially-superfluous-buffers *ir-converter*))
-    (assign-tasks root-buffers)
-    (check-ir root-buffers)
     ;; Collapse each buffer's shape, remove all ranges with size one from
     ;; interior buffers, and ensure that each kernel has an instruction
     ;; vector, and that each instruction has a number that is an index into
@@ -215,6 +213,7 @@
     (nreverse root-buffers)))
 
 (defun finalize-ir (root-buffers)
+  (ensure-tasks root-buffers)
   (map-buffers-and-kernels
    #'finalize-buffer
    #'finalize-kernel
@@ -228,30 +227,52 @@
 
 (defun finalize-kernel (kernel)
   (setf (kernel-data kernel) nil)
-  ;; We use this opportunity to compute the kernel instruction vector,
-  ;; knowing it will be cached for all future invocations.
-  (setf (kernel-instruction-vector kernel)
-        (let ((counter 0))
-          (labels ((clear-instruction-number (instruction)
-                     (unless (= -1 (instruction-number instruction))
-                       (incf counter)
-                       (setf (instruction-number instruction) -1)
-                       (map-instruction-inputs #'clear-instruction-number instruction))))
-            (map-kernel-store-instructions #'clear-instruction-number kernel))
-          (let ((vector (make-array counter))
-                (index 0))
-            (labels ((assign-instruction-number (instruction)
-                       (when (= -1 (instruction-number instruction))
-                         (setf (instruction-number instruction) -2)
-                         (map-instruction-inputs #'assign-instruction-number instruction)
-                         (setf (instruction-number instruction) index)
-                         (setf (svref vector index) instruction)
-                         (incf index))))
-              (map-kernel-store-instructions #'assign-instruction-number kernel))
-            (setf (kernel-instruction-vector kernel) vector))))
-  (transform-kernel
-   kernel
-   (normalizing-transformation (kernel-iteration-space kernel))))
+  (recompute-kernel-instruction-vector kernel)
+  (transform-kernel kernel (normalizing-transformation (kernel-iteration-space kernel))))
+
+(defun recompute-kernel-instruction-vector (kernel)
+  (let ((magic-fixnum (- most-positive-fixnum 17))
+        (size 0))
+    (labels ((clear-instruction-number (instruction)
+               (unless (eql (instruction-number instruction) magic-fixnum)
+                 (setf (instruction-number instruction) magic-fixnum)
+                 (incf size)
+                 (map-instruction-inputs #'clear-instruction-number instruction))))
+      (map-kernel-store-instructions #'clear-instruction-number kernel))
+    (let ((vector (make-array size))
+          (index 0))
+      (labels ((assign-instruction-number (instruction)
+                 (when (eq (instruction-number instruction) magic-fixnum)
+                   (setf (instruction-number instruction) size)
+                   (map-instruction-inputs #'assign-instruction-number instruction)
+                   (setf (instruction-number instruction) index)
+                   (setf (svref vector index) instruction)
+                   (incf index))))
+        (map-kernel-store-instructions #'assign-instruction-number kernel))
+      (setf (kernel-instruction-vector kernel) vector)
+      kernel)))
+
+(defun recompute-program-task-vector (program)
+  (let ((magic-fixnum (- most-positive-fixnum 19))
+        (size 0))
+    (labels ((clear-task-number (task)
+               (unless (eql (task-number task) magic-fixnum)
+                 (setf (task-number task) magic-fixnum)
+                 (incf size)
+                 (map-task-predecessors #'clear-task-number task))))
+      (clear-task-number (program-final-task program)))
+    (let ((vector (make-array size))
+          (index 0))
+      (labels ((assign-task-number (task)
+                 (when (eql (task-number task) magic-fixnum)
+                   (setf (task-number task) size)
+                   (map-task-predecessors #'assign-task-number task)
+                   (setf (task-number task) index)
+                   (setf (svref vector index) task)
+                   (incf index))))
+        (assign-task-number (program-final-task program)))
+      (setf (program-task-vector program) vector)
+      program)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -698,27 +719,32 @@
 ;;; has an associated task, and that the successors and predecessors of
 ;;; each task are set up correctly.
 
-(defun assign-tasks (root-buffers)
+(defun ensure-tasks (root-buffers)
   ;; Ensure that each kernel and buffer has a task.
-  (let ((leaf-task (make-task))
-        (root-tasks '()))
+  (let* ((program (make-program))
+         (initial-task (make-task :program program))
+         (final-task (make-task :program program))
+         (root-tasks '()))
+    (setf (program-initial-task program) initial-task)
+    (setf (program-final-task program) final-task)
     (let ((worklist root-buffers))
       (loop until (null worklist) for buffer = (pop worklist) do
         (when (null (buffer-task buffer))
           (if (leaf-buffer-p buffer)
-              (progn (setf (buffer-task buffer) leaf-task)
-                     (push buffer (task-defined-buffers leaf-task)))
-              (progn (assign-buffer-task buffer)
-                     (map-task-kernels
-                      (lambda (kernel)
-                        (map-kernel-inputs
-                         (lambda (buffer)
-                           (when (null (buffer-task buffer))
-                             (pushnew buffer worklist)))
-                         kernel))
-                      (buffer-task buffer))
-                     (when (root-buffer-p buffer)
-                       (pushnew (buffer-task buffer) root-tasks)))))))
+              (unless (buffer-task buffer)
+                (setf (buffer-task buffer) initial-task)
+                (push buffer (task-defined-buffers initial-task)))
+              (map-task-kernels
+               (lambda (kernel)
+                 (map-kernel-inputs
+                  (lambda (buffer)
+                    (when (null (buffer-task buffer))
+                      (push buffer worklist)))
+                  kernel))
+               (ensure-buffer-task buffer program))))))
+    ;; Determie the root tasks.
+    (loop for root-buffer in root-buffers do
+      (pushnew (buffer-task root-buffer) root-tasks))
     ;; Determine the predecessors and successors of each task.
     (let ((worklist root-tasks))
       (loop until (null worklist) for task = (pop worklist) do
@@ -734,6 +760,11 @@
                     (pushnew successor (task-successors task)))))
               buffer))
            task)
+          ;; A task with zero successors is a predecessor of the final
+          ;; task.
+          (when (null (task-successors task))
+            (push task (task-predecessors final-task))
+            (push final-task (task-successors task)))
           ;; Determine all predecessors.
           (map-task-kernels
            (lambda (kernel)
@@ -747,10 +778,13 @@
           ;; Enqueue all predecessors that haven't been processed so far.
           (loop for predecessor in (task-predecessors task) do
             (unless (task-successors predecessor)
-              (push predecessor worklist))))))))
+              (push predecessor worklist))))))
+    ;; Finish by computing the task vector.
+    (recompute-program-task-vector program)
+    program))
 
-(defun assign-buffer-task (buffer)
-  (let ((task (make-task))
+(defun ensure-buffer-task (buffer program)
+  (let ((task (make-task :program program))
         (max-depth (buffer-depth buffer))
         (kernel-worklist '())
         (buffer-worklist (list buffer)))

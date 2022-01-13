@@ -2,6 +2,40 @@
 
 (in-package #:petalisp.ir)
 
+(defstruct (program
+            (:predicate programp)
+            (:constructor make-program))
+  ;; A task with zero predecessors.
+  (initial-task nil)
+  ;; A task with zero successors.
+  (final-task nil)
+  ;; A simple vector, mapping from task numbers to tasks.
+  (task-vector #() :type simple-vector))
+
+;;; A task is a collection of kernels that fully define a set of buffers.
+;;; The rules for task membership are:
+;;;
+;;; 1. All kernels writing to a buffer B with task T have task T.
+;;;
+;;; 2. All buffers written to by a kernel K with task T have task T.
+;;;
+;;; 3. A buffer that is used by a kernel in T and that depends on a buffer
+;;;    in T is also in T.
+(defstruct (task
+            (:predicate taskp)
+            (:constructor make-task))
+  (program '() :type program)
+  ;; The tasks that must be completed before this task can run.
+  (predecessors '() :type list)
+  ;; The tasks that have this one as their predecessor.
+  (successors '() :type list)
+  ;; This task's kernels.
+  (kernels '() :type list)
+  ;; The buffers defined by this task.
+  (defined-buffers '() :type list)
+  ;; A number that is unique among all tasks in this program.
+  (number 0 :type (and unsigned-byte fixnum)))
+
 ;;; A buffer represents a set of memory locations big enough to hold one
 ;;; element of type ELEMENT-TYPE for each index of the buffer's shape.
 ;;; Each buffer is written to by zero or more kernels and read from zero or
@@ -29,16 +63,20 @@
   ;; to the buffer.
   (data nil))
 
+(declaim (inline leaf-buffer-p))
 (defun leaf-buffer-p (buffer)
   (null (buffer-writers buffer)))
 
+(declaim (inline root-buffer-p))
 (defun root-buffer-p (buffer)
   (null (buffer-readers buffer)))
 
+(declaim (inline interior-buffer-p))
 (defun interior-buffer-p (buffer)
   (not (or (leaf-buffer-p buffer)
            (root-buffer-p buffer))))
 
+(declaim (inline buffer-size))
 (defun buffer-size (buffer)
   (shape-size (buffer-shape buffer)))
 
@@ -62,27 +100,6 @@
   ;; to the kernel.
   (data nil))
 
-;;; A task is a collection of kernels that fully define a set of buffers.
-;;; The rules for task membership are:
-;;;
-;;; 1. All kernels writing to a buffer B with task T have task T.
-;;;
-;;; 2. All buffers written to by a kernel K with task T have task T.
-;;;
-;;; 3. A buffer that is used by a kernel in T and that depends on a buffer
-;;;    in T is also in T.
-(defstruct (task
-            (:predicate taskp)
-            (:constructor make-task))
-  ;; The tasks that must be completed before this task can run.
-  (predecessors '() :type list)
-  ;; The tasks that have this one as their predecessor.
-  (successors '() :type list)
-  ;; This task's kernels.
-  (kernels '() :type list)
-  ;; The buffers defined by this task.
-  (defined-buffers '() :type list))
-
 ;;; The behavior of a kernel is described by its iteration space and its
 ;;; instructions.  The instructions form a DAG, whose leaves are load
 ;;; instructions or references to iteration variables, and whose roots are
@@ -103,8 +120,8 @@
             (:predicate instructionp)
             (:copier nil)
             (:constructor nil))
-  (number 0 :type fixnum)
-  (inputs '() :type list))
+  (inputs '() :type list)
+  (number 0 :type (and unsigned-byte fixnum)))
 
 ;;; A call instruction represents the application of a function to a set of
 ;;; values that are the result of other instructions.
@@ -240,6 +257,27 @@
 ;;;
 ;;; Mapping Functions
 
+(declaim (inline map-program-tasks))
+(defun map-program-tasks (function program)
+  (loop for task across (program-task-vector program) do
+    (funcall function task)))
+
+(declaim (inline map-task-successors))
+(defun map-task-successors (function task)
+  (mapc function (task-successors task)))
+
+(declaim (inline map-task-predecessors))
+(defun map-task-predecessors (function task)
+  (mapc function (task-predecessors task)))
+
+(declaim (inline map-task-kernels))
+(defun map-task-kernels (function task)
+  (mapc function (task-kernels task)))
+
+(declaim (inline map-task-defined-buffers))
+(defun map-task-defined-buffers (function task)
+  (mapc function (task-defined-buffers task)))
+
 (declaim (inline map-buffer-inputs))
 (defun map-buffer-inputs (function buffer)
   (declare (function function)
@@ -317,16 +355,12 @@
     (funcall function input)))
 
 (defun map-buffers-and-kernels (buffer-fn kernel-fn root-buffers)
-  (let ((table (make-hash-table :test #'eq)))
-    (labels ((process-buffer (buffer)
-               (unless (gethash buffer table)
-                 (setf (gethash buffer table) t)
-                 (funcall buffer-fn buffer)
-                 (map-buffer-inputs #'process-kernel buffer)))
-             (process-kernel (kernel)
-               (funcall kernel-fn kernel)
-               (map-kernel-inputs #'process-buffer kernel)))
-      (mapc #'process-buffer root-buffers))))
+  (unless (null root-buffers)
+    (map-program-tasks
+     (lambda (task)
+       (map-task-defined-buffers buffer-fn task)
+       (map-task-kernels kernel-fn task))
+     (task-program (buffer-task (first root-buffers))))))
 
 (defun map-buffers (function root-buffers)
   (map-buffers-and-kernels function #'identity root-buffers))
@@ -339,22 +373,6 @@
   (let ((vector (kernel-instruction-vector kernel)))
     (declare (simple-vector vector))
     (map nil function vector)))
-
-(declaim (inline map-task-successors))
-(defun map-task-successors (function task)
-  (mapc function (task-successors task)))
-
-(declaim (inline map-task-predecessors))
-(defun map-task-predecessors (function task)
-  (mapc function (task-predecessors task)))
-
-(declaim (inline map-task-kernels))
-(defun map-task-kernels (function task)
-  (mapc function (task-kernels task)))
-
-(declaim (inline map-task-defined-buffers))
-(defun map-task-defined-buffers (function task)
-  (mapc function (task-defined-buffers task)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
