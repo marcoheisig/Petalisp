@@ -62,6 +62,7 @@
    #:prepare
    #:prepare-list-of-arrays
    #:vectorize
+   #:evaluator
 
    ;; Backends
    #:*backend*

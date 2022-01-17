@@ -9,6 +9,7 @@
 
 (defun substitute-lazy-arrays (roots new-lazy-arrays old-lazy-arrays)
   (let ((*substitutions* (make-hash-table :test #'eq)))
+    (assert (= (length new-lazy-arrays) (length old-lazy-arrays)))
     (loop for new-lazy-array in new-lazy-arrays
           for old-lazy-array in old-lazy-arrays do
             (assert (shape-equal
@@ -64,5 +65,6 @@
    :inputs (mapcar #'substitute-lazy-array (delayed-fuse-inputs delayed-fuse))))
 
 (defmethod substitute-delayed-action ((delayed-action delayed-action))
-  ;; All other kinds of delayed actions need not be copied.
+  ;; Other delayed actions need not be copied because they don't depend on
+  ;; other lazy-arrays.
   delayed-action)

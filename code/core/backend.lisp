@@ -41,6 +41,13 @@
 ;;; scheduling infrastructure.
 (defgeneric backend-schedule (backend request))
 
+;;; For a supplied backend, list of lazy arrays of length N, and list of
+;;; unknowns of length K, returns a function with K arguments that returns
+;;; the N values obtained by computing the supplied arrays after
+;;; substituting each unknown in their definition with the supplied
+;;; argument in the corresponding position.
+(defgeneric backend-evaluator (backend lazy-arrays unknowns))
+
 ;;; Returns whether the lazy arrays's collapsed value can be obtained at
 ;;; O(1) cost, so that we don't have to do any work during COMPUTE or
 ;;; SCHEDULE.
@@ -110,6 +117,24 @@
                  (setf (delayed-wait-delayed-action delayed-wait)
                        delayed-action))))
     (request-finish request)))
+
+(defmethod backend-evaluator :before (backend lazy-arrays unknowns)
+  (dolist (lazy-array lazy-arrays)
+    (unless (lazy-array-p lazy-array)
+      (error "Not a lazy array: ~S" lazy-array)))
+  (dolist (unknown unknowns)
+    (unless (and (lazy-array-p unknown)
+                 (delayed-unknown-p (lazy-array-delayed-action unknown)))
+      (error "Not an unknown: ~S" unknown))))
+
+(defmethod backend-evaluator (backend lazy-arrays unknowns)
+  (lambda (&rest arrays)
+    (let ((*backend* backend))
+      (apply #'compute
+             (substitute-lazy-arrays
+              lazy-arrays
+              (mapcar #'lazy-array arrays)
+              unknowns)))))
 
 (defmethod trivial-lazy-array-p
     ((lazy-array lazy-array)
@@ -240,6 +265,9 @@
   (if (zerop (array-rank array))
       (aref array)
       array))
+
+(defun evaluator (arrays unknowns)
+  (backend-evaluator *backend* (mapcar #'lazy-array arrays) unknowns))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

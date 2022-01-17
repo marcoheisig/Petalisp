@@ -194,10 +194,12 @@
    #:delete-backend
    #:backend-compute
    #:backend-schedule
+   #:backend-evaluator
    #:compute
    #:compute-list-of-arrays
    #:schedule
    #:wait
+   #:evaluator
 
    ;; Reference Backend
    #:make-reference-backend))
