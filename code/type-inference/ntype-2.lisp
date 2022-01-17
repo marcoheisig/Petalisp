@@ -16,7 +16,6 @@
 ;;;
 ;;; Ntype Generalization
 
-(declaim (inline generalize-ntype))
 (defun generalize-ntype (ntype)
   (if (%ntypep ntype)
       ntype
