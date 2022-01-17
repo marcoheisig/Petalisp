@@ -25,8 +25,12 @@
 ;;; developers can rely on the fact that the second argument is always a
 ;;; list of collapsed lazy arrays, i.e., lazy arrays whose shape consists
 ;;; only of ranges with a start of zero and a stride of one.  This function
-;;; must return one Common Lisp array for each of the supplied lazy arrays.
-(defgeneric backend-compute (backend lazy-arrays))
+;;; must return a list with one Common Lisp array for each of the supplied
+;;; lazy arrays.
+(defgeneric backend-compute (backend lazy-arrays)
+  ;; We change the argument precedence order so that we can add default
+  ;; methods for the case where the second argument is null.
+  (:argument-precedence-order lazy-arrays backend))
 
 ;;; Ensures that the supplied REQUEST is computed eventually on BACKEND.
 ;;; This function is invoked exactly once for each request, by the Petalisp
@@ -46,7 +50,10 @@
 ;;; the N values obtained by computing the supplied arrays after
 ;;; substituting each unknown in their definition with the supplied
 ;;; argument in the corresponding position.
-(defgeneric backend-evaluator (backend lazy-arrays unknowns))
+(defgeneric backend-evaluator (backend lazy-arrays unknowns)
+  ;; We change the argument precedence order so that we can add default
+  ;; methods for the case where the second or third argument are null.
+  (:argument-precedence-order lazy-arrays unknowns backend))
 
 ;;; Returns whether the lazy arrays's collapsed value can be obtained at
 ;;; O(1) cost, so that we don't have to do any work during COMPUTE or
@@ -71,8 +78,30 @@
 ;;;
 ;;; Methods
 
+(defmethod delete-backend (backend)
+  (values))
+
 (defmethod delete-backend ((backend backend))
   (change-class backend 'deleted-backend))
+
+(defmethod backend-compute (backend (lazy-arrays null))
+  (list))
+
+;;; The default method for BACKEND-COMPUTE is implemented in terms of
+;;; BACKEND-EVALUATOR, and the default method for BACKEND-EVALUATOR is
+;;; implemented in terms of BACKEND-COMPUTE.  A consequence is that
+;;; erroneous or incomplete backends would lead to an infinite recursion.
+;;; We avoid this with the following special variable.
+(defvar *backend-compute-recursion* nil)
+
+;;; Unless there is a more specific version of BACKEND-COMPUTE available
+;;; for a particular backend, attempt to emulate it by creating an
+;;; evaluator and calling that.
+(defmethod backend-compute (backend (lazy-arrays list))
+  (if (not *backend-compute-recursion*)
+      (let ((*backend-compute-recursion* t))
+        (funcall (backend-evaluator backend lazy-arrays '())))
+      (call-next-method)))
 
 ;;; In case a more specific method of BACKEND-SCHEDULE signals an error,
 ;;; handle it by replacing the delayed actions of all lazy arrays of the
@@ -118,7 +147,7 @@
                        delayed-action))))
     (request-finish request)))
 
-(defmethod backend-evaluator :before (backend lazy-arrays unknowns)
+(defmethod backend-evaluator :before (backend (lazy-arrays list) (unknowns list))
   (dolist (lazy-array lazy-arrays)
     (unless (lazy-array-p lazy-array)
       (error "Not a lazy array: ~S" lazy-array)))
@@ -127,7 +156,10 @@
                  (delayed-unknown-p (lazy-array-delayed-action unknown)))
       (error "Not an unknown: ~S" unknown))))
 
-(defmethod backend-evaluator (backend lazy-arrays unknowns)
+(defmethod backend-evaluator (backend (lazy-arrays null) (unknowns list))
+  (lambda () (values)))
+
+(defmethod backend-evaluator (backend (lazy-arrays list) (unknowns list))
   (lambda (&rest arrays)
     (let ((*backend* backend))
       (apply #'compute
