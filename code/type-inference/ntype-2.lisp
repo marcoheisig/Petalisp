@@ -16,15 +16,21 @@
 ;;;
 ;;; Ntype Generalization
 
+(declaim (inline generalize-ntype))
 (defun generalize-ntype (ntype)
   (if (%ntypep ntype)
       ntype
-      (macrolet ((body ()
-                   `(typecase ntype
-                      ,@(loop for ntype across *ntypes*
-                              collect
-                              `(,(%ntype-type-specifier ntype) ',ntype)))))
-        (body))))
+      (the (values ntype &optional)
+           (%generalize-ntype ntype))))
+
+(defun %generalize-ntype (ntype)
+  (macrolet ((body ()
+               `(typecase ntype
+                  ,@(loop for ntype across *ntypes*
+                          collect
+                          `(,(%ntype-type-specifier ntype) ',ntype)))))
+    (body)))
+
 
 (let ((id-limit (1+ (loop for ntype across *ntypes*
                           maximize (%ntype-id ntype)))))
