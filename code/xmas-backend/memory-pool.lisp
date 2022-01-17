@@ -2,7 +2,9 @@
 
 (in-package #:petalisp.xmas-backend)
 
-(defstruct memory-pool
+(defstruct (memory-pool
+            (:predicate memory-pool-p)
+            (:constructor make-memory-pool ()))
   (ntype-allocator-vector
    (let* ((size (length petalisp.type-inference:*ntypes*))
           (vector (make-array size)))
@@ -11,7 +13,8 @@
            do (setf (svref vector index)
                     (make-hash-table :test #'equal)))
      vector)
-   :type simple-vector))
+   :type simple-vector
+   :read-only t))
 
 (defmacro memory-pool-weak-pointer-list (memory-pool ntype dimensions)
   `(gethash ,dimensions

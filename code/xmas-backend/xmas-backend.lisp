@@ -12,11 +12,6 @@
     :initarg :lparallel-kernel
     :type lparallel:kernel
     :reader xmas-backend-lparallel-kernel)
-   (%lparallel-
-    :initform (alexandria:required-argument :lparallel-kernel)
-    :initarg :lparallel-kernel
-    :type lparallel:kernel
-    :reader xmas-backend-lparallel-kernel)
    (%compile-cache
     :initarg :compile-cache
     :initform (make-hash-table :test #'eq)
@@ -26,10 +21,11 @@
   (check-type threads (integer 1))
   (make-instance 'native-backend
     :memory-pool (make-memory-pool)
-    :worker-pool (lparallel:make-kernel threads :name "Petalisp Xmas Backend")))
+    :lparallel-kernel
+    (lparallel:make-kernel threads :name "Petalisp Xmas Backend")))
 
 (defmethod delete-backend ((xmas-backend xmas-backend))
-  (let ((lparallel:*kernel* (xmas-backend-worker-pool xmas-backend)))
+  (let ((lparallel:*kernel* (xmas-backend-lparallel-kernel xmas-backend)))
     (lparallel:end-kernel :wait t))
   (call-next-method))
 
