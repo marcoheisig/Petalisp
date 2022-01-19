@@ -10,7 +10,16 @@
   ;; A task with zero successors.
   (final-task nil)
   ;; A simple vector, mapping from task numbers to tasks.
-  (task-vector #() :type simple-vector))
+  (task-vector #() :type simple-vector)
+  ;; The number of buffers in the program.
+  (number-of-buffers 0 :type (and unsigned-byte fixnum))
+  ;; The number of kernels in the program.
+  (number-of-kernels 0 :type (and unsigned-byte fixnum)))
+
+(declaim (inline program-number-of-tasks))
+(defun program-number-of-tasks (program)
+  (declare (program program))
+  (length (program-task-vector program)))
 
 ;;; A task is a collection of kernels that fully define a set of buffers.
 ;;; The rules for task membership are:
@@ -33,7 +42,8 @@
   (kernels '() :type list)
   ;; The buffers defined by this task.
   (defined-buffers '() :type list)
-  ;; A number that is unique among all tasks in this program.
+  ;; A number that is unique among all tasks in this program and less than
+  ;; the number of tasks in the program.
   (number 0 :type (and unsigned-byte fixnum)))
 
 ;;; A buffer represents a set of memory locations big enough to hold one
@@ -61,7 +71,10 @@
   (storage nil)
   ;; A slot that can be used by the backend to attach further information
   ;; to the buffer.
-  (data nil))
+  (data nil)
+  ;; A number that is unique among all buffers in this program and less
+  ;; than the total number of buffers in this program.
+  (number 0 :type (and unsigned-byte fixnum)))
 
 (declaim (inline leaf-buffer-p))
 (defun leaf-buffer-p (buffer)
@@ -79,6 +92,11 @@
 (declaim (inline buffer-size))
 (defun buffer-size (buffer)
   (shape-size (buffer-shape buffer)))
+
+(declaim (inline buffer-program))
+(defun buffer-program (buffer)
+  (declare (buffer buffer))
+  (task-program (buffer-task buffer)))
 
 ;;; A kernel represents a computation that, for each element in its
 ;;; iteration space, reads from some buffers and writes to some buffers.
@@ -98,7 +116,15 @@
   (task nil :type (or null task))
   ;; A slot that can be used by the backend to attach further information
   ;; to the kernel.
-  (data nil))
+  (data nil)
+  ;; A number that is unique among all the kernels in this program and less
+  ;; than the total number of kernels in this program.
+  (number 0 :type (and unsigned-byte fixnum)))
+
+(declaim (inline kernel-program))
+(defun kernel-program (kernel)
+  (declare (kernel kernel))
+  (task-program (kernel-task kernel)))
 
 ;;; The behavior of a kernel is described by its iteration space and its
 ;;; instructions.  The instructions form a DAG, whose leaves are load
@@ -121,6 +147,7 @@
             (:copier nil)
             (:constructor nil))
   (inputs '() :type list)
+  ;; A number that is unique among all instructions of this kernel.
   (number 0 :type (and unsigned-byte fixnum)))
 
 ;;; A call instruction represents the application of a function to a set of

@@ -221,12 +221,18 @@
 
 (defun finalize-buffer (buffer)
   (setf (buffer-data buffer) nil)
+  (setf (buffer-number buffer)
+        (program-number-of-buffers (buffer-program buffer)))
+  (incf (program-number-of-buffers (buffer-program buffer)))
   (if (interior-buffer-p buffer)
       (transform-buffer buffer (normalizing-transformation (buffer-shape buffer)))
       (transform-buffer buffer (collapsing-transformation (buffer-shape buffer)))))
 
 (defun finalize-kernel (kernel)
   (setf (kernel-data kernel) nil)
+  (setf (kernel-number kernel)
+        (program-number-of-kernels (kernel-program kernel)))
+  (incf (program-number-of-kernels (kernel-program kernel)))
   (recompute-kernel-instruction-vector kernel)
   (transform-kernel kernel (normalizing-transformation (kernel-iteration-space kernel))))
 

@@ -80,6 +80,9 @@
    #:buffer-depth
    #:buffer-storage
    #:buffer-data
+   #:buffer-task
+   #:buffer-program
+   #:buffer-number
    #:buffer-number-of-inputs
    #:buffer-number-of-outputs
    #:buffer-number-of-loads
@@ -93,6 +96,9 @@
    #:kernel-number-of-stores
    #:kernel-cost
    #:kernel-data
+   #:kernel-task
+   #:kernel-program
+   #:kernel-number
    #:instruction-number
    #:instruction-inputs
    #:instruction-transformation
