@@ -33,6 +33,7 @@
    #:ntype-size
    #:ntype-id
    #:ntype=
+   #:ntype<
    #:type-specifier
    #:ntype-of
    #:generalize-ntype

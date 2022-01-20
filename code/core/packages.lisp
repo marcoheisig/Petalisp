@@ -53,6 +53,7 @@
    #:shape-dimensions
    #:shape-size
    #:shape-equal
+   #:shape<
    #:shape-difference-list
    #:shape-intersection
    #:shape-intersectionp

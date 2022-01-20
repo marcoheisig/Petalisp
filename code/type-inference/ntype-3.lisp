@@ -78,6 +78,10 @@
            nil)
           (t (eql ntype1 ntype2)))))
 
+(defun ntype< (ntype1 ntype2)
+  (< (ntype-id ntype1)
+     (ntype-id ntype2)))
+
 (defun empty-ntype-p (ntype)
   (and (%ntypep ntype)
        (ntype= ntype (ntype 'nil))))

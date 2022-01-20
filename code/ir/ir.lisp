@@ -286,6 +286,7 @@
 
 (declaim (inline map-program-tasks))
 (defun map-program-tasks (function program)
+  (declare (program program))
   (loop for task across (program-task-vector program) do
     (funcall function task)))
 
@@ -304,6 +305,22 @@
 (declaim (inline map-task-defined-buffers))
 (defun map-task-defined-buffers (function task)
   (mapc function (task-defined-buffers task)))
+
+(declaim (inline map-program-buffers))
+(defun map-program-buffers (function program)
+  (declare (program program))
+  (map-program-tasks
+   (lambda (task)
+     (map-task-defined-buffers function task))
+   program))
+
+(declaim (inline map-program-kernels))
+(defun map-program-kernels (function program)
+  (declare (program program))
+  (map-program-tasks
+   (lambda (task)
+     (map-task-kernels function task))
+   program))
 
 (declaim (inline map-buffer-inputs))
 (defun map-buffer-inputs (function buffer)

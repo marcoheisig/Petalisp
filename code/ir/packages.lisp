@@ -51,6 +51,8 @@
 
    ;; Mapping
    #:map-program-tasks
+   #:map-program-kernels
+   #:map-program-buffers
    #:map-task-successors
    #:map-task-predecessors
    #:map-task-kernels
@@ -73,7 +75,11 @@
    #:program-initial-task
    #:program-final-task
    #:program-task-vector
+   #:program-number-of-buffers
+   #:program-number-of-kernels
+   #:program-number-of-tasks
    #:task-program
+   #:task-number
    #:buffer-shape
    #:buffer-size
    #:buffer-ntype
