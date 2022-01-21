@@ -50,6 +50,9 @@
   ;; A hash table, mapping from Common Lisp scalars to buffers of rank zero
   ;; containing those scalars.
   (scalar-table (make-hash-table :test #'eql) :type hash-table)
+  ;; An alist whose entries are conses of leaf buffers and their
+  ;; corresponding lazy arrays.
+  (leaf-alist '() :type list)
   ;; A list of lists of conses that need to be updated by writing the value
   ;; of the cdr of the first cons to the cdr of each remaining cons.
   (cons-updates '() :type list)
@@ -662,27 +665,30 @@
            (storage (delayed-array-storage delayed-array))
            (depth (lazy-array-depth lazy-array))
            (ntype (petalisp.type-inference:generalize-ntype
-                   (lazy-array-ntype lazy-array)))
-           (buffer
-             (if (zerop (shape-rank shape))
-                 (alexandria:ensure-gethash
-                  (aref (delayed-array-storage delayed-array))
-                  (ir-converter-scalar-table *ir-converter*)
-                  (make-buffer
-                   :shape shape
-                   :ntype ntype
-                   :depth depth
-                   :storage storage))
-                 (alexandria:ensure-gethash
-                  (delayed-array-storage delayed-array)
-                  (ir-converter-array-table *ir-converter*)
-                  (make-buffer
-                   :shape shape
-                   :ntype ntype
-                   :depth depth
-                   :storage storage)))))
-      (setf (cdr cons)
-            (make-load-instruction kernel buffer transformation)))))
+                   (lazy-array-ntype lazy-array))))
+      (multiple-value-bind (buffer reusedp)
+          (if (zerop (shape-rank shape))
+              (alexandria:ensure-gethash
+               (aref (delayed-array-storage delayed-array))
+               (ir-converter-scalar-table *ir-converter*)
+               (make-buffer
+                :shape shape
+                :ntype ntype
+                :depth depth
+                :storage storage))
+              (alexandria:ensure-gethash
+               (delayed-array-storage delayed-array)
+               (ir-converter-array-table *ir-converter*)
+               (make-buffer
+                :shape shape
+                :ntype ntype
+                :depth depth
+                :storage storage)))
+        (when (not reusedp)
+          (push (cons buffer lazy-array)
+                (ir-converter-leaf-alist *ir-converter*)))
+        (setf (cdr cons)
+              (make-load-instruction kernel buffer transformation))))))
 
 (defmethod grow-dendrite-aux
     ((dendrite dendrite)
@@ -697,10 +703,23 @@
     ((dendrite dendrite)
      (lazy-array lazy-array)
      (delayed-unknown delayed-unknown))
-  (with-accessors ((cons dendrite-cons)
-                   (transformation dendrite-transformation)) dendrite
-    (setf (cdr cons)
-          (make-call-instruction 1 'reference-to-delayed-unknown '()))))
+  (with-accessors ((shape dendrite-shape)
+                   (transformation dendrite-transformation)
+                   (stem dendrite-stem)
+                   (cons dendrite-cons)) dendrite
+    (let* ((kernel (stem-kernel stem))
+           (shape (lazy-array-shape lazy-array))
+           (depth (lazy-array-depth lazy-array))
+           (ntype (petalisp.type-inference:generalize-ntype
+                   (lazy-array-ntype lazy-array)))
+           (buffer (make-buffer
+                    :shape shape
+                    :ntype ntype
+                    :depth depth)))
+      (push (cons buffer lazy-array)
+            (ir-converter-leaf-alist *ir-converter*))
+      (setf (cdr cons)
+            (make-load-instruction kernel buffer transformation)))))
 
 (defun reference-to-delayed-unknown ()
   (error "Attempt to evaluate an unknown lazy array."))
@@ -727,7 +746,7 @@
 
 (defun ensure-tasks (root-buffers)
   ;; Ensure that each kernel and buffer has a task.
-  (let* ((program (make-program))
+  (let* ((program (make-program :leaf-alist (ir-converter-leaf-alist *ir-converter*)))
          (initial-task (make-task :program program))
          (final-task (make-task :program program))
          (root-tasks '()))
@@ -787,6 +806,7 @@
               (push predecessor worklist))))))
     ;; Finish by computing the task vector.
     (recompute-program-task-vector program)
+    ;; Populate the leaf buffer alist.
     program))
 
 (defun ensure-buffer-task (buffer program)

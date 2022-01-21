@@ -46,8 +46,8 @@
 (defgeneric backend-schedule (backend request))
 
 ;;; For a supplied backend, list of lazy arrays of length N, and list of
-;;; unknowns of length K, returns a function with K arguments that returns
-;;; the N values obtained by computing the supplied arrays after
+;;; unknowns of length K, returns a function with K arguments that returns,
+;;; as a list, the N values obtained by computing the supplied arrays after
 ;;; substituting each unknown in their definition with the supplied
 ;;; argument in the corresponding position.
 (defgeneric backend-evaluator (backend lazy-arrays unknowns)

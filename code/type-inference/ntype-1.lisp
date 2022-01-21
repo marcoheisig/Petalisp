@@ -11,7 +11,7 @@
 ;;; hand, this convention makes ntypes much more useful and allows
 ;;; reasoning about forms such as (coerce x 'single-float) or (expt n 2).
 
-(defconstant +word-size+
+(defconstant +word-bits+
   #+32-bit 32
   #+64-bit 64
   #-(or 32-bit 64-bit) 64)
@@ -22,8 +22,8 @@
             (:conc-name %ntype-)
             (:constructor %make-ntype
                 (type-specifier id
-                 &aux (size
-                       (loop for (type size) in
+                 &aux (bits
+                       (loop for (type bits) in
                              `((nil 0)
                                (short-float ,+short-float-bits+)
                                (single-float ,+single-float-bits+)
@@ -46,10 +46,10 @@
                                ((unsigned-byte 32) 32)
                                ((unsigned-byte 64) 64))
                              when (equal type type-specifier)
-                               do (return size)
-                             finally (return +word-size+))))))
+                               do (return bits)
+                             finally (return +word-bits+))))))
   (type-specifier nil :read-only t)
-  (size nil :type (unsigned-byte 8))
+  (bits nil :type (unsigned-byte 8))
   (id nil :type (unsigned-byte 8) :read-only t))
 
 (defmethod print-object ((ntype ntype) stream)

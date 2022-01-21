@@ -9,6 +9,9 @@
   (initial-task nil)
   ;; A task with zero successors.
   (final-task nil)
+  ;; An list whose entries are conses of leaf buffers and their
+  ;; corresponding lazy arrays.
+  (leaf-alist '() :type list)
   ;; A simple vector, mapping from task numbers to tasks.
   (task-vector #() :type simple-vector)
   ;; The number of buffers in the program.
@@ -97,6 +100,11 @@
 (defun buffer-program (buffer)
   (declare (buffer buffer))
   (task-program (buffer-task buffer)))
+
+(declaim (inline buffer-bits))
+(defun buffer-bits (buffer)
+  (* (petalisp.type-inference::ntype-bits (buffer-ntype buffer))
+     (shape-size (buffer-shape buffer))))
 
 ;;; A kernel represents a computation that, for each element in its
 ;;; iteration space, reads from some buffers and writes to some buffers.

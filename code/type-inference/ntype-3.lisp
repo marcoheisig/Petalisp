@@ -41,9 +41,9 @@
 ;;;
 ;;; Reasoning About Ntypes
 
-(declaim (inline ntype-size))
-(defun ntype-size (ntype)
-  (%ntype-size
+(declaim (inline ntype-bits))
+(defun ntype-bits (ntype)
+  (%ntype-bits
    (generalize-ntype ntype)))
 
 (declaim (inline ntype-id))

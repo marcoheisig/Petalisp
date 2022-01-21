@@ -30,7 +30,7 @@
    ;; Ntype manipulation.
    #:*ntypes*
    #:ntype
-   #:ntype-size
+   #:ntype-bits
    #:ntype-id
    #:ntype=
    #:ntype<

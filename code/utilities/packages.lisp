@@ -75,4 +75,8 @@
 
    ;; topological-sort.lisp
    #:topological-sort
-   ))
+
+   ;; graph-coloring.lisp
+   #:make-cgraph
+   #:cgraph-add-conflict
+   #:cgraph-coloring))

@@ -74,6 +74,7 @@
    ;; Accessors
    #:program-initial-task
    #:program-final-task
+   #:program-leaf-alist
    #:program-task-vector
    #:program-number-of-buffers
    #:program-number-of-kernels
@@ -88,6 +89,7 @@
    #:buffer-data
    #:buffer-task
    #:buffer-program
+   #:buffer-bits
    #:buffer-number
    #:buffer-number-of-inputs
    #:buffer-number-of-outputs
