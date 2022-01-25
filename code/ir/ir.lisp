@@ -364,24 +364,6 @@
       (funcall function store-instruction)))
   buffer)
 
-(declaim (inline map-kernel-store-instructions))
-(defun map-kernel-store-instructions (function kernel)
-  (declare (function function)
-           (kernel kernel))
-  (loop for (nil . store-instructions) in (kernel-targets kernel) do
-    (loop for store-instruction in store-instructions do
-      (funcall function store-instruction)))
-  kernel)
-
-(declaim (inline map-kernel-load-instructions))
-(defun map-kernel-load-instructions (function kernel)
-  (declare (function function)
-           (kernel kernel))
-  (loop for (nil . load-instructions) in (kernel-sources kernel) do
-    (loop for load-instruction in load-instructions do
-      (funcall function load-instruction)))
-  kernel)
-
 (declaim (inline map-kernel-inputs))
 (defun map-kernel-inputs (function kernel)
   (declare (function function)
@@ -394,10 +376,27 @@
 (defun map-kernel-outputs (function kernel)
   (declare (function function)
            (kernel kernel))
-  (map-kernel-store-instructions
-   (lambda (store-instruction)
-     (funcall function (store-instruction-buffer store-instruction)))
-   kernel))
+  (loop for (buffer . nil) in (kernel-targets kernel) do
+    (funcall function buffer))
+  kernel)
+
+(declaim (inline map-kernel-load-instructions))
+(defun map-kernel-load-instructions (function kernel)
+  (declare (function function)
+           (kernel kernel))
+  (loop for (nil . load-instructions) in (kernel-sources kernel) do
+    (loop for load-instruction in load-instructions do
+      (funcall function load-instruction)))
+  kernel)
+
+(declaim (inline map-kernel-store-instructions))
+(defun map-kernel-store-instructions (function kernel)
+  (declare (function function)
+           (kernel kernel))
+  (loop for (nil . store-instructions) in (kernel-targets kernel) do
+    (loop for store-instruction in store-instructions do
+      (funcall function store-instruction)))
+  kernel)
 
 (declaim (inline map-instruction-inputs))
 (defun map-instruction-inputs (function instruction)
@@ -425,6 +424,34 @@
   (let ((vector (kernel-instruction-vector kernel)))
     (declare (simple-vector vector))
     (map nil function vector)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Do Macros
+
+(macrolet ((def (name var thing mapper)
+             `(defmacro ,name ((,var ,thing &optional result) &body body)
+                (check-type ,var symbol)
+                `(block nil
+                   (,',mapper (lambda (,,var) ,@body) ,,thing)
+                   ,result))))
+  (def do-program-tasks task program map-program-tasks)
+  (def do-task-successors successor task map-task-successors)
+  (def do-task-predecessors predecessor task map-task-predecessors)
+  (def do-task-kernels kernel task map-task-kernels)
+  (def do-task-defined-buffers defined-buffer task map-task-defined-buffers)
+  (def do-program-buffers buffer program map-program-buffers)
+  (def do-program-kernels kernel program map-program-kernels)
+  (def do-buffer-inputs kernel buffer map-buffer-inputs)
+  (def do-buffer-outputs kernel buffer map-buffer-outputs)
+  (def do-buffer-load-instructions load-instruction buffer map-buffer-load-instructions)
+  (def do-buffer-store-instructions store-instruction buffer map-buffer-store-instructions)
+  (def do-kernel-inputs buffer kernel map-kernel-inputs)
+  (def do-kernel-outputs buffer kernel map-kernel-outputs)
+  (def do-kernel-load-instructions load-instruction kernel map-kernel-load-instructions)
+  (def do-kernel-store-instructions store-instruction kernel map-kernel-store-instructions)
+  (def do-instruction-inputs input instruction map-instruction-inputs)
+  (def do-kernel-instructions instruction kernel map-kernel-instructions))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

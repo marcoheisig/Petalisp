@@ -116,42 +116,30 @@
   (loop for buffer in (task-defined-buffers task) do
     (assert (eq (buffer-task buffer) task))
     (check-ir-node-eventually buffer)
-    (map-buffer-inputs
-     (lambda (kernel)
-       (assert (eq (kernel-task kernel) task)))
-     buffer))
+    (do-buffer-inputs (kernel buffer)
+      (assert (eq (kernel-task kernel) task))))
   ;; Ensure that all buffers written to by a kernel with task T have the
   ;; task T.
   (loop for kernel in (task-kernels task) do
     (assert (eq (kernel-task kernel) task))
     (check-ir-node-eventually kernel)
-    (map-kernel-outputs
-     (lambda (buffer)
-       (assert (eq (buffer-task buffer) task)))
-     kernel))
+    (do-kernel-outputs (buffer kernel)
+      (assert (eq (buffer-task buffer) task))))
   ;; Ensure that a buffer that is used by a kernel in T and that depends on
   ;; a buffer in T is also in T.
   (let* ((max-depth (reduce #'max (task-defined-buffers task)
                             :key #'buffer-depth
                             :initial-value 0))
          (event-horizon (event-horizon (task-defined-buffers task) max-depth)))
-    (map-task-kernels
-     (lambda (kernel)
-       (map-kernel-inputs
-        (lambda (buffer)
-          (when (member buffer event-horizon)
-            (assert (eq (buffer-task buffer) task))))
-        kernel))
-     task))
+    (do-task-kernels (kernel task)
+      (do-kernel-inputs (buffer kernel)
+        (when (member buffer event-horizon)
+          (assert (eq (buffer-task buffer) task))))))
   ;; Ensure that the tasks of all kernels that read from a buffer defined
   ;; by this task are successors of this task.
-  (map-task-defined-buffers
-   (lambda (buffer)
-     (map-buffer-outputs
-      (lambda (kernel)
-        (let ((successor (kernel-task kernel)))
-          (unless (eq successor task)
-            (assert (member successor (task-successors task)))
-            (assert (member task (task-predecessors successor))))))
-      buffer))
-   task))
+  (do-task-defined-buffers (buffer task)
+    (do-buffer-outputs (kernel buffer)
+      (let ((successor (kernel-task kernel)))
+        (unless (eq successor task)
+          (assert (member successor (task-successors task)))
+          (assert (member task (task-predecessors successor))))))))

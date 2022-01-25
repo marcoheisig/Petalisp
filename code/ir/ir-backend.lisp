@@ -62,15 +62,11 @@
      ;; Ensure that the dependencies of each kernel are set up properly.
      (lambda (kernel)
        (let ((node (ensure-node kernel ir-backend)))
-         (map-kernel-inputs
-          (lambda (buffer)
-            (map-buffer-inputs
-             (lambda (other-kernel)
-               (let ((other-node (ensure-node other-kernel ir-backend)))
-                 (pushnew other-node (node-dependencies node))
-                 (pushnew node (node-users other-node))))
-             buffer))
-          kernel)
+         (do-kernel-inputs (buffer kernel)
+           (do-buffer-inputs (other-kernel buffer)
+             (let ((other-node (ensure-node other-kernel ir-backend)))
+               (pushnew other-node (node-dependencies node))
+               (pushnew node (node-users other-node)))))
          (when (null (node-dependencies node))
            (push node *worklist*))))
      root-buffers)

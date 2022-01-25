@@ -759,14 +759,10 @@
               (unless (buffer-task buffer)
                 (setf (buffer-task buffer) initial-task)
                 (push buffer (task-defined-buffers initial-task)))
-              (map-task-kernels
-               (lambda (kernel)
-                 (map-kernel-inputs
-                  (lambda (buffer)
-                    (when (null (buffer-task buffer))
-                      (push buffer worklist)))
-                  kernel))
-               (ensure-buffer-task buffer program))))))
+              (do-task-kernels (kernel (ensure-buffer-task buffer program))
+                (do-kernel-inputs (buffer kernel)
+                  (when (null (buffer-task buffer))
+                    (push buffer worklist))))))))
     ;; Determie the root tasks.
     (loop for root-buffer in root-buffers do
       (pushnew (buffer-task root-buffer) root-tasks))
@@ -776,30 +772,22 @@
         ;; A task with successors has already been processed.
         (unless (task-successors task)
           ;; Determine all successors.
-          (map-task-defined-buffers
-           (lambda (buffer)
-             (map-buffer-outputs
-              (lambda (kernel)
-                (let ((successor (kernel-task kernel)))
-                  (unless (eq successor task)
-                    (pushnew successor (task-successors task)))))
-              buffer))
-           task)
+          (do-task-defined-buffers (buffer task)
+            (do-buffer-outputs (kernel buffer)
+              (let ((successor (kernel-task kernel)))
+                (unless (eq successor task)
+                  (pushnew successor (task-successors task))))))
           ;; A task with zero successors is a predecessor of the final
           ;; task.
           (when (null (task-successors task))
             (push task (task-predecessors final-task))
             (push final-task (task-successors task)))
           ;; Determine all predecessors.
-          (map-task-kernels
-           (lambda (kernel)
-             (map-kernel-inputs
-              (lambda (buffer)
-                (let ((predecessor (buffer-task buffer)))
-                  (unless (eq predecessor task)
-                    (pushnew predecessor (task-predecessors task)))))
-              kernel))
-           task)
+          (do-task-kernels (kernel task)
+            (do-kernel-inputs (buffer kernel)
+              (let ((predecessor (buffer-task buffer)))
+                (unless (eq predecessor task)
+                  (pushnew predecessor (task-predecessors task))))))
           ;; Enqueue all predecessors that haven't been processed so far.
           (loop for predecessor in (task-predecessors task) do
             (unless (task-successors predecessor)
@@ -823,28 +811,24 @@
             (setf (buffer-task buffer) task)
             (push buffer (task-defined-buffers task))
             (setf max-depth (max max-depth (buffer-depth buffer)))
-            (map-buffer-inputs
-             (lambda (kernel) (pushnew kernel kernel-worklist))
-             buffer)))
+            (do-buffer-inputs (kernel buffer)
+              (pushnew kernel kernel-worklist))))
         (loop until (null kernel-worklist) for kernel = (pop kernel-worklist) do
           (unless (eq (kernel-task kernel) task)
             (unless (null (kernel-task kernel))
               (error "Attempt to assign a task to a kernel that already has a task."))
             (setf (kernel-task kernel) task)
             (push kernel (task-kernels task))
-            (map-kernel-outputs
-             (lambda (buffer) (pushnew buffer buffer-worklist))
-             kernel))))
+            (do-kernel-outputs (buffer kernel)
+              (pushnew buffer buffer-worklist)))))
       ;; Compute the event horizon of all buffers in this task, and ensure
       ;; that any buffer in the event horizon that also appears as an input
       ;; of any of the task's kernels is also added to the task.
       (let ((event-horizon (event-horizon (task-defined-buffers task) max-depth)))
         (loop for kernel in (task-kernels task) do
-          (map-kernel-inputs
-           (lambda (buffer)
-             (when (member buffer event-horizon)
-               (push buffer buffer-worklist)))
-           kernel))))
+          (do-kernel-inputs (buffer kernel)
+            (when (member buffer event-horizon)
+               (push buffer buffer-worklist))))))
     task))
 
 ;;; The event horizon of a set of buffers are all buffers that depend,
@@ -857,13 +841,10 @@
       (when (< (buffer-depth buffer) depth)
         (unless (member buffer result)
           (push buffer result)
-          (map-buffer-outputs
-           (lambda (kernel)
-             (map-kernel-outputs
-              (lambda (buffer)
-                (pushnew buffer worklist))
-              kernel))
-           buffer))))
+          (do-buffer-outputs (kernel buffer)
+            (do-kernel-outputs (buffer kernel)
+              (unless (< (buffer-depth buffer) depth)
+                (pushnew buffer worklist)))))))
     result))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -909,14 +890,12 @@
         (substitutes '()))
     ;; Determine all kernels reading from any of the prune's buffers.
     (loop for buffer in (prune-buffers prune) do
-      (map-buffer-outputs
-       (lambda (reader) (pushnew reader readers))
-       buffer))
+      (do-buffer-outputs (reader buffer)
+        (pushnew reader readers)))
     ;; Determine all kernels writing to any of the prune's buffers.
     (loop for buffer in (prune-buffers prune) do
-      (map-buffer-inputs
-       (lambda (writer) (pushnew writer writers))
-       buffer))
+      (do-buffer-inputs (writer buffer)
+        (pushnew writer writers)))
     ;; For each reader that is not also a writer, we compute a new kernel
     ;; where any reference to a superfluous buffer is replaced by a copy of
     ;; the kernel writing to the referenced part of the superfluous buffer.
@@ -950,18 +929,14 @@
       (loop for dendrite in dendrites do
         (assert (eq buffer (load-instruction-buffer (cdr (dendrite-cons dendrite)))))
         (block check-one-dendrite
-          (map-buffer-inputs
-           (lambda (writer)
-             (map-kernel-store-instructions
-              (lambda (store-instruction)
-                (when (and (eq (store-instruction-buffer store-instruction) buffer)
-                           (subshapep (dendrite-shape dendrite)
-                                      (transform-shape
-                                       (kernel-iteration-space writer)
-                                       (store-instruction-transformation store-instruction))))
-                  (return-from check-one-dendrite)))
-              writer))
-           buffer)
+          (do-buffer-inputs (writer buffer)
+            (do-kernel-store-instructions (store-instruction writer)
+              (when (and (eq (store-instruction-buffer store-instruction) buffer)
+                         (subshapep (dendrite-shape dendrite)
+                                    (transform-shape
+                                     (kernel-iteration-space writer)
+                                     (store-instruction-transformation store-instruction))))
+                (return-from check-one-dendrite))))
           ;; If we reach this point, it means we haven't found a unique
           ;; writer for this particular dendrite.  Give up.
           (return-from find-prune nil))))
@@ -987,22 +962,12 @@
              (scan-neighbors (buffer)
                ;; Scan all buffers that are read by a kernel that also
                ;; reads the current buffer.
-               (map-buffer-outputs
-                (lambda (reader)
-                  (map-kernel-inputs
-                   (lambda (buffer)
-                     (scan-buffer buffer))
-                   reader))
-                buffer)
+               (do-buffer-outputs (reader buffer)
+                 (map-kernel-inputs #'scan-buffer reader))
                ;; Scan all buffers that are written to by a kernel that
                ;; also writes to the current buffer.
-               (map-buffer-inputs
-                (lambda (writer)
-                  (map-kernel-outputs
-                   (lambda (buffer)
-                     (scan-buffer buffer))
-                   writer))
-                buffer)))
+               (do-buffer-inputs (writer buffer)
+                 (map-kernel-outputs #'scan-buffer writer))))
       (scan-buffer buffer))
     buffer-dendrites-alist))
 
@@ -1104,25 +1069,23 @@
         ;; If the buffer is to be pruned, we replace the load instruction
         ;; by a clone of the matching store instruction.
         (let ((reader-shape (transform-shape (kernel-iteration-space kernel) transformation)))
-          (map-buffer-inputs
-           (lambda (writer)
-             (loop for (store-buffer . store-instructions) in (kernel-targets writer) do
-               (when (eq store-buffer buffer)
-                 (loop for store-instruction in store-instructions do
-                   (when (subshapep
-                          reader-shape
-                          (transform-shape (kernel-iteration-space writer)
-                                           (store-instruction-transformation store-instruction)))
-                     (let* ((input (store-instruction-input store-instruction))
-                            (transformation
-                              (compose-transformations
-                               (invert-transformation
-                                (store-instruction-transformation store-instruction))
-                               transformation))
-                            (*instruction-table* (ensure-instruction-table writer transformation)))
-                       (return-from clone-reference
-                         (clone-reference (car input) (cdr input) kernel transformation))))))))
-           buffer)
+          (do-buffer-inputs (writer buffer)
+            (loop for (store-buffer . store-instructions) in (kernel-targets writer) do
+              (when (eq store-buffer buffer)
+                (loop for store-instruction in store-instructions do
+                  (when (subshapep
+                         reader-shape
+                         (transform-shape (kernel-iteration-space writer)
+                                          (store-instruction-transformation store-instruction)))
+                    (let* ((input (store-instruction-input store-instruction))
+                           (transformation
+                             (compose-transformations
+                              (invert-transformation
+                               (store-instruction-transformation store-instruction))
+                              transformation))
+                           (*instruction-table* (ensure-instruction-table writer transformation)))
+                      (return-from clone-reference
+                        (clone-reference (car input) (cdr input) kernel transformation))))))))
           (error "Invalid prune:~%~S" *prune*))
         ;; If the buffer is not to be pruned, simply create a new load
         ;; instruction and register it with the kernel and the buffer.

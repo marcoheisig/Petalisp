@@ -71,6 +71,25 @@
    #:map-kernel-instructions
    #:map-instruction-inputs
 
+   ;; Do Macros
+   #:do-program-tasks
+   #:do-task-successors
+   #:do-task-predecessors
+   #:do-task-kernels
+   #:do-task-defined-buffers
+   #:do-program-buffers
+   #:do-program-kernels
+   #:do-buffer-inputs
+   #:do-buffer-outputs
+   #:do-buffer-load-instructions
+   #:do-buffer-store-instructions
+   #:do-kernel-inputs
+   #:do-kernel-outputs
+   #:do-kernel-load-instructions
+   #:do-kernel-store-instructions
+   #:do-instruction-inputs
+   #:do-kernel-instructions
+
    ;; Accessors
    #:program-initial-task
    #:program-final-task
