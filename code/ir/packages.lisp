@@ -114,20 +114,20 @@
    #:store-instruction-buffer
    #:load-instruction-buffer
 
-   ;; Devices, Workers, and Memory
+   ;; Devices, Cores, and Memory
    #:device
    #:device-name
    #:device-memory
-   #:device-workers
+   #:device-cores
    #:host-device
-   #:worker
-   #:worker-name
-   #:worker-memory
+   #:core
+   #:core-name
+   #:core-memory
    #:memory
    #:memory-name
    #:memory-parent
    #:memory-children
-   #:memory-workers
+   #:memory-cores
    #:memory-size
    #:memory-granularity
    #:memory-latency

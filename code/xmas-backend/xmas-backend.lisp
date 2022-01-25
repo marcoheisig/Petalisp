@@ -33,19 +33,21 @@
     ((xmas-backend xmas-backend)
      (lazy-arrays list)
      (unknowns list))
-  (let* ((program (buffer-program (first (ir-from-lazy-arrays lazy-arrays))))
+  (let* ((number-of-threads (xmas-backend-number-of-threads xmas-backend))
+         (program (buffer-program (first (ir-from-lazy-arrays lazy-arrays))))
          ;; A vector entries are the buffers corresponding to each supplied
          ;; unknown in the third argument of BACKEND-EVALUATOR.
          (unknown-buffer-vector (compute-unknown-buffer-vector program))
-         ;; Compute a vector that maps kernel numbers to compiled kernels.
-         (compiled-kernel-vector (compute-compiled-kernel-vector program))
          ;; Compute a vector that maps buffer numbers to either arrays that
          ;; are the value of those buffers, the symbol :UNKNOWN if those
          ;; buffers correspond to unknowns, or null, otherwise.
          (storage-vector (compute-storage-vector program))
          ;; A list whose elements are lists of buffers that can safely
          ;; share their allocated memory.
-         (allocations (compute-allocations program storage-vector)))
+         (allocations (compute-allocations program storage-vector))
+         ;; A vector of lists of thunks.  Each list of thunks contains the
+         ;; sequential work to be performed by one thread.
+         (thread-schedules (compute-thread-schedules program number-of-threads)))
     (lambda (&rest arrays)
       ;; Create a copy of the storage vector and fully initialize it.
       (let ((storage-vector (copy-seq storage-vector)))
@@ -100,14 +102,6 @@
                   (setf (svref unknown-buffer-vector position)
                         buffer))))
     unknown-buffer-vector))
-
-(defun compute-compiled-kernel-vector (program)
-  (let ((compiled-kernel-vector (make-array (program-number-of-kernels program))))
-    (map-program-kernels
-     (lambda (kernel)
-       (setf (svref compiled-kernel-vector (kernel-number kernel))
-             (compile-kernel kernel)))
-     program)))
 
 (defun compute-storage-vector (program)
   (let ((storage-vector (make-array (program-number-of-buffers program) :initial-element nil)))
@@ -227,3 +221,32 @@
           (setf (cdr last) nil)
           (funcall function buffers)
           (setf buffers rest))))))
+
+(defparameter *min-per-thread-cost* 1000)
+
+(defun compute-thread-schedules (program number-of-threads)
+  (let ((compiled-kernel-vector (make-array (program-number-of-kernels program)))
+        (thread-schedules (make-array number-of-threads :initial-element '())))
+    ;; Compile all kernels.
+    (map-program-kernels
+     (lambda (kernel)
+       (setf (svref compiled-kernel-vector (kernel-number kernel))
+             (compile-kernel kernel)))
+     program)
+    ;; To compute the schedule for each thread, we exploit the fact that
+    ;; all tasks in the task vector are already enumerated in a way that
+    ;; satisfies all dependencies.  So all we have to do is convert each
+    ;; task into items on the schedule and follow up with a barrier.
+    (map-program-tasks
+     (lambda (task)
+       ;; Pick a buffer from that task and add all kernels writing to it to
+       ;; the schedule.  Repeat for all buffers until all kernels have been
+       ;; scheduled.  And don't forget to emit barriers where necessary -
+       ;; there can be inter-task dependencies.
+       (let ((scheduled-kernels '())
+             (defined-buffers '()))
+         (map-task-defined-buffers (lambda (buffer) (push buffer defined-buffers)) task)
+         (setf defined-buffers (sort defined-buffers #'< :key #'buffer-depth))
+         (loop for buffer in defined-buffers do
+           (break "TODO"))))
+     program)))

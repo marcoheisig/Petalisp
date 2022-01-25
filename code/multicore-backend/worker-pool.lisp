@@ -15,7 +15,7 @@
 
 (defstruct (worker-pool
             (:copier nil)
-            (:predicate worke-pool-p)
+            (:predicate worker-pool-p)
             (:constructor %make-worker-pool
                 (size &aux (workers (make-array size :initial-element nil)))))
   ;; The number of workers in the worker pool.

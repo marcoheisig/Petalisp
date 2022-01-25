@@ -4,6 +4,7 @@
 
   :depends-on
   ("alexandria"
+   "atomics"
    "bordeaux-threads"
    "lparallel"
    "trivia"
@@ -17,4 +18,5 @@
   :components
   ((:file "packages")
    (:file "memory-pool")
+   (:file "worker-pool")
    (:file "xmas-backend")))

@@ -10,11 +10,11 @@
 
 (defgeneric device-memory (device))
 
-(defgeneric device-workers (device))
+(defgeneric device-cores (device))
 
-(defgeneric worker-name (device))
+(defgeneric core-name (device))
 
-(defgeneric worker-memory (device))
+(defgeneric core-memory (device))
 
 (defgeneric memory-name (memory))
 
@@ -22,7 +22,7 @@
 
 (defgeneric memory-children (memory))
 
-(defgeneric memory-workers (memory))
+(defgeneric memory-cores (memory))
 
 (defgeneric memory-size (memory))
 
@@ -51,21 +51,21 @@
     :initform (alexandria:required-argument :memory)
     :reader device-memory
     :type memory)
-   (%number-of-workers
-    :initarg :number-of-workers
-    :reader device-number-of-workers
+   (%number-of-cores
+    :initarg :number-of-cores
+    :reader device-number-of-cores
     :type (and (integer 1) fixnum))))
 
-(defclass worker ()
+(defclass core ()
   ((%name
     :initarg :name
     :initform (alexandria:required-argument :name)
-    :reader worker-name
+    :reader core-name
     :type string)
    (%memory
     :initarg :memory
     :initform (alexandria:required-argument :memory)
-    :reader worker-memory
+    :reader core-memory
     :type memory)))
 
 (defclass memory ()
@@ -92,12 +92,12 @@
     :reader memory-children
     :accessor memory-children-slot
     :type list)
-   ;; The workers with access to this piece of memory.
-   (%workers
-    :initarg :workers
+   ;; The cores with access to this piece of memory.
+   (%cores
+    :initarg :cores
     :initform '()
-    :reader memory-workers
-    :accessor memory-workers-slot
+    :reader memory-cores
+    :accessor memory-cores-slot
     :type list)
    ;; The memory size in bytes.
    (%size
@@ -140,26 +140,26 @@
   (unless (null (memory-parent memory))
     (pushnew memory (memory-children-slot (memory-parent memory)))))
 
-(defmethod shared-initialize :after ((worker worker) slot-names &key &allow-other-keys)
+(defmethod shared-initialize :after ((core core) slot-names &key &allow-other-keys)
   (declare (ignore slot-names))
-  (labels ((register-worker-with-memory (memory)
+  (labels ((register-core-with-memory (memory)
              (unless (null memory)
-               (pushnew worker (memory-workers-slot memory))
-               (register-worker-with-memory (memory-parent memory)))))
-    (register-worker-with-memory (worker-memory worker))))
+               (pushnew core (memory-cores-slot memory))
+               (register-core-with-memory (memory-parent memory)))))
+    (register-core-with-memory (core-memory core))))
 
 (defmethod print-object ((device device) stream)
   (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
           (class-name (class-of device))
           :name (device-name device)
           :memory (device-memory device)
-          :workers (device-workers device)))
+          :cores (device-cores device)))
 
-(defmethod print-object ((worker worker) stream)
+(defmethod print-object ((core core) stream)
   (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
-          (class-name (class-of worker))
-          :name (worker-name worker)
-          :memory (worker-memory worker)))
+          (class-name (class-of core))
+          :name (core-name core)
+          :memory (core-memory core)))
 
 (defmethod print-object ((memory memory) stream)
   (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
@@ -205,10 +205,10 @@
              :latency 40
              :bandwidth 64
              :parent-bandwidth 8))
-         (workers
+         (cores
            (loop for id below n-cpus
                  collect
-                 (make-instance 'worker
+                 (make-instance 'core
                    :name (format nil "CPU-~D" id)
                    :memory
                    (make-instance 'memory
@@ -231,7 +231,7 @@
                        :parent-bandwidth 16))))))
     (make-instance 'device
       :name (or (machine-type) "fallback-host-device")
-      :workers workers
+      :cores cores
       :main-memory ram)))
 
 (defun linux-host-device ()
@@ -252,12 +252,12 @@
                 :latency 400))
          (online (uiop:ensure-pathname "/sys/devices/system/cpu/online"
                                        :want-existing t))
-         (worker-ids (parse-integer-set (alexandria:read-file-into-string online)))
+         (core-ids (parse-integer-set (alexandria:read-file-into-string online)))
          ;; Records of the form (id level cache).
          (caches '()))
     (make-instance 'device
       :main-memory ram
-      :workers
+      :cores
       (labels ((cache-level (cache-dir)
                  (parse-integer
                   (alexandria:read-file-into-string
@@ -300,11 +300,11 @@
                          (push (list id level cache) caches)
                          cache)
                        (third entry)))))
-        (loop for worker-id in worker-ids
+        (loop for core-id in core-ids
               collect
               (let* ((cpu-dir
                        (uiop:ensure-pathname
-                        (format nil "/sys/devices/system/cpu/cpu~D/" worker-id)
+                        (format nil "/sys/devices/system/cpu/cpu~D/" core-id)
                         :want-existing t
                         :want-directory t))
                      (cache-dirs
@@ -322,7 +322,7 @@
                         #'>
                         :key #'cache-level)))
                 (mapc #'ensure-cache cache-dirs)
-                (make-instance 'worker
+                (make-instance 'core
                   :name (first (last (pathname-directory cpu-dir)))
                   :memory (ensure-cache
                            (find-if-not
