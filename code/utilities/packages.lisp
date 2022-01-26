@@ -79,4 +79,7 @@
    ;; graph-coloring.lisp
    #:make-cgraph
    #:cgraph-add-conflict
-   #:cgraph-coloring))
+   #:cgraph-coloring
+
+   ;; karmarkar-karp.lisp
+   #:karmarkar-karp))
