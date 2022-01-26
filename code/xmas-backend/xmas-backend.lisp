@@ -5,39 +5,43 @@
 (defclass xmas-backend (backend)
   ((%memory-pool
     :initform (make-memory-pool)
+    :initarg :memory-pool
     :type memory-pool
     :reader xmas-backend-memory-pool)
-   (%lparallel-kernel
-    :initform (alexandria:required-argument :lparallel-kernel)
-    :initarg :lparallel-kernel
-    :type lparallel:kernel
-    :reader xmas-backend-lparallel-kernel)
+   (%worker-pool
+    :initform (alexandria:required-argument :worker-pool)
+    :initarg :worker-pool
+    :type worker-pool
+    :reader xmas-backend-worker-pool)
    (%compile-cache
     :initarg :compile-cache
     :initform (make-hash-table :test #'eq)
     :reader xmas-backend-compile-cache)))
 
+(defun xmas-backend-number-of-threads (xmas-backend)
+  (worker-pool-size
+   (xmas-backend-worker-pool xmas-backend)))
+
 (defun make-xmas-backend (&key (threads (petalisp.utilities:number-of-cpus)))
   (check-type threads (integer 1))
-  (make-instance 'native-backend
+  (make-instance 'xmas-backend
     :memory-pool (make-memory-pool)
-    :lparallel-kernel
-    (lparallel:make-kernel threads :name "Petalisp Xmas Backend")))
+    :worker-pool (make-worker-pool threads)))
 
 (defmethod delete-backend ((xmas-backend xmas-backend))
-  (let ((lparallel:*kernel* (xmas-backend-lparallel-kernel xmas-backend)))
-    (lparallel:end-kernel :wait t))
   (call-next-method))
 
 (defmethod backend-evaluator
     ((xmas-backend xmas-backend)
      (lazy-arrays list)
      (unknowns list))
-  (let* ((number-of-threads (xmas-backend-number-of-threads xmas-backend))
-         (program (buffer-program (first (ir-from-lazy-arrays lazy-arrays))))
+  (let* ((worker-pool (xmas-backend-worker-pool xmas-backend))
+         (number-of-threads (xmas-backend-number-of-threads xmas-backend))
+         (root-buffers (ir-from-lazy-arrays lazy-arrays))
+         (program (buffer-program (first root-buffers)))
          ;; A vector entries are the buffers corresponding to each supplied
          ;; unknown in the third argument of BACKEND-EVALUATOR.
-         (unknown-buffer-vector (compute-unknown-buffer-vector program))
+         (unknown-buffer-vector (compute-unknown-buffer-vector program unknowns))
          ;; Compute a vector that maps buffer numbers to either arrays that
          ;; are the value of those buffers, the symbol :UNKNOWN if those
          ;; buffers correspond to unknowns, or null, otherwise.
@@ -45,9 +49,8 @@
          ;; A list whose elements are lists of buffers that can safely
          ;; share their allocated memory.
          (allocations (compute-allocations program storage-vector))
-         ;; A vector of lists of thunks.  Each list of thunks contains the
-         ;; sequential work to be performed by one thread.
-         (thread-schedules (compute-thread-schedules program number-of-threads)))
+         ;; A vector of lists of functions.
+         (thread-fns (compute-thread-fns xmas-backend program number-of-threads)))
     (lambda (&rest arrays)
       ;; Create a copy of the storage vector and fully initialize it.
       (let ((storage-vector (copy-seq storage-vector)))
@@ -85,9 +88,31 @@
                           (shape-dimensions (buffer-shape buffer)))))
               (setf (buffer-storage buffer) array)
               (dolist (buffer more-buffers)
-                (setf (buffer-storage buffer) array)))))
-        ;; Execute all the tasks.
-        ))))
+                (setf (buffer-storage buffer) array))))
+          ;; Start working.
+          (loop for index below number-of-threads do
+            (worker-enqueue
+             (worker-pool-worker worker-pool index)
+             (let ((fns (svref thread-fns index)))
+               (lambda ()
+                 (loop for fn in fns do (funcall fn #'buffer-storage))))))
+          ;; Wait for all workers to finish.
+          (let ((lock (bordeaux-threads:make-lock))
+                (cvar (bordeaux-threads:make-condition-variable))
+                (counter number-of-threads))
+            (loop for index below number-of-threads do
+              (worker-enqueue
+               (worker-pool-worker worker-pool index)
+               (lambda ()
+                 (bordeaux-threads:with-lock-held (lock)
+                   (when (zerop (decf counter))
+                     (bordeaux-threads:condition-notify cvar))))))
+            (bordeaux-threads:with-lock-held (lock)
+              (loop until (zerop counter) do
+                (bordeaux-threads:condition-wait cvar lock))))
+          ;; Return the results.
+          (loop for root-buffer in root-buffers
+                collect (buffer-storage root-buffer)))))))
 
 (defun compute-unknown-buffer-vector (program unknowns)
   (let* ((number-of-unknowns (length unknowns))
@@ -173,14 +198,13 @@
              ;; the same location.  That graph has an edge from each defined
              ;; buffer of that task to each live buffer at that task.
              (let ((cgraph (petalisp.utilities:make-cgraph)))
-               (map-program-tasks
-                (lambda (task)
-                  (map-task-defined-buffers
-                   (lambda (defined-buffer)
-                     (loop for live-buffer in (svref task-live-buffers-vector (task-number task)) do
-                       (petalisp.utilities:cgraph-add-conflict cgraph defined-buffer live-buffer)))
-                   task))
-                program)
+               (do-program-tasks (task program)
+                 (do-task-defined-buffers (defined-buffer task)
+                   (loop for live-buffer in (svref task-live-buffers-vector (task-number task)) do
+                     (petalisp.utilities:cgraph-add-conflict cgraph defined-buffer live-buffer))
+                   (do-task-defined-buffers (other-buffer task)
+                     (when (< (buffer-number other-buffer) (buffer-number defined-buffer))
+                       (petalisp.utilities:cgraph-add-conflict cgraph defined-buffer other-buffer)))))
                ;; Color that graph.  All buffers of the same color can be placed
                ;; in the same allocation.
                (loop for buffers across (petalisp.utilities:cgraph-coloring cgraph) do
@@ -222,17 +246,25 @@
           (funcall function buffers)
           (setf buffers rest))))))
 
-(defparameter *min-per-thread-cost* 1000)
+(defparameter *min-per-thread-cost* 10000)
 
-(defun compute-thread-schedules (program number-of-threads)
+(defstruct subtask
+  (fn (alexandria:required-argument :fn)
+   :type function)
+  (cost (alexandria:required-argument :cost)
+   :type unsigned-byte))
+
+(defun compute-thread-fns (xmas-backend program number-of-threads)
   (let ((compiled-kernel-vector (make-array (program-number-of-kernels program)))
-        (thread-schedules (make-array number-of-threads :initial-element '())))
+        (thread-fns (make-array number-of-threads :initial-element '())))
     ;; Compile all kernels.
-    (map-program-kernels
-     (lambda (kernel)
-       (setf (svref compiled-kernel-vector (kernel-number kernel))
-             (compile-kernel kernel)))
-     program)
+    (do-program-kernels (kernel program)
+      (let ((blueprint (kernel-blueprint kernel)))
+        (setf (svref compiled-kernel-vector (kernel-number kernel))
+              (alexandria:ensure-gethash
+               blueprint
+               (xmas-backend-compile-cache xmas-backend)
+               (compile nil (translate-blueprint blueprint))))))
     ;; To compute the schedule for each thread, we exploit the fact that
     ;; all tasks in the task vector are already enumerated in a way that
     ;; satisfies all dependencies.  So all we have to do is convert each
@@ -244,9 +276,57 @@
        ;; scheduled.  And don't forget to emit barriers where necessary -
        ;; there can be inter-task dependencies.
        (let ((scheduled-kernels '())
-             (defined-buffers '()))
-         (map-task-defined-buffers (lambda (buffer) (push buffer defined-buffers)) task)
-         (setf defined-buffers (sort defined-buffers #'< :key #'buffer-depth))
-         (loop for buffer in defined-buffers do
-           (break "TODO"))))
-     program)))
+             (buffers '()))
+         (map-task-defined-buffers (lambda (buffer) (push buffer buffers)) task)
+         ;; Start with the buffer with the least depth to automatically get
+         ;; the dependencies within the task right.
+         (loop for buffer in (sort buffers #'< :key #'buffer-depth) do
+           (let ((subtasks '()))
+             (do-buffer-inputs (kernel buffer)
+               (unless (member kernel scheduled-kernels)
+                 (push kernel scheduled-kernels)
+                 (let ((fn (svref compiled-kernel-vector (kernel-number kernel)))
+                       (cost (kernel-cost kernel)))
+                   (map-partitioned-iteration-space
+                    (lambda (iteration-space)
+                      (push
+                       (make-subtask
+                        :fn (lambda (buffer-storage-fn)
+                              (funcall fn kernel iteration-space buffer-storage-fn))
+                        :cost (* (shape-size iteration-space) cost))
+                       subtasks))
+                    (kernel-iteration-space kernel)
+                    (ceiling *min-per-thread-cost* cost)))))
+             (unless (null subtasks)
+               (let ((partitioning (petalisp.utilities:karmarkar-karp subtasks number-of-threads :weight #'subtask-cost)))
+                 (loop for partition across partitioning for index from 0 do
+                   (loop for subtask in partition do
+                     (push (subtask-fn subtask)
+                           (svref thread-fns index)))
+                   (push (lambda (_) (declare (ignore _)) (barrier))
+                         (svref thread-fns index)))))))))
+     program)
+    (loop for index below number-of-threads do
+      (setf (svref thread-fns index)
+            (nreverse (svref thread-fns index))))
+    thread-fns))
+
+(defun map-partitioned-iteration-space (function iteration-space max-task-size)
+  (declare (type shape iteration-space)
+           (type unsigned-byte max-task-size))
+  (if (<= (shape-size iteration-space) max-task-size)
+      (funcall function iteration-space)
+      (let* ((ranges (shape-ranges iteration-space))
+             (max-axis 0)
+             (max-range (first ranges)))
+        (loop for range in (rest ranges) and axis from 1
+              when (> (range-size range)
+                      (range-size max-range))
+                do (setf max-axis axis max-range range))
+        (let ((prefix (subseq ranges 0 max-axis))
+              (suffix (subseq ranges (1+ max-axis))))
+          (multiple-value-bind (lo hi) (split-range max-range)
+            (let ((shape1 (make-shape (append prefix (list lo) suffix)))
+                  (shape2 (make-shape (append prefix (list hi) suffix))))
+              (map-partitioned-iteration-space function shape1 max-task-size)
+              (map-partitioned-iteration-space function shape2 max-task-size)))))))
