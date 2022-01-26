@@ -29,4 +29,5 @@
    (:file "with-collectors")
    (:file "number-of-cpus")
    (:file "topological-sort")
-   (:file "graph-coloring")))
+   (:file "graph-coloring")
+   (:file "karmarkar-karp")))
