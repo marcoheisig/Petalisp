@@ -416,10 +416,14 @@
   (if (<= (shape-size iteration-space) max-task-size)
       (funcall function iteration-space)
       (let* ((ranges (shape-ranges iteration-space))
+             (rank (shape-rank iteration-space))
              (max-axis 0)
              (max-range (first ranges)))
         (loop for range in (rest ranges) and axis from 1
-              when (> (range-size range)
+              when (> (if (= axis (1- rank))
+                          ;; Penalize splitting the innermost range.
+                          (floor (range-size range) 4)
+                          (range-size range))
                       (range-size max-range))
                 do (setf max-axis axis max-range range))
         (let ((prefix (subseq ranges 0 max-axis))
