@@ -343,7 +343,7 @@
               (unless (member kernel scheduled-kernels)
                 (push kernel scheduled-kernels)
                 (let ((fn (compile-kernel kernel xmas-backend))
-                      (kernel-cost (kernel-cost kernel)))
+                      (cost-per-element (petalisp.ir::kernel-highest-instruction-number kernel)))
                   (map-partitioned-iteration-space
                    (lambda (iteration-space)
                      (push
@@ -351,10 +351,10 @@
                        :kernel kernel
                        :iteration-space iteration-space
                        :fn fn
-                       :cost (* (shape-size iteration-space) kernel-cost))
+                       :cost (* (shape-size iteration-space) cost-per-element))
                       subtasks))
                    (kernel-iteration-space kernel)
-                   (ceiling *min-per-thread-cost* kernel-cost)))))
+                   (ceiling *min-per-thread-cost* cost-per-element)))))
             (unless (null subtasks)
               (push (petalisp.utilities:karmarkar-karp subtasks number-of-threads :weight #'subtask-cost)
                     schedule))))))
