@@ -57,7 +57,7 @@
            (arguments (argument-variables number-of-arguments)))
        (compile
         nil
-        `(lambda (backend number-of-buffers process-results process-arguments allocate run)
+        `(lambda (backend number-of-buffers process-results process-arguments allocate run deallocate)
            (if (< number-of-buffers ,stack-allocation-limit)
                (lambda (,@results ,@arguments)
                  (let ((storage-vector (make-array ,stack-allocation-limit :initial-element nil)))
@@ -65,13 +65,15 @@
                    (funcall process-results backend storage-vector ,@results)
                    (funcall process-arguments backend storage-vector ,@arguments)
                    (funcall allocate backend storage-vector)
-                   (funcall run backend storage-vector)))
+                   (unwind-protect (funcall run backend storage-vector)
+                     (funcall deallocate backend storage-vector))))
                (lambda (,@results ,@arguments)
                  (let ((storage-vector (make-array number-of-buffers :initial-element nil)))
                    (funcall process-results backend storage-vector ,@results)
                    (funcall process-arguments backend storage-vector ,@arguments)
                    (funcall allocate backend storage-vector)
-                   (funcall run backend storage-vector))))))))))
+                   (unwind-protect (funcall run backend storage-vector)
+                     (funcall deallocate backend storage-vector)))))))))))
 
 (defun generate-variable (prefix integer)
   (intern
@@ -90,13 +92,15 @@
 (defun evaluator-template-arguments (xmas-backend lazy-arrays unknowns)
   (let* ((root-buffers (ir-from-lazy-arrays lazy-arrays))
          (program (buffer-program (first root-buffers))))
-    (values
-     xmas-backend
-     (program-number-of-buffers program)
-     (result-processor root-buffers)
-     (argument-processor program unknowns)
-     (allocator program)
-     (runner program root-buffers xmas-backend))))
+    (multiple-value-bind (allocator deallocator) (allocator-and-deallocator program)
+      (values
+       xmas-backend
+       (program-number-of-buffers program)
+       (result-processor root-buffers)
+       (argument-processor program unknowns)
+       allocator
+       (runner program root-buffers xmas-backend)
+       deallocator))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -180,7 +184,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Allocation
+;;; Memory Management
 
 (defun map-program-buffer-groups (function program)
   (let ((buffers '()))
@@ -217,7 +221,7 @@
      (map-program-buffer-groups (lambda (buffers) ,@body) ,program)
      ,result))
 
-(defun allocator (program)
+(defun allocator-and-deallocator (program)
   (let* (;; A list of lists of buffers.  Each list of buffers contains at
          ;; most one root buffer, which is then the first buffer of that
          ;; list.
@@ -292,22 +296,30 @@
          ;; Finally, mark the buffers inactive again.
          (dolist (buffer buffers)
            (setf (aref buffer-activep-vector (buffer-number buffer)) 0)))))
-    (lambda (xmas-backend storage-vector)
-      (declare (simple-vector storage-vector))
-      (let ((memory-pool (xmas-backend-memory-pool xmas-backend)))
-        (loop for (buffer . other-buffers) in allocations do
-          (allocate-buffer buffer storage-vector memory-pool)
-          (dolist (other-buffer other-buffers)
-            (setf (svref storage-vector (buffer-number other-buffer))
-                  (svref storage-vector (buffer-number buffer))))))
-      (loop for index below (program-number-of-buffers program) do
-        (assert (arrayp (svref storage-vector index)))))))
+    (values
+     ;; The allocator.
+     (lambda (xmas-backend storage-vector)
+       (declare (simple-vector storage-vector))
+       (let ((memory-pool (xmas-backend-memory-pool xmas-backend)))
+         (loop for (buffer . other-buffers) in allocations do
+           (allocate-buffer buffer storage-vector memory-pool)
+           (dolist (other-buffer other-buffers)
+             (setf (svref storage-vector (buffer-number other-buffer))
+                   (svref storage-vector (buffer-number buffer))))))
+       (loop for index below (program-number-of-buffers program) do
+         (assert (arrayp (svref storage-vector index)))))
+     ;; The deallocator.
+     (lambda (xmas-backend storage-vector)
+       (let ((memory-pool (xmas-backend-memory-pool xmas-backend)))
+         (loop for (buffer . other-buffers) in allocations do
+           (when (interior-buffer-p buffer)
+             (memory-pool-free memory-pool (svref storage-vector (buffer-number buffer))))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Execution
 
-(defparameter *min-per-thread-cost* 10000)
+(defparameter *min-per-thread-cost* 20000)
 
 (defstruct subtask
   (kernel (alexandria:required-argument :kernel)
