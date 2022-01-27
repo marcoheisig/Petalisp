@@ -273,11 +273,13 @@
          (let ((cgraph (petalisp.utilities:make-cgraph)))
            (do-program-tasks (task program)
              (do-task-defined-buffers (defined-buffer task)
-               (loop for live-buffer in (svref task-live-buffers-vector (task-number task)) do
-                 (petalisp.utilities:cgraph-add-conflict cgraph defined-buffer live-buffer))
-               (do-task-defined-buffers (other-buffer task)
-                 (when (< (buffer-number other-buffer) (buffer-number defined-buffer))
-                   (petalisp.utilities:cgraph-add-conflict cgraph defined-buffer other-buffer)))))
+               (when (plusp (aref buffer-activep-vector (buffer-number defined-buffer)))
+                 (loop for live-buffer in (svref task-live-buffers-vector (task-number task)) do
+                   (petalisp.utilities:cgraph-add-conflict cgraph defined-buffer live-buffer))
+                 (do-task-defined-buffers (other-buffer task)
+                   (when (plusp (aref buffer-activep-vector (buffer-number other-buffer)))
+                     (when (< (buffer-number other-buffer) (buffer-number defined-buffer))
+                       (petalisp.utilities:cgraph-add-conflict cgraph defined-buffer other-buffer)))))))
            ;; Color that graph.  All buffers of the same color can be
            ;; placed in the same allocation.
            (loop for buffers across (petalisp.utilities:cgraph-coloring cgraph) do
