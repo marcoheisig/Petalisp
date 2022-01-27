@@ -98,7 +98,7 @@
    #:shape-rank
    #:shape-ranges
    #:shape-size
-   #:shape-equal
+   #:shape=
    #:shape-difference-list
    #:shape-intersection
    #:shape-intersectionp
@@ -130,7 +130,7 @@
    #:make-transformation
    #:identity-transformation
    #:invert-transformation
-   #:transformation-equal
+   #:transformation=
    #:compose-transformations
    #:collapsing-transformation
    #:enlarge-transformation

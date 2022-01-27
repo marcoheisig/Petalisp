@@ -361,7 +361,7 @@
        (eql
         (car (dendrite-cons d1))
         (car (dendrite-cons d2)))
-       (transformation-equal
+       (transformation=
         (dendrite-transformation d1)
         (dendrite-transformation d2))))
 
@@ -982,7 +982,7 @@
 (defun ensure-instruction-table (kernel transformation)
   (loop for (entry . table) in *instruction-tables* do
     (when (and (eq (car entry) kernel)
-               (transformation-equal (cdr entry) transformation))
+               (transformation= (cdr entry) transformation))
       (return-from ensure-instruction-table table)))
   (let ((instruction-table (make-hash-table :test #'eq)))
     (push (cons (cons kernel transformation) instruction-table)

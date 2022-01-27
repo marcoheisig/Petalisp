@@ -45,7 +45,7 @@
 ;;; INPUT shape is the desired shape after broadcasting, and the
 ;;; OUTPUT-SHAPE is that of the array to be broadcast.
 (defun make-shape-transformation (input-shape output-shape)
-  (if (shape-equal output-shape input-shape)
+  (if (shape= output-shape input-shape)
       (identity-transformation (shape-rank input-shape))
       (let* ((output-rank (shape-rank output-shape))
              (input-rank (shape-rank input-shape))

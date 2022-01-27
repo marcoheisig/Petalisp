@@ -12,6 +12,7 @@
   (print-system-statistics "petalisp.ir")
   (print-system-statistics "petalisp.native-backend")
   (print-system-statistics "petalisp.multicore-backend")
+  (print-system-statistics "petalisp.xmas-backend")
   (print-system-statistics "petalisp.api")
   (print-package-statistics :petalisp)
   (with-testing-backend

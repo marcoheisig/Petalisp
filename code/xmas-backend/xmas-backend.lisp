@@ -205,7 +205,7 @@
               while (let* ((other-buffer (car cdr))
                            (other-shape (buffer-shape other-buffer))
                            (other-ntype (buffer-ntype other-buffer)))
-                      (and (shape-equal shape other-shape)
+                      (and (shape= shape other-shape)
                            (petalisp.type-inference:ntype= ntype other-ntype)))
               do (setf last (cdr last)))
         ;; Destructively cut the list of buffers right after that last

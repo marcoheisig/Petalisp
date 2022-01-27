@@ -155,12 +155,12 @@ than one."
   (shape-size (~ 2 9))
   (shape-size (~ 1 9 ~ 1 8)))
 
-(document-function shape-equal
+(document-function shape=
   "Checks whether two supplied shapes denote the same set of integer tuples."
-  (shape-equal (~) (~))
-  (shape-equal (~ 42) (~ 42))
-  (shape-equal (~ 1 42) (~ 1 42))
-  (shape-equal (~ 1 42) (~ 2 42)))
+  (shape= (~) (~))
+  (shape= (~ 42) (~ 42))
+  (shape= (~ 1 42) (~ 1 42))
+  (shape= (~ 1 42) (~ 2 42)))
 
 (document-function shape-difference-list
   "Computes the difference of two shapes S1 and S2.  Returns a list of
@@ -266,12 +266,12 @@ itself.  An identity transformation is its own inverse.")
   (transformation-invertiblep (transform i j to j i))
   (transformation-invertiblep (transform i j to i)))
 
-(document-function transformation-equal
+(document-function transformation=
   "Check whether two supplied transformations describe the same mapping."
-  (transformation-equal
+  (transformation=
    (transform i to (* 2 (1+ i)))
    (transform i to (+ 2 (* 2 i))))
-  (transformation-equal
+  (transformation=
    (transform i j to i j)
    (transform i j to j i)))
 

@@ -20,7 +20,7 @@
                     (transformation transformation))
            ;; Optimization: Drop references with no effect.
            (when (and (identity-transformation-p transformation)
-                      (shape-equal (lazy-array-shape lazy-array) shape))
+                      (shape= (lazy-array-shape lazy-array) shape))
              (return-from ref lazy-array))
            ;; Optimization: Compose consecutive lazy reshapes.
            (when (delayed-reshape-p (lazy-array-delayed-action lazy-array))

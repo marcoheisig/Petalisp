@@ -81,7 +81,7 @@
 ;;;
 ;;; Generic Functions
 
-(defgeneric transformation-equal (transformation-1 transformation-2))
+(defgeneric transformation= (transformation-1 transformation-2))
 
 (defgeneric transformation-similar (transformation-1 transformation-2 delta))
 
@@ -105,19 +105,19 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; TRANSFORMATION-EQUAL
+;;; TRANSFORMATION=
 
-(defmethod transformation-equal ((t1 transformation)
-                                 (t2 transformation))
+(defmethod transformation= ((t1 transformation)
+                            (t2 transformation))
   nil)
 
-(defmethod transformation-equal ((t1 identity-transformation)
-                                 (t2 identity-transformation))
+(defmethod transformation= ((t1 identity-transformation)
+                            (t2 identity-transformation))
   (= (transformation-input-rank t1)
      (transformation-input-rank t2)))
 
-(defmethod transformation-equal ((t1 hairy-transformation)
-                                 (t2 hairy-transformation))
+(defmethod transformation= ((t1 hairy-transformation)
+                            (t2 hairy-transformation))
   (and (= (transformation-input-rank t1)
           (transformation-input-rank t2))
        (= (transformation-output-rank t1)

@@ -52,7 +52,7 @@
    #:shape-ranges
    #:shape-dimensions
    #:shape-size
-   #:shape-equal
+   #:shape=
    #:shape<
    #:shape-difference-list
    #:shape-intersection
@@ -92,7 +92,7 @@
    #:make-transformation
    #:identity-transformation
    #:invert-transformation
-   #:transformation-equal
+   #:transformation=
    #:transformation-similar
    #:compose-transformations
    #:collapsing-transformation

@@ -39,7 +39,7 @@
   (assert (< axis (shape-rank shape)))
   (nth axis (shape-ranges shape)))
 
-(defun shape-equal (shape1 shape2)
+(defun shape= (shape1 shape2)
   (declare (shape shape1 shape2))
   (and (= (shape-rank shape1)
           (shape-rank shape2))

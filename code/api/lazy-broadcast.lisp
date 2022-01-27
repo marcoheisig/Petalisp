@@ -10,7 +10,7 @@
         (alist '()))
     (loop for lazy-array in lazy-arrays do
       (let* ((shape (lazy-array-shape lazy-array))
-             (entry (assoc shape alist :test #'shape-equal)))
+             (entry (assoc shape alist :test #'shape=)))
         (when (null entry)
           (push (cons shape nil) alist))))
     (let* ((max-rank (loop for (shape) in alist maximize (shape-rank shape)))
@@ -31,7 +31,7 @@
                (lazy-ref
                 lazy-array
                 broadcast-shape
-                (cdr (assoc (lazy-array-shape lazy-array) alist :test #'shape-equal))))
+                (cdr (assoc (lazy-array-shape lazy-array) alist :test #'shape=))))
          broadcast-shape)))))
 
 (defun broadcast-ranges (range-1 range-2)

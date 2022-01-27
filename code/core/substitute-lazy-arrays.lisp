@@ -12,7 +12,7 @@
     (assert (= (length new-lazy-arrays) (length old-lazy-arrays)))
     (loop for new-lazy-array in new-lazy-arrays
           for old-lazy-array in old-lazy-arrays do
-            (assert (shape-equal
+            (assert (shape=
                      (lazy-array-shape new-lazy-array)
                      (lazy-array-shape old-lazy-array)))
             (assert (petalisp.type-inference:ntype-subtypep
