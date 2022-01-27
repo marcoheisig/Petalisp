@@ -159,8 +159,9 @@
 
   (:shadowing-import-from :petalisp.ir #:make-ir-backend)
   (:shadowing-import-from :petalisp.native-backend #:make-native-backend)
-  (:shadowing-import-from :petalisp.multicore-backend #:make-multicore-backend))
+  (:shadowing-import-from :petalisp.multicore-backend #:make-multicore-backend)
+  (:shadowing-import-from :petalisp.xmas-backend #:make-xmas-backend))
 
 (in-package #:petalisp.api)
 
-(defvar *backend* (make-multicore-backend))
+(defvar *backend* (make-xmas-backend))
