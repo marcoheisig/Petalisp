@@ -46,10 +46,15 @@
 (defgeneric backend-schedule (backend request))
 
 ;;; For a supplied backend, list of lazy arrays of length N, and list of
-;;; unknowns of length K, returns a function with K arguments that returns,
-;;; as a list, the N values obtained by computing the supplied arrays after
-;;; substituting each unknown in their definition with the supplied
-;;; argument in the corresponding position.
+;;; unknowns of length K, returns a function with N+K arguments that
+;;; returns, as a list, the N values obtained by computing the supplied
+;;; arrays after substituting the Ith unknown with the supplied argument in
+;;; position N+I.
+;;;
+;;; The first N arguments specify which storage to use for the results.  A
+;;; value of NIL indicates that the corresponding result shall be a fresh
+;;; array.  A value that is an array indicates that the result shall be
+;;; written to that array.
 (defgeneric backend-evaluator (backend lazy-arrays unknowns)
   ;; We change the argument precedence order so that we can add default
   ;; methods for the case where the second or third argument are null.
@@ -100,7 +105,8 @@
 (defmethod backend-compute (backend (lazy-arrays list))
   (if (not *backend-compute-recursion*)
       (let ((*backend-compute-recursion* t))
-        (funcall (backend-evaluator backend lazy-arrays '())))
+        (apply (backend-evaluator backend lazy-arrays '())
+               (make-list (length lazy-arrays) :initial-element nil)))
       (call-next-method)))
 
 ;;; In case a more specific method of BACKEND-SCHEDULE signals an error,

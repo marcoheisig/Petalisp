@@ -2,9 +2,6 @@
 
 (in-package #:petalisp.ir)
 
-(defun compile-kernel (kernel)
-  (compile nil (translate-blueprint (kernel-blueprint kernel))))
-
 ;;; The code in this file handles the translation of a blueprint to the
 ;;; s-expression of a function with two arguments - a kernel with the
 ;;; supplied blueprint and the iteration space to be executed.
@@ -131,23 +128,23 @@
                     (declare (ignorable .iteration-space.))
                     (declare (kernel .kernel.))
                     (declare (function .buffer-storage.))
-                    (with-unsafe-optimizations
-                      (let ((.instructions. (kernel-instruction-vector .kernel.)))
-                        (declare (ignorable .instructions.))
-                        ,(funcall
-                          (apply
-                           #'alexandria:compose
-                           wrap-in-iteration-space-bindings
-                           wrap-in-target-array-bindings
-                           wrap-in-source-array-bindings
-                           wrap-in-transformation-bindings
-                           wrap-in-function-bindings
-                           ;; Alternate loops and proxy forms.
-                           (loop for rproxies across *rproxies-vector*
-                                 for wrap-in-loop across wrap-in-loop-vector
-                                 collect wrap-in-loop
-                                 collect (translate-proxies (reverse rproxies))))
-                          `(values))))))))))))))
+                    (with-unsafe-optimizations)
+                    (let ((.instructions. (kernel-instruction-vector .kernel.)))
+                      (declare (ignorable .instructions.))
+                      ,(funcall
+                        (apply
+                         #'alexandria:compose
+                         wrap-in-iteration-space-bindings
+                         wrap-in-target-array-bindings
+                         wrap-in-source-array-bindings
+                         wrap-in-transformation-bindings
+                         wrap-in-function-bindings
+                         ;; Alternate loops and proxy forms.
+                         (loop for rproxies across *rproxies-vector*
+                               for wrap-in-loop across wrap-in-loop-vector
+                               collect wrap-in-loop
+                               collect (translate-proxies (reverse rproxies))))
+                        `(values)))))))))))))
 
 (defun ensure-proxy (number-of-values operator &rest inputs)
   (let ((rargs '())

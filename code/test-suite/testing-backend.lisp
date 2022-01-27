@@ -15,7 +15,11 @@
    (%multicore-backend
     :reader multicore-backend
     :initform
-    (make-multicore-backend))))
+    (make-multicore-backend))
+   (%xmas-backend
+    :reader xmas-backend
+    :initform
+    (petalisp.xmas-backend:make-xmas-backend))))
 
 (defun make-testing-backend ()
   (make-instance 'testing-backend))
@@ -26,7 +30,8 @@
   (with-accessors ((reference-backend reference-backend)
                    (ir-backend-interpreted ir-backend-interpreted)
                    (ir-backend-compiled ir-backend-compiled)
-                   (multicore-backend multicore-backend)) testing-backend
+                   (multicore-backend multicore-backend)
+                   (xmas-backend xmas-backend)) testing-backend
     (let ((reference-solutions
             (backend-compute reference-backend data-structures))
           (ir-backend-interpreted-solutions
@@ -34,10 +39,13 @@
           (ir-backend-compiled-solutions
             (backend-compute ir-backend-compiled data-structures))
           (multicore-backend-solutions
-            (backend-compute multicore-backend data-structures)))
+            (backend-compute multicore-backend data-structures))
+          (xmas-backend-solutions
+            (backend-compute xmas-backend data-structures)))
       (compare-solutions reference-solutions ir-backend-interpreted-solutions)
       (compare-solutions reference-solutions ir-backend-compiled-solutions)
       (compare-solutions reference-solutions multicore-backend-solutions)
+      (compare-solutions reference-solutions xmas-backend-solutions)
       reference-solutions)))
 
 (defun compare-solutions (solutions1 solutions2)

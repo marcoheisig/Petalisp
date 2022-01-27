@@ -9,7 +9,8 @@
    "closer-mop"
    "petalisp"
    "petalisp.examples"
-   "petalisp.graphviz")
+   "petalisp.graphviz"
+   "petalisp.xmas-backend")
 
   :perform
   (test-op (o c) (symbol-call '#:petalisp.test-suite '#:run-petalisp-test-suite))

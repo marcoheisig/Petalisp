@@ -157,5 +157,4 @@
    #:make-ir-backend
    #:check-ir
    #:interpret-kernel
-   #:compile-kernel
    #:translate-blueprint))

@@ -18,4 +18,5 @@
    #:signals
    #:all-tests
    #:check-package
-   #:run-tests))
+   #:run-tests
+   #:run-petalisp-test-suite))
