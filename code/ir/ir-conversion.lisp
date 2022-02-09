@@ -50,6 +50,8 @@
   ;; A hash table, mapping from Common Lisp scalars to buffers of rank zero
   ;; containing those scalars.
   (scalar-table (make-hash-table :test #'eql) :type hash-table)
+  ;; A hash table, mapping from unknowns to buffers.
+  (unknown-table (make-hash-table :test #'eq) :type hash-table)
   ;; An alist whose entries are conses of leaf buffers and their
   ;; corresponding lazy arrays.
   (leaf-alist '() :type list)
@@ -711,15 +713,20 @@
            (shape (lazy-array-shape lazy-array))
            (depth (lazy-array-depth lazy-array))
            (ntype (petalisp.type-inference:generalize-ntype
-                   (lazy-array-ntype lazy-array)))
-           (buffer (make-buffer
-                    :shape shape
-                    :ntype ntype
-                    :depth depth)))
-      (push (cons buffer lazy-array)
-            (ir-converter-leaf-alist *ir-converter*))
-      (setf (cdr cons)
-            (make-load-instruction kernel buffer transformation)))))
+                   (lazy-array-ntype lazy-array))))
+      (multiple-value-bind (buffer reusedp)
+          (alexandria:ensure-gethash
+           lazy-array
+           (ir-converter-unknown-table *ir-converter*)
+           (make-buffer
+            :shape shape
+            :ntype ntype
+            :depth depth))
+        (when (not reusedp)
+          (push (cons buffer lazy-array)
+                (ir-converter-leaf-alist *ir-converter*)))
+        (setf (cdr cons)
+              (make-load-instruction kernel buffer transformation))))))
 
 (defun reference-to-delayed-unknown ()
   (error "Attempt to evaluate an unknown lazy array."))
