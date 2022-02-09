@@ -72,6 +72,7 @@
    #:remove-shape-table-entry
    #:clear-shape-table
    #:array-shape
+   #:array-value
    #:shape-designator-shape
 
    ;; Transformations

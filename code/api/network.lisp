@@ -24,17 +24,20 @@
       :evaluator (evaluator outputs unknowns))))
 
 (defun call-network (network &rest plist)
-  (apply
-   (network-evaluator network)
-   (append
-    (loop for output in (network-outputs network)
-          collect nil)
-    (loop for parameter in (network-parameters network)
-          for value = (getf plist parameter '.missing.)
-          when (eq value '.missing.) do
-            (error "Missing parameter: ~S" parameter)
-          collect
-          (compute
-           (lazy-reshape
-            (lazy #'coerce value (lazy-array-element-type parameter))
-            (lazy-array-shape parameter)))))))
+  (mapcar
+   #'array-value
+   (multiple-value-list
+    (apply
+     (network-evaluator network)
+     (append
+      (loop for output in (network-outputs network)
+            collect nil)
+      (loop for parameter in (network-parameters network)
+            for value = (getf plist parameter '.missing.)
+            when (eq value '.missing.) do
+              (error "Missing parameter: ~S" parameter)
+            collect
+            (compute
+             (lazy-reshape
+              (lazy #'coerce value (lazy-array-element-type parameter))
+              (lazy-array-shape parameter)))))))))

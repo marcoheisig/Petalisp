@@ -402,8 +402,9 @@
          (lambda () (bordeaux-threads:signal-semaphore semaphore)))
         (bordeaux-threads:wait-on-semaphore semaphore)
         (when serious-condition (error serious-condition))
-        (loop for root-buffer in root-buffers
-              collect (svref storage-vector (buffer-number root-buffer)))))))
+        (values-list
+         (loop for root-buffer in root-buffers
+               collect (svref storage-vector (buffer-number root-buffer))))))))
 
 (defun execute-schedule (schedule storage-vector serious-condition signal-serious-condition)
   (declare (simple-vector storage-vector))

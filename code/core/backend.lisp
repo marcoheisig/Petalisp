@@ -47,9 +47,9 @@
 
 ;;; For a supplied backend, list of lazy arrays of length N, and list of
 ;;; unknowns of length K, returns a function with N+K arguments that
-;;; returns, as a list, the N values obtained by computing the supplied
-;;; arrays after substituting the Ith unknown with the supplied argument in
-;;; position N+I.
+;;; returns, as multiple values, the N values obtained by computing the
+;;; supplied arrays after substituting the Ith unknown with the supplied
+;;; argument in position N+I.
 ;;;
 ;;; The first N arguments specify which storage to use for the results.  A
 ;;; value of NIL indicates that the corresponding result shall be a fresh
@@ -105,8 +105,9 @@
 (defmethod backend-compute (backend (lazy-arrays list))
   (if (not *backend-compute-recursion*)
       (let ((*backend-compute-recursion* t))
-        (apply (backend-evaluator backend lazy-arrays '())
-               (make-list (length lazy-arrays) :initial-element nil)))
+        (multiple-value-list
+         (apply (backend-evaluator backend lazy-arrays '())
+                (make-list (length lazy-arrays) :initial-element nil))))
       (call-next-method)))
 
 ;;; In case a more specific method of BACKEND-SCHEDULE signals an error,
