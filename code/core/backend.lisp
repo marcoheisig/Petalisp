@@ -186,19 +186,15 @@
 (defmethod trivial-lazy-array-p
     ((lazy-array lazy-array)
      (delayed-array delayed-array))
-  (array-value
-   (delayed-array-storage delayed-array)))
+  t)
 
 (defmethod trivial-lazy-array-p
     ((lazy-array lazy-array)
      (delayed-reshape delayed-reshape))
-  (let ((transformation (delayed-reshape-transformation delayed-reshape)))
-    (and (transformation-invertiblep transformation)
-         ;; Check that the transformation is non-permuting.
-         (loop for output across (transformation-output-mask transformation)
-               for axis from 0
-               always (eql output axis))
-         (trivial-array-p (delayed-reshape-input delayed-reshape)))))
+  (and (identity-transformation-p (delayed-reshape-transformation delayed-reshape))
+       (shape= (lazy-array-shape lazy-array)
+               (lazy-array-shape (delayed-reshape-input delayed-reshape)))
+       (trivial-array-p (delayed-reshape-input delayed-reshape))))
 
 (defmethod trivial-lazy-array-value
     ((lazy-array lazy-array)
