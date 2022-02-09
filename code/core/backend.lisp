@@ -171,12 +171,13 @@
         (n-unknowns (length unknowns)))
     (lambda (&rest arrays)
       (assert (= (length arrays) (+ n-results n-unknowns)))
-      (let ((*backend* backend))
-        (apply #'compute
-               (substitute-lazy-arrays
-                lazy-arrays
-                (mapcar #'lazy-array (nthcdr n-results arrays))
-                unknowns))))))
+      (values-list
+       (backend-compute
+        backend
+        (substitute-lazy-arrays
+         lazy-arrays
+         (mapcar #'lazy-array (nthcdr n-results arrays))
+         unknowns))))))
 
 (defmethod trivial-lazy-array-p
     ((lazy-array lazy-array)
