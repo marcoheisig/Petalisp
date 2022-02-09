@@ -98,6 +98,8 @@
    #:program-number-of-buffers
    #:program-number-of-kernels
    #:program-number-of-tasks
+   #:program-buffer
+   #:program-kernel
    #:task-program
    #:task-number
    #:buffer-shape

@@ -512,6 +512,22 @@
 ;;;
 ;;; Miscellaneous
 
+(defun program-buffer (program buffer-number)
+  (do-program-buffers (buffer program)
+    (when (= (buffer-number buffer) buffer-number)
+      (return-from program-buffer buffer)))
+  (error "No buffer with number ~D in program ~S."
+         buffer-number
+         program))
+
+(defun program-kernel (program kernel-number)
+  (do-program-kernels (kernel program)
+    (when (= (kernel-number kernel) kernel-number)
+      (return-from program-kernel kernel)))
+  (error "No kernel with number ~D in program ~S."
+         kernel-number
+         program))
+
 (declaim (inline count-mapped-elements))
 (defun count-mapped-elements (map-fn what)
   (let ((counter 0))

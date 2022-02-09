@@ -186,6 +186,8 @@
 ;;;
 ;;; Memory Management
 
+;;; Apply FUNCTION to each list of non-leaf buffers that have the same
+;;; shape and element type.
 (defun map-program-buffer-groups (function program)
   (let ((buffers '()))
     (do-program-buffers (buffer program)
@@ -275,20 +277,25 @@
          ;; in the same location.  That graph has an edge from each defined
          ;; buffer of that task to each live buffer at that task.
          (let ((cgraph (petalisp.utilities:make-cgraph)))
+           ;; Add the conflicts for each task.
            (do-program-tasks (task program)
              (do-task-defined-buffers (defined-buffer task)
-               (when (plusp (aref buffer-activep-vector (buffer-number defined-buffer)))
+               (unless (zerop (aref buffer-activep-vector (buffer-number defined-buffer)))
                  (loop for live-buffer in (svref task-live-buffers-vector (task-number task)) do
                    (petalisp.utilities:cgraph-add-conflict cgraph defined-buffer live-buffer))
                  (do-task-defined-buffers (other-buffer task)
-                   (when (plusp (aref buffer-activep-vector (buffer-number other-buffer)))
-                     (when (< (buffer-number other-buffer) (buffer-number defined-buffer))
+                   (unless (zerop (aref buffer-activep-vector (buffer-number other-buffer)))
+                     (when (<= (buffer-number other-buffer) (buffer-number defined-buffer))
                        (petalisp.utilities:cgraph-add-conflict cgraph defined-buffer other-buffer)))))))
+           ;; Add conflicts between all root buffers.
+           (loop for (buffer1 . more-buffers) on buffers when (root-buffer-p buffer1) do
+             (loop for buffer2 in more-buffers when (root-buffer-p buffer2) do
+               (petalisp.utilities:cgraph-add-conflict cgraph buffer1 buffer2)))
            ;; Color that graph.  All buffers of the same color can be
            ;; placed in the same allocation.
            (loop for buffers across (petalisp.utilities:cgraph-coloring cgraph) do
-             ;; Ensure that if there is a root buffer among that list
-             ;; of buffers, it occurs first.
+             ;; Ensure that if there is a root buffer among that list of
+             ;; buffers, it occurs first.
              (loop for cons on buffers do
                (when (root-buffer-p (car cons))
                  (rotatef (car cons) (car buffers))))
@@ -307,7 +314,9 @@
              (setf (svref storage-vector (buffer-number other-buffer))
                    (svref storage-vector (buffer-number buffer))))))
        (loop for index below (program-number-of-buffers program) do
-         (assert (arrayp (svref storage-vector index)))))
+         (unless (arrayp (svref storage-vector index))
+           (error "Failed to allocate buffer ~S."
+                  (program-buffer program index)))))
      ;; The deallocator.
      (lambda (xmas-backend storage-vector)
        (let ((memory-pool (xmas-backend-memory-pool xmas-backend)))
