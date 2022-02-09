@@ -166,13 +166,16 @@
   (lambda () (values)))
 
 (defmethod backend-evaluator (backend (lazy-arrays list) (unknowns list))
-  (lambda (&rest arrays)
-    (let ((*backend* backend))
-      (apply #'compute
-             (substitute-lazy-arrays
-              lazy-arrays
-              (mapcar #'lazy-array arrays)
-              unknowns)))))
+  (let ((n-results (length lazy-arrays))
+        (n-unknowns (length unknowns)))
+    (lambda (&rest arrays)
+      (assert (= (length arrays) (+ n-results n-unknowns)))
+      (let ((*backend* backend))
+        (apply #'compute
+               (substitute-lazy-arrays
+                lazy-arrays
+                (mapcar #'lazy-array (nthcdr n-results arrays))
+                unknowns))))))
 
 (defmethod trivial-lazy-array-p
     ((lazy-array lazy-array)

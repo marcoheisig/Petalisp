@@ -2,37 +2,39 @@
 
 (in-package #:petalisp.api)
 
-(defgeneric compile-network-on-backend (network backend))
-
 (defclass network ()
-  ((%parameters :initarg :parameters :reader network-parameters)
-   (%outputs :initarg :outputs :reader network-outputs)))
+  ((%parameters
+    :initarg :parameters
+    :initform (alexandria:required-argument :parameters)
+    :reader network-parameters)
+   (%outputs
+    :initarg :outputs
+    :initform (alexandria:required-argument :outputs)
+    :reader network-outputs)
+   (%evaluator
+    :initarg :evaluator
+    :initform (alexandria:required-argument :evaluator)
+    :reader network-evaluator)))
 
 (defun make-network (&rest outputs)
-  (make-instance 'network
-    :parameters (lazy-unknowns outputs)
-    :outputs outputs))
+  (let ((unknowns (lazy-unknowns outputs)))
+    (make-instance 'network
+      :parameters unknowns
+      :outputs outputs
+      :evaluator (evaluator outputs unknowns))))
 
 (defun call-network (network &rest plist)
-  (apply (compile-network-on-backend network *backend*)
-         (loop for parameter in (network-parameters network)
-               for value = (getf plist parameter '.missing.)
-               when (eq value '.missing.) do
-                 (error "Missing parameter: ~S" parameter)
-               collect
-               (lazy-reshape
-                (lazy #'coerce value (lazy-array-element-type parameter))
-                (lazy-array-shape parameter)))))
-
-;;; This is a simple, albeit slow way of compiling a network.  We simply
-;;; return a closure that substitutes all networks parameters with the provided
-;;; values and then computes that new graph.
-(defmethod compile-network-on-backend
-    ((network network) (backend backend))
-  (lambda (&rest args)
-    (backend-compute
-     backend
-     (substitute-lazy-arrays
-      (network-outputs network)
-      args
-      (network-parameters network)))))
+  (apply
+   (network-evaluator network)
+   (append
+    (loop for output in (network-outputs network)
+          collect nil)
+    (loop for parameter in (network-parameters network)
+          for value = (getf plist parameter '.missing.)
+          when (eq value '.missing.) do
+            (error "Missing parameter: ~S" parameter)
+          collect
+          (compute
+           (lazy-reshape
+            (lazy #'coerce value (lazy-array-element-type parameter))
+            (lazy-array-shape parameter)))))))
