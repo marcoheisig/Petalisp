@@ -872,8 +872,8 @@
 ;;; Each individual prune describes how a copy of one writer kernel can be
 ;;; incorporated into one reader kernel.
 (defstruct prune
-  ;; The number of elements that would be removed by applying that prune.
-  (size nil :type unsigned-byte :read-only t)
+  ;; The number of bits of memory that are freed by applying this prune.
+  (bits nil :type unsigned-byte :read-only t)
   ;; An alist where each key is a kernel, and where each value is a list of
   ;; entries of the form (dendrite writer store-instruction).
   (buffers '() :type list :read-only t))
@@ -886,7 +886,7 @@
    #'maybe-prune
    (sort (loop for buffer in potentially-superfluous-buffers
                when (find-prune buffer) collect it)
-         #'> :key #'prune-size)))
+         #'> :key #'prune-bits)))
 
 (defvar *prune*)
 
@@ -925,14 +925,13 @@
         ;; obsolete by the prune, and where the corresponding value is a
         ;; list of all dendrites that have reached that buffer.
         (buffer-dendrites-alist (collect-prune-buffer-dendrites-alist buffer))
-        ;; The sum of the number of elements of all the buffers that are
-        ;; rendered obsolete by this prune.
-        (size 0))
+        ;; The amount of bits of memory freed by applying this prune.
+        (bits 0))
     (when (null buffer-dendrites-alist)
       (return-from find-prune nil))
     ;; Ensure that each dendrite has a unique associated writer.
     (loop for (buffer . dendrites) in buffer-dendrites-alist do
-      (incf size (buffer-size buffer))
+      (incf bits (buffer-bits buffer))
       (loop for dendrite in dendrites do
         (assert (eq buffer (load-instruction-buffer (cdr (dendrite-cons dendrite)))))
         (block check-one-dendrite
@@ -948,7 +947,7 @@
           ;; writer for this particular dendrite.  Give up.
           (return-from find-prune nil))))
     (make-prune
-     :size size
+     :bits bits
      :buffers
      ;; Mark each buffer that is part of a prune as superfluous.
      (mapcar #'car buffer-dendrites-alist))))
