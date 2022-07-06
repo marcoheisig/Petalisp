@@ -302,7 +302,8 @@
    :delayed-action (load-time-value (make-delayed-nop))))
 
 (declaim (inline make-unknown))
-(defun make-unknown (&key shape element-type)
+(defun make-unknown (&key (shape (make-shape '())) element-type)
+  (declare (shape shape))
   (make-lazy-array
    :shape shape
    :ntype (petalisp.type-inference:ntype element-type)

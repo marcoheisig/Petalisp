@@ -40,8 +40,8 @@
 
 (defmethod backend-evaluator
     ((xmas-backend xmas-backend)
-     (lazy-arrays list)
-     (unknowns list))
+     (unknowns list)
+     (lazy-arrays list))
   (multiple-value-call (evaluator-template (length lazy-arrays) (length unknowns))
     (evaluator-template-arguments xmas-backend lazy-arrays unknowns)))
 

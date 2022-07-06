@@ -21,7 +21,7 @@
     (make-instance 'network
       :parameters unknowns
       :outputs outputs
-      :evaluator (evaluator outputs unknowns))))
+      :evaluator (evaluator unknowns outputs))))
 
 (defun call-network (network &rest plist)
   (mapcar

@@ -55,10 +55,10 @@
 ;;; value of NIL indicates that the corresponding result shall be a fresh
 ;;; array.  A value that is an array indicates that the result shall be
 ;;; written to that array.
-(defgeneric backend-evaluator (backend lazy-arrays unknowns)
+(defgeneric backend-evaluator (backend unknowns lazy-arrays)
   ;; We change the argument precedence order so that we can add default
   ;; methods for the case where the second or third argument are null.
-  (:argument-precedence-order lazy-arrays unknowns backend))
+  (:argument-precedence-order unknowns lazy-arrays backend))
 
 ;;; Returns whether the lazy arrays's collapsed value can be obtained at
 ;;; O(1) cost, so that we don't have to do any work during COMPUTE or
@@ -106,7 +106,7 @@
   (if (not *backend-compute-recursion*)
       (let ((*backend-compute-recursion* t))
         (multiple-value-list
-         (apply (backend-evaluator backend lazy-arrays '())
+         (apply (backend-evaluator backend '() lazy-arrays)
                 (make-list (length lazy-arrays) :initial-element nil))))
       (call-next-method)))
 
@@ -154,7 +154,7 @@
                        delayed-action))))
     (request-finish request)))
 
-(defmethod backend-evaluator :before (backend (lazy-arrays list) (unknowns list))
+(defmethod backend-evaluator :before (backend (unknowns list) (lazy-arrays list))
   (dolist (lazy-array lazy-arrays)
     (unless (lazy-array-p lazy-array)
       (error "Not a lazy array: ~S" lazy-array)))
@@ -163,10 +163,10 @@
                  (delayed-unknown-p (lazy-array-delayed-action unknown)))
       (error "Not an unknown: ~S" unknown))))
 
-(defmethod backend-evaluator (backend (lazy-arrays null) (unknowns list))
+(defmethod backend-evaluator (backend (unknowns list) (lazy-arrays null))
   (lambda () (values)))
 
-(defmethod backend-evaluator (backend (lazy-arrays list) (unknowns list))
+(defmethod backend-evaluator (backend (unknowns list) (lazy-arrays list))
   (let ((n-results (length lazy-arrays))
         (n-unknowns (length unknowns)))
     (lambda (&rest arrays)
@@ -305,8 +305,11 @@
       (aref array)
       array))
 
-(defun evaluator (arrays unknowns)
-  (backend-evaluator *backend* (mapcar #'lazy-array arrays) unknowns))
+(defun evaluator (unknowns arrays)
+  #+(or)
+  (dolist (unknown unknowns)
+    (assert (lazy-array-unknown-p unknown)))
+  (backend-evaluator *backend* unknowns (mapcar #'lazy-array arrays)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
