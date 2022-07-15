@@ -12,7 +12,8 @@
    "petalisp.utilities"
    "petalisp.type-inference"
    "petalisp.core"
-   "petalisp.ir")
+   "petalisp.ir"
+   "split-sequence")
 
   :serial t
   :components

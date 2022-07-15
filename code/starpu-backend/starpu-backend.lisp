@@ -13,7 +13,7 @@
   (let ((blueprint (kernel-blueprint kernel)))
     (alexandria:ensure-gethash
      blueprint
-     (starpu-backend-compile-cache starpu-backend)
+     (starpu-backend-blueprint-codelets starpu-backend)
      (blueprint-codelet blueprint))))
 
 (defun make-starpu-backend ()
