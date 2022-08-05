@@ -177,6 +177,17 @@
   (:method ((array array))
     (array-shape array)))
 
+(defun array-has-shape-p (array shape)
+  (and (= (array-rank array)
+          (shape-rank shape))
+       (loop for range in (shape-ranges shape)
+             for axis below (array-rank array)
+             for d = (array-dimension array axis)
+             always
+             (and (= 0 (range-start range))
+                  (= 1 (range-step range))
+                  (= d (range-end range))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Subdivide

@@ -364,3 +364,17 @@
                  (otherwise (mapc #'scan (lazy-array-inputs lazy-array))))))
       (mapc #'scan graph-roots))
     (values delayed-unknowns)))
+
+(defun compatible-with-lazy-array-p (object lazy-array)
+  (declare (lazy-array lazy-array))
+  (typecase object
+    (array
+     (and (array-has-shape-p object (lazy-array-shape lazy-array))
+          (petalisp.type-inference:ntype=
+           (petalisp.type-inference:array-element-ntype object)
+           (lazy-array-ntype lazy-array))))
+    (t
+     (and (empty-shape-p (lazy-array-shape lazy-array))
+          (petalisp.type-inference:ntype-subtypep
+           (petalisp.type-inference:ntype-of object)
+           (lazy-array-ntype lazy-array))))))

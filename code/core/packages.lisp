@@ -72,6 +72,7 @@
    #:remove-shape-table-entry
    #:clear-shape-table
    #:array-shape
+   #:array-has-shape-p
    #:array-value
    #:shape-designator-shape
 
@@ -135,6 +136,7 @@
    #:substitute-lazy-arrays
    #:substitute-lazy-array
    #:substitute-delayed-action
+   #:compatible-with-lazy-array-p
 
    ;; Delayed Actions
    #:delayed-action

@@ -164,7 +164,18 @@
       (error "Not an unknown: ~S" unknown))))
 
 (defmethod backend-evaluator (backend (unknowns list) (lazy-arrays null))
-  (lambda () (values)))
+  (let ((nargs (length unknowns)))
+    (lambda (&rest arguments)
+      (unless (= (length arguments) nargs)
+        (error "~:(~R~) arguments supplied to an evaluator that expected ~R arguments."
+               (length arguments) nargs))
+      (loop for unknown in unknowns
+            for argument in arguments
+            unless (compatible-with-lazy-array-p argument unknown)
+              do (error "The argument ~S is incompatible with the unknown ~S."
+                        argument
+                        unknown))
+      (values))))
 
 (defmethod backend-evaluator (backend (unknowns list) (lazy-arrays list))
   (let ((n-results (length lazy-arrays))
