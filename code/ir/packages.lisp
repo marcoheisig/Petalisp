@@ -70,6 +70,7 @@
    #:map-kernel-outputs
    #:map-kernel-instructions
    #:map-instruction-inputs
+   #:map-program-buffer-groups
 
    ;; Do Macros
    #:do-program-tasks
@@ -89,6 +90,7 @@
    #:do-kernel-store-instructions
    #:do-instruction-inputs
    #:do-kernel-instructions
+   #:do-program-buffer-groups
 
    ;; Accessors
    #:program-initial-task

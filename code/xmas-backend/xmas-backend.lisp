@@ -186,43 +186,6 @@
 ;;;
 ;;; Memory Management
 
-;;; Apply FUNCTION to each list of non-leaf buffers that have the same
-;;; shape and element type.
-(defun map-program-buffer-groups (function program)
-  (let ((buffers '()))
-    (do-program-buffers (buffer program)
-      (unless (leaf-buffer-p buffer)
-        (push buffer buffers)))
-    (setf buffers (stable-sort buffers #'petalisp.type-inference:ntype< :key #'buffer-ntype))
-    (setf buffers (stable-sort buffers #'shape< :key #'buffer-shape))
-    (loop until (null buffers) do
-      (let* ((buffer (first buffers))
-             (shape (buffer-shape buffer))
-             (ntype (buffer-ntype buffer))
-             (last buffers))
-        ;; Locate the last cons cell whose CAR is a buffer with the same
-        ;; shape and ntype.
-        (loop for cdr = (cdr last)
-              while (consp cdr)
-              while (let* ((other-buffer (car cdr))
-                           (other-shape (buffer-shape other-buffer))
-                           (other-ntype (buffer-ntype other-buffer)))
-                      (and (shape= shape other-shape)
-                           (petalisp.type-inference:ntype= ntype other-ntype)))
-              do (setf last (cdr last)))
-        ;; Destructively cut the list of buffers right after that last
-        ;; cons.
-        (let ((rest (cdr last)))
-          (setf (cdr last) nil)
-          (funcall function buffers)
-          (setf buffers rest))))))
-
-(defmacro do-program-buffer-groups ((buffers program &optional result) &body body)
-  (check-type buffers symbol)
-  `(block nil
-     (map-program-buffer-groups (lambda (buffers) ,@body) ,program)
-     ,result))
-
 (defun allocator-and-deallocator (program)
   (let* (;; A list of lists of buffers.  Each list of buffers contains at
          ;; most one root buffer, which is then the first buffer of that
@@ -240,7 +203,7 @@
          (task-live-buffers-vector
            (make-array (program-number-of-tasks program)
                        :initial-element '())))
-    (do-program-buffer-groups (buffers program)
+    (petalisp.ir:do-program-buffer-groups (buffers program)
       (cond
         ;; If there is just a single buffer of that shape and ntype, there
         ;; is no need to perform graph coloring.  We simply mark it for

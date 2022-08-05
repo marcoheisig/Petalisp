@@ -453,6 +453,43 @@
   (def do-instruction-inputs input instruction map-instruction-inputs)
   (def do-kernel-instructions instruction kernel map-kernel-instructions))
 
+;;; Apply FUNCTION to each list of non-leaf buffers that have the same
+;;; shape and element type.
+(defun map-program-buffer-groups (function program)
+  (let ((buffers '()))
+    (do-program-buffers (buffer program)
+      (unless (leaf-buffer-p buffer)
+        (push buffer buffers)))
+    (setf buffers (stable-sort buffers #'petalisp.type-inference:ntype< :key #'buffer-ntype))
+    (setf buffers (stable-sort buffers #'shape< :key #'buffer-shape))
+    (loop until (null buffers) do
+      (let* ((buffer (first buffers))
+             (shape (buffer-shape buffer))
+             (ntype (buffer-ntype buffer))
+             (last buffers))
+        ;; Locate the last cons cell whose CAR is a buffer with the same
+        ;; shape and ntype.
+        (loop for cdr = (cdr last)
+              while (consp cdr)
+              while (let* ((other-buffer (car cdr))
+                           (other-shape (buffer-shape other-buffer))
+                           (other-ntype (buffer-ntype other-buffer)))
+                      (and (shape= shape other-shape)
+                           (petalisp.type-inference:ntype= ntype other-ntype)))
+              do (setf last (cdr last)))
+        ;; Destructively cut the list of buffers right after that last
+        ;; cons.
+        (let ((rest (cdr last)))
+          (setf (cdr last) nil)
+          (funcall function buffers)
+          (setf buffers rest))))))
+
+(defmacro do-program-buffer-groups ((buffers program &optional result) &body body)
+  (check-type buffers symbol)
+  `(block nil
+     (map-program-buffer-groups (lambda (,buffers) ,@body) ,program)
+     ,result))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Transforming Kernels and Buffers
