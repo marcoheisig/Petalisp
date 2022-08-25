@@ -161,4 +161,5 @@
    #:make-ir-backend
    #:check-ir
    #:interpret-kernel
-   #:translate-blueprint))
+   #:translate-blueprint
+   #:compute-program-buffer-coloring))

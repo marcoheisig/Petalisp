@@ -78,6 +78,7 @@
 
    ;; graph-coloring.lisp
    #:make-cgraph
+   #:cgraph-ensure-cnode
    #:cgraph-add-conflict
    #:cgraph-coloring
 

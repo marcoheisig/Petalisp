@@ -19,4 +19,8 @@
   :components
   ((:file "packages")
    (:file "blueprint-codelet")
-   (:file "starpu-backend")))
+   (:file "starpu-backend")
+   (:file "dstate")
+   (:file "cstate")
+   (:file "evaluate")
+   (:file "finalize")))

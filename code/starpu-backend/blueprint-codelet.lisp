@@ -13,39 +13,12 @@
       :cpu-func-1 nil
       :cuda-func-0 nil))))
 
-(defparameter *starpu-flags*
-  (split-sequence:split-sequence
-   #\space
-   (uiop:run-program
-    '("pkg-config" "--cflags" "--libs" "starpu-1.3")
-    :output '(:string :stripped t))))
-
-(defun compile-and-load-foreign-function (source-code &key (compiler "gcc"))
-  (declare (string code))
-  (uiop:with-temporary-file (:pathname library :type "so" :keep t)
-    :close-stream
-    (let* ((process-info (uiop:launch-program
-                          (append
-                           (list compiler "-x" "c++" "-std=c++14" "-O3" "-shared" "-pipe")
-                           *starpu-flags*
-                           (list "-o" (uiop:native-namestring library) "-"))
-                          :input :stream
-                          :error-output :stream))
-           (input (uiop:process-info-input process-info))
-           (error-output  (uiop:process-info-error-output process-info)))
-      (unwind-protect (princ source-code input)
-        (close input))
-      (unless (zerop (uiop:wait-process process-info))
-        (error "Error while compiling a shared C library:~%~A"
-               (alexandria:read-stream-content-into-string error-output))))
-    (cffi:load-foreign-library library)))
-
 (defun blueprint-cpu-func (blueprint)
   (let ((name (format nil "petalisp_kernel_~X" (random most-positive-fixnum))))
     (cffi:foreign-symbol-pointer
      name
      :library
-     (compile-and-load-foreign-function
+     (starpu:load-foreign-code
       (with-output-to-string (stream)
         (write-blueprint-cpu-func name blueprint stream))))))
 

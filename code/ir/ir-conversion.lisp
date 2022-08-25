@@ -753,7 +753,8 @@
 
 (defun ensure-tasks (root-buffers)
   ;; Ensure that each kernel and buffer has a task.
-  (let* ((program (make-program :leaf-alist (ir-converter-leaf-alist *ir-converter*)))
+  (let* ((program (make-program :leaf-alist (ir-converter-leaf-alist *ir-converter*)
+                                :root-buffers root-buffers))
          (initial-task (make-task :program program))
          (final-task (make-task :program program))
          (root-tasks '()))

@@ -12,6 +12,8 @@
   ;; An list whose entries are conses of leaf buffers and their
   ;; corresponding lazy arrays.
   (leaf-alist '() :type list)
+  ;; A list of all root buffers of the program.
+  (root-buffers '() :type list)
   ;; A simple vector, mapping from task numbers to tasks.
   (task-vector #() :type simple-vector)
   ;; The number of buffers in the program.
