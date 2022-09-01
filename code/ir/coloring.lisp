@@ -3,9 +3,9 @@
 (in-package #:petalisp.ir)
 
 (defun compute-program-buffer-coloring (program)
-  "Returns a list of lists of buffers.  Each list of buffers has the same
-color, meaning that they can share the same memory location without
-conflicts.
+  "Returns a partitioning of all non-leaf buffers in PROGRAM into a list of
+lists of buffers.  Each list of buffers has the same color, meaning that
+they can share the same memory location without conflicts.
 
 All root buffers conflict with each other, so each list of buffers contains
 at most one root buffer.  By convention, if a root buffer is present in a

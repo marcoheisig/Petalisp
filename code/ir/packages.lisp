@@ -96,6 +96,7 @@
    #:program-initial-task
    #:program-final-task
    #:program-leaf-alist
+   #:program-root-buffers
    #:program-task-vector
    #:program-number-of-buffers
    #:program-number-of-kernels

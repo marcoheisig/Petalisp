@@ -14,9 +14,8 @@
 (defun make-starpu-backend ()
   (make-instance 'starpu-backend))
 
-(defmethod starpu-backend-kernel-codelet ((starpu-backend starpu-backend) (kernel kernel))
-  (let ((blueprint (kernel-blueprint kernel)))
-    (alexandria:ensure-gethash
-     blueprint
-     (starpu-backend-blueprint-codelets starpu-backend)
-     (blueprint-codelet blueprint))))
+(defmethod initialize-instance :before
+    ((starpu-backend starpu-backend) &key &allow-other-keys)
+  (unless (starpu:initializedp)
+    (starpu:initialize)
+    (starpu:pause)))

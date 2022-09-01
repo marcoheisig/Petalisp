@@ -18,9 +18,11 @@
   :serial t
   :components
   ((:file "packages")
+   (:file "codegen-shared")
+   (:file "codegen-cpp")
+   (:file "codegen-cuda")
    (:file "blueprint-codelet")
    (:file "starpu-backend")
    (:file "dstate")
    (:file "cstate")
-   (:file "evaluate")
-   (:file "finalize")))
+   (:file "execution")))

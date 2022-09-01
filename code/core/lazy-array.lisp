@@ -192,7 +192,7 @@
 (defstruct (delayed-array
             (:include delayed-action))
   (storage (alexandria:required-argument :storage)
-   :type simple-array))
+   :type array))
 
 ;;; A delayed nop action is inserted as the delayed action of an empty
 ;;; lazy array.

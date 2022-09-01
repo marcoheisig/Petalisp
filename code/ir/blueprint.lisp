@@ -25,12 +25,24 @@
 ;;;
 ;;; <iref> := [permutation { scaling | NIL } { offset | NIL }]
 
-(defun kernel-blueprint (kernel)
-  (ucons:ulist*
-   (iteration-space-blueprint (kernel-iteration-space kernel))
-   (buffer-blueprints (kernel-targets kernel))
-   (buffer-blueprints (kernel-sources kernel))
-   (instruction-blueprints kernel)))
+(defvar *scaling-threshold*)
+(defvar *offset-threshold*)
+
+(defun kernel-blueprint (kernel &key (scaling-threshold 3) (offset-threshold 4))
+  "Returns a utree that represents all information necessary to generate a
+high-performance implementation of KERNEL.  Identical blueprints are EQ,
+which makes them ideal for caching.
+
+The keyword arguments SCALING-THRESHOLD and OFFSET-THRESHOLD denote the
+absolute values starting from which the scaling and offset parts of a
+transformation will stop being encoded directly into the blueprint."
+  (let ((*scaling-threshold* scaling-threshold)
+        (*offset-threshold* offset-threshold))
+    (ucons:ulist*
+     (iteration-space-blueprint (kernel-iteration-space kernel))
+     (buffer-blueprints (kernel-targets kernel))
+     (buffer-blueprints (kernel-sources kernel))
+     (instruction-blueprints kernel))))
 
 (defun iteration-space-blueprint (iteration-space)
   (ucons:umapcar #'range-blueprint (shape-ranges iteration-space)))
@@ -132,11 +144,11 @@
     result))
 
 (defun scaling-blueprint (scaling)
-  (if (<= -2 scaling 2)
+  (if (< (abs scaling) *scaling-threshold*)
       scaling
       nil))
 
 (defun offset-blueprint (offset)
-  (if (<= -3 offset 3)
+  (if (< (abs offset) *offset-threshold*)
       offset
       nil))
