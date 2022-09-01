@@ -20,10 +20,11 @@
         nil
         `(lambda (cstate)
            (lambda (,@results ,@arguments)
-             (starpu:with-starpu-activity
-               (let ((dstate (make-dstate cstate)))
-                 (execute cstate dstate ,@arguments)
-                 (finalize cstate dstate ,@results))))))))))
+             (petalisp.utilities:with-pinned-objects (,@results ,@arguments)
+               (starpu:with-starpu-activity
+                 (let ((dstate (make-dstate cstate)))
+                   (execute cstate dstate ,@arguments)
+                   (finalize cstate dstate ,@results)))))))))))
 
 (defun generate-variable (prefix integer)
   (intern

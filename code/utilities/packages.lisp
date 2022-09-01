@@ -83,4 +83,7 @@
    #:cgraph-coloring
 
    ;; karmarkar-karp.lisp
-   #:karmarkar-karp))
+   #:karmarkar-karp
+
+   ;; with-pinned-objects.lisp
+   #:with-pinned-objects))
