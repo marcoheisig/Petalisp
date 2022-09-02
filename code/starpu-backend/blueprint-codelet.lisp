@@ -17,7 +17,8 @@
 (defun foreign-gensym (&optional (prefix "g"))
   (format nil "~A~7,'0D"
           prefix
-          (atomics:atomic-incf (car *kernel-counter-cell*))))
+          (atomics:atomic-incf
+              (car *foreign-gensym-counter-cell*))))
 
 (defun blueprint-cpu-func ()
   (let ((name (foreign-gensym "cpu_func")))

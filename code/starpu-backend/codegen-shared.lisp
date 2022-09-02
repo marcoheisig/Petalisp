@@ -136,6 +136,106 @@
            (t
             (format stream "(i~D * ~D + ~D)" permutation scaling offset))))))
 
+(defun write-prologue (name stream)
+  (when *emit-verbose-code*
+    (format stream "  printf(\"Start executing ~A\\n\");~%" name))
+  ;; Declare the iteration variables.
+  (loop for axis below *iteration-space-rank* do
+    (format stream "  int64_t start~D, end~D, step~D;~%" axis axis axis))
+  ;; Declare the variables for each array data pointer and the
+  ;; corresponding offsets and strides.
+  (loop for (type rank) in *dst-array-info* for axis from 0 do
+    (format stream "  ~A* __restrict dst~D;~@[ uint64_t ~{dst~Do~D~^, ~};~]~@[ uint64_t ~{dst~Ds~D~^, ~};~]~%"
+            type axis
+            (loop for index from 0 below rank
+                  collect axis
+                  collect index)
+            (loop for index from 0 below (1- rank)
+                  collect axis
+                  collect index)))
+  (loop for (type rank) in *src-array-info* for axis from 0 do
+    (format stream "  ~A* __restrict src~D;~@[ uint64_t ~{src~Do~D~^, ~};~]~@[ uint64_t ~{src~Ds~D~^, ~};~]~%"
+            type axis
+            (loop for index from 0 below rank
+                  collect axis
+                  collect index)
+            (loop for index from 0 below (1- rank)
+                  collect axis
+                  collect index)))
+  ;; Unpack all StarPU arguments.
+  (let ((arguments
+          (append
+           ;; Unpack the iteration space bounds.
+           (loop for axis below *iteration-space-rank*
+                 collect (format nil "start~D" axis)
+                 collect (format nil "end~D" axis)
+                 collect (format nil "step~D" axis))
+           ;; Unpack the buffer offsets.
+           ;; Unpack strides that couldn't be encoded as buffer dimensions.
+           (loop for (nil rank) in *dst-array-info* for index from 0
+                 append
+                 (append
+                  (loop for axis from 0 below rank
+                        collect (format nil "dst~Do~D" index axis))
+                  (loop for axis from 3 below (1- rank)
+                        collect (format nil "dst~Ds~D" index axis))))
+           (loop for (nil rank) in *src-array-info* for index from 0
+                 append
+                 (append
+                  (loop for axis from 0 below rank
+                        collect (format nil "src~Do~D" index axis))
+                  (loop for axis from 3 below (1- rank)
+                        collect (format nil "src~Ds~D" index axis)))))))
+    (format stream "  starpu_codelet_unpack_args(args, ~{&~A~^, ~});~%"
+            arguments)
+    (when *emit-verbose-code*
+      (loop for argument in arguments do
+        (format stream "  printf(\"~A = %lli\\n\", ~:*~A);~%"
+                argument))))
+  ;; Unpack all StarPU buffers.
+  (let ((buffer-number -1))
+    (loop for (type rank) in *dst-array-info* for index from 0 do
+      (incf buffer-number)
+      (case rank
+        ((0 1)
+         (format stream "  dst~D = (~A*)STARPU_VECTOR_GET_PTR(buffers[~D]);~%"
+                 index type buffer-number))
+        (2
+         (format stream "  dst~D = (~A*)STARPU_MATRIX_GET_PTR(buffers[~D]);~%"
+                 index type buffer-number)
+         (format stream "  dst~Ds0 = STARPU_MATRIX_GET_NY(buffers[~D]);~%"
+                 index buffer-number))
+        (otherwise
+         (format stream "  dst~D = (~A*)STARPU_BLOCK_GET_PTR(buffers[~D]);~%"
+                 index type buffer-number)
+         (format stream "  dst~Ds1 = STARPU_BLOCK_GET_NZ(buffers[~D])~@[ * dst~Ds2~];~%"
+                 index buffer-number (and (> rank 3) index))
+         (format stream "  dst~Ds0 = STARPU_BLOCK_GET_NY(buffers[~D]) * dst~Ds1;~%"
+                 index buffer-number index))))
+    (loop for (type rank) in *src-array-info* for index from 0 do
+      (incf buffer-number)
+      (case rank
+        ((0 1)
+         (format stream "  src~D = (~A*)STARPU_VECTOR_GET_PTR(buffers[~D]);~%"
+                 index type buffer-number))
+        (2
+         (format stream "  src~D = (~A*)STARPU_MATRIX_GET_PTR(buffers[~D]);~%"
+                 index type buffer-number)
+         (format stream "  src~Ds0 = STARPU_MATRIX_GET_NY(buffers[~D]);~%"
+                 index buffer-number))
+        (otherwise
+         (format stream "  src~D = (~A*)STARPU_BLOCK_GET_PTR(buffers[~D]);~%"
+                 index type buffer-number)
+         (format stream "  src~Ds1 = STARPU_BLOCK_GET_NZ(buffers[~D])~@[ * src~Ds2~];~%"
+                 index buffer-number (and (> rank 3) index))
+         (format stream "  src~Ds0 = STARPU_BLOCK_GET_NY(buffers[~D]) * src~Ds1;~%"
+                 index buffer-number index))))))
+
+(defun write-epilogue (name stream)
+  (when *emit-verbose-code*
+    (format stream "  printf(\"Done executing ~A\\n\");~%" name)
+    (format stream "  fflush(stdout);~%")))
+
 (defun ntype-c-type (ntype)
   (petalisp.type-inference:ntype-subtypecase ntype
     (short-float "float")

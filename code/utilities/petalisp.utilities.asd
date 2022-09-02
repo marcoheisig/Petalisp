@@ -30,4 +30,5 @@
    (:file "number-of-cpus")
    (:file "topological-sort")
    (:file "graph-coloring")
-   (:file "karmarkar-karp")))
+   (:file "karmarkar-karp")
+   (:file "with-pinned-objects")))
