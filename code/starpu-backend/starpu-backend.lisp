@@ -2,6 +2,9 @@
 
 (in-package #:petalisp.starpu-backend)
 
+(defparameter *kernel-scaling-threshold* 3)
+(defparameter *kernel-offset-threshold* 2)
+
 (defgeneric starpu-backend-kernel-codelet (backend kernel))
 
 (defclass starpu-backend (backend)

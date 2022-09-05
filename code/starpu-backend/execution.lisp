@@ -107,6 +107,18 @@
                (loop for axis from 3 below (1- (shape-rank shape)) do
                  (push :uint64 result)
                  (push (range-size (shape-range shape axis)) result))))
+           (do-kernel-instructions (instruction kernel)
+             (when (iterating-instruction-p instruction)
+               (map-transformation-outputs
+                (lambda (output-index input-index scaling offset)
+                  (declare (ignore output-index input-index))
+                  (unless (< (abs scaling) *kernel-scaling-threshold*)
+                    (push :int64 result)
+                    (push scaling result))
+                  (unless (< (abs offset) *kernel-offset-threshold*)
+                    (push :int64 result)
+                    (push offset result)))
+                (instruction-transformation instruction))))
            (nreverse result))))
       (starpu:task-wait-for-all))))
 

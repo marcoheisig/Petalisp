@@ -47,8 +47,8 @@
 (defmethod starpu-backend-kernel-codelet ((starpu-backend starpu-backend) (kernel kernel))
   (let ((blueprint (kernel-blueprint
                     kernel
-                    :scaling-threshold most-positive-fixnum
-                    :offset-threshold most-positive-fixnum)))
+                    :scaling-threshold *kernel-scaling-threshold*
+                    :offset-threshold *kernel-offset-threshold*)))
     (alexandria:ensure-gethash
      blueprint
      (starpu-backend-blueprint-codelets starpu-backend)

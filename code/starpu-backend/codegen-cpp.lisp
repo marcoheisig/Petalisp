@@ -20,20 +20,7 @@
        (format stream "  for (int64_t i~D = start~D; i~D < end~D; i~D += step~D)~%"
                axis axis axis axis axis axis))))
   ;; Print the body.
-  (format stream "  {~%")
-  (when *emit-verbose-code*
-    (format stream "    printf(\"iteration (~{~A~^ ~})\\n\"~{, i~D~});~%"
-            (loop for axis from 0 for range-info in *iteration-space-info*
-                  collect "%lli")
-            (loop for axis from 0 for range-info in *iteration-space-info*
-                  collect axis)))
-  (let ((instruction-number -1))
-    (ucons:do-ulist (instruction-blueprint *instruction-blueprint-ulist*)
-      (write-instruction
-       (format nil "v~D" (incf instruction-number))
-       instruction-blueprint
-       stream)))
-  (format stream "  }~%")
+  (write-instructions stream)
   (write-epilogue name stream)
   (format stream "}~%")
   (format stream "}~%"))

@@ -62,8 +62,27 @@
               (*instruction-blueprint-ulist* instruction-blueprint-ulist))
          (funcall thunk))))))
 
+(defvar *coeff-counter*)
+
+(defun write-instructions (stream)
+  (format stream "  {~%")
+  (when *emit-verbose-code*
+    (format stream "    printf(\"iteration (~{~A~^ ~})\\n\"~{, i~D~});~%"
+            (loop for axis from 0 for range-info in *iteration-space-info*
+                  collect "%lli")
+            (loop for axis from 0 for range-info in *iteration-space-info*
+                  collect axis)))
+  (let ((instruction-number -1)
+        (*coeff-counter* -1))
+    (ucons:do-ulist (instruction-blueprint *instruction-blueprint-ulist*)
+      (write-instruction
+       (format nil "v~D" (incf instruction-number))
+       instruction-blueprint
+       stream)))
+  (format stream "  }~%"))
+
 (defun write-instruction (target-variable instruction stream)
-  (trivia:match instruction
+  (trivia:ematch instruction
     ((ucons:ulist* :call number-of-values operator inputs)
      (unless (= 1 number-of-values)
        (error "Cannot (yet) create C++ kernels containing multiple valued functions."))
@@ -125,16 +144,20 @@
 (defun write-iref (iref stream)
   (trivia:ematch iref
     ((ucons:ulist permutation scaling offset)
-     (cond ((= scaling 0)
+     (when (not scaling)
+       (setf scaling (format nil "coeff~D" (incf *coeff-counter*))))
+     (when (not offset)
+       (setf offset (format nil "coeff~D" (incf *coeff-counter*))))
+     (cond ((eql scaling 0)
             (format stream "~D" offset))
-           ((and (= offset 0) (= scaling 1))
+           ((and (eql offset 0) (eql scaling 1))
             (format stream "i~D" permutation))
-           ((= scaling 1)
+           ((eql scaling 1)
             (format stream "(i~D + ~D)" permutation offset))
-           ((= offset 0)
+           ((eql offset 0)
             (format stream "(i~D * ~D)" permutation scaling))
            (t
-            (format stream "(i~D * ~D + ~D)" permutation scaling offset))))))
+            (format stream "(i~D * ~A + ~A)" permutation scaling offset))))))
 
 (defun write-prologue (name stream)
   (when *emit-verbose-code*
@@ -162,36 +185,42 @@
             (loop for index from 0 below (1- rank)
                   collect axis
                   collect index)))
-  ;; Unpack all StarPU arguments.
-  (let ((arguments
-          (append
-           ;; Unpack the iteration space bounds.
-           (loop for axis below *iteration-space-rank*
-                 collect (format nil "start~D" axis)
-                 collect (format nil "end~D" axis)
-                 collect (format nil "step~D" axis))
-           ;; Unpack the buffer offsets.
-           ;; Unpack strides that couldn't be encoded as buffer dimensions.
-           (loop for (nil rank) in *dst-array-info* for index from 0
-                 append
-                 (append
-                  (loop for axis from 0 below rank
-                        collect (format nil "dst~Do~D" index axis))
-                  (loop for axis from 3 below (1- rank)
-                        collect (format nil "dst~Ds~D" index axis))))
-           (loop for (nil rank) in *src-array-info* for index from 0
-                 append
-                 (append
-                  (loop for axis from 0 below rank
-                        collect (format nil "src~Do~D" index axis))
-                  (loop for axis from 3 below (1- rank)
-                        collect (format nil "src~Ds~D" index axis)))))))
-    (format stream "  starpu_codelet_unpack_args(args, ~{&~A~^, ~});~%"
-            arguments)
-    (when *emit-verbose-code*
-      (loop for argument in arguments do
-        (format stream "  printf(\"~A = %lli\\n\", ~:*~A);~%"
-                argument))))
+  ;; Declare variables for each NIL scaling of offset in on of the
+  ;; transformations of the kernel's load and store instructions.
+  (loop for name in (kernel-coeffs) do
+    (format stream "  int64_t ~A;~%" name))
+  (let* ((arguments
+           (append
+            ;; Collect the iteration space bounds.
+            (loop for axis below *iteration-space-rank*
+                  collect (format nil "start~D" axis)
+                  collect (format nil "end~D" axis)
+                  collect (format nil "step~D" axis))
+            ;; Collect strides and offsets that couldn't be encoded as
+            ;; buffer properties.
+            (loop for (nil rank) in *dst-array-info* for index from 0
+                  append
+                  (append
+                   (loop for axis from 0 below rank
+                         collect (format nil "dst~Do~D" index axis))
+                   (loop for axis from 3 below (1- rank)
+                         collect (format nil "dst~Ds~D" index axis))))
+            (loop for (nil rank) in *src-array-info* for index from 0
+                  append
+                  (append
+                   (loop for axis from 0 below rank
+                         collect (format nil "src~Do~D" index axis))
+                   (loop for axis from 3 below (1- rank)
+                         collect (format nil "src~Ds~D" index axis))))
+            (kernel-coeffs))))
+    ;; Unpack all StarPU arguments.
+    (unless (null arguments)
+      (format stream "  starpu_codelet_unpack_args(args~{, &~A~});~%"
+              arguments)
+      (when *emit-verbose-code*
+        (loop for argument in arguments do
+          (format stream "  printf(\"~A = %lli\\n\", ~:*~A);~%"
+                  argument)))))
   ;; Unpack all StarPU buffers.
   (let ((buffer-number -1))
     (loop for (type rank) in *dst-array-info* for index from 0 do
@@ -230,6 +259,23 @@
                  index buffer-number (and (> rank 3) index))
          (format stream "  src~Ds0 = STARPU_BLOCK_GET_NY(buffers[~D]) * src~Ds1;~%"
                  index buffer-number index))))))
+
+(defun kernel-coeffs ()
+  (let ((counter -1)
+        (coeffs '()))
+    (ucons:do-ulist (instruction-blueprint *instruction-blueprint-ulist*)
+      (trivia:match instruction-blueprint
+        ((or (ucons:ulist* :load _ irefs)
+             (ucons:ulist* :store _ _ irefs)
+             (ucons:ulist* :iref irefs))
+         (ucons:do-ulist (iref irefs)
+           (trivia:ematch iref
+             ((ucons:ulist _ scaling offset)
+              (when (not scaling)
+                (push (format nil "coeff~D" (incf counter)) coeffs))
+              (when (not offset)
+                (push (format nil "coeff~D" (incf counter)) coeffs))))))))
+    (nreverse coeffs)))
 
 (defun write-epilogue (name stream)
   (when *emit-verbose-code*

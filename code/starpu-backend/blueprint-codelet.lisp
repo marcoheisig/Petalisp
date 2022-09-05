@@ -9,7 +9,6 @@
      :modes (append (make-list (length *dst-array-info*) :initial-element :w)
                     (make-list (length *src-array-info*) :initial-element :r))
      :cpu-func-0 (blueprint-cpu-func)
-     :cpu-func-1 nil
      :cuda-func-0 (blueprint-cuda-func))))
 
 (defvar *foreign-gensym-counter-cell* (list 0))
@@ -41,4 +40,5 @@
         (write-blueprint-cuda name stream))
       :compiler "nvcc"
       :language "cu"
-      :flags (list* "-O3" (starpu:pkg-config "starpu-1.3" "--cflags" "--libs"))))))
+      :flags (list* "-O3" "-arch=sm_50"
+                    (starpu:pkg-config "starpu-1.3" "--cflags" "--libs"))))))

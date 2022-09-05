@@ -22,7 +22,9 @@
            (loop for (type rank) in *src-array-info* for axis from 0
                  collect (format nil "const ~A* __restrict src~D" type axis)
                  append (loop for index below rank collect (format nil "uint64_t src~Do~D" axis index))
-                 append (loop for index below (1- rank) collect (format nil "uint64_t src~Ds~D" axis index)))))
+                 append (loop for index below (1- rank) collect (format nil "uint64_t src~Ds~D" axis index)))
+           (loop for coeff in (kernel-coeffs)
+                 collect (format nil "int64_t ~A" coeff))))
   ;; Compute the loop indices.
   (loop for range-info in *iteration-space-info* for axis from 0 do
     (if (< axis 3)
@@ -38,21 +40,8 @@
           (:strided
            (format stream "  for (int64_t i~D = start~D; i~D < end~D; i~D += step~D)~%"
                    axis axis axis axis axis axis)))))
-  (format stream "{~%")
   ;; Write the CUDA kernel's body.
-  (when *emit-verbose-code*
-    (format stream "    printf(\"iteration (~{~A~^ ~})\\n\"~{, i~D~});~%"
-            (loop for axis from 0 for range-info in *iteration-space-info*
-                  collect "%lli")
-            (loop for axis from 0 for range-info in *iteration-space-info*
-                  collect axis)))
-  (let ((instruction-number -1))
-    (ucons:do-ulist (instruction-blueprint *instruction-blueprint-ulist*)
-      (write-instruction
-       (format nil "v~D" (incf instruction-number))
-       instruction-blueprint
-       stream)))
-  (format stream "  }~%")
+  (write-instructions stream)
   (format stream "}~%~%")
   ;; Write the StarPU function that invokes the CUDA kernel.
   (format stream "extern \"C\" {~%")
@@ -70,13 +59,13 @@
     (2
      (format stream "  uint64_t size0 = (end0 - start0) / step0;~%")
      (format stream "  uint64_t size1 = (end1 - start1) / step1;~%")
-     (format stream "  dim3 tpb(16,16);~%")
+     (format stream "  dim3 tpb(min((uint64_t)16, size0), min((uint64_t)16, size1));~%")
      (format stream "  dim3 nb(size0 / tpb.x, size1 / tpb.y);~%"))
     (t
      (format stream "  uint64_t size0 = (end0 - start0) / step0;~%")
      (format stream "  uint64_t size1 = (end1 - start1) / step1;~%")
      (format stream "  uint64_t size2 = (end2 - start2) / step2;~%")
-     (format stream "  dim3 tpb(4, 4, 8);~%")
+     (format stream "  dim3 tpb(min((uint64_t)4, size0), min((uint64_t)4, size1), min((uint64_t)8, size2));~%")
      (format stream "  dim3 nb(size0 / tpb.x, size1 / tpb.y, size2 / tpb.z);~%")))
   (format stream "  ~A_impl<<<nb, tpb, 0, starpu_cuda_get_local_stream()>>>(~{~A~^, ~});~%"
           name
@@ -92,7 +81,8 @@
            (loop for (type rank) in *src-array-info* for axis from 0
                  collect (format nil "src~D" axis)
                  append (loop for index below rank collect (format nil "src~Do~D" axis index))
-                 append (loop for index below (1- rank) collect (format nil "src~Ds~D" axis index)))))
+                 append (loop for index below (1- rank) collect (format nil "src~Ds~D" axis index)))
+           (kernel-coeffs)))
   (format stream "  cudaError_t status = cudaGetLastError();~%")
   (format stream "  if (status != cudaSuccess) STARPU_CUDA_REPORT_ERROR(status);~%")
   (format stream "  cudaStreamSynchronize(starpu_cuda_get_local_stream());~%")
