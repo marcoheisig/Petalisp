@@ -21,7 +21,7 @@
    (:file "codegen-shared")
    (:file "codegen-cpp")
    (:file "codegen-cuda")
-   (:file "blueprint-codelet")
+   (:file "program-codelet-vector")
    (:file "starpu-backend")
    (:file "dstate")
    (:file "cstate")

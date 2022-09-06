@@ -2,17 +2,12 @@
 
 (in-package #:petalisp.starpu-backend)
 
-(defparameter *kernel-scaling-threshold* 3)
-(defparameter *kernel-offset-threshold* 2)
-
-(defgeneric starpu-backend-kernel-codelet (backend kernel))
-
 (defclass starpu-backend (backend)
   (;; A hash table, mapping from kernel blueprints to StarPU codelets.
-   (%blueprint-codelets
+   (%codelet-cache
     :initform (make-hash-table :test #'eq)
     :type hash-table
-    :reader starpu-backend-blueprint-codelets)))
+    :reader starpu-backend-codelet-cache)))
 
 (defun make-starpu-backend ()
   (make-instance 'starpu-backend))

@@ -22,7 +22,7 @@
    :read-only t)
   ;; A simple vector with one StarPU codelet per kernel in the program.
   ;; Kernels with the same blueprint share the same codelet.
-  (kernel-codelet-vector (alexandria:required-argument :kernel-codelet-vector)
+  (codelet-vector (alexandria:required-argument :codelet-vector)
    :type simple-vector
    :read-only t))
 
@@ -38,18 +38,4 @@
      (mapcar
       (lambda (u) (car (rassoc u (petalisp.ir:program-leaf-alist program))))
       unknowns)
-     :kernel-codelet-vector
-     (let ((vector (make-array (petalisp.ir:program-number-of-kernels program))))
-       (do-program-kernels (kernel program vector)
-         (setf (svref vector (kernel-number kernel))
-               (starpu-backend-kernel-codelet backend kernel)))))))
-
-(defmethod starpu-backend-kernel-codelet ((starpu-backend starpu-backend) (kernel kernel))
-  (let ((blueprint (kernel-blueprint
-                    kernel
-                    :scaling-threshold *kernel-scaling-threshold*
-                    :offset-threshold *kernel-offset-threshold*)))
-    (alexandria:ensure-gethash
-     blueprint
-     (starpu-backend-blueprint-codelets starpu-backend)
-     (blueprint-codelet blueprint))))
+     :codelet-vector (program-codelet-vector program (starpu-backend-codelet-cache backend)))))

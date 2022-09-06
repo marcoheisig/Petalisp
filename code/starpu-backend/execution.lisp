@@ -41,7 +41,7 @@
   (loop for i below n collect (generate-variable "SRC" i)))
 
 (defun execute (cstate dstate &rest arguments)
-  (with-accessors ((kernel-codelet-vector cstate-kernel-codelet-vector)
+  (with-accessors ((codelet-vector cstate-codelet-vector)
                    (program cstate-program)
                    (argument-buffers cstate-argument-buffers)) cstate
     (with-accessors ((buffer-data-vector dstate-buffer-data-vector)) dstate
@@ -72,7 +72,7 @@
                   data))))
       (petalisp.ir:do-program-kernels (kernel program)
         (starpu:task-insert
-         (svref kernel-codelet-vector (petalisp.ir:kernel-number kernel))
+         (svref codelet-vector (petalisp.ir:kernel-number kernel))
          :data
          (let ((result '()))
            (do-kernel-outputs (buffer kernel)
