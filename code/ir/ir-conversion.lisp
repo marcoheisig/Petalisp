@@ -214,15 +214,15 @@
     ;; interior buffers, and ensure that each kernel has an instruction
     ;; vector, and that each instruction has a number that is an index into
     ;; that vector.
-    (finalize-ir root-buffers)
-    (nreverse root-buffers)))
+    (finalize-ir (nreverse root-buffers))))
 
 (defun finalize-ir (root-buffers)
   (ensure-tasks root-buffers)
   (map-buffers-and-kernels
    #'finalize-buffer
    #'finalize-kernel
-   root-buffers))
+   root-buffers)
+  root-buffers)
 
 (defun finalize-buffer (buffer)
   (setf (buffer-data buffer) nil)

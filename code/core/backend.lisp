@@ -255,7 +255,7 @@
             for result-array in result-arrays
             do (setf (lazy-array-delayed-action collapsed-lazy-array)
                      (make-delayed-array :storage result-array))
-               (unless (eq lazy-array collapsed-lazy-array)
+            do (unless (eq lazy-array collapsed-lazy-array)
                  (setf (lazy-array-delayed-action lazy-array)
                        (make-delayed-reshape
                         :transformation transformation
