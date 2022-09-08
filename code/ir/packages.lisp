@@ -159,6 +159,8 @@
    #:memory-parent-bandwidth
 
    ;; Miscellaneous
+   #:make-buffer-like-array
+   #:ensure-array-buffer-compatibility
    #:make-ir-backend
    #:check-ir
    #:interpret-kernel

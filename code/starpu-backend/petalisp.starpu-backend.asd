@@ -23,6 +23,6 @@
    (:file "codegen-cuda")
    (:file "program-codelet-vector")
    (:file "starpu-backend")
-   (:file "dstate")
    (:file "cstate")
+   (:file "with-starpu-data")
    (:file "execution")))

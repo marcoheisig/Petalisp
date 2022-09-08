@@ -631,6 +631,35 @@
   (max 1 (* (shape-size (kernel-iteration-space kernel))
             (kernel-highest-instruction-number kernel))))
 
+(defun make-buffer-like-array (buffer)
+  (declare (buffer buffer))
+  (let* ((shape (buffer-shape buffer))
+         (ntype (buffer-ntype buffer))
+         (etype (petalisp.type-inference:type-specifier ntype)))
+    (make-array (shape-dimensions shape) :element-type etype)))
+
+(defun ensure-array-buffer-compatibility (array buffer)
+  (declare (buffer buffer) (array array))
+  (let ((shape (buffer-shape buffer)))
+    (unless (= (shape-rank shape) (array-rank array))
+      (error "Expected an array of rank ~D, got~% ~S~%"
+             (array-rank array) array))
+    (loop for range in (shape-ranges shape) for axis from 0 do
+      (assert (= 0 (range-start range)))
+      (assert (= 1 (range-step range)))
+      (unless (= (array-dimension array axis) (range-size range))
+        (error "Expected an array dimension of ~D in axis ~D, but got a dimension of ~D."
+               (range-size range)
+               axis
+               (array-dimension array axis))))
+    (unless (petalisp.type-inference:ntype=
+             (petalisp.type-inference:array-element-ntype array)
+             (buffer-ntype buffer))
+      (error "Not an array of type ~S: ~S"
+             (array-element-type array)
+             array))
+    array))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; IR Modifications
