@@ -69,8 +69,7 @@
    #:with-backend
    #:make-reference-backend
    #:make-ir-backend
-   #:make-native-backend
-   #:make-multicore-backend
+   #:make-xmas-backend
 
    ;; Re-exports from petalisp.core
 
@@ -158,8 +157,6 @@
    )
 
   (:shadowing-import-from :petalisp.ir #:make-ir-backend)
-  (:shadowing-import-from :petalisp.native-backend #:make-native-backend)
-  (:shadowing-import-from :petalisp.multicore-backend #:make-multicore-backend)
   (:shadowing-import-from :petalisp.xmas-backend #:make-xmas-backend))
 
 (in-package #:petalisp.api)

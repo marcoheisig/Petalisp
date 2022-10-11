@@ -7,7 +7,6 @@
    #:common-lisp
    #:petalisp.core
    #:petalisp.api
-   #:petalisp.native-backend
    #:petalisp.examples.iterative-methods
    #:petalisp.examples.linear-algebra)
   (:export
