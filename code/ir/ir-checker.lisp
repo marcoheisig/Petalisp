@@ -6,21 +6,15 @@
 
 (defvar *ir-checker-worklist*)
 
-(defvar *ir-checker-kernel-data-type*)
-
-(defvar *ir-checker-buffer-data-type*)
-
 (defgeneric check-ir-node (node))
 
 (defun check-ir-node-eventually (node)
   (unless (gethash node *ir-checker-table*)
     (push node *ir-checker-worklist*)))
 
-(defun check-ir (nodes &key (kernel-data-type 't) (buffer-data-type 't))
+(defun check-ir (nodes)
   (let ((*ir-checker-table* (make-hash-table :test #'eq))
-        (*ir-checker-worklist* nodes)
-        (*ir-checker-kernel-data-type* kernel-data-type)
-        (*ir-checker-buffer-data-type* buffer-data-type))
+        (*ir-checker-worklist* nodes))
     (loop until (null *ir-checker-worklist*)
           do (check-ir-node (pop *ir-checker-worklist*)))))
 
@@ -73,9 +67,7 @@
       (check-ir-node-eventually (buffer-task buffer)))
     ;; Ensure that all elements of the buffer are actually written to.
     (unless (buffer-storage buffer)
-      (assert (= number-of-writes (buffer-size buffer))))
-    ;; Ensure that the buffer's data slot has a sane value.
-    (assert (typep (buffer-data buffer) *ir-checker-buffer-data-type*))))
+      (assert (= number-of-writes (buffer-size buffer))))))
 
 (defmethod check-ir-node ((kernel kernel))
   ;; Ensure that all load instructions are wired correctly.
@@ -97,9 +89,7 @@
   ;; Ensure that the kernel's task is well formed (if it is defined).
   (when (taskp (kernel-task kernel))
     (check-reverse-link kernel (kernel-task kernel) #'map-task-kernels)
-    (check-ir-node-eventually (kernel-task kernel)))
-  ;; Ensure that the kernel's data slot has a sane value.
-  (assert (typep (kernel-data kernel) *ir-checker-kernel-data-type*)))
+    (check-ir-node-eventually (kernel-task kernel))))
 
 (defmethod check-ir-node ((instruction instruction))
   (loop for (value-n . other-instruction) in (instruction-inputs instruction) do

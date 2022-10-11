@@ -75,9 +75,6 @@
   (task nil :type (or null task))
   ;; An opaque object, representing the allocated memory.
   (storage nil)
-  ;; A slot that can be used by the backend to attach further information
-  ;; to the buffer.
-  (data nil)
   ;; A number that is unique among all buffers in this program and less
   ;; than the total number of buffers in this program.
   (number 0 :type (and unsigned-byte fixnum)))

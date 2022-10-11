@@ -64,7 +64,10 @@
   ;; dendrites are disjoint and cover the entire buffer.  Cluster
   ;; conversion also makes sure that the data slot of each potentially
   ;; superfluous buffer contains the list of dendrites reaching it.
-  (potentially-superfluous-buffers '() :type list))
+  (potentially-superfluous-buffers '() :type list)
+  ;; A hash table, mapping from potentially superfluous buffers to
+  ;; dendrites.
+  (buffer-dendrites-table (make-hash-table :test #'eq) :type hash-table))
 
 (defun ir-converter-next-cluster (ir-converter)
   (priority-queue:pqueue-pop
@@ -174,6 +177,9 @@
             (ir-converter-cons-updates *ir-converter*)))
     dendrite))
 
+(defmacro buffer-dendrites (buffer)
+  `(values (gethash ,buffer (ir-converter-buffer-dendrites-table *ir-converter*))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; IR Conversion
@@ -225,7 +231,6 @@
   root-buffers)
 
 (defun finalize-buffer (buffer)
-  (setf (buffer-data buffer) nil)
   (setf (buffer-number buffer)
         (program-number-of-buffers (buffer-program buffer)))
   (incf (program-number-of-buffers (buffer-program buffer)))
@@ -234,7 +239,6 @@
       (transform-buffer buffer (collapsing-transformation (buffer-shape buffer)))))
 
 (defun finalize-kernel (kernel)
-  (setf (kernel-data kernel) nil)
   (setf (kernel-number kernel)
         (program-number-of-kernels (kernel-program kernel)))
   (incf (program-number-of-kernels (kernel-program kernel)))
@@ -403,7 +407,7 @@
            ;; dendrites.
            (when (and (null other-entries)
                       (potentially-superfluous-buffer-p main-buffer dendrites))
-             (setf (buffer-data main-buffer) dendrites)
+             (setf (buffer-dendrites main-buffer) dendrites)
              (push main-buffer (ir-converter-potentially-superfluous-buffers *ir-converter*)))
            ;; Ensure that the elements of the main buffer are being computed.
            (grow-dendrite (make-dendrite cluster shape (list main-buffer)) lazy-array)
@@ -479,7 +483,7 @@
                                  (car (first buffer-dendrites-alist))
                                  (cdr (first buffer-dendrites-alist)))))
           (loop for ((main-buffer . dendrites)) in list-of-filtered-buffer-dendrites-alists do
-            (setf (buffer-data main-buffer) dendrites)
+            (setf (buffer-dendrites main-buffer) dendrites)
             (push main-buffer (ir-converter-potentially-superfluous-buffers *ir-converter*))))
         ;; Ensure that the elements of the main buffers are being computed.
         (grow-dendrite dendrite lazy-array)
@@ -962,8 +966,8 @@
 (defun collect-prune-buffer-dendrites-alist (buffer)
   (let ((buffer-dendrites-alist '()))
     (labels ((scan-buffer (buffer)
-               (when (buffer-data buffer)
-                 (push (list* buffer (shiftf (buffer-data buffer) nil))
+               (when (buffer-dendrites buffer)
+                 (push (list* buffer (shiftf (buffer-dendrites buffer) nil))
                        buffer-dendrites-alist)
                  (scan-neighbors buffer)))
              (scan-neighbors (buffer)
