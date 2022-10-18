@@ -5,9 +5,9 @@
 (defstruct (program
             (:predicate programp)
             (:constructor make-program))
-  ;; A task with zero predecessors.
+  ;; This program's unique task with zero predecessors.
   (initial-task nil)
-  ;; A task with zero successors.
+  ;; This program's unique task that has zero successors.
   (final-task nil)
   ;; An list whose entries are conses of leaf buffers and their
   ;; corresponding lazy arrays.
@@ -238,6 +238,62 @@
     1)
   (:method ((store-instruction store-instruction))
     0))
+
+;;; A stencil is a set of load instructions that all have the same buffer,
+;;; output mask, and scalings.
+
+(defstruct (stencil
+            (:predicate stencilp)
+            (:copier nil)
+            (:constructor make-stencil (load-instructions)))
+  (load-instructions nil :type (cons load-instruction list) :read-only t))
+
+;;; All stencil properties can be inferred from its first load instruction,
+;;; so we generate those repetitive accessors with a macro.
+(macrolet ((def (name (load-instruction) &body body)
+             `(progn
+                (declaim (inline ,name))
+                (defun ,name (stencil)
+                  (declare (stencil stencil))
+                  (let ((,load-instruction (first (stencil-load-instructions stencil))))
+                    ,@body)))))
+  (def stencil-buffer (load-instruction)
+    (load-instruction-buffer load-instruction))
+  (def stencil-input-rank (load-instruction)
+    (transformation-input-rank
+     (load-instruction-transformation load-instruction)))
+  (def stencil-output-rank (load-instruction)
+    (transformation-output-rank
+     (load-instruction-transformation load-instruction)))
+  (def stencil-output-mask (load-instruction)
+    (transformation-output-mask
+     (load-instruction-transformation load-instruction)))
+  (def stencil-scalings (load-instruction)
+    (transformation-scalings
+     (load-instruction-transformation load-instruction))))
+
+(defun kernel-stencils (kernel &optional buffer)
+  (let ((stencils '()))
+    (loop for (current-buffer . load-instructions) in (kernel-sources kernel) do
+      (unless (and buffer (not (eq current-buffer buffer)))
+        ;; We store each load instruction in a two-level alist, whose first
+        ;; key is the output mask, and whose second key is the scalings
+        ;; vector.  The value of each entry is a list of load instructions
+        ;; with those properties.
+        (let ((bufferdb '()))
+          (loop for load-instruction in load-instructions do
+            (let ((transformation (load-instruction-transformation load-instruction)))
+              (push load-instruction
+                    (alexandria:assoc-value
+                     (alexandria:assoc-value
+                      bufferdb
+                      (transformation-output-mask transformation) :test #'equalp)
+                     (transformation-scalings transformation) :test #'equalp))))
+          (loop for (nil . alist) in bufferdb do
+            (loop for (nil . load-instructions) in alist do
+              (push (make-stencil load-instructions) stencils))))))
+    (nreverse stencils)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -675,3 +731,93 @@
   (setf (kernel-instruction-vector kernel)
         #())
   (values))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Reasoning About Memory Locality
+;;;
+;;; If multiple consecutive loads or stores reference the same memory
+;;; location, that memory reference can usually be served from a cache and
+;;; is much faster.  Because data is eventually evicted from caches, it
+;;; makes sense to rearrange buffers and kernel iteration spaces in such a
+;;; way that the innermost loops of each kernel (i.e., the higher axes)
+;;; have better data locality.
+;;;
+;;; The way we optimize for data locality is by introducing a notion of
+;;; reuse potential.  Assuming a cache that is large enough to hold all
+;;; elements referenced while traversing a particular axis of the iteration
+;;; space, all loads with the same permutation and scalings but different
+;;; offsets may lead to cache reuse.  We call this maximum number of
+;;; attainable cache reuses the reuse potential.
+;;;
+;;; A reuse potential can be computed both for kernels and for buffers.  In
+;;; both cases, we can then optimize the memory locality of the kernel or
+;;; buffer by permuting its axes such that those with the hightes reuse
+;;; potential appear last.
+
+(defun kernel-reuse-potential (kernel)
+  (let* ((rank (shape-rank (kernel-iteration-space kernel)))
+         (result (make-array rank :initial-element 0)))
+    (dolist (stencil (kernel-stencils kernel) result)
+      (dotimes (output-axis (stencil-output-rank stencil))
+        (let ((input-axis (aref (stencil-output-mask stencil) output-axis))
+              (test (differs-exactly-at output-axis))
+              (alist '()))
+          (unless (null input-axis)
+            (dolist (load-instruction (stencil-load-instructions stencil))
+              (let* ((transformation (load-instruction-transformation load-instruction))
+                     (offsets (transformation-offsets transformation))
+                     (entry (assoc offsets alist :test test)))
+                (if (not entry)
+                    (push (cons offsets 0) alist)
+                    (incf (cdr entry)))))
+            (loop for entry in alist do
+              (incf (aref result input-axis)
+                    (cdr entry)))))))))
+
+(defun buffer-reuse-potential (buffer)
+  (let* ((rank (shape-rank (buffer-shape buffer)))
+         (result (make-array rank :initial-element 0)))
+    (do-buffer-outputs (kernel buffer result)
+      (dolist (stencil (kernel-stencils kernel buffer))
+        (dotimes (output-axis rank)
+          (let ((input-axis (aref (stencil-output-mask stencil) output-axis))
+                (test (differs-exactly-at output-axis))
+                (alist '()))
+            (unless (null input-axis)
+              (let ((size (range-size (shape-range (kernel-iteration-space kernel) input-axis))))
+                (dolist (load-instruction (stencil-load-instructions stencil))
+                  (let* ((transformation (load-instruction-transformation load-instruction))
+                         (offsets (transformation-offsets transformation))
+                         (entry (assoc offsets alist :test test)))
+                    (if (not entry)
+                        (push (cons offsets 0) alist)
+                        (incf (cdr entry) size))))))
+            (loop for entry in alist do
+              (incf (aref result output-axis)
+                    (cdr entry)))))))))
+
+(defun differs-exactly-at (index)
+  (lambda (a b)
+    (let ((na (length a))
+          (nb (length b)))
+      (assert (= na nb))
+      (loop for position below na
+            for ea = (elt a position)
+            for eb = (elt b position)
+            always
+            (if (= position index)
+                (not (eql ea eb))
+                (eql ea eb))))))
+
+(defun reuse-optimizing-transformation (reuse-potential)
+  "Takes a vector of single-precision floating-point numbers that describes
+the potential for memory reuse along each axis, returns a transformation
+that sorts all axes by increasing reuse potential."
+  (make-transformation
+   :output-mask
+   (map 'vector #'car
+        (stable-sort
+         (loop for axis from 0 for rp across reuse-potential
+               collect (cons axis rp))
+         #'< :key #'cdr))))

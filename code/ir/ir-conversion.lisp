@@ -224,10 +224,8 @@
 
 (defun finalize-ir (root-buffers)
   (ensure-tasks root-buffers)
-  (map-buffers-and-kernels
-   #'finalize-buffer
-   #'finalize-kernel
-   root-buffers)
+  (map-buffers #'finalize-buffer root-buffers)
+  (map-kernels #'finalize-kernel root-buffers)
   root-buffers)
 
 (defun finalize-buffer (buffer)
@@ -235,7 +233,10 @@
         (program-number-of-buffers (buffer-program buffer)))
   (incf (program-number-of-buffers (buffer-program buffer)))
   (if (interior-buffer-p buffer)
-      (transform-buffer buffer (normalizing-transformation (buffer-shape buffer)))
+      (let* ((reuse-potential (buffer-reuse-potential buffer))
+             (t1 (reuse-optimizing-transformation reuse-potential))
+             (t2 (normalizing-transformation (transform-shape (buffer-shape buffer) t1))))
+        (transform-buffer buffer (compose-transformations t2 t1)))
       (transform-buffer buffer (collapsing-transformation (buffer-shape buffer)))))
 
 (defun finalize-kernel (kernel)
@@ -243,7 +244,10 @@
         (program-number-of-kernels (kernel-program kernel)))
   (incf (program-number-of-kernels (kernel-program kernel)))
   (recompute-kernel-instruction-vector kernel)
-  (transform-kernel kernel (normalizing-transformation (kernel-iteration-space kernel))))
+  (let* ((reuse-potential (kernel-reuse-potential kernel))
+         (t1 (reuse-optimizing-transformation reuse-potential))
+         (t2 (normalizing-transformation (transform-shape (kernel-iteration-space kernel) t1))))
+    (transform-kernel kernel (compose-transformations t2 t1))))
 
 (defun recompute-kernel-instruction-vector (kernel)
   (let ((magic-fixnum (- most-positive-fixnum 17))

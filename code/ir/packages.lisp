@@ -21,6 +21,7 @@
    #:task
    #:buffer
    #:kernel
+   #:stencil
    #:instruction
    #:iterating-instruction
    #:call-instruction
@@ -36,6 +37,7 @@
    #:root-buffer-p
    #:interior-buffer-p
    #:kernelp
+   #:stencilp
    #:instructionp
    #:call-instruction-p
    #:iterating-instruction-p
@@ -118,6 +120,7 @@
    #:buffer-number-of-outputs
    #:buffer-number-of-loads
    #:buffer-number-of-stores
+   #:buffer-reuse-potential
    #:kernel-iteration-space
    #:kernel-blueprint
    #:kernel-instruction-vector
@@ -129,6 +132,13 @@
    #:kernel-task
    #:kernel-program
    #:kernel-number
+   #:kernel-reuse-potential
+   #:kernel-stencils
+   #:stencil-buffer
+   #:stencil-input-rank
+   #:stencil-output-rank
+   #:stencil-output-mask
+   #:stencil-scalings
    #:instruction-number
    #:instruction-inputs
    #:instruction-transformation
@@ -163,4 +173,5 @@
    #:check-ir
    #:interpret-kernel
    #:translate-blueprint
-   #:compute-program-buffer-coloring))
+   #:compute-program-buffer-coloring
+   #:reuse-optimizing-transformation))
