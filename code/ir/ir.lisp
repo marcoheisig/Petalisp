@@ -299,6 +299,14 @@
 ;;;
 ;;; Printing
 
+(defmethod print-object ((program program) stream)
+  (print-unreadable-object (program stream :type t :identity t)
+    (format stream "~S" (program-task-vector program))))
+
+(defmethod print-object ((task task) stream)
+  (print-unreadable-object (task stream :type t :identity t)
+    (format stream "~S" (task-defined-buffers task))))
+
 (defmethod print-object ((buffer buffer) stream)
   (print-unreadable-object (buffer stream :type t :identity t)
     (format stream "~S ~S"

@@ -12,7 +12,7 @@
   (unless (gethash node *ir-checker-table*)
     (push node *ir-checker-worklist*)))
 
-(defun check-ir (nodes)
+(defun check-ir (&rest nodes)
   (let ((*ir-checker-table* (make-hash-table :test #'eq))
         (*ir-checker-worklist* nodes))
     (loop until (null *ir-checker-worklist*)
@@ -39,7 +39,76 @@
     (setf (gethash object *ir-checker-table*) t)
     (call-next-method)))
 
+(defmethod check-ir-node ((program program))
+  (declare (optimize (debug 3) (safety 3)))
+  (let ((initial-task (program-initial-task program))
+        (final-task (program-final-task program))
+        (buffers (make-hash-table))
+        (kernels (make-hash-table))
+        (tasks (make-hash-table))
+        (worklist '()))
+    ;; Ensure that the program leaf alist is well formed.
+    (loop for (buffer . lazy-array) in (program-leaf-alist program) do
+      (assert (leaf-buffer-p buffer))
+      (assert (lazy-array-p lazy-array))
+      (assert (member buffer (task-defined-buffers initial-task)))
+      (push buffer worklist))
+    (loop for root-buffer in (program-root-buffers program) do
+      (assert (root-buffer-p root-buffer))
+      (assert (buffer-task root-buffer))
+      (assert (member final-task (task-successors (buffer-task root-buffer))))
+      (push root-buffer worklist))
+    ;; Gather all kernels and buffers in the program.
+    (loop until (null worklist) for node = (pop worklist) do
+      (etypecase node
+        (buffer
+         (unless (gethash node buffers)
+           (setf (gethash node buffers) t)
+           (do-buffer-inputs (kernel node) (push kernel worklist))
+           (do-buffer-outputs (kernel node) (push kernel worklist))))
+        (kernel
+         (unless (gethash node kernels)
+           (setf (gethash node kernels) t)
+           (do-kernel-inputs (buffer node) (push buffer worklist))
+           (do-kernel-outputs (buffer node) (push buffer worklist))))))
+    ;; Gather all tasks in the program.
+    (setf (gethash final-task tasks) t)
+    (loop for buffer being the hash-keys of buffers do
+      (assert (buffer-task buffer))
+      (setf (gethash (buffer-task buffer) tasks) t))
+    ;; Now make sure that the mapping functions for program buffers,
+    ;; program kernels, and program tasks work correctly.
+    (do-program-buffers (buffer program)
+      (ecase (gethash buffer buffers)
+        ((nil)
+         (error "DO-PROGRAM-BUFFERS visits the unreachable buffer ~S." buffer))
+        ((t)
+         (setf (gethash buffer buffers) :visited))
+        ((:visited)
+         (error "The buffer ~S is visited multiple times by DO-PROGRAM-BUFFERS." buffer))))
+    (assert (= (hash-table-count buffers) (program-number-of-buffers program)))
+    (do-program-kernels (kernel program)
+      (ecase (gethash kernel kernels)
+        ((nil)
+         (error "DO-PROGRAM-KERNELS visits the unreachable kernel ~S." kernel))
+        ((t)
+         (setf (gethash kernel kernels) :visited))
+        ((:visited)
+         (error "The kernel ~S is visited multiple times by DO-PROGRAM-KERNELS." kernel))))
+    (assert (= (hash-table-count kernels) (program-number-of-kernels program)))
+    (do-program-tasks (task program)
+      (ecase (gethash task tasks)
+        ((nil)
+         (error "DO-PROGRAM-TASKS visits the unreachable task ~S." task))
+        ((t)
+         (setf (gethash task tasks) :visited))
+        ((:visited)
+         (error "The task ~S is visited multiple times by DO-PROGRAM-TASKS." task))))
+    (assert (= (hash-table-count tasks) (program-number-of-tasks program)))
+    (mapc #'check-ir-node-eventually (program-root-buffers program))))
+
 (defmethod check-ir-node ((buffer buffer))
+  (declare (optimize (debug 3) (safety 3)))
   ;; Check that all load instructions are wired correctly.
   (loop for (kernel . load-instructions) in (buffer-readers buffer) do
     (check-ir-node-eventually kernel)
@@ -66,10 +135,11 @@
     (when (taskp (buffer-task buffer))
       (check-ir-node-eventually (buffer-task buffer)))
     ;; Ensure that all elements of the buffer are actually written to.
-    (unless (buffer-storage buffer)
+    (unless (leaf-buffer-p buffer)
       (assert (= number-of-writes (buffer-size buffer))))))
 
 (defmethod check-ir-node ((kernel kernel))
+  (declare (optimize (debug 3) (safety 3)))
   ;; Ensure that all load instructions are wired correctly.
   (loop for (buffer . load-instructions) in (kernel-sources kernel) do
     (check-ir-node-eventually buffer)
@@ -101,6 +171,7 @@
       (assert (< value-n (call-instruction-number-of-values other-instruction))))))
 
 (defmethod check-ir-node ((task task))
+  (declare (optimize (debug 3) (safety 3)))
   ;; Ensure that all kernels writing to a buffer with task T also have the
   ;; task T.
   (loop for buffer in (task-defined-buffers task) do
