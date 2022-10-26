@@ -64,6 +64,7 @@
    #:subdivide-arrays
    #:subdivide-shapes
    #:subshapep
+   #:split-shape
    #:fuse-shapes
    #:shape-table
    #:shape-table-p

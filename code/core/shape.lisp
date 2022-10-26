@@ -35,8 +35,8 @@
 
 (defun shape-range (shape axis)
   (declare (shape shape))
-  (assert (<= 0 axis))
-  (assert (< axis (shape-rank shape)))
+  (unless (<= 0 axis (1- (shape-rank shape)))
+    (error "Invalid axis ~D for shape ~S." axis shape))
   (nth axis (shape-ranges shape)))
 
 (defun shape= (shape1 shape2)
@@ -187,6 +187,18 @@
              (and (= 0 (range-start range))
                   (= 1 (range-step range))
                   (= d (range-end range))))))
+
+(defun split-shape (shape axis &optional (position nil position-supplied-p))
+  (multiple-value-bind (left-range right-range)
+      (if position-supplied-p
+          (split-range (shape-range shape axis) position)
+          (split-range (shape-range shape axis)))
+    (let* ((ranges (shape-ranges shape))
+           (prefix (subseq ranges 0 axis))
+           (suffix (subseq ranges (1+ axis))))
+      (values
+       (make-shape `(,@prefix ,left-range ,@suffix))
+       (make-shape `(,@prefix ,right-range ,@suffix))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

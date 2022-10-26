@@ -51,11 +51,16 @@ moved towards the former until they are."
 them as multiple values.  In case R has an odd number of element, the lower
 half will have one more element than the upper half.
 
-An error is signaled if the supplied range has only a single element."
+The optional POSITION argument can be used to prescribe the number of
+elements of the lower half.
+
+An error is signaled if the supplied range has less than two elements."
   (split-range (range 1))
   (split-range (range 1 10))
+  (split-range (range 1 10) 3)
   (split-range (range 1 9))
-  (split-range (range 2 9 2)))
+  (split-range (range 2 9 2))
+  (split-range (range 2 9 2) 3))
 
 (document-function map-range
   "Takes a function and a range and applies the function to all integers of
@@ -230,6 +235,17 @@ latter."
   (subshapep (~ 0 9) (~ 0 9))
   (subshapep (~ 0 3) (~ 1 9))
   (subshapep (~ 0 3 ~ 0 3) (~ 0 9 ~ 0 9)))
+
+(document-function split-shape
+  "Split the supplied SHAPE at AXIS.  The optional POSITION argument can be
+supplied to describe the position at which to split.  If no POSITION
+argument is supplied, split into two halves of roughly equal size.  Returns
+two values, which are two shapes resulting from the split."
+  (split-shape (~ 10 ~ 10) 0)
+  (split-shape (~ 10 ~ 10) 1)
+  (split-shape (~ 10 ~ 10) 0 3)
+  (split-shape (~ 2 9 2 ~ 2 9 2) 0 3)
+  (split-shape (~ 2 9 2 ~ 2 9 2) 1 3))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

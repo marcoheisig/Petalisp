@@ -61,17 +61,24 @@
                 (t
                  (format stream "(~D ~D ... ~D)" start (+ start step) last)))))))
 
-(defun split-range (range)
-  (declare (non-empty-range range))
-  (assert (< 1 (range-size range)))
+(defun split-range (range &optional (position nil position-supplied-p))
+  (unless (< 1 (range-size range))
+    (error "Cannot split ranges with less than two elements."))
   (with-accessors ((start range-start)
                    (step range-step)
                    (size range-size)) range
-    (let* ((size1 (ceiling size 2))
-           (size2 (- size size1)))
+    (let* ((size1 (if position-supplied-p
+                      (the unsigned-byte position)
+                      (ceiling (range-size range) 2)))
+           (size2 (- size size1))
+           (step1 (if (= size1 1) 1 step))
+           (step2 (if (= size2 1) 1 step))
+           (start2 (+ start (* size1 step))))
+      (unless (plusp size2)
+        (error "Invalid split position: ~D" position))
       (values
-       (make-non-empty-range start step size1)
-       (make-non-empty-range (+ start (* size1 step)) step size2)))))
+       (make-non-empty-range start step1 size1)
+       (make-non-empty-range start2 step2 size2)))))
 
 (defun make-range (start end step &aux (step (abs step)))
   (declare (integer start end step))
