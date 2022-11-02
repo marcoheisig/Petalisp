@@ -188,11 +188,9 @@
                   (= 1 (range-step range))
                   (= d (range-end range))))))
 
-(defun split-shape (shape axis &optional (position nil position-supplied-p))
+(defun split-shape (shape axis &optional position)
   (multiple-value-bind (left-range right-range)
-      (if position-supplied-p
-          (split-range (shape-range shape axis) position)
-          (split-range (shape-range shape axis)))
+      (split-range (shape-range shape axis) position)
     (let* ((ranges (shape-ranges shape))
            (prefix (subseq ranges 0 axis))
            (suffix (subseq ranges (1+ axis))))

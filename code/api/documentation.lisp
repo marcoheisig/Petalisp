@@ -30,7 +30,6 @@ exclusive integer are not congruent modulo the step size, the latter one is
 moved towards the former until they are."
   (range 5)
   (range 5 9)
-  (range 5 11)
   (range 5 13 2)
   (range 5 14 2)
   (range 7 -3 3))
@@ -51,8 +50,8 @@ moved towards the former until they are."
 them as multiple values.  In case R has an odd number of element, the lower
 half will have one more element than the upper half.
 
-The optional POSITION argument can be used to prescribe the number of
-elements of the lower half.
+The optional POSITION argument can be used to prescribe the point at which
+to split the range.
 
 An error is signaled if the supplied range has less than two elements."
   (split-range (range 1))

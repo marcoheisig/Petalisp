@@ -61,44 +61,38 @@
                 (t
                  (format stream "(~D ~D ... ~D)" start (+ start step) last)))))))
 
-(defun split-range (range &optional (position nil position-supplied-p))
+(defun split-range (range &optional position)
   (unless (< 1 (range-size range))
     (error "Cannot split ranges with less than two elements."))
   (with-accessors ((start range-start)
                    (step range-step)
-                   (size range-size)) range
-    (let* ((size1 (if position-supplied-p
-                      (the unsigned-byte position)
-                      (ceiling (range-size range) 2)))
-           (size2 (- size size1))
-           (step1 (if (= size1 1) 1 step))
-           (step2 (if (= size2 1) 1 step))
-           (start2 (+ start (* size1 step))))
-      (unless (plusp size2)
-        (error "Invalid split position: ~D" position))
+                   (size range-size)
+                   (end range-end)) range
+    (let* ((mid (if (not position)
+                    (+ start (* step (ceiling size 2)))
+                    (if (< start position (1- end))
+                        (+ start (* step (ceiling (- position start) step)))
+                        (error "Invalid split position: ~D" position)))))
       (values
-       (make-non-empty-range start step1 size1)
-       (make-non-empty-range start2 step2 size2)))))
+       (make-range start mid step)
+       (make-range mid end step)))))
 
 (defun make-range (start end step &aux (step (abs step)))
   (declare (integer start end step))
-  (if (= start end)
-      (make-empty-range)
-      (let ((delta (if (< start end)
-                       (- end start 1)
-                       (- start end 1))))
-        (if (zerop step)
-            (if (zerop delta)
-                (make-non-empty-range start 1 1)
-                (error "~@<Bad step size 0 for range with start ~d and end ~d~:@>"
-                       start end))
-            (let ((n (truncate delta step)))
-              (if (zerop n)
-                  (make-non-empty-range start 1 1)
-                  (make-non-empty-range
-                   (min start (+ start (* n step)))
-                   step
-                   (1+ (abs n)))))))))
+  (let ((delta (abs (- end start))))
+    (cond ((zerop delta)
+           (make-empty-range))
+          ((zerop step)
+           (if (= delta 1)
+               (make-non-empty-range start 1 1)
+               (error "~@<Bad step size 0 for range with start ~d and end ~d~:@>"
+                      start end)))
+          ((let ((steps (floor (1- delta) step)))
+             (if (zerop steps)
+                 (make-non-empty-range start 1 1)
+                 (if (< start end)
+                     (make-non-empty-range start step (1+ steps))
+                     (make-non-empty-range (- start (* step steps)) step (1+ steps)))))))))
 
 (defun range (first &optional (end nil endp) (step 1))
   (if (not endp)
