@@ -112,8 +112,8 @@
             (:predicate kernelp)
             (:constructor make-kernel))
   (iteration-space nil :type shape)
-  ;; An alist whose keys are buffers, and whose values are all load
-  ;; instructions referencing that buffer.
+  ;; An alist whose keys are buffers, and whose values are stencils reading
+  ;; from that buffer.
   (sources '() :type list)
   ;; An alist whose keys are buffers, and whose values are all store
   ;; instructions referencing that buffer.
@@ -201,9 +201,122 @@
                 (buffer transformation)))
   (buffer nil :type buffer))
 
+;;; A stencil is a set of load instructions that all have the same buffer,
+;;; output mask, scalings, and offsets that are off only by at most
+;;; *STENCIL-MAX-RADIUS* from the center of the stencil (measured in steps
+;;; of the corresponding range of the buffer being loaded from).  The
+;;; center of a stencil is the average of the offsets of all its load
+;;; instructions.
+
+(declaim (unsigned-byte *stencil-max-radius*))
+(defparameter *stencil-max-radius* 7)
+
+(defstruct (stencil
+            (:predicate stencilp)
+            (:copier nil)
+            (:constructor %make-stencil))
+  ;; The center of a stencil is an array that contains the average of the
+  ;; offsets of all its load instructions.
+  (center nil :type simple-vector)
+  (load-instructions nil :type (cons load-instruction list)))
+
+(defun compute-stencil-center (load-instruction &rest more-load-instructions)
+  (flet ((offsets (load-instruction)
+           (transformation-offsets
+            (load-instruction-transformation load-instruction))))
+    (if (null more-load-instructions)
+        (offsets load-instruction)
+        (let* ((result (alexandria:copy-array (offsets load-instruction)))
+               (count 1))
+          (loop for load-instruction in more-load-instructions do
+            (incf count)
+            (let ((offsets (offsets load-instruction)))
+              (assert (= (length offsets) (length result)))
+              (loop for offset across offsets for index from 0 do
+                (incf (aref result index) offset))))
+          (loop for sum across result for index from 0 do
+            (setf (aref result index)
+                  (floor sum count)))
+          result))))
+
+(defun make-stencil (load-instructions)
+  (%make-stencil
+   :center (apply #'compute-stencil-center load-instructions)
+   :load-instructions load-instructions))
+
+(defun stencil-from-load-instruction (load-instruction)
+  (declare (load-instruction load-instruction))
+  (%make-stencil
+   :center (transformation-offsets (load-instruction-transformation load-instruction))
+   :load-instructions (list load-instruction)))
+
+;;; All stencil properties can be inferred from its first load instruction,
+;;; so we generate those repetitive accessors with a macro.
+(macrolet ((def (name (load-instruction) &body body)
+             `(progn
+                (declaim (inline ,name))
+                (defun ,name (stencil)
+                  (declare (stencil stencil))
+                  (let ((,load-instruction (first (stencil-load-instructions stencil))))
+                    ,@body)))))
+  (def stencil-buffer (load-instruction)
+    (load-instruction-buffer load-instruction))
+  (def stencil-input-rank (load-instruction)
+    (transformation-input-rank
+     (load-instruction-transformation load-instruction)))
+  (def stencil-output-rank (load-instruction)
+    (transformation-output-rank
+     (load-instruction-transformation load-instruction)))
+  (def stencil-output-mask (load-instruction)
+    (transformation-output-mask
+     (load-instruction-transformation load-instruction)))
+  (def stencil-scalings (load-instruction)
+    (transformation-scalings
+     (load-instruction-transformation load-instruction))))
+
+(defun kernel-stencils (kernel buffer)
+  (let ((entry (assoc buffer (kernel-sources kernel))))
+    (etypecase entry
+      (null '())
+      (cons (cdr entry)))))
+
 (defun make-load-instruction (kernel buffer transformation)
   (let ((load-instruction (%make-load-instruction buffer transformation)))
-    (push load-instruction (alexandria:assoc-value (kernel-sources kernel) buffer))
+    (block add-load-instruction-to-kernel
+      (symbol-macrolet ((stencils (alexandria:assoc-value (kernel-sources kernel) buffer)))
+        ;; Try to add the load instruction to an existing stencil.
+        (loop for stencil in stencils do
+          (block try-next-stencil
+            (when (and (equalp (stencil-output-mask stencil)
+                               (transformation-output-mask transformation))
+                       (equalp (stencil-scalings stencil)
+                               (transformation-scalings transformation)))
+              ;; Compute the new center of the stencil if that load instruction
+              ;; was added.
+              (let* ((ranges (shape-ranges (buffer-shape buffer)))
+                     (load-instructions (list* load-instruction (stencil-load-instructions stencil)))
+                     (center (apply #'compute-stencil-center load-instructions)))
+                ;; Ensure that the new center is valid for all load
+                ;; instructions, including the one we are trying to add.
+                (loop for load-instruction in load-instructions do
+                  (let* ((transformation (load-instruction-transformation load-instruction))
+                         (offsets (transformation-offsets transformation)))
+                    (loop for offset1 across offsets
+                          for offset2 across center
+                          for range in ranges
+                          do (unless (<= (abs (- offset2 offset1))
+                                         (* *stencil-max-radius* (range-step range)))
+                               (return-from try-next-stencil)))))
+                ;; If control reaches this point, we know that the new center
+                ;; is valid.  We can now add the load instruction to that
+                ;; stencil.
+                (setf (stencil-center stencil) center)
+                (setf (stencil-load-instructions stencil) load-instructions)
+                (return-from add-load-instruction-to-kernel)))))
+        ;; If control reaches this point, it wasn't possible to add
+        ;; the load instruction to an existing stencil.  Create a
+        ;; new stencil instead.
+        (push (stencil-from-load-instruction load-instruction) stencils)))
     (push load-instruction (alexandria:assoc-value (buffer-readers buffer) kernel))
     load-instruction))
 
@@ -238,62 +351,6 @@
     1)
   (:method ((store-instruction store-instruction))
     0))
-
-;;; A stencil is a set of load instructions that all have the same buffer,
-;;; output mask, and scalings.
-
-(defstruct (stencil
-            (:predicate stencilp)
-            (:copier nil)
-            (:constructor make-stencil (load-instructions)))
-  (load-instructions nil :type (cons load-instruction list) :read-only t))
-
-;;; All stencil properties can be inferred from its first load instruction,
-;;; so we generate those repetitive accessors with a macro.
-(macrolet ((def (name (load-instruction) &body body)
-             `(progn
-                (declaim (inline ,name))
-                (defun ,name (stencil)
-                  (declare (stencil stencil))
-                  (let ((,load-instruction (first (stencil-load-instructions stencil))))
-                    ,@body)))))
-  (def stencil-buffer (load-instruction)
-    (load-instruction-buffer load-instruction))
-  (def stencil-input-rank (load-instruction)
-    (transformation-input-rank
-     (load-instruction-transformation load-instruction)))
-  (def stencil-output-rank (load-instruction)
-    (transformation-output-rank
-     (load-instruction-transformation load-instruction)))
-  (def stencil-output-mask (load-instruction)
-    (transformation-output-mask
-     (load-instruction-transformation load-instruction)))
-  (def stencil-scalings (load-instruction)
-    (transformation-scalings
-     (load-instruction-transformation load-instruction))))
-
-(defun kernel-stencils (kernel &optional buffer)
-  (let ((stencils '()))
-    (loop for (current-buffer . load-instructions) in (kernel-sources kernel) do
-      (unless (and buffer (not (eq current-buffer buffer)))
-        ;; We store each load instruction in a two-level alist, whose first
-        ;; key is the output mask, and whose second key is the scalings
-        ;; vector.  The value of each entry is a list of load instructions
-        ;; with those properties.
-        (let ((bufferdb '()))
-          (loop for load-instruction in load-instructions do
-            (let ((transformation (load-instruction-transformation load-instruction)))
-              (push load-instruction
-                    (alexandria:assoc-value
-                     (alexandria:assoc-value
-                      bufferdb
-                      (transformation-output-mask transformation) :test #'equalp)
-                     (transformation-scalings transformation) :test #'equalp))))
-          (loop for (nil . alist) in bufferdb do
-            (loop for (nil . load-instructions) in alist do
-              (push (make-stencil load-instructions) stencils))))))
-    (nreverse stencils)))
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -444,13 +501,22 @@
     (funcall function buffer))
   kernel)
 
+(declaim (inline map-kernel-stencils))
+(defun map-kernel-stencils (function kernel)
+  (declare (function function)
+           (kernel kernel))
+  (loop for (nil . stencils) in (kernel-sources kernel) do
+    (mapc function stencils))
+  kernel)
+
 (declaim (inline map-kernel-load-instructions))
 (defun map-kernel-load-instructions (function kernel)
   (declare (function function)
            (kernel kernel))
-  (loop for (nil . load-instructions) in (kernel-sources kernel) do
-    (loop for load-instruction in load-instructions do
-      (funcall function load-instruction)))
+  (loop for (nil . stencils) in (kernel-sources kernel) do
+    (loop for stencil in stencils do
+      (loop for load-instruction in (stencil-load-instructions stencil) do
+        (funcall function load-instruction))))
   kernel)
 
 (declaim (inline map-kernel-store-instructions))
@@ -512,6 +578,7 @@
   (def do-buffer-store-instructions store-instruction buffer map-buffer-store-instructions)
   (def do-kernel-inputs buffer kernel map-kernel-inputs)
   (def do-kernel-outputs buffer kernel map-kernel-outputs)
+  (def do-kernel-stencils stencil kernel map-kernel-stencils)
   (def do-kernel-load-instructions load-instruction kernel map-kernel-load-instructions)
   (def do-kernel-store-instructions store-instruction kernel map-kernel-store-instructions)
   (def do-instruction-inputs input instruction map-instruction-inputs)
@@ -643,11 +710,11 @@
 
 (defun buffer-number-of-inputs (buffer)
   (declare (buffer buffer))
-  (length (buffer-writers buffer)))
+  (count-mapped-elements #'map-buffer-inputs buffer))
 
 (defun buffer-number-of-outputs (buffer)
   (declare (buffer buffer))
-  (length (buffer-readers buffer)))
+  (count-mapped-elements #'map-buffer-outputs buffer))
 
 (defun buffer-number-of-loads (buffer)
   (declare (buffer buffer))
@@ -659,11 +726,11 @@
 
 (defun kernel-number-of-inputs (kernel)
   (declare (kernel kernel))
-  (length (kernel-sources kernel)))
+  (count-mapped-elements #'map-kernel-inputs kernel))
 
 (defun kernel-number-of-outputs (kernel)
   (declare (kernel kernel))
-  (length (kernel-targets kernel)))
+  (count-mapped-elements #'map-kernel-outputs kernel))
 
 (defun kernel-number-of-loads (kernel)
   (declare (kernel kernel))
@@ -766,7 +833,7 @@
 (defun kernel-reuse-potential (kernel)
   (let* ((rank (shape-rank (kernel-iteration-space kernel)))
          (result (make-array rank :initial-element 0)))
-    (dolist (stencil (kernel-stencils kernel) result)
+    (do-kernel-stencils (stencil kernel result)
       (dotimes (output-axis (stencil-output-rank stencil))
         (let ((input-axis (aref (stencil-output-mask stencil) output-axis))
               (test (differs-exactly-at output-axis))

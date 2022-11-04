@@ -50,6 +50,8 @@
    #:make-task
    #:make-kernel
    #:make-buffer
+   #:make-stencil
+   #:stencil-from-load-instruction
 
    ;; Mapping
    #:map-program-tasks
@@ -70,6 +72,7 @@
    #:map-kernel-load-instructions
    #:map-kernel-inputs
    #:map-kernel-outputs
+   #:map-kernel-stencils
    #:map-kernel-instructions
    #:map-instruction-inputs
    #:map-program-buffer-groups
@@ -88,6 +91,7 @@
    #:do-buffer-store-instructions
    #:do-kernel-inputs
    #:do-kernel-outputs
+   #:do-kernel-stencils
    #:do-kernel-load-instructions
    #:do-kernel-store-instructions
    #:do-instruction-inputs
@@ -139,6 +143,8 @@
    #:stencil-output-rank
    #:stencil-output-mask
    #:stencil-scalings
+   #:stencil-center
+   #:stencil-load-instructions
    #:instruction-number
    #:instruction-inputs
    #:instruction-transformation
@@ -167,6 +173,8 @@
    #:memory-parent-bandwidth
 
    ;; Miscellaneous
+   #:*stencil-max-radius*
+   #:compute-stencil-center
    #:make-buffer-like-array
    #:ensure-array-buffer-compatibility
    #:make-ir-backend

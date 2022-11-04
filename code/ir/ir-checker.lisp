@@ -141,13 +141,15 @@
 (defmethod check-ir-node ((kernel kernel))
   (declare (optimize (debug 3) (safety 3)))
   ;; Ensure that all load instructions are wired correctly.
-  (loop for (buffer . load-instructions) in (kernel-sources kernel) do
-    (check-ir-node-eventually buffer)
-    (assert (null (duplicates load-instructions)))
-    (loop for load-instruction in load-instructions do
-      (check-ir-node-eventually load-instruction)
-      (assert (eq (load-instruction-buffer load-instruction) buffer))
-      (check-reverse-link load-instruction buffer #'map-buffer-load-instructions)))
+  (loop for (buffer . stencils) in (kernel-sources kernel) do
+    (loop for stencil in stencils do
+      (let ((load-instructions (stencil-load-instructions stencil)))
+        (check-ir-node-eventually buffer)
+        (assert (null (duplicates load-instructions)))
+        (loop for load-instruction in load-instructions do
+          (check-ir-node-eventually load-instruction)
+          (assert (eq (load-instruction-buffer load-instruction) buffer))
+          (check-reverse-link load-instruction buffer #'map-buffer-load-instructions)))))
   ;; Ensure that all store instructions are wired correctly.
   (loop for (buffer . store-instructions) in (kernel-targets kernel) do
     (check-ir-node-eventually buffer)

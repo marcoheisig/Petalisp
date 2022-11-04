@@ -769,6 +769,7 @@
     (setf (program-initial-task program) initial-task)
     (setf (program-final-task program) final-task)
     (let ((worklist root-buffers))
+      ;; Assign tasks to buffers.
       (loop until (null worklist) for buffer = (pop worklist) do
         (when (null (buffer-task buffer))
           (if (leaf-buffer-p buffer)
