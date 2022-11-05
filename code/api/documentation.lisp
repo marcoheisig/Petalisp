@@ -47,16 +47,17 @@ moved towards the former until they are."
 
 (document-function split-range
   "Splits the supplied range R into a lower and an upper half and returns
-them as multiple values.  In case R has an odd number of element, the lower
-half will have one more element than the upper half.
+them as multiple values.  In case R has an odd number of elements, the
+lower half will have one more element than the upper half.
 
 The optional POSITION argument can be used to prescribe the point at which
-to split the range.
-
-An error is signaled if the supplied range has less than two elements."
+to split the range."
+  (split-range (range 0))
   (split-range (range 1))
   (split-range (range 1 10))
   (split-range (range 1 10) 3)
+  (split-range (range 1 10) 1)
+  (split-range (range 1 10) 10)
   (split-range (range 1 9))
   (split-range (range 2 9 2))
   (split-range (range 2 9 2) 3))

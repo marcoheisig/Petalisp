@@ -10,7 +10,7 @@
 
 (defstruct (empty-range
             (:include range)
-            (:constructor make-empty-range (&aux (size 0)))
+            (:constructor %make-empty-range (&aux (size 0)))
             (:predicate empty-range-p)
             (:copier nil)))
 
@@ -22,6 +22,10 @@
             (:copier nil))
   (step nil :type (integer 1 *) :read-only t)
   (start nil :type integer :read-only t))
+
+(defun empty-range ()
+  (load-time-value
+   (%make-empty-range)))
 
 (declaim (inline range-last))
 (defun range-last (range)
@@ -36,7 +40,7 @@
   (1+ (range-last range)))
 
 (defmethod print-object ((empty-range empty-range) stream)
-  (print-unreadable-object (empty-range stream :identity t)
+  (print-unreadable-object (empty-range stream)
     (write (class-name (class-of empty-range)) :stream stream)))
 
 (defmethod print-object ((range non-empty-range) stream)
@@ -62,26 +66,27 @@
                  (format stream "(~D ~D ... ~D)" start (+ start step) last)))))))
 
 (defun split-range (range &optional position)
-  (unless (< 1 (range-size range))
-    (error "Cannot split ranges with less than two elements."))
-  (with-accessors ((start range-start)
-                   (step range-step)
-                   (size range-size)
-                   (end range-end)) range
-    (let* ((mid (if (not position)
-                    (+ start (* step (ceiling size 2)))
-                    (if (< start position (1- end))
-                        (+ start (* step (ceiling (- position start) step)))
-                        (error "Invalid split position: ~D" position)))))
-      (values
-       (make-range start mid step)
-       (make-range mid end step)))))
+  (declare (range range))
+  (if (empty-range-p range)
+      (values (empty-range) (empty-range))
+      (with-accessors ((start range-start)
+                       (step range-step)
+                       (size range-size)
+                       (end range-end)) range
+        (let* ((mid (if (not position)
+                        (+ start (* step (ceiling size 2)))
+                        (if (<= start position end)
+                            (+ start (* step (ceiling (- position start) step)))
+                            (error "Invalid split position: ~D" position)))))
+          (values
+           (make-range start mid step)
+           (make-range mid end step))))))
 
 (defun make-range (start end step &aux (step (abs step)))
   (declare (integer start end step))
   (let ((delta (abs (- end start))))
     (cond ((zerop delta)
-           (make-empty-range))
+           (empty-range))
           ((zerop step)
            (if (= delta 1)
                (make-non-empty-range start 1 1)
@@ -288,7 +293,7 @@
   (multiple-value-bind (start end step)
       (range-intersection-start-end-step range1 range2)
     (if (not start)
-        (make-empty-range)
+        (empty-range)
         (range start end step))))
 
 (defun range-intersection-start-end-step (range1 range2)
@@ -346,7 +351,7 @@
                   (setf start (min start (range-start range)))
                   (setf end (max end (range-end range))))))
     (if (null start)
-        (make-empty-range)
+        (empty-range)
         (let ((step (- end start 1)))
           (loop for range in ranges
                 unless (empty-range-p range)
