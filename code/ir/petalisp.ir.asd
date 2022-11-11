@@ -20,6 +20,7 @@
    (:file "blueprint")
    (:file "kernel-interpreter")
    (:file "kernel-compiler")
+   (:file "partitioning")
    (:file "coloring")
    (:file "ir-backend")
    (:file "documentation")))

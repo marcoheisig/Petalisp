@@ -247,7 +247,7 @@
 (defun stencil-from-load-instruction (load-instruction)
   (declare (load-instruction load-instruction))
   (%make-stencil
-   :center (transformation-offsets (load-instruction-transformation load-instruction))
+   :center (compute-stencil-center load-instruction)
    :load-instructions (list load-instruction)))
 
 ;;; All stencil properties can be inferred from its first load instruction,
@@ -555,6 +555,10 @@
     (declare (simple-vector vector))
     (map nil function vector)))
 
+(declaim (inline map-stencil-load-instructions))
+(defun map-stencil-load-instructions (function stencil)
+  (mapc function (stencil-load-instructions stencil)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Do Macros
@@ -581,6 +585,7 @@
   (def do-kernel-stencils stencil kernel map-kernel-stencils)
   (def do-kernel-load-instructions load-instruction kernel map-kernel-load-instructions)
   (def do-kernel-store-instructions store-instruction kernel map-kernel-store-instructions)
+  (def do-stencil-load-instructions load-instruction stencil map-stencil-load-instructions)
   (def do-instruction-inputs input instruction map-instruction-inputs)
   (def do-kernel-instructions instruction kernel map-kernel-instructions))
 
@@ -671,10 +676,11 @@
     (setf (kernel-iteration-space kernel)
           (transform-shape (kernel-iteration-space kernel) transformation))
     (let ((inverse (invert-transformation transformation)))
-      (map-kernel-instructions
-       (lambda (instruction)
-         (transform-instruction-input instruction inverse))
-       kernel))))
+      (do-kernel-instructions (instruction kernel)
+        (transform-instruction-input instruction inverse))
+      (do-kernel-stencils (stencil kernel)
+        (setf (stencil-center stencil)
+              (apply #'compute-stencil-center (stencil-load-instructions stencil)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

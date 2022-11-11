@@ -50,8 +50,8 @@ moved towards the former until they are."
 them as multiple values.  In case R has an odd number of elements, the
 lower half will have one more element than the upper half.
 
-The optional POSITION argument can be used to prescribe the point at which
-to split the range."
+The optional POSITION argument is a real number that can be used to
+prescribe the point at which to split the range."
   (split-range (range 0))
   (split-range (range 1))
   (split-range (range 1 10))

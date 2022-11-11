@@ -422,18 +422,37 @@
              (let* ((x (if (not input-index)
                            0
                            (elt list input-index)))
-                    (a*x (cond ((= 1 a) x)
-                               ((numberp x) (* a x))
+                    (a*x (cond ((numberp x) (* a x))
+                               ((= 1 a) x)
                                ((and) `(* ,a ,x))))
-                    (a*x+b (cond ((eql a*x 0) b)
+                    (a*x+b (cond ((numberp a*x) (+ a*x b))
                                  ((= b 0) a*x)
-                                 ((numberp a*x) (+ a*x b))
                                  ((= b  1) `(1+ ,a*x))
                                  ((= b -1) `(1- ,a*x))
                                  ((and) `(+ ,a*x ,b)))))
                (push A*x+b result))))
       (map-transformation-outputs #'push-output-expression transformation)
       (nreverse result))))
+
+(defmethod transform-sequence
+    ((vector vector)
+     (transformation hairy-transformation))
+  (let* ((output-rank (transformation-output-rank transformation))
+         (result (make-array output-rank :element-type (array-element-type vector))))
+    (map-transformation-outputs
+     (lambda (output-index input-index a b)
+       (setf (aref result output-index)
+             (let* ((x (if (not input-index) 0 (aref vector input-index)))
+                    (a*x (cond ((numberp x) (* a x))
+                               ((= 1 a) x)
+                               ((and) `(* ,a ,x)))))
+               (cond ((numberp a*x) (+ a*x b))
+                     ((= b 0) a*x)
+                     ((= b  1) `(1+ ,a*x))
+                     ((= b -1) `(1- ,a*x))
+                     ((and) `(+ ,a*x ,b))))))
+     transformation)
+    result))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

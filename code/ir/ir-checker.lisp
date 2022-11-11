@@ -172,6 +172,13 @@
       (assert (typep other-instruction 'call-instruction))
       (assert (< value-n (call-instruction-number-of-values other-instruction))))))
 
+(defmethod check-ir-node :after ((store-instruction store-instruction))
+  ;; It doesn't make sense to have multiple writes to the same memory
+  ;; location.  If a kernel has such a store instruction, something must
+  ;; have gone wrong elsewhere.
+  (assert (transformation-invertiblep
+           (store-instruction-transformation store-instruction))))
+
 (defmethod check-ir-node ((task task))
   (declare (optimize (debug 3) (safety 3)))
   ;; Ensure that all kernels writing to a buffer with task T also have the

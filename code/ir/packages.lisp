@@ -74,6 +74,7 @@
    #:map-kernel-outputs
    #:map-kernel-stencils
    #:map-kernel-instructions
+   #:map-stencil-load-instructions
    #:map-instruction-inputs
    #:map-program-buffer-groups
 
@@ -94,6 +95,7 @@
    #:do-kernel-stencils
    #:do-kernel-load-instructions
    #:do-kernel-store-instructions
+   #:do-stencil-load-instructions
    #:do-instruction-inputs
    #:do-kernel-instructions
    #:do-program-buffer-groups
