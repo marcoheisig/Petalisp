@@ -36,8 +36,8 @@
 (defmethod print-object ((chunk chunk) stream)
   (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
           (class-name (class-of chunk))
-          :buffer (chunk-buffer chunk)
           :shape (chunk-shape chunk)
+          :buffer (chunk-buffer chunk)
           :split (chunk-split chunk)))
 
 (defun chunk-bits (chunk)
@@ -151,21 +151,25 @@
       (setf (chunk-split-priority-cache chunk)
             (funcall *chunk-split-priority* chunk))))
 
-;;; The priority that a chunk must exceed in order to be considered for
-;;; splitting.
+;;; The minimum priority that a chunk must have in order to be considered
+;;; for splitting.
+(declaim (type (real 0 *) *chunk-split-min-priority*))
 (defvar *chunk-split-min-priority*)
 
 ;;; A real number that is the maximum permissible ratio of ghost points to
 ;;; interior points for a split.
+(declaim (type (real 0 1) *chunk-split-max-redundancy*))
 (defvar *chunk-split-max-redundancy*)
 
 ;;; A vector for looking up each buffer's initial chunk.
+(declaim (type simple-vector *buffer-chunk-vector*))
 (defvar *buffer-chunk-vector*)
 
 (defmacro buffer-chunk (buffer)
   `(svref *buffer-chunk-vector* (buffer-number ,buffer)))
 
 ;;; A vector for looking up each buffer's ghostspec.
+(declaim (type simple-vector *buffer-ghostspec-vector*))
 (defvar *buffer-ghostspec-vector*)
 
 (defun buffer-ghostspec (buffer)
@@ -175,6 +179,7 @@
               (compute-buffer-ghostspec buffer)))))
 
 ;;; A list of splits that have yet to be propagated to nearby chunks.
+(declaim (type list *unpropagated-splits*))
 (defvar *unpropagated-splits*)
 
 ;;; A priority queue of chunks that have yet to be considered for being
@@ -262,46 +267,63 @@ ratio of ghost points to interior points for a split.
   "Attempt to split CHUNK at the supplied AXIS and POSITION.  If the split
 could be introduced successfully, or if an equivalent split already
 existed, return that split.  Otherwise, return NIL."
-  (unless (not axis)
-    (alexandria:if-let (split (chunk-split chunk))
-      ;; Attempt to reuse an existing split.
-      (let* ((split-axis (split-axis split))
+  (flet ((give-up () (return-from attempt-split nil)))
+    ;; Ensure AXIS is not NIL.
+    (unless axis (give-up))
+    ;; Ensure the supplied AXIS and POSITION denote a split within the chunk's shape
+    (let* ((shape (chunk-shape chunk))
+           (range (shape-range shape axis)))
+      (if (not position)
+          (unless (<= 2 (range-size range))
+            (give-up))
+          (unless (and (< (range-start range) position)
+                       (<= position (range-last range)))
+            (give-up))))
+    ;; Attempt to reuse an existing split.
+    (when (chunk-split chunk)
+      (let* ((split (chunk-split chunk))
+             (split-axis (split-axis split))
              (split-position (split-position split))
              (split-range (shape-range (chunk-shape chunk) split-axis)))
-        (when (and (= split-axis axis)
-                   (< (abs (- split-position position))
-                      (range-step split-range)))
-          split))
-      ;; Ensure that the CHUNK has a priority that is sufficiently high.
-      (when (>= (chunk-split-priority chunk) *chunk-split-min-priority*)
-        (let* ((buffer (chunk-buffer chunk))
-               (ghostspec (buffer-ghostspec buffer))
-               (left-padding (ghostspec-left-padding ghostspec axis))
-               (right-padding (ghostspec-right-padding ghostspec axis)))
-          ;; Ensure that the ghostspec permits splitting at that axis.
-          (when (and left-padding right-padding)
-            (multiple-value-bind (left-shape right-shape)
-                (split-shape (chunk-shape chunk) axis position)
-              ;; Ensure the split won't introduce too many ghost layers.
-              (when (and (< right-padding
-                            (* *chunk-split-max-redundancy*
-                               (range-size (shape-range left-shape axis))))
-                         (< left-padding
-                            (* *chunk-split-max-redundancy*
-                               (range-size (shape-range right-shape axis)))))
-                ;; Success!
-                (let* ((left-child (make-chunk :buffer buffer :shape left-shape :parent chunk))
-                       (right-child (make-chunk :buffer buffer :shape right-shape :parent chunk))
-                       (split (make-split
-                               :parent chunk
-                               :axis axis
-                               :left-child left-child
-                               :right-child right-child)))
-                  (enqueue-chunk left-child)
-                  (enqueue-chunk right-child)
-                  (push split *unpropagated-splits*)
-                  (setf (chunk-split chunk) split)
-                  split)))))))))
+        (if (and (= split-axis axis)
+                 (< (abs (- split-position position))
+                    (range-step split-range)))
+            (return-from attempt-split split)
+            (give-up))))
+    ;; Ensure that the CHUNK has a priority that is sufficiently high.
+    (unless (>= (chunk-split-priority chunk) *chunk-split-min-priority*)
+      (give-up))
+    (let* ((buffer (chunk-buffer chunk))
+           (ghostspec (buffer-ghostspec buffer))
+           (left-padding (ghostspec-left-padding ghostspec axis))
+           (right-padding (ghostspec-right-padding ghostspec axis)))
+      ;; Ensure that the ghostspec permits splitting at that axis.
+      (unless (and left-padding right-padding)
+        (give-up))
+      (multiple-value-bind (left-shape right-shape)
+          (split-shape (chunk-shape chunk) axis position)
+        ;; Ensure the split won't introduce too many ghost layers.
+        (unless (<= right-padding
+                    (* *chunk-split-max-redundancy*
+                       (range-size (shape-range left-shape axis))))
+          (give-up))
+        (unless (<= left-padding
+                    (* *chunk-split-max-redundancy*
+                       (range-size (shape-range right-shape axis))))
+          (give-up))
+        ;; Success!
+        (let* ((left-child (make-chunk :buffer buffer :shape left-shape :parent chunk))
+               (right-child (make-chunk :buffer buffer :shape right-shape :parent chunk))
+               (split (make-split
+                       :parent chunk
+                       :axis axis
+                       :left-child left-child
+                       :right-child right-child)))
+          (enqueue-chunk left-child)
+          (enqueue-chunk right-child)
+          (push split *unpropagated-splits*)
+          (setf (chunk-split chunk) split)
+          split)))))
 
 (defun chunk-split-axis (chunk)
   "Returns the axis where chunk can be split while introducing the minimum
@@ -374,7 +396,8 @@ number of ghost points, or NIL, if the chunk cannot be split further."
                (- position 1/2))
             (if (or (not axis1)
                     (let ((range (shape-range iteration-space axis1)))
-                      (not (< (range-start range) position1 (range-end range)))))
+                      (not (and (< (range-start range) position1)
+                                (<= position1 (range-last range))))))
                 (push writer boring-writers)
                 (let ((left-chunks '())
                       (right-chunks '()))
