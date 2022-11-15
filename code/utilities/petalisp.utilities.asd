@@ -24,6 +24,7 @@
    (:file "identical")
    (:file "memoization")
    (:file "extended-euclid")
+   (:file "powers-of-two")
    (:file "prime-factors")
    (:file "weak-set")
    (:file "with-collectors")
