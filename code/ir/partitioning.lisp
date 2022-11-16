@@ -46,6 +46,16 @@
   (* (petalisp.type-inference:ntype-bits (buffer-ntype (chunk-buffer chunk)))
      (shape-size (chunk-shape chunk))))
 
+(defun chunk-infants (chunk)
+  "An infant is a chunk without a split.  This function returns the list of
+infants whose line of ancestry contains the supplied CHUNK."
+  (let ((split (chunk-split chunk)))
+    (if (not split)
+        (list chunk)
+        (append
+         (chunk-infants (split-left-child split))
+         (chunk-infants (split-right-child split))))))
+
 (defstruct (split
             (:predicate splitp)
             (:constructor make-split))
@@ -300,7 +310,7 @@
     (program
      &key
        (chunk-split-priority 'chunk-bits)
-       (chunk-split-min-priority (* 8 4096))
+       (chunk-split-min-priority (* 30 1024))
        (chunk-split-max-redundancy 0.125)
      &aux (number-of-buffers (program-number-of-buffers program)))
   "Returns a vector whose Nth entry is the chunk corresponding to the buffer
