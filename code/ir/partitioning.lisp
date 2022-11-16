@@ -46,16 +46,6 @@
   (* (petalisp.type-inference:ntype-bits (buffer-ntype (chunk-buffer chunk)))
      (shape-size (chunk-shape chunk))))
 
-(defun chunk-infants (chunk)
-  "An infant is a chunk without a split.  This function returns the list of
-infants whose line of ancestry contains the supplied CHUNK."
-  (let ((split (chunk-split chunk)))
-    (if (not split)
-        (list chunk)
-        (append
-         (chunk-infants (split-left-child split))
-         (chunk-infants (split-right-child split))))))
-
 (defstruct (split
             (:predicate splitp)
             (:constructor make-split))
@@ -82,6 +72,37 @@ infants whose line of ancestry contains the supplied CHUNK."
           :position (split-position split)
           :left-child (split-left-child split)
           :right-child (split-right-child split)))
+
+(defun chunk-infants (chunk)
+  "An infant is a chunk without a split.  This function returns the list of
+infants whose line of ancestry contains the supplied CHUNK."
+  (let ((split (chunk-split chunk)))
+    (if (not split)
+        (list chunk)
+        (append
+         (chunk-infants (split-left-child split))
+         (chunk-infants (split-right-child split))))))
+
+(defun chunk-chains (chunk)
+  "A list of all chains of chunks writing to CHUNK and its children.  Useful
+for debugging."
+  (labels ((chain-elements (chunk)
+             (list*
+              chunk
+              (let ((writers (chunk-writers chunk)))
+                (if (not writers)
+                    '()
+                    (chain-elements
+                     ;; Only follow the largest chunk.
+                     (first (sort (copy-list (cddr (first writers))) #'>
+                                  :key #'chunk-bits))))))))
+    (list*
+     (chain-elements chunk)
+     (if (not (chunk-split chunk))
+         '()
+         (append
+          (chunk-chains (split-left-child (chunk-split chunk)))
+          (chunk-chains (split-right-child (chunk-split chunk))))))))
 
 (defstruct (ghostspec
             (:predicate ghostspecp)
@@ -658,24 +679,3 @@ only reference the SOURCE-CHUNK part of the corresponding source buffer."
                                   (return-from find-most-specific-target-chunk
                                     target)))))))))
       (refine-search (buffer-chunk buffer) source-chunk))))
-
-(defun chunk-chains (chunk)
-  "A list of all chains of chunks writing to CHUNK and its children.  Useful
-for debugging."
-  (labels ((chain-elements (chunk)
-             (list*
-              chunk
-              (let ((writers (chunk-writers chunk)))
-                (if (not writers)
-                    '()
-                    (chain-elements
-                     ;; Only follow the largest chunk.
-                     (first (sort (copy-list (cddr (first writers))) #'>
-                                  :key #'chunk-bits))))))))
-    (list*
-     (chain-elements chunk)
-     (if (not (chunk-split chunk))
-         '()
-         (append
-          (chunk-chains (split-left-child (chunk-split chunk)))
-          (chunk-chains (split-right-child (chunk-split chunk))))))))
