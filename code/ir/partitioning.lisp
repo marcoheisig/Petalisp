@@ -21,7 +21,9 @@
   ;; The buffer being partitioned by this chunk.
   (buffer nil :type buffer :read-only t)
   ;; The chunk's shape.
-  (shape '() :type shape :read-only t)
+  (shape nil :type shape :read-only t)
+  ;; The chunk's shape, but surrounded by ghost layers.
+  (padded-shape nil :type shape :read-only t)
   ;; The chunk that was split to create this one.
   (parent nil :type (or null chunk) :read-only t)
   ;; A list of entries of the form (ITERATION-SPACE KERNEL . CHUNKS),
@@ -142,6 +144,100 @@
      :left-padding-vec left-padding-vec
      :right-padding-vec right-padding-vec)))
 
+(defun compute-chunk-padded-shape (chunk-shape buffer)
+  (declare (shape chunk-shape) (buffer buffer))
+  (let ((ghostspec (buffer-ghostspec buffer)))
+    (make-shape
+     (loop for axis from 0
+           for chunk-range in (shape-ranges chunk-shape)
+           for buffer-range in (shape-ranges (buffer-shape buffer))
+           collect
+           (if (range-equal chunk-range buffer-range)
+               buffer-range
+               (let* ((step (range-step buffer-range))
+                      (left-padding (ghostspec-left-padding ghostspec axis))
+                      (right-padding (ghostspec-right-padding ghostspec axis)))
+                 (range
+                  (max (- (range-start chunk-range) (* left-padding step))
+                       (range-start buffer-range))
+                  (min (+ (range-end chunk-range) (* right-padding step))
+                       (range-end buffer-range)))))))))
+
+(defstruct (vicinity
+            (:predicate vicinity))
+  (left-neighbors-vec nil :type simple-vector :read-only t)
+  (right-neighbors-vec nil :type simple-vector :read-only t))
+
+(defun vicinity-left-neighbors (vicinity axis)
+  (svref (vicinity-left-neighbors-vec vicinity) axis))
+
+(defun vicinity-right-neighbors (vicinity axis)
+  (svref (vicinity-right-neighbors-vec vicinity) axis))
+
+(defun compute-chunk-vicinity (chunk)
+  (declare (chunk chunk))
+  (let* ((padded-shape (chunk-padded-shape chunk))
+         (rank (shape-rank padded-shape))
+         (left-neighbors-vec (make-array rank :initial-element '()))
+         (right-neighbors-vec (make-array rank :initial-element '())))
+    (labels (;; The other child of the closest ancestor that has a split at
+             ;; AXIS with CHUNK as a child of the supplied SIDE.
+             (sibling (chunk axis side)
+               (let ((parent (chunk-parent chunk)))
+                 (if (not parent)
+                     nil
+                     (let* ((split (chunk-split parent))
+                            (left-child (split-left-child split))
+                            (right-child (split-right-child split)))
+                       (if (and (= axis (split-axis split))
+                                (eq chunk
+                                    (ecase side
+                                      (:left right-child)
+                                      (:right left-child))))
+                           (ecase side
+                             (:left left-child)
+                             (:right right-child))
+                           (sibling parent axis side))))))
+             ;; Find all children of ANCESTOR that appear on the specified
+             ;; SIDE of each split at AXIS, and that intersect with
+             ;; PADDED-SHAPE in every other axis.
+             (relevant-children (ancestor axis side)
+               (if (not ancestor)
+                   '()
+                    (let ((split (chunk-split ancestor)))
+                      (if (not split)
+                          (list ancestor)
+                          (let ((split-axis (split-axis split))
+                                (left-child (split-left-child split))
+                                (right-child (split-right-child split)))
+                            (if (= split-axis axis)
+                                (relevant-children
+                                 (ecase side
+                                   (:left left-child)
+                                   (:right right-child))
+                                 axis
+                                 side)
+                                (append
+                                 (when (relevant-child-p left-child split-axis)
+                                   (relevant-children left-child axis side))
+                                 (when (relevant-child-p right-child split-axis)
+                                   (relevant-children right-child axis side)))))))))
+             ;; Returns whether CHILD's range in an AXIS coincides with any
+             ;; part of the padded shape of the chunk whose vicinity we're
+             ;; computing.
+             (relevant-child-p (child axis)
+               (range-intersectionp
+                (shape-range padded-shape axis)
+                (shape-range (chunk-shape child) axis))))
+      (loop for axis below rank do
+        (setf (svref left-neighbors-vec axis)
+              (relevant-children (sibling chunk axis :left) axis :right))
+        (setf (svref right-neighbors-vec axis)
+              (relevant-children (sibling chunk axis :right) axis :left)))
+      (make-vicinity
+       :left-neighbors-vec left-neighbors-vec
+       :right-neighbors-vec right-neighbors-vec))))
+
 ;;; The function for computing the split priority of a chunk that was
 ;;; supplied to the partitioning operation.
 (defvar *chunk-split-priority*)
@@ -233,7 +329,10 @@ ratio of ghost points to interior points for a split.
     ;; Create the initial chunk for each buffer.
     (do-program-buffers (buffer program)
       (setf (buffer-chunk buffer)
-            (make-chunk :buffer buffer :shape (buffer-shape buffer))))
+            (make-chunk
+             :buffer buffer
+             :shape (buffer-shape buffer)
+             :padded-shape (buffer-shape buffer))))
     ;; Initialize the WRITERS slot of each initial chunk.
     (do-program-buffers (buffer program)
       (let ((writers '()))
@@ -312,13 +411,24 @@ existed, return that split.  Otherwise, return NIL."
                        (range-size (shape-range right-shape axis))))
           (give-up))
         ;; Success!
-        (let* ((left-child (make-chunk :buffer buffer :shape left-shape :parent chunk))
-               (right-child (make-chunk :buffer buffer :shape right-shape :parent chunk))
-               (split (make-split
-                       :parent chunk
-                       :axis axis
-                       :left-child left-child
-                       :right-child right-child)))
+        (let* ((left-child
+                 (make-chunk
+                  :buffer buffer
+                  :shape left-shape
+                  :parent chunk
+                  :padded-shape (compute-chunk-padded-shape left-shape buffer)))
+               (right-child
+                 (make-chunk
+                  :buffer buffer
+                  :shape right-shape
+                  :parent chunk
+                  :padded-shape (compute-chunk-padded-shape right-shape buffer)))
+               (split
+                 (make-split
+                  :parent chunk
+                  :axis axis
+                  :left-child left-child
+                  :right-child right-child)))
           (enqueue-chunk left-child)
           (enqueue-chunk right-child)
           (push split *unpropagated-splits*)

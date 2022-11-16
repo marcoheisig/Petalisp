@@ -15,6 +15,7 @@
   (:export
    ;; IR Conversion
    #:ir-from-lazy-arrays
+   #:program-from-lazy-arrays
 
    ;; Structs
    #:program

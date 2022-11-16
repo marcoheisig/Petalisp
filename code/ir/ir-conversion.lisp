@@ -222,6 +222,13 @@
     ;; that vector.
     (finalize-ir (nreverse root-buffers))))
 
+(defun program-from-lazy-arrays (lazy-arrays &key (kernel-size-threshold 32))
+  (if (null lazy-arrays)
+      (error "Cannot create empty IR programs.")
+      (buffer-program
+       (first
+        (ir-from-lazy-arrays lazy-arrays :kernel-size-threshold kernel-size-threshold)))))
+
 (defun finalize-ir (root-buffers)
   (ensure-tasks root-buffers)
   (map-buffers #'finalize-buffer root-buffers)

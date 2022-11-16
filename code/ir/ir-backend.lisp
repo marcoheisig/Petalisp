@@ -30,9 +30,13 @@
 ;;;
 ;;; Data Flow Graph Evaluation
 
-;;; The *NODES* array maps each kernel of the IR to a specifications of its
-;;; users and dependencies.
+;;; The *NODES* vector maps each kernel of the IR to a specifications of
+;;; its users and dependencies.
 (defvar *nodes*)
+
+;; The *CHUNKS* vector maps each buffer of the IR to the root of a tree of
+;; chunks.
+(defvar *chunks*)
 
 ;;; The *WORKLIST* contains all nodes whose dependencies have already been
 ;;; computed, but which haven't been computed themselves.
@@ -47,9 +51,10 @@
 (defmethod backend-compute
     ((ir-backend ir-backend)
      (lazy-arrays list))
-  (let ((root-buffers (ir-from-lazy-arrays lazy-arrays))
-        (*nodes* (make-hash-table :test #'eq))
-        (*worklist* '()))
+  (let* ((program (program-from-lazy-arrays lazy-arrays))
+         (*chunks* (partition-program-buffers program))
+         (*nodes* (make-hash-table :test #'eq))
+         (*worklist* '()))
     (map-buffers-and-kernels
      ;; Ensure that each buffer has an attached storage array.
      (lambda (buffer)
@@ -69,10 +74,10 @@
                (pushnew node (node-users other-node)))))
          (when (null (node-dependencies node))
            (push node *worklist*))))
-     root-buffers)
+     (program-root-buffers program))
     (loop until (null *worklist*) do
       (execute-node (pop *worklist*)))
-    (mapcar #'petalisp.ir:buffer-storage root-buffers)))
+    (mapcar #'petalisp.ir:buffer-storage (program-root-buffers program))))
 
 (defun ensure-node (kernel ir-backend)
   (or (gethash kernel *nodes*)
