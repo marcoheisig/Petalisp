@@ -151,7 +151,9 @@
           (assert (eq (load-instruction-buffer load-instruction) buffer))
           (loop for offset across (transformation-offsets (load-instruction-transformation load-instruction))
                 for center across (stencil-center stencil)
-                do (assert (<= (abs (- center offset)) *stencil-max-radius*)))
+                for range in (shape-ranges (buffer-shape buffer))
+                do (assert (<= (abs (- center offset))
+                               (* (range-step range) *stencil-max-radius*))))
           (check-reverse-link load-instruction buffer #'map-buffer-load-instructions)))))
   ;; Ensure that all store instructions are wired correctly.
   (loop for (buffer . store-instructions) in (kernel-targets kernel) do
