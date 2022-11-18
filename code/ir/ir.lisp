@@ -677,10 +677,10 @@
           (transform-shape (kernel-iteration-space kernel) transformation))
     (let ((inverse (invert-transformation transformation)))
       (do-kernel-instructions (instruction kernel)
-        (transform-instruction-input instruction inverse))
-      (do-kernel-stencils (stencil kernel)
-        (setf (stencil-center stencil)
-              (apply #'compute-stencil-center (stencil-load-instructions stencil)))))))
+        (transform-instruction-input instruction inverse))))
+  (do-kernel-stencils (stencil kernel)
+    (setf (stencil-center stencil)
+          (apply #'compute-stencil-center (stencil-load-instructions stencil)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
