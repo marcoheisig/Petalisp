@@ -30,11 +30,14 @@
   (svref (proxy-values proxy) value-n))
 
 (defun proxy-ref (proxy &optional (value-n 0))
-  (make-proxy
-   :level (proxy-level proxy)
-   :values (vector (elt (proxy-values proxy) value-n))
-   :expr `(nth-value ,value-n ,(proxy-expr proxy))
-   :type `(values ,(nth (1+ value-n) (proxy-type proxy)) &optional)))
+  (if (and (eql value-n 0)
+           (eql (length (proxy-values proxy)) 1))
+      proxy
+      (make-proxy
+       :level (proxy-level proxy)
+       :values (vector (elt (proxy-values proxy) value-n))
+       :expr `(nth-value ,value-n ,(proxy-expr proxy))
+       :type `(values ,(nth (1+ value-n) (proxy-type proxy)) &optional))))
 
 (defun constant-proxy (form)
   (let ((value (if (constantp form) form `',form)))
@@ -111,10 +114,6 @@
                    for instruction-number from 0
                    do (setf (svref *instructions* instruction-number)
                             (translate-instruction instruction-number)))
-             #+(or)
-             (ensure-proxy
-              :level rank
-              :expr `(print (list :index ,@(map 'list #'proxy-value *index-proxies*))))
              ;; Finally, convert the proxies of each level to suitable
              ;; bindings and apply the loop wrappers.
              `(lambda (.kernel. .iteration-space. &optional (.buffer-storage. #'buffer-storage))
@@ -137,10 +136,12 @@
          (arguments (mapcar #'proxy-value argument-proxies))
          (expr
            (trivia:ematch (proxy-value operator-proxy)
-             ((list 'quote function-name)
+             ((list 'quote (list 'setf function-name))
+              `(setf (,function-name ,@(rest arguments)) ,(first arguments)))
+             ((list 'quote (and function-name (type symbol)))
               `(,function-name ,@arguments))
-             (value
-              `(funcall ,value ,@arguments)))))
+             (operator
+              `(funcall ,operator ,@arguments)))))
     (ensure-proxy
      :level level
      :number-of-values number-of-values
@@ -241,7 +242,7 @@
       ((list :store (list value-n instruction-number) array-number transformation-number)
        (meta-funcall
         0
-        (constant-proxy 'setf-row-major-aref)
+        (constant-proxy '(setf row-major-aref))
         (proxy-ref (aref *instructions* instruction-number) value-n)
         (svref *target-array-proxies* array-number)
         (aref (aref *target-index-proxies-vector* array-number) transformation-number)))
@@ -316,8 +317,6 @@
                     (start (proxy-value (ensure-proxy :expr `(range-start ,range) :name "START")))
                     (step (proxy-value (ensure-proxy :expr `(range-step ,range) :name "STEP")))
                     (end (proxy-value (ensure-proxy :expr `(range-end ,range) :name "END"))))
-               #+(or)
-               (ensure-proxy :expr `(print (list :range :axis ,axis :start ,start :step ,step :end ,end)))
                (setf (svref wrap-in-loop-vector (1+ axis))
                      (if (eql info :contiguous)
                          (lambda (form)
@@ -440,10 +439,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Auxiliary Macros
-
-(defmacro setf-row-major-aref (value array index)
-  `(setf (row-major-aref ,array ,index)
-         ,value))
 
 (defun index-+ (&rest fixnums)
   (apply #'+ fixnums))
