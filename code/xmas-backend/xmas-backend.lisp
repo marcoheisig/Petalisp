@@ -242,11 +242,18 @@
       ;; scheduled.
       (let ((scheduled-kernels '())
             (buffers '()))
-        (do-task-defined-buffers (buffer task) (push buffer buffers))
+        (do-task-defined-buffers (buffer task)
+          (push buffer buffers))
         ;; Start with the buffer with the least depth to automatically get
         ;; the dependencies within the task right.
         (loop for buffer in (sort buffers #'< :key #'buffer-depth) do
-          (let ((subtasks '()))
+          (let* ((ntype (buffer-ntype buffer))
+                 ;; Most CPU's allow atomic writes of individual bytes, but
+                 ;; not of individual half-bytes, quarter-bytes, or bits.
+                 ;; This means that we have to ensure that all writes in a
+                 ;; multi-threaded environment obey a certain alignment.
+                 (alignment (ceiling 8 (petalisp.type-inference:ntype-bits ntype)))
+                 (subtasks '()))
             (do-buffer-inputs (kernel buffer)
               (unless (member kernel scheduled-kernels)
                 (push kernel scheduled-kernels)
@@ -264,27 +271,42 @@
                    (kernel-iteration-space kernel)
                    (ceiling *min-per-thread-cost* cost-per-element)))))
             (unless (null subtasks)
-              (push (petalisp.utilities:karmarkar-karp subtasks number-of-threads :weight #'subtask-cost)
-                    schedule))))))
+              ;; If the total cost of all subtasks is less than a certain
+              ;; threshold, schedule them all on worker zero.  Else,
+              ;; distribute the them evenly across all workers.
+              (push
+               (if (or (< (reduce #'+ subtasks :key #'subtask-cost :initial-value 0) *min-per-thread-cost*)
+                       ;; TODO right now, we disable multi-threading for
+                       ;; non-trivial alignments.
+                       (/= 1 alignment))
+                   (let ((vector (make-array number-of-threads :initial-element '())))
+                     (setf (elt vector 0) subtasks)
+                     vector)
+                   (petalisp.utilities:karmarkar-karp subtasks number-of-threads :weight #'subtask-cost))
+               schedule))))))
     (setf schedule (nreverse schedule))
     (lambda (xmas-backend storage-vector)
       (let* ((worker-pool (xmas-backend-worker-pool xmas-backend))
              (semaphore (bordeaux-threads:make-semaphore))
-             (serious-condition nil)
-             (thunk
-               (lambda ()
-                 (execute-schedule
-                  schedule
-                  storage-vector
-                  (lambda () serious-condition)
-                  (lambda (c)
-                    (setf serious-condition c)
-                    (bordeaux-threads:signal-semaphore semaphore))))))
+             (serious-condition nil))
         (loop for index below number-of-threads do
-          (worker-enqueue (worker-pool-worker worker-pool index) thunk))
+          (worker-enqueue
+           (worker-pool-worker worker-pool index)
+           (lambda ()
+             (barrier)
+             (execute-schedule
+              schedule
+              storage-vector
+              (lambda () serious-condition)
+              (lambda (c)
+                (setf serious-condition c)
+                (bordeaux-threads:signal-semaphore semaphore))))))
+        ;; It is enough to have worker zero signal completion, because we
+        ;; emit a barrier after each step.
         (worker-enqueue
          (worker-pool-worker worker-pool 0)
-         (lambda () (bordeaux-threads:signal-semaphore semaphore)))
+         (lambda ()
+           (bordeaux-threads:signal-semaphore semaphore)))
         (bordeaux-threads:wait-on-semaphore semaphore)
         (when serious-condition (error serious-condition))
         (values-list
