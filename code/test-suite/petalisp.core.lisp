@@ -10,7 +10,6 @@
 
 (define-test range-test
   ;; Range constructors
-  (is (rangep (range 1 1 0)))
   (is (rangep (apply #'range (list 1 3 2))))
   (signals error (range 1 99 0))
   ;; Range operations
