@@ -316,10 +316,7 @@
   (declare (simple-vector storage-vector))
   (let ((id (worker-id *worker*)))
     (loop for vector of-type simple-vector in schedule until (funcall serious-condition) do
-      ;; Emit a barrier if more than worker zero is active.
-      (unless (loop for index from 1 below (length vector)
-                    always (null (svref vector index)))
-        (barrier))
+      (barrier)
       (handler-case
           (loop for subtask in (svref vector id) do
             (funcall (subtask-fn subtask)
