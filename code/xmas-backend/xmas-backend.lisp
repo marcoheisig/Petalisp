@@ -293,7 +293,6 @@
           (worker-enqueue
            (worker-pool-worker worker-pool index)
            (lambda ()
-             (barrier)
              (execute-schedule
               schedule
               storage-vector
@@ -317,6 +316,10 @@
   (declare (simple-vector storage-vector))
   (let ((id (worker-id *worker*)))
     (loop for vector of-type simple-vector in schedule until (funcall serious-condition) do
+      ;; Emit a barrier if more than worker zero is active.
+      (unless (loop for index from 1 below (length vector)
+                    always (null (svref vector index)))
+        (barrier))
       (handler-case
           (loop for subtask in (svref vector id) do
             (funcall (subtask-fn subtask)
@@ -324,11 +327,9 @@
                      (subtask-iteration-space subtask)
                      (lambda (buffer) (svref storage-vector (buffer-number buffer)))))
         (serious-condition (c)
-          (funcall signal-serious-condition c)))
-      ;; Emit a barrier if more than worker zero is active.
-      (unless (loop for index from 1 below (length vector)
-                  always (null (svref vector index)))
-        (barrier)))))
+          (funcall signal-serious-condition c))))
+    ;; Finally, synchronize all workers.
+    (barrier)))
 
 (defun map-partitioned-iteration-space (function iteration-space max-task-size)
   (declare (type shape iteration-space)
