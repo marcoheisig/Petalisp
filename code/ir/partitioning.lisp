@@ -20,10 +20,11 @@
             (:constructor make-chunk))
   ;; The buffer being partitioned by this chunk.
   (buffer nil :type buffer :read-only t)
-  ;; The chunk's shape.
+  ;; The part of the chunk's buffer's shape that is exclusively owned by
+  ;; that chunk and its children.
+  (domain nil :type shape :read-only t)
+  ;; The chunk's domain, padded with ghost layers.
   (shape nil :type shape :read-only t)
-  ;; The chunk's shape, but surrounded by ghost layers.
-  (padded-shape nil :type shape :read-only t)
   ;; The chunk that was split to create this one.
   (parent nil :type (or null chunk) :read-only t)
   ;; A list of entries of the form (ITERATION-SPACE KERNEL . CHUNKS),
@@ -38,13 +39,48 @@
 (defmethod print-object ((chunk chunk) stream)
   (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
           (class-name (class-of chunk))
-          :shape (chunk-shape chunk)
+          :domain (chunk-domain chunk)
           :buffer (chunk-buffer chunk)
           :split (chunk-split chunk)))
 
 (defun chunk-bits (chunk)
+  (declare (chunk chunk))
   (* (petalisp.type-inference:ntype-bits (buffer-ntype (chunk-buffer chunk)))
      (shape-size (chunk-shape chunk))))
+
+(defun chunk-primogenitor (chunk)
+  (declare (chunk chunk))
+  (if (not (chunk-parent chunk))
+      chunk
+      (the (values chunk &optional)
+           (chunk-primogenitor (chunk-parent chunk)))))
+
+(defun compute-program-primogenitor-chunk-vector (program)
+  "Returns a vector whose Nth entry is the primogenitor chunk corresponding
+to the buffer with number N."
+  (let* ((size (program-number-of-buffers program))
+         (result (make-array size :initial-element nil)))
+    ;; Create the initial chunk for each buffer.
+    (do-program-buffers (buffer program)
+      (setf (svref result (buffer-number buffer))
+            (make-chunk
+             :buffer buffer
+             :domain (buffer-shape buffer)
+             :shape (buffer-shape buffer))))
+    ;; Initialize the WRITERS slot of each initial chunk.
+    (do-program-buffers (buffer program result)
+      (let ((writers '()))
+        (do-buffer-inputs (kernel buffer)
+          (let* ((iteration-space (kernel-iteration-space kernel))
+                 (chunks '()))
+            (do-kernel-inputs (buffer kernel)
+              (push (svref result (buffer-number buffer))
+                    chunks))
+            (push (list* iteration-space kernel (nreverse chunks))
+                  writers)))
+        ;; Sort writers such that large iteration spaces come first.
+        (setf (chunk-writers (svref result (buffer-number buffer)))
+              (sort writers #'> :key (lambda (w) (shape-size (first w)))))))))
 
 (defstruct (split
             (:predicate splitp)
@@ -61,7 +97,7 @@
 (defun split-position (split)
   (range-start
    (shape-range
-    (chunk-shape
+    (chunk-domain
      (split-right-child split))
     (split-axis split))))
 
@@ -103,6 +139,10 @@ for debugging."
          (append
           (chunk-chains (split-left-child (chunk-split chunk)))
           (chunk-chains (split-right-child (chunk-split chunk))))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Reasoning About Ghost Layers
 
 (defstruct (ghostspec
             (:predicate ghostspecp)
@@ -175,12 +215,12 @@ for debugging."
      :left-padding-vec left-padding-vec
      :right-padding-vec right-padding-vec)))
 
-(defun compute-chunk-padded-shape (chunk-shape buffer)
-  (declare (shape chunk-shape) (buffer buffer))
+(defun compute-chunk-shape (chunk-domain buffer)
+  (declare (shape chunk-domain) (buffer buffer))
   (let ((ghostspec (buffer-ghostspec buffer)))
     (make-shape
      (loop for axis from 0
-           for chunk-range in (shape-ranges chunk-shape)
+           for chunk-range in (shape-ranges chunk-domain)
            for buffer-range in (shape-ranges (buffer-shape buffer))
            collect
            (if (range-equal chunk-range buffer-range)
@@ -194,8 +234,12 @@ for debugging."
                   (min (+ (range-end chunk-range) (* right-padding step))
                        (range-end buffer-range)))))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Reasoning About Chunk Neighbors
+
 (defstruct (vicinity
-            (:predicate vicinity))
+            (:predicate vicinityp))
   (left-neighbors-vec nil :type simple-vector :read-only t)
   (right-neighbors-vec nil :type simple-vector :read-only t))
 
@@ -207,8 +251,8 @@ for debugging."
 
 (defun compute-chunk-vicinity (chunk)
   (declare (chunk chunk))
-  (let* ((padded-shape (chunk-padded-shape chunk))
-         (rank (shape-rank padded-shape))
+  (let* ((shape (chunk-shape chunk))
+         (rank (shape-rank shape))
          (left-neighbors-vec (make-array rank :initial-element '()))
          (right-neighbors-vec (make-array rank :initial-element '())))
     (labels (;; The other child of the closest ancestor that has a split at
@@ -230,8 +274,8 @@ for debugging."
                              (:right right-child))
                            (sibling parent axis side))))))
              ;; Find all children of ANCESTOR that appear on the specified
-             ;; SIDE of each split at AXIS, and that intersect with
-             ;; PADDED-SHAPE in every other axis.
+             ;; SIDE of each split at AXIS, and that intersect with SHAPE
+             ;; in every other axis.
              (relevant-children (ancestor axis side)
                (if (not ancestor)
                    '()
@@ -254,12 +298,12 @@ for debugging."
                                  (when (relevant-child-p right-child split-axis)
                                    (relevant-children right-child axis side)))))))))
              ;; Returns whether CHILD's range in an AXIS coincides with any
-             ;; part of the padded shape of the chunk whose vicinity we're
+             ;; part of the shape of the chunk whose vicinity we're
              ;; computing.
              (relevant-child-p (child axis)
                (range-intersectionp
-                (shape-range padded-shape axis)
-                (shape-range (chunk-shape child) axis))))
+                (shape-range shape axis)
+                (shape-range (chunk-domain child) axis))))
       (loop for axis below rank do
         (setf (svref left-neighbors-vec axis)
               (relevant-children (sibling chunk axis :left) axis :right))
@@ -268,6 +312,10 @@ for debugging."
       (make-vicinity
        :left-neighbors-vec left-neighbors-vec
        :right-neighbors-vec right-neighbors-vec))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Partitioning
 
 ;;; The function for computing the split priority of a chunk that was
 ;;; supplied to the partitioning operation.
@@ -289,21 +337,21 @@ for debugging."
 (defvar *chunk-split-max-redundancy*)
 
 ;;; A vector for looking up each buffer's initial chunk.
-(declaim (type simple-vector *buffer-chunk-vector*))
-(defvar *buffer-chunk-vector*)
+(declaim (ftype (function (buffer) (values chunk &optional)) *buffer-chunk*))
+(defvar *buffer-chunk*)
 
-(defmacro buffer-chunk (buffer)
-  `(svref *buffer-chunk-vector* (buffer-number ,buffer)))
+(defun buffer-chunk (buffer)
+  (funcall *buffer-chunk* buffer))
 
-;;; A vector for looking up each buffer's ghostspec.
-(declaim (type simple-vector *buffer-ghostspec-vector*))
-(defvar *buffer-ghostspec-vector*)
+;;; A hash table for looking up each buffer's ghostspec.
+(declaim (type hash-table *buffer-ghostspec-table*))
+(defvar *buffer-ghostspec-table*)
 
 (defun buffer-ghostspec (buffer)
-  (let ((position (buffer-number buffer)))
-    (or (svref *buffer-ghostspec-vector* position)
-        (setf (svref *buffer-ghostspec-vector* position)
-              (compute-buffer-ghostspec buffer)))))
+  (declare (buffer buffer))
+  (symbol-macrolet ((place (gethash buffer *buffer-ghostspec-table*)))
+    (the (values ghostspec &optional)
+         (or place (setf place (compute-buffer-ghostspec buffer))))))
 
 ;;; A list of splits that have yet to be propagated to nearby chunks.
 (declaim (type list *unpropagated-splits*))
@@ -327,60 +375,39 @@ for debugging."
 (defun next-chunk-p ()
   (not (priority-queue:pqueue-empty-p *chunk-pqueue*)))
 
-(defun partition-program-buffers
-    (program
+(defun partition-chunks
+    (chunks
      &key
-       (chunk-split-priority 'chunk-bits)
-       (chunk-split-min-priority (* 30 1024))
-       (chunk-split-max-redundancy 0.125)
-     &aux (number-of-buffers (program-number-of-buffers program)))
-  "Returns a vector whose Nth entry is the chunk corresponding to the buffer
-with number N.  Each chunk may be the root of a tree of splits and child
-chunks.  The exact nature of when a chunk is split depends on the supplied
+       (buffer-chunk (alexandria:required-argument :buffer-chunk))
+       (split-priority 'chunk-bits)
+       (split-min-priority (* 30 1024))
+       (split-max-redundancy 0.125))
+  "Attempt to split the supplied sequence of chunks based on the supplied
 keyword arguments.
 
-CHUNK-SPLIT-PRIORITY - A function that takes a chunk and returns an
-unsigned integer that is the priority when considering whether to split the
-chunk.  Chunks with higher priority are split first, and chunks whose
-priority is below a certain minimum priority are not split at all.
+BUFFER-CHUNK - A function for looking up the root chunk of each buffer that
+is encountered during partitioning.
 
-CHUNK-SPLIT-MIN-PRIORITY - An unsigned integer that is the priority a chunk
-must exceed to be considered for splitting.
+SPLIT-PRIORITY - A function that takes a chunk and returns an unsigned
+integer that is the priority when considering whether to split the chunk.
+Chunks with higher priority are split first, and chunks whose priority is
+below a certain minimum priority are not split at all.
 
-CHUNK-SPLIT-MAX-REDUNDANCY - A real number that is the maximum permissible
-ratio of ghost points to interior points for a split.
+SPLIT-MIN-PRIORITY - An unsigned integer that is the priority a chunk must
+exceed to be considered for splitting.
+
+SPLIT-MAX-REDUNDANCY - A real number that is the maximum permissible ratio
+of ghost points to interior points for a split.
 "
-  (let ((*chunk-split-priority* chunk-split-priority)
-        (*chunk-split-min-priority* chunk-split-min-priority)
-        (*chunk-split-max-redundancy* chunk-split-max-redundancy)
-        (*buffer-chunk-vector* (make-array number-of-buffers :initial-element nil))
-        (*buffer-ghostspec-vector* (make-array number-of-buffers :initial-element nil))
+  (let ((*buffer-chunk* buffer-chunk)
+        (*chunk-split-priority* split-priority)
+        (*chunk-split-min-priority* split-min-priority)
+        (*chunk-split-max-redundancy* split-max-redundancy)
+        (*buffer-ghostspec-table* (make-hash-table :test #'eq))
         (*chunk-pqueue* (priority-queue:make-pqueue #'>))
         (*unpropagated-splits* '()))
-    ;; Create the initial chunk for each buffer.
-    (do-program-buffers (buffer program)
-      (setf (buffer-chunk buffer)
-            (make-chunk
-             :buffer buffer
-             :shape (buffer-shape buffer)
-             :padded-shape (buffer-shape buffer))))
-    ;; Initialize the WRITERS slot of each initial chunk.
-    (do-program-buffers (buffer program)
-      (let ((writers '()))
-        (do-buffer-inputs (kernel buffer)
-          (let* ((iteration-space (kernel-iteration-space kernel))
-                 (chunks '()))
-            (do-kernel-inputs (buffer kernel)
-              (push (buffer-chunk buffer)
-                    chunks))
-            (push (list* iteration-space kernel (nreverse chunks))
-                  writers)))
-        ;; Sort writers such that large iteration spaces come first.
-        (setf (chunk-writers (buffer-chunk buffer))
-              (sort writers #'> :key (lambda (w) (shape-size (first w)))))))
-    ;; Enqueue all initial chunks.
-    (do-program-buffers (buffer program)
-      (enqueue-chunk (buffer-chunk buffer)))
+    ;; Enqueue all supplied chunks.
+    (map nil #'enqueue-chunk chunks)
     ;; Split chunks until the queue is empty.
     (loop while (next-chunk-p) for chunk = (next-chunk) do
       ;; Skip chunks that have already been split.
@@ -390,8 +417,7 @@ ratio of ghost points to interior points for a split.
         ;; writers of its left and right child, which happens to propagate
         ;; the split as a side-effect.
         (loop until (null *unpropagated-splits*) do
-          (propagate-split/determine-child-writers (pop *unpropagated-splits*)))))
-    *buffer-chunk-vector*))
+          (propagate-split/determine-child-writers (pop *unpropagated-splits*)))))))
 
 (defun attempt-split (chunk axis &optional position)
   "Attempt to split CHUNK at the supplied AXIS and POSITION.  If the split
@@ -401,8 +427,8 @@ existed, return that split.  Otherwise, return NIL."
     ;; Ensure AXIS is not NIL.
     (unless axis (give-up))
     ;; Ensure the supplied AXIS and POSITION denote a split within the chunk's shape
-    (let* ((shape (chunk-shape chunk))
-           (range (shape-range shape axis)))
+    (let* ((domain (chunk-domain chunk))
+           (range (shape-range domain axis)))
       (if (not position)
           (unless (<= 2 (range-size range))
             (give-up))
@@ -430,30 +456,30 @@ existed, return that split.  Otherwise, return NIL."
       ;; Ensure that the ghostspec permits splitting at that axis.
       (unless (and left-padding right-padding)
         (give-up))
-      (multiple-value-bind (left-shape right-shape)
-          (split-shape (chunk-shape chunk) axis position)
+      (multiple-value-bind (left-domain right-domain)
+          (split-shape (chunk-domain chunk) axis position)
         ;; Ensure the split won't introduce too many ghost layers.
         (unless (<= right-padding
                     (* *chunk-split-max-redundancy*
-                       (range-size (shape-range left-shape axis))))
+                       (range-size (shape-range left-domain axis))))
           (give-up))
         (unless (<= left-padding
                     (* *chunk-split-max-redundancy*
-                       (range-size (shape-range right-shape axis))))
+                       (range-size (shape-range right-domain axis))))
           (give-up))
         ;; Success!
         (let* ((left-child
                  (make-chunk
                   :buffer buffer
-                  :shape left-shape
+                  :domain left-domain
                   :parent chunk
-                  :padded-shape (compute-chunk-padded-shape left-shape buffer)))
+                  :shape (compute-chunk-shape left-domain buffer)))
                (right-child
                  (make-chunk
                   :buffer buffer
-                  :shape right-shape
+                  :domain right-domain
                   :parent chunk
-                  :padded-shape (compute-chunk-padded-shape right-shape buffer)))
+                  :shape (compute-chunk-shape right-domain buffer)))
                (split
                  (make-split
                   :parent chunk
@@ -469,19 +495,19 @@ existed, return that split.  Otherwise, return NIL."
 (defun chunk-split-axis (chunk)
   "Returns the axis where chunk can be split while introducing the minimum
 number of ghost points, or NIL, if the chunk cannot be split further."
-  (let* ((shape (chunk-shape chunk))
+  (let* ((domain (chunk-domain chunk))
          (buffer (chunk-buffer chunk))
          (ghostspec (buffer-ghostspec buffer))
-         (minimum-number-of-ghost-points (* *chunk-split-max-redundancy* (shape-size shape)))
+         (minimum-number-of-ghost-points (* *chunk-split-max-redundancy* (shape-size domain)))
          (best-axis nil))
-    (dotimes (axis (shape-rank shape) best-axis)
+    (dotimes (axis (shape-rank domain) best-axis)
       (let ((left (ghostspec-left-padding ghostspec axis))
             (right (ghostspec-right-padding ghostspec axis)))
         (when (and left right)
           (let ((number-of-ghost-points
                   (* (+ left right)
-                     (/ (shape-size shape)
-                        (range-size (shape-range shape axis))))))
+                     (/ (shape-size domain)
+                        (range-size (shape-range domain axis))))))
             (when (< number-of-ghost-points minimum-number-of-ghost-points)
               (setf minimum-number-of-ghost-points number-of-ghost-points)
               (setf best-axis axis))))))))

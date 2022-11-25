@@ -151,9 +151,12 @@
    #:instruction-number
    #:instruction-inputs
    #:instruction-transformation
+   #:iref-instruction-transformation
    #:call-instruction-operator
    #:store-instruction-buffer
+   #:store-instruction-transformation
    #:load-instruction-buffer
+   #:load-instruction-transformation
 
    ;; Devices, Cores, and Memory
    #:device
@@ -174,6 +177,33 @@
    #:memory-latency
    #:memory-bandwidth
    #:memory-parent-bandwidth
+
+   ;; Partitioning
+   #:chunk
+   #:chunkp
+   #:chunk-buffer
+   #:chunk-shape
+   #:chunk-padded-shape
+   #:chunk-parent
+   #:chunk-writers
+   #:chunk-split
+   #:chunk-bits
+   #:chunk-primogenitor
+   #:chunk-infants
+   #:split
+   #:splitp
+   #:split-parent
+   #:split-axis
+   #:split-position
+   #:split-left-child
+   #:split-right-child
+   #:vicinity
+   #:vicinityp
+   #:vicinity-left-neighbors
+   #:vicinity-right-neighbors
+   #:compute-chunk-vicinity
+   #:compute-program-primogenitor-chunk-vector
+   #:partition-chunks
 
    ;; Miscellaneous
    #:*stencil-max-radius*
