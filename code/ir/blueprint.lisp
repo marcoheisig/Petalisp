@@ -177,9 +177,9 @@ which makes them ideal for caching."
     (instruction-transformation iref-instruction))))
 
 (defun fnrecord-blueprint (fnrecord)
-  (let ((function (typo:fnrecord-function fnrecord)))
-    (if (symbolp function)
-        function
+  (let ((name (typo:fnrecord-name fnrecord)))
+    (if (symbolp name)
+        name
         :any)))
 
 (defun value-blueprint (value)
