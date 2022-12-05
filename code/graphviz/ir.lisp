@@ -26,6 +26,34 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; Tasks as Subgraphs
+
+(defvar *task-cluster-table*)
+
+(defmethod cl-dot:generate-graph-from-roots :around
+    ((graph ir-graph) roots &optional attributes)
+  (declare (ignore graph roots attributes))
+  (let ((*task-cluster-table* (make-hash-table)))
+    (call-next-method)))
+
+(defun task-cluster (task)
+  (alexandria:ensure-gethash
+   task
+   *task-cluster-table*
+   (make-instance 'cl-dot:cluster
+     :attributes
+     (list :label (format nil "task-~D" (petalisp.ir:task-number task))
+           :penwidth 2.0
+           :color "gray"))))
+
+(defmethod cl-dot:graph-object-cluster ((graph ir-graph) (kernel petalisp.ir:kernel))
+  (task-cluster (petalisp.ir:kernel-task kernel)))
+
+(defmethod cl-dot:graph-object-cluster ((graph ir-graph) (buffer petalisp.ir:buffer))
+  (task-cluster (petalisp.ir:buffer-task buffer)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; Connectivity
 
 (defmethod graphviz-potential-edges append
