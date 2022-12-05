@@ -19,12 +19,11 @@
   :components
   ((:file "packages")
    (:file "test-suite")
-   (:file "code-statistics")
    (:file "testing-backend")
+   (:file "code-statistics")
    (:file "defgenerator")
    (:file "generators")
    (:file "run-petalisp-test-suite")
-   (:file "petalisp.type-inference")
    (:file "petalisp.utilities")
    (:file "petalisp.core")
    (:file "petalisp.examples")))

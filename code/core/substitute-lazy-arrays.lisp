@@ -15,7 +15,7 @@
             (assert (shape=
                      (lazy-array-shape new-lazy-array)
                      (lazy-array-shape old-lazy-array)))
-            (assert (petalisp.type-inference:ntype-subtypep
+            (assert (typo:ntype-subtypep
                      (lazy-array-ntype new-lazy-array)
                      (lazy-array-ntype old-lazy-array)))
             (setf (gethash old-lazy-array *substitutions*)
@@ -33,21 +33,21 @@
                :shape (lazy-array-shape lazy-array)
                :ntype (lazy-array-ntype lazy-array)
                :depth (lazy-array-depth lazy-array)
-               :refcount (lazy-array-refcount lazy-array)
                :delayed-action
-               (substitute-delayed-action (lazy-array-delayed-action lazy-array)))))))
+               (substitute-delayed-action
+                (lazy-array-delayed-action lazy-array)))))))
 
 (defgeneric substitute-delayed-action (delayed-action))
 
 (defmethod substitute-delayed-action ((delayed-map delayed-map))
   (make-delayed-map
-   :operator (delayed-map-operator delayed-map)
+   :fnrecord (delayed-map-fnrecord delayed-map)
    :inputs (mapcar #'substitute-lazy-array (delayed-map-inputs delayed-map))))
 
 (defmethod substitute-delayed-action ((delayed-multiple-value-map delayed-multiple-value-map))
   (make-delayed-multiple-value-map
-   :operator (delayed-multiple-value-map-operator delayed-multiple-value-map)
-   :ntypes (delayed-multiple-value-map-ntypes delayed-multiple-value-map)
+   :fnrecord (delayed-multiple-value-map-fnrecord delayed-multiple-value-map)
+   :values-ntype (delayed-multiple-value-map-values-ntype delayed-multiple-value-map)
    :inputs (mapcar #'substitute-lazy-array (delayed-multiple-value-map-inputs delayed-multiple-value-map))))
 
 (defmethod substitute-delayed-action ((delayed-nth-value delayed-nth-value))

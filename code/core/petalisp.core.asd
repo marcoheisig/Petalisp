@@ -8,7 +8,7 @@
    "lparallel"
    "trivia"
    "petalisp.utilities"
-   "petalisp.type-inference")
+   "typo")
 
   :in-order-to ((test-op (test-op "petalisp.test-suite")))
 

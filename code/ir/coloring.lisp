@@ -53,8 +53,8 @@ list of buffers, it comes first."
                       ;; The live buffers at a task are those buffers that
                       ;; are live at any of its successors, plus those used
                       ;; by it, minus those defined by it.
-                      (do-task-successors (successor task)
-                        (mapc #'collect (svref task-live-buffers-vector (task-number successor))))
+                      (unless (null (task-successors task))
+                        (mapc #'collect (svref task-live-buffers-vector (1+ index))))
                       (do-task-kernels (kernel task)
                         (map-kernel-inputs #'collect kernel)))
                     (setf (aref task-live-buffers-vector (task-number task))

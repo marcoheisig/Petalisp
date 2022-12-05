@@ -6,10 +6,9 @@
             (:predicate memory-pool-p)
             (:constructor make-memory-pool ()))
   (ntype-allocator-vector
-   (let* ((size (length petalisp.type-inference:*ntypes*))
+   (let* ((size typo:+primitive-ntype-limit+)
           (vector (make-array size)))
-     (loop for index below size
-           for ntype across petalisp.type-inference:*ntypes*
+     (loop for index below typo:+primitive-ntype-limit+
            do (setf (svref vector index)
                     (make-hash-table :test #'equal)))
      vector)
@@ -19,7 +18,7 @@
 (defmacro memory-pool-weak-pointer-list (memory-pool ntype dimensions)
   `(gethash ,dimensions
             (svref (memory-pool-ntype-allocator-vector ,memory-pool)
-                   (petalisp.type-inference:ntype-id ,ntype))
+                   (typo:ntype-index ,ntype))
             '()))
 
 (defun memory-pool-allocate (memory-pool ntype dimensions)
@@ -35,11 +34,11 @@
                   (push weak-pointer list)))
       (setf weak-pointers list)
       (if (null array)
-          (make-array dimensions :element-type (petalisp.type-inference:type-specifier ntype))
+          (make-array dimensions :element-type (typo:ntype-type-specifier ntype))
           (values array)))))
 
 (defun memory-pool-free (memory-pool array)
-  (let ((ntype (petalisp.type-inference:array-element-ntype array))
+  (let ((ntype (typo:array-element-ntype array))
         (dimensions (array-dimensions array)))
     (symbol-macrolet
         ((weak-pointers (memory-pool-weak-pointer-list memory-pool ntype dimensions)))

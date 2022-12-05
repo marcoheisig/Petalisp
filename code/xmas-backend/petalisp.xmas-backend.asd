@@ -10,9 +10,9 @@
    "trivia"
    "trivial-garbage"
    "petalisp.utilities"
-   "petalisp.type-inference"
    "petalisp.core"
-   "petalisp.ir")
+   "petalisp.ir"
+   "typo")
 
   :serial t
   :components

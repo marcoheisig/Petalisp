@@ -217,7 +217,7 @@
             (ensure-proxy
              :name "FN"
              :expr
-             `(call-instruction-operator
+             `(call-instruction-function
                ,(proxy-value
                  (ensure-proxy
                   :expr `(aref .instructions. ,instruction-number)
@@ -349,7 +349,7 @@
       do (let* ((buffer-proxy (ensure-proxy
                                :expr `(first ,(proxy-value entry-proxy))
                                :name "BUFFER"))
-                (element-type (petalisp.type-inference:type-specifier ntype))
+                (element-type (typo:ntype-type-specifier ntype))
                 (array-proxy (ensure-proxy
                               :name (ecase kind (:sources "SRC") (:targets "DST"))
                               :expr `(funcall .buffer-storage. ,(proxy-value buffer-proxy))

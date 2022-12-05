@@ -100,7 +100,7 @@
 
 (defun cluster-ntype (cluster)
   (declare (cluster cluster))
-  (petalisp.type-inference:generalize-ntype
+  (typo:ntype-primitive-ntype
    (lazy-array-ntype
     (cluster-lazy-array cluster))))
 
@@ -194,7 +194,7 @@
              (buffer (make-buffer
                       :shape shape
                       :depth (lazy-array-depth lazy-array)
-                      :ntype (petalisp.type-inference:generalize-ntype
+                      :ntype (typo:ntype-primitive-ntype
                               (lazy-array-ntype lazy-array))))
              (dendrite (make-dendrite cluster shape (list buffer))))
         (push buffer root-buffers)
@@ -443,15 +443,17 @@
   ;; a wildly different way than others.
   (let* ((shape-dendrites-alist (partition-dendrites (cluster-dendrites cluster)))
          (depth (lazy-array-depth lazy-array))
+         (values-ntype (delayed-multiple-value-map-values-ntype delayed-multiple-value-map))
+         (refbits (delayed-multiple-value-map-refbits delayed-multiple-value-map))
          ;; A list of buffer-dendrites alists, one for each value returned
          ;; by the lazy multiple value map instruction.  Each
          ;; buffer-dendrites alist has the same length as the shape
          ;; dendrites alist.  Entries of a buffer-dendrites alist are NIL
          ;; in case the corresponding buffer is never referenced.
          (list-of-buffer-dendrites-alists
-           (loop for element-ntype in (delayed-multiple-value-map-ntypes delayed-multiple-value-map)
-                 for buffer-ntype = (petalisp.type-inference:generalize-ntype element-ntype)
-                 for value-n from 0
+           (loop for value-n below (integer-length refbits)
+                 for element-ntype = (typo:values-ntype-nth-value-ntype value-n values-ntype)
+                 for buffer-ntype = (typo:ntype-primitive-ntype element-ntype)
                  collect
                  (loop for entry in shape-dendrites-alist
                        for dendrites = (remove value-n (cdr entry)
@@ -649,7 +651,7 @@
       (setf (cdr cons)
             (make-call-instruction
              (delayed-map-number-of-values delayed-map)
-             (delayed-map-operator delayed-map)
+             (delayed-map-fnrecord delayed-map)
              input-conses))
       ;; If our function has zero inputs, we are done.  Otherwise we create
       ;; one dendrite for each input and continue growing.
@@ -681,7 +683,7 @@
            (shape (lazy-array-shape lazy-array))
            (storage (delayed-array-storage delayed-array))
            (depth (lazy-array-depth lazy-array))
-           (ntype (petalisp.type-inference:generalize-ntype
+           (ntype (typo:ntype-primitive-ntype
                    (lazy-array-ntype lazy-array))))
       (multiple-value-bind (buffer reusedp)
           (if (zerop (shape-rank shape))
@@ -727,7 +729,7 @@
     (let* ((kernel (stem-kernel stem))
            (shape (lazy-array-shape lazy-array))
            (depth (lazy-array-depth lazy-array))
-           (ntype (petalisp.type-inference:generalize-ntype
+           (ntype (typo:ntype-primitive-ntype
                    (lazy-array-ntype lazy-array))))
       (multiple-value-bind (buffer reusedp)
           (alexandria:ensure-gethash
@@ -1059,7 +1061,7 @@
     call-instruction
     (make-call-instruction
      (call-instruction-number-of-values call-instruction)
-     (call-instruction-operator call-instruction)
+     (call-instruction-fnrecord call-instruction)
      (loop for (value-n . instruction) in (call-instruction-inputs call-instruction)
            collect
            (clone-reference value-n instruction kernel transformation))))))

@@ -8,76 +8,86 @@
 
 (defun lazy-multiple-value-map
     (function n-outputs inputs
-     &aux
-       (shape (lazy-array-shape (first inputs))))
+     &aux (shape (lazy-array-shape (first inputs))))
   (declare (type (or symbol function) function)
            (unsigned-byte n-outputs)
            (shape shape)
            (list inputs))
-  (labels
-      ((wrap-constant (constant)
-         (lazy-ref
-          (lazy-array-from-scalar constant)
-          shape
-          (make-transformation
-           :input-rank (shape-rank shape)
-           :output-rank 0)))
-       (wrap-function (ntypes operator inputs)
-         (trivia:match ntypes
-           ;; Zero return values.
-           ((list)
-            (values))
-           ;; One return value.
-           ((list ntype)
-            (make-lazy-array
-             :shape shape
-             :ntype ntype
-             :depth (1+ (maxdepth inputs))
-             :delayed-action
-             (make-delayed-map
-              :operator operator
-              :inputs inputs)))
-           ;; More than one return value.
-           (_
-            (let* ((depth (1+ (maxdepth inputs)))
-                   (default-ntype (petalisp.type-inference:ntype 'null))
-                   (ntypes (replace (make-list n-outputs :initial-element default-ntype)
-                                    ntypes))
-                   (input
-                     (make-lazy-array
-                      :shape shape
-                      :ntype nil
-                      :depth depth
-                      :refcount (length ntypes)
-                      :delayed-action
-                      (make-delayed-multiple-value-map
-                       :operator operator
-                       :inputs inputs
-                       :ntypes ntypes))))
-              (values-list
-               (loop for ntype in ntypes
-                     for value-n from 0
-                     collect
-                     (make-lazy-array
-                      :shape shape
-                      :ntype ntype
-                      :depth (1+ depth)
-                      :delayed-action
-                      (make-delayed-nth-value
-                       :number value-n
-                       :input input))))))))
-       (default ()
-         (wrap-function
-          (make-list n-outputs :initial-element (petalisp.type-inference:ntype t))
-          function
-          inputs)))
+  (labels ((wrapper-nth-value (n lazy-array)
+             (let ((delayed-action (lazy-array-delayed-action lazy-array)))
+               (typecase delayed-action
+                 (delayed-multiple-value-map
+                  (let* ((values-ntype (delayed-multiple-value-map-values-ntype delayed-action))
+                         (ntype (typo:values-ntype-nth-value-ntype n values-ntype)))
+                    (if (typo:eql-ntype-p ntype)
+                        (wrap-constant (typo:eql-ntype-object ntype))
+                        (make-lazy-array
+                         :shape shape
+                         :ntype ntype
+                         :depth (1+ (lazy-array-depth lazy-array))
+                         :delayed-action
+                         (make-delayed-nth-value
+                          :number n
+                          :input lazy-array)))))
+                 (otherwise
+                  (if (= n 0)
+                      lazy-array
+                      (wrap-constant nil))))))
+           (wrapper-primary-value (lazy-array)
+             (wrapper-nth-value 0 lazy-array))
+           (wrapper-nth-value-ntype (n lazy-array)
+             (let ((delayed-action (lazy-array-delayed-action lazy-array)))
+               (typecase delayed-action
+                 (delayed-multiple-value-map
+                  (typo:values-ntype-nth-value-ntype
+                   n
+                   (delayed-multiple-value-map-values-ntype delayed-action)))
+                 (otherwise
+                  (if (= n 0)
+                      (lazy-array-ntype lazy-array)
+                      (typo:ntype-of nil))))))
+           (wrap-constant (constant)
+             (lazy-ref
+              (lazy-array-from-scalar constant)
+              shape
+              (make-transformation
+               :input-rank (shape-rank shape)
+               :output-rank 0)))
+           (wrap-function (fnrecord input-wrappers required optional rest)
+             (declare (typo:fnrecord fnrecord)
+                      (list input-wrappers required optional)
+                      (type (or null typo:ntype) rest))
+             (let* ((inputs (mapcar #'wrapper-primary-value input-wrappers))
+                    (depth (1+ (maxdepth inputs)))
+                    (n-required (length required))
+                    (n-optional (length optional)))
+               (if (and (= 1 n-required) (= 0 n-optional) (not rest))
+                   (make-lazy-array
+                    :shape shape
+                    :ntype (first required)
+                    :depth depth
+                    :delayed-action
+                    (make-delayed-map
+                     :fnrecord fnrecord
+                     :inputs inputs))
+                   (make-lazy-array
+                    :shape shape
+                    :ntype (typo:empty-ntype)
+                    :depth depth
+                    :delayed-action
+                    (make-delayed-multiple-value-map
+                     :fnrecord fnrecord
+                     :inputs inputs
+                     :values-ntype
+                     (typo:make-values-ntype required optional rest)))))))
     (if (empty-shape-p shape)
         (empty-lazy-arrays n-outputs shape)
-        ;; The type inference does most of the work here if we tell it how
-        ;; to obtain the ntype of a lazy array and how to represent
-        ;; constants and function calls as lazy arrays.  It is almost as if
-        ;; the type inference was written for this very case :)
-        (petalisp.type-inference:specialize
-         function
-         inputs
-         #'lazy-array-ntype #'wrap-constant #'wrap-function #'default))))
+        (let ((wrapper (typo:specialize
+                        function
+                        inputs
+                        :wrap-constant #'wrap-constant
+                        :wrap-function #'wrap-function
+                        :wrapper-nth-value-ntype #'wrapper-nth-value-ntype)))
+          (values-list
+           (loop for n below n-outputs
+                 collect (wrapper-nth-value n wrapper)))))))

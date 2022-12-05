@@ -14,7 +14,7 @@
 ;;; touched only wastes virtual address space and doesn't put additional
 ;;; strain on the bandwidth, we consider this an acceptable trade-off.
 
-(defconstant +memory-pool-ntypes+ (length petalisp.type-inference:*ntypes*))
+(defconstant +memory-pool-ntypes+ typo:+primitive-ntype-limit+)
 
 (defconstant +memory-pool-bits+ 53)
 
@@ -36,7 +36,7 @@
 is at least SIZE."
   (declare (memory-pool memory-pool) (unsigned-byte size))
   (let* ((a (memory-pool-bucket-vector memory-pool))
-         (i (+ (* (petalisp.type-inference:ntype-id ntype) +memory-pool-bits+)
+         (i (+ (* (typo:ntype-index ntype) +memory-pool-bits+)
                (integer-length size))))
     (loop for x = (atomics:atomic-pop (svref a i)) until (not x)
           for value = (trivial-garbage:weak-pointer-value x)
@@ -45,15 +45,14 @@ is at least SIZE."
                (return
                  (make-array
                   (clp2 size)
-                  :element-type (petalisp.type-inference:type-specifier ntype))))))
+                  :element-type (typo:ntype-type-specifier ntype))))))
 
 (defun memory-pool-free (memory-pool allocation)
   (declare (memory-pool memory-pool)
            (vector allocation))
   (let* ((a (memory-pool-bucket-vector memory-pool))
          (n (length allocation))
-         (i (+ (* (petalisp.type-inference:ntype-id
-                   (petalisp.type-inference:array-element-ntype allocation))
+         (i (+ (* (typo:ntype-index (typo:array-element-ntype allocation))
                   +memory-pool-bits+)
                (integer-length n))))
     (unless (= n (clp2 n))
@@ -65,7 +64,7 @@ is at least SIZE."
 
 (defun memory-pool-benchmark (&optional (rep 100000))
   (let ((pool (make-memory-pool))
-        (ntype (petalisp.type-inference:ntype 't)))
+        (ntype (typo:type-specifier-ntype 't)))
     (time
      (loop repeat rep do
        (let* ((a (memory-pool-allocate pool ntype 100))

@@ -120,7 +120,3 @@
 
 (defun type-specifier-p (object)
   (ignore-errors (typep 42 object) t))
-
-(defun run-tests (&rest tests)
-  (with-test-harness (mapc #'funcall (alexandria:shuffle tests)))
-  (values))

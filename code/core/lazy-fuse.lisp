@@ -35,9 +35,7 @@
                      (lazy-array-shape lazy-array-2))))))
        lazy-arrays :length 2 :copy nil)
       (let ((shape (apply #'fuse-shapes (mapcar #'lazy-array-shape lazy-arrays)))
-            (ntype (reduce #'petalisp.type-inference:ntype-union
-                           lazy-arrays
-                           :key #'lazy-array-ntype)))
+            (ntype (reduce #'typo:ntype-union lazy-arrays :key #'lazy-array-ntype)))
         ;; Check that the predicted result shape is valid.
         (unless (= (reduce #'+ lazy-arrays :key #'lazy-array-size)
                    (shape-size shape))
@@ -47,10 +45,9 @@
         ;; Optimization: If the content of the fusion is predicted to be a
         ;; constant, we replace the entire fusion by a reference to that
         ;; constant.
-        (when (petalisp.type-inference:eql-ntype-p ntype)
+        (when (typo:eql-ntype-p ntype)
           (return-from lazy-fuse
-            (lazy-ref
-             (lazy-array-from-scalar ntype)
+            (lazy-ref (lazy-array-from-scalar (typo:eql-ntype-object ntype))
              shape
              (make-transformation
               :input-rank (shape-rank shape)

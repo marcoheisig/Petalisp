@@ -162,8 +162,8 @@
                                (array-dimension array axis))))
     (error "Not a simple array of shape ~S: ~S"
            (buffer-shape buffer) array))
-  (unless (petalisp.type-inference:ntype=
-           (petalisp.type-inference:array-element-ntype array)
+  (unless (typo:ntype=
+           (typo:array-element-ntype array)
            (buffer-ntype buffer))
     (error "Not an array of type ~S: ~S"
            (array-element-type array)
@@ -252,7 +252,7 @@
                  ;; not of individual half-bytes, quarter-bytes, or bits.
                  ;; This means that we have to ensure that all writes in a
                  ;; multi-threaded environment obey a certain alignment.
-                 (alignment (ceiling 8 (petalisp.type-inference:ntype-bits ntype)))
+                 (alignment (ceiling 8 (typo:ntype-bits ntype)))
                  (subtasks '()))
             (do-buffer-inputs (kernel buffer)
               (unless (member kernel scheduled-kernels)

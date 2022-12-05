@@ -22,7 +22,7 @@
 ;;;
 ;;; <iref> := [<permutation> { <scaling> | :any }]
 ;;;
-;;; <instruction> := [:call number-of-values { operator | :any } <input>*] |
+;;; <instruction> := [:call number-of-values { function-name | :any } <input>*] |
 ;;;                  [:store <input> <target-number> <target-transformation-number>] |
 ;;;                  [:load <source-number> <source-transformation-number> <offset>*] |
 ;;;                  [:iref <iref>]
@@ -131,7 +131,7 @@ which makes them ideal for caching."
   (ucons:ulist*
    :call
    (call-instruction-number-of-values call-instruction)
-   (operator-blueprint (call-instruction-operator call-instruction))
+   (fnrecord-blueprint (call-instruction-fnrecord call-instruction))
    (ucons:umapcar #'value-blueprint (instruction-inputs call-instruction))))
 
 (defmethod instruction-blueprint
@@ -176,10 +176,11 @@ which makes them ideal for caching."
    (transformation-blueprint
     (instruction-transformation iref-instruction))))
 
-(defun operator-blueprint (operator)
-  (if (symbolp operator)
-      operator
-      :any))
+(defun fnrecord-blueprint (fnrecord)
+  (let ((function (typo:fnrecord-function fnrecord)))
+    (if (symbolp function)
+        function
+        :any)))
 
 (defun value-blueprint (value)
   (destructuring-bind (value-n . instruction) value

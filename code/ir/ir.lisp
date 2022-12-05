@@ -62,7 +62,7 @@
   ;; The shape of this buffer.
   (shape nil :type shape)
   ;; The type code of all elements stored in this buffer.
-  (ntype nil :type petalisp.type-inference:ntype)
+  (ntype nil :type typo:ntype)
   ;; The depth of the corresponding lazy array of this buffer.
   (depth nil :type (and unsigned-byte fixnum))
   ;; An alist whose keys are kernels writing to this buffer, and whose
@@ -103,7 +103,7 @@
 
 (declaim (inline buffer-bits))
 (defun buffer-bits (buffer)
-  (* (petalisp.type-inference::ntype-bits (buffer-ntype buffer))
+  (* (typo:ntype-bits (buffer-ntype buffer))
      (shape-size (buffer-shape buffer))))
 
 ;;; A kernel represents a computation that, for each element in its
@@ -164,9 +164,13 @@
             (:include instruction)
             (:predicate call-instruction-p)
             (:copier nil)
-            (:constructor make-call-instruction (number-of-values operator inputs)))
-  (operator nil :type (or function symbol))
+            (:constructor make-call-instruction (number-of-values fnrecord inputs)))
+  (fnrecord nil :type typo:fnrecord)
   (number-of-values nil :type (integer 0 (#.multiple-values-limit))))
+
+(defun call-instruction-function (call-instruction)
+  (typo:fnrecord-function
+   (call-instruction-fnrecord call-instruction)))
 
 ;;; We call an instruction an iterating instruction, if its behavior
 ;;; directly depends on the current element of the iteration space.
@@ -367,8 +371,7 @@
 (defmethod print-object ((buffer buffer) stream)
   (print-unreadable-object (buffer stream :type t :identity t)
     (format stream "~S ~S"
-            (petalisp.type-inference:type-specifier
-             (buffer-ntype buffer))
+            (typo:ntype-type-specifier (buffer-ntype buffer))
             (buffer-shape buffer))))
 
 (defmethod print-object ((kernel kernel) stream)
@@ -385,7 +388,7 @@
   (print-unreadable-object (call-instruction stream :type t)
     (format stream "~S ~S ~S"
             (instruction-number call-instruction)
-            (call-instruction-operator call-instruction)
+            (typo:fnrecord-function (call-instruction-fnrecord call-instruction))
             (mapcar #'simplify-input (instruction-inputs call-instruction)))))
 
 (defmethod print-object ((load-instruction load-instruction) stream)
@@ -596,7 +599,7 @@
     (do-program-buffers (buffer program)
       (unless (leaf-buffer-p buffer)
         (push buffer buffers)))
-    (setf buffers (stable-sort buffers #'petalisp.type-inference:ntype< :key #'buffer-ntype))
+    (setf buffers (stable-sort buffers #'< :key (alexandria:compose #'typo:ntype-index #'buffer-ntype)))
     (setf buffers (stable-sort buffers #'shape< :key #'buffer-shape))
     (loop until (null buffers) do
       (let* ((buffer (first buffers))
@@ -611,7 +614,7 @@
                            (other-shape (buffer-shape other-buffer))
                            (other-ntype (buffer-ntype other-buffer)))
                       (and (shape= shape other-shape)
-                           (petalisp.type-inference:ntype= ntype other-ntype)))
+                           (typo:ntype= ntype other-ntype)))
               do (setf last (cdr last)))
         ;; Destructively cut the list of buffers right after that last
         ;; cons.
@@ -769,7 +772,7 @@
   (declare (buffer buffer))
   (let* ((shape (buffer-shape buffer))
          (ntype (buffer-ntype buffer))
-         (etype (petalisp.type-inference:type-specifier ntype)))
+         (etype (typo:ntype-type-specifier ntype)))
     (make-array (shape-dimensions shape) :element-type etype)))
 
 (defun ensure-array-buffer-compatibility (array buffer)
@@ -786,8 +789,8 @@
                (range-size range)
                axis
                (array-dimension array axis))))
-    (unless (petalisp.type-inference:ntype=
-             (petalisp.type-inference:array-element-ntype array)
+    (unless (typo:ntype=
+             (typo:array-element-ntype array)
              (buffer-ntype buffer))
       (error "Not an array of type ~S: ~S"
              (array-element-type array)

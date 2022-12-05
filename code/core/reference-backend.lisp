@@ -42,7 +42,7 @@
 
 (defmethod delayed-action-value
     ((delayed-map delayed-map) index)
-  (apply (delayed-map-operator delayed-map)
+  (apply (typo:fnrecord-function (delayed-map-fnrecord delayed-map))
          (mapcar
           (lambda (input)
             (lazy-array-value input index))
@@ -51,7 +51,8 @@
 (defmethod delayed-action-value
     ((delayed-multiple-value-map delayed-multiple-value-map) index)
   (multiple-value-list
-   (apply (delayed-multiple-value-map-operator delayed-multiple-value-map)
+   (apply (typo:fnrecord-function
+           (delayed-multiple-value-map-fnrecord delayed-multiple-value-map))
           (mapcar
            (lambda (input)
              (lazy-array-value input index))

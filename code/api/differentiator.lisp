@@ -62,8 +62,8 @@
                     (t
                      (lazy-reshape
                       (lazy 'coerce gradient
-                            (petalisp.type-inference:type-specifier
-                             (petalisp.type-inference:generalize-ntype
+                            (typo:ntype-type-specifier
+                             (typo:ntype-primitive-ntype
                               (lazy-array-ntype output))))
                       (lazy-array-shape output))))))
     ;; Return the two differentiating closures.
@@ -124,9 +124,9 @@
                  index))))))
 
 (defun coerce-to-ntype (lazy-array ntype)
-  (if (petalisp.type-inference:ntype= (lazy-array-ntype lazy-array) ntype)
+  (if (typo:ntype= (lazy-array-ntype lazy-array) ntype)
       lazy-array
-      (lazy #'coerce lazy-array (petalisp.type-inference:type-specifier ntype))))
+      (lazy #'coerce lazy-array (typo:ntype-type-specifier ntype))))
 
 (defgeneric input-gradient (lazy-array delayed-action output-gradient index))
 
@@ -135,23 +135,29 @@
      (delayed-map delayed-map)
      (output-gradient lazy-array)
      index)
-  (let ((operator (delayed-map-operator delayed-map))
+  (let ((fnrecord (delayed-map-fnrecord delayed-map))
         (inputs (delayed-map-inputs delayed-map))
         (shape (lazy-array-shape lazy-array)))
     (coerce-to-ntype
      (lazy #'*
            output-gradient
-           (petalisp.type-inference:differentiate
-            operator
+           (typo:differentiate
+            (typo:fnrecord-function fnrecord)
             inputs
-            #'lazy-array-ntype
+            index
+            :wrapper-ntype #'lazy-array-ntype
+            :wrap-constant
             (lambda (constant)
               (lazy-reshape constant shape))
-            (lambda (ntypes function inputs)
-              (coerce-to-ntype
-               (apply #'lazy function inputs)
-               (elt ntypes 0)))
-            index))
+            :wrap-function
+            (lambda (fnrecord inputs required optional rest)
+              (assert (null optional))
+              (assert (not rest))
+              (trivia:ematch required
+                ((list ntype)
+                 (coerce-to-ntype
+                  (apply #'lazy (typo:fnrecord-function fnrecord) inputs)
+                  ntype))))))
      (lazy-array-ntype (nth index inputs)))))
 
 (defmethod input-gradient

@@ -22,7 +22,7 @@
   ;; The ntype of a lazy array is a conservative estimate on the the type
   ;; of each individual element.
   (ntype (alexandria:required-argument :ntype)
-   :type t
+   :type typo:ntype
    :read-only t)
   ;; The depth of a lazy array that is the result of wrapping an actual
   ;; Common Lisp array or scalar is zero.  The depth of any other lazy
@@ -50,7 +50,7 @@
 
 (defun lazy-array-element-type (lazy-array)
   (declare (lazy-array lazy-array))
-  (petalisp.type-inference:type-specifier
+  (typo:ntype-type-specifier
    (lazy-array-ntype lazy-array)))
 
 (declaim (inline lazy-array-rank))
@@ -98,21 +98,21 @@
 ;;; We also amend the constructor of each delayed action to automatically
 ;;; increment the refcount of each referenced lazy array.
 
-;;; A delayed map action is executed by applying the specified operator
-;;; element-wise to the specified inputs.
+;;; A delayed map action is executed by applying the function specified by
+;;; its fnrecord element-wise to the specified inputs.
 (defstruct (delayed-map
             (:include delayed-action)
             (:constructor %make-delayed-map))
-  (operator (alexandria:required-argument :operator)
-   :type (or function symbol))
+  (fnrecord (alexandria:required-argument :fnrecord)
+   :type typo:fnrecord)
   (inputs (alexandria:required-argument :inputs)
    :type list))
 
 (declaim (inline make-delayed-map))
-(defun make-delayed-map (&key operator inputs)
+(defun make-delayed-map (&key fnrecord inputs)
   (dolist (input inputs)
     (incf (lazy-array-refcount input)))
-  (%make-delayed-map :operator operator :inputs inputs))
+  (%make-delayed-map :fnrecord fnrecord :inputs inputs))
 
 ;;; A delayed multiple value map is the same as a delayed map, but for a
 ;;; function that produces multiple values.  Because of the nature of its
@@ -122,15 +122,22 @@
 (defstruct (delayed-multiple-value-map
             (:include delayed-map)
             (:constructor %make-delayed-multiple-value-map))
-  ;; A list of ntypes, one for each return value.
-  (ntypes (alexandria:required-argument :ntypes)
-   :type list))
+  ;; An unsigned integer whose Kth bit indicates that the Kth value of the
+  ;; multiple value map is being referenced.
+  (values-ntype (alexandria:required-argument :values-ntype)
+   :type typo:values-ntype
+   :read-only t)
+  (refbits 0 :type unsigned-byte))
 
 (declaim (inline make-delayed-multiple-value-map))
-(defun make-delayed-multiple-value-map (&key operator inputs ntypes)
+(defun make-delayed-multiple-value-map (&key fnrecord inputs values-ntype (refbits 0))
   (dolist (input inputs)
     (incf (lazy-array-refcount input)))
-  (%make-delayed-multiple-value-map :operator operator :inputs inputs :ntypes ntypes))
+  (%make-delayed-multiple-value-map
+   :fnrecord fnrecord
+   :inputs inputs
+   :values-ntype values-ntype
+   :refbits refbits))
 
 ;;; A delayed nth-value action is executed by referencing the nth value of
 ;;; the targeted delayed multiple value map.
@@ -138,14 +145,23 @@
             (:include delayed-action)
             (:constructor %make-delayed-nth-value))
   (number (alexandria:required-argument :number)
-   :type petalisp.type-inference:argument-index)
+   :type typo:argument-index)
   (input (alexandria:required-argument :input)
    :type lazy-array))
 
 (declaim (inline make-delayed-nth-value))
 (defun make-delayed-nth-value (&key number input)
-  (incf (lazy-array-refcount input))
-  (%make-delayed-nth-value :number number :input input))
+  (let ((delayed-action (lazy-array-delayed-action input)))
+    (unless (typep delayed-action 'delayed-multiple-value-map)
+      (error "Can only take the Nth value of multiple value maps."))
+    (incf (lazy-array-refcount input))
+    (atomics:atomic-update
+     (delayed-multiple-value-map-refbits delayed-action)
+     (lambda (refbits)
+       (logior refbits (ash 1 number))))
+    (%make-delayed-nth-value
+     :number number
+     :input input)))
 
 ;;; A delayed reshape action is executed by assigning each index the value
 ;;; of the specified input lazy array at the position that is obtained by
@@ -166,7 +182,9 @@
   ;; refcount by a number larger than one to warn the IR conversion.
   (incf (lazy-array-refcount input)
         (if (transformation-invertiblep transformation) 1 2))
-  (%make-delayed-reshape :transformation transformation :input input))
+  (%make-delayed-reshape
+   :transformation transformation
+   :input input))
 
 ;;; A delayed fuse action is executed by assigning each index the unique
 ;;; value of the same index in on of the specified inputs.
@@ -180,7 +198,8 @@
 (defun make-delayed-fuse (&key inputs)
   (dolist (input inputs)
     (incf (lazy-array-refcount input)))
-  (%make-delayed-fuse :inputs inputs))
+  (%make-delayed-fuse
+   :inputs inputs))
 
 ;;; A delayed range action is executed by assigning each index a value that
 ;;; is that index.
@@ -239,10 +258,10 @@
 (defun lazy-array-from-scalar (object)
   (make-lazy-array
    :shape (load-time-value (make-shape '()))
-   :ntype (petalisp.type-inference:ntype-of object)
+   :ntype (typo:ntype-of object)
    :delayed-action
    (make-delayed-array
-    :storage (petalisp.type-inference:make-rank-zero-array object))))
+    :storage (make-rank-zero-array object))))
 
 (defun lazy-array-from-array (array)
   (declare (array array))
@@ -250,7 +269,7 @@
       (lazy-array-from-scalar (aref array))
       (make-lazy-array
        :shape (array-shape array)
-       :ntype (petalisp.type-inference:array-element-ntype array)
+       :ntype (typo:array-element-ntype array)
        :delayed-action
        (make-delayed-array :storage (simplify-array array)))))
 
@@ -275,9 +294,9 @@
         :output-rank 0))
       (make-lazy-array
        :shape (make-shape (list range))
-       :ntype (petalisp.type-inference:ntype-union
-               (petalisp.type-inference:ntype-of (range-start range))
-               (petalisp.type-inference:ntype-of (range-last range)))
+       :ntype (typo:ntype-union
+               (typo:ntype-of (range-start range))
+               (typo:ntype-of (range-last range)))
        :delayed-action (make-delayed-range))))
 
 (defun empty-lazy-arrays (n shape)
@@ -306,7 +325,7 @@
   (declare (shape shape))
   (make-lazy-array
    :shape shape
-   :ntype (petalisp.type-inference:ntype element-type)
+   :ntype (typo:type-specifier-ntype element-type)
    :delayed-action (make-delayed-unknown)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -324,7 +343,7 @@
 (defun delayed-map-number-of-values (delayed-map)
   (declare (delayed-map delayed-map))
   (if (delayed-multiple-value-map-p delayed-map)
-      (length (delayed-multiple-value-map-ntypes delayed-map))
+      (integer-length (delayed-multiple-value-map-refbits delayed-map))
       1))
 
 (defun maxdepth (lazy-arrays)
@@ -370,11 +389,24 @@
   (typecase object
     (array
      (and (array-has-shape-p object (lazy-array-shape lazy-array))
-          (petalisp.type-inference:ntype=
-           (petalisp.type-inference:array-element-ntype object)
+          (typo:ntype=
+           (typo:array-element-ntype object)
            (lazy-array-ntype lazy-array))))
     (t
      (and (empty-shape-p (lazy-array-shape lazy-array))
-          (petalisp.type-inference:ntype-subtypep
-           (petalisp.type-inference:ntype-of object)
+          (typo:ntype-subtypep
+           (typo:ntype-of object)
            (lazy-array-ntype lazy-array))))))
+
+(defun make-rank-zero-array (value)
+  (macrolet ((body ()
+               `(ecase (typo:ntype-index (typo:ntype-of value))
+                  ,@(loop for index below typo:+primitive-ntype-limit+
+                          collect
+                          (let* ((element-ntype (typo:primitive-ntype-from-index index))
+                                 (element-type (typo:ntype-type-specifier element-ntype)))
+                            `(,index (make-array
+                                      '()
+                                      :element-type ',element-type
+                                      :initial-element value)))))))
+    (body)))

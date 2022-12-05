@@ -29,15 +29,17 @@
              (etypecase instruction
                (call-instruction
                 (with-accessors ((number-of-values call-instruction-number-of-values)
-                                 (operator call-instruction-operator)
+                                 (fnrecord call-instruction-fnrecord)
                                  (inputs call-instruction-inputs)) instruction
                   (case number-of-values
                     (0 (values))
                     (1 (setf (svref value-vector offset)
-                             (apply operator (mapcar #'input-value inputs))))
+                             (apply (typo:fnrecord-function fnrecord)
+                                    (mapcar #'input-value inputs))))
                     (otherwise
                      (let ((values (multiple-value-list
-                                    (apply operator (mapcar #'input-value inputs)))))
+                                    (apply (typo:fnrecord-function fnrecord)
+                                           (mapcar #'input-value inputs)))))
                        (loop for index from 0 below number-of-values
                              do (setf (svref value-vector (+ offset index))
                                       (pop values))))))))

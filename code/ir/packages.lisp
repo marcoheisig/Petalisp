@@ -152,7 +152,8 @@
    #:instruction-inputs
    #:instruction-transformation
    #:iref-instruction-transformation
-   #:call-instruction-operator
+   #:call-instruction-fnrecord
+   #:call-instruction-function
    #:store-instruction-buffer
    #:store-instruction-transformation
    #:load-instruction-buffer

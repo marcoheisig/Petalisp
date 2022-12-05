@@ -45,7 +45,7 @@
 
 (defun chunk-bits (chunk)
   (declare (chunk chunk))
-  (* (petalisp.type-inference:ntype-bits (buffer-ntype (chunk-buffer chunk)))
+  (* (typo:ntype-bits (buffer-ntype (chunk-buffer chunk)))
      (shape-size (chunk-shape chunk))))
 
 (defun chunk-primogenitor (chunk)

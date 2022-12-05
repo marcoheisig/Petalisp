@@ -145,14 +145,15 @@
    #:delayed-action-inputs
    #:delayed-map
    #:delayed-map-p
-   #:delayed-map-operator
+   #:delayed-map-fnrecord
    #:delayed-map-inputs
    #:delayed-map-number-of-values
    #:delayed-multiple-value-map
    #:delayed-multiple-value-map-p
-   #:delayed-multiple-value-map-operator
+   #:delayed-multiple-value-map-fnrecord
    #:delayed-multiple-value-map-inputs
-   #:delayed-multiple-value-map-ntypes
+   #:delayed-multiple-value-map-values-ntype
+   #:delayed-multiple-value-map-refbits
    #:delayed-nth-value
    #:delayed-nth-value-p
    #:delayed-nth-value-number

@@ -87,7 +87,9 @@
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)
      (node petalisp.core:delayed-map))
-  `(("operator" . ,(stringify (petalisp.core:delayed-map-operator node)))))
+  `(("function" . ,(stringify
+                    (typo:fnrecord-function-designator
+                     (petalisp.core:delayed-map-fnrecord node))))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)

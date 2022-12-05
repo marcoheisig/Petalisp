@@ -67,8 +67,7 @@
          (setf (buffer-storage buffer)
                (make-array
                 (shape-dimensions (buffer-shape buffer))
-                :element-type (petalisp.type-inference:type-specifier
-                               (buffer-ntype buffer))))))
+                :element-type (typo:ntype-type-specifier (buffer-ntype buffer))))))
      ;; Ensure that the dependencies of each kernel are set up properly.
      (lambda (kernel)
        (let ((node (ensure-node kernel ir-backend)))

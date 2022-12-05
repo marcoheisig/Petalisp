@@ -91,7 +91,7 @@
     ((graph ir-graph)
      (buffer petalisp.ir:buffer))
   `(("shape" . ,(stringify (petalisp.ir:buffer-shape buffer)))
-    ("type" . ,(stringify (petalisp.type-inference:type-specifier (petalisp.ir:buffer-ntype buffer))))
+    ("type" . ,(stringify (typo:ntype-type-specifier (petalisp.ir:buffer-ntype buffer))))
     ("depth" . ,(stringify (petalisp.ir:buffer-depth buffer)))
     ("reuse-potential" . ,(stringify (petalisp.ir:buffer-reuse-potential buffer)))
     ("storage" . ,(stringify (type-of (petalisp.ir:buffer-storage buffer))))))
@@ -120,7 +120,7 @@
                (etypecase instruction
                  (petalisp.ir:call-instruction
                   (format nil "~S~{ ~S~}~%"
-                          (petalisp.ir:call-instruction-operator instruction)
+                          (petalisp.ir:call-instruction-function instruction)
                           (mapcar #'simplify-input
                                   (petalisp.ir:instruction-inputs instruction))))
                  (petalisp.ir:iref-instruction
@@ -128,13 +128,13 @@
                           (petalisp.ir:instruction-transformation instruction)))
                  (petalisp.ir:load-instruction
                   (format nil "load ~S ~S~%"
-                          (petalisp.type-inference:type-specifier
+                          (typo:ntype-type-specifier
                            (petalisp.ir:buffer-ntype
                             (petalisp.ir:load-instruction-buffer instruction)))
                           (petalisp.ir:instruction-transformation instruction)))
                  (petalisp.ir:store-instruction
                   (format nil "store ~S ~S ~S~%"
-                          (petalisp.type-inference:type-specifier
+                          (typo:ntype-type-specifier
                            (petalisp.ir:buffer-ntype
                             (petalisp.ir:store-instruction-buffer instruction)))
                           (petalisp.ir:instruction-transformation instruction)
