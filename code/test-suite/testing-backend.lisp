@@ -65,6 +65,11 @@
 
 (defgeneric approximately-equal (a b))
 
+(defmethod approximately-equal ((a delayed-array) (b delayed-array))
+  (approximately-equal
+   (delayed-array-storage a)
+   (delayed-array-storage b)))
+
 (defmethod approximately-equal ((a t) (b t))
   (eql a b))
 

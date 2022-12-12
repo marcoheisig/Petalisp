@@ -24,6 +24,5 @@
    (:file "lazy-fuse")
    (:file "lazy-map")
    (:file "substitute-lazy-arrays")
-   (:file "request")
    (:file "backend")
    (:file "reference-backend")))

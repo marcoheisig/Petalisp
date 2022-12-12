@@ -74,7 +74,6 @@
    #:clear-shape-table
    #:array-shape
    #:array-has-shape-p
-   #:array-value
    #:shape-designator-shape
 
    ;; Transformations
@@ -103,6 +102,11 @@
    #:enlarge-transformation
    #:map-transformation-inputs
    #:map-transformation-outputs
+
+   ;; Arrays
+   #:array-value
+   #:value-array
+   #:make-rank-zero-array
 
    ;; Lazy Arrays
    #:*lazy-array-lock*
@@ -183,29 +187,25 @@
    #:delayed-failure-p
    #:delayed-failure-condition
 
-   ;; Request
-   #:request
-   #:make-request
-   #:requestp
-   #:request-backend
-   #:request-lazy-arrays
-   #:request-wait
-   #:request-finish
-   #:request-finishedp
-
    ;; Backend
    #:*backend*
-   #:with-backend
+   #:with-temporary-backend
    #:backend
+   #:backendp
    #:delete-backend
    #:backend-compute
-   #:backend-schedule
+   #:backend-compute-asynchronously
    #:backend-evaluator
    #:compute
    #:compute-list-of-arrays
-   #:schedule
+   #:compute-asynchronously
    #:wait
    #:evaluator
+   #:request
+   #:requestp
+   #:requestp
+   #:request-wait
+   #:request-completedp
 
    ;; Reference Backend
    #:make-reference-backend))

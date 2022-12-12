@@ -310,7 +310,9 @@
         (when serious-condition (error serious-condition))
         (values-list
          (loop for root-buffer in root-buffers
-               collect (svref storage-vector (buffer-number root-buffer))))))))
+               collect
+               (array-value
+                (svref storage-vector (buffer-number root-buffer)))))))))
 
 (defun execute-schedule (schedule storage-vector serious-condition signal-serious-condition)
   (declare (simple-vector storage-vector))

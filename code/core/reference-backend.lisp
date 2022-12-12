@@ -24,13 +24,13 @@
 (defun compute-delayed-array (lazy-array)
   (let* ((shape (lazy-array-shape lazy-array))
          (element-type (lazy-array-element-type lazy-array))
-         (array (make-array (shape-dimensions shape) :element-type element-type)))
+         (storage (make-array (shape-dimensions shape) :element-type element-type)))
     (map-shape
      (lambda (index)
-       (setf (apply #'aref array index)
+       (setf (apply #'aref storage index)
              (lazy-array-value lazy-array index)))
      shape)
-    array))
+    (make-delayed-array storage)))
 
 (defun lazy-array-value (lazy-array index)
   (alexandria:ensure-gethash

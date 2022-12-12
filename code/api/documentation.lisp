@@ -659,7 +659,7 @@ result of any other object is that object itself."
   (compute-list-of-arrays (list (lazy-reshape #2a((1 2) (3 4)) (transform i j to j i))))
   (compute-list-of-arrays (list 2 #0A3 #(4))))
 
-(document-function schedule
+(document-function compute-asynchronously
   "Hints that it would be worthwhile to compute the supplied arrays
 asynchronously.  Returns an opaque object that can be supplied to WAIT to
 wait until the scheduled operation has been performed.
@@ -671,23 +671,11 @@ This function allows speeding up certain programs like
 
 by rewriting them to something like
 
- (progn (schedule array-1 array-2)
+ (progn (compute-asynchronously array-1 array-2)
         (run-expensive-task)
         (compute array-1 array-2)).")
 
 (document-function wait
-  "Blocks until the work designated by some SCHEDULE operations has been
-completed.  Each argument must be one of the opaque objects returned by
-calling SCHEDULE.")
-
-(document-function prepare
-  "Returns, as multiple values, the array immediates corresponding to the
-supplied arrays."
-  (prepare 1 #(2 3))
-  (prepare (lazy #'+ 2 3)))
-
-(document-function prepare-list-of-arrays
-  "Returns a list of array immediates, one for each array in the supplied
-list of arrays."
-  (prepare-list-of-arrays (list 1 #(2 3)))
-  (prepare-list-of-arrays (list (lazy #'+ 2 3))))
+  "Blocks until the work designated by some COMPUTE-ASYNCHRONOUSLY operations
+has been completed.  Each argument must be one of the opaque objects
+returned by COMPUTE-ASYNCHRONOUSLY.")

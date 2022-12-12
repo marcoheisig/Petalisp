@@ -81,7 +81,9 @@
      (program-root-buffers program))
     (loop until (null *worklist*) do
       (execute-node (pop *worklist*)))
-    (mapcar #'petalisp.ir:buffer-storage (program-root-buffers program))))
+    (loop for buffer in (program-root-buffers program)
+          collect
+          (make-delayed-array (petalisp.ir:buffer-storage buffer)))))
 
 (defun ensure-node (kernel ir-backend)
   (or (gethash kernel *nodes*)

@@ -33,7 +33,6 @@
    (:file "lazy-stack" :depends-on ("lazy-overwrite" "lazy-reshape"))
    (:file "network" :depends-on ("lazy" "lazy-reshape"))
    (:file "packages")
-   (:file "prepare" :depends-on ("packages"))
    (:file "shape-interior" :depends-on ("packages"))
    (:file "shape-syntax" :depends-on ("packages"))
    (:file "transform" :depends-on ("packages"))
@@ -58,7 +57,6 @@
      "lazy-stack"
      "network"
      "packages"
-     "prepare"
      "shape-interior"
      "shape-syntax"
      "transform"

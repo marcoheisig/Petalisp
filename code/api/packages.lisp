@@ -56,11 +56,8 @@
    #:transform-lazy-array
    #:compute
    #:compute-list-of-arrays
-   #:schedule
-   #:schedule-list-of-arrays
+   #:compute-asynchronously
    #:wait
-   #:prepare
-   #:prepare-list-of-arrays
    #:vectorize
    #:evaluator
 

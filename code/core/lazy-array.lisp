@@ -2,10 +2,6 @@
 
 (in-package #:petalisp.core)
 
-;;; This lock must be held when mutating lazy array delayed actions.
-(defvar *lazy-array-lock*
-  (bordeaux-threads:make-recursive-lock "Petalisp Lazy Array Lock"))
-
 (defstruct (delayed-action
             (:predicate delayed-action-p)
             (:copier nil)
@@ -209,9 +205,13 @@
 ;;; A delayed array action is executed by accessing the values of the
 ;;; underlying storage array.
 (defstruct (delayed-array
-            (:include delayed-action))
+            (:include delayed-action)
+            (:constructor %make-delayed-array (storage)))
   (storage (alexandria:required-argument :storage)
    :type array))
+
+(defun make-delayed-array (object)
+  (%make-delayed-array (value-array object)))
 
 ;;; A delayed nop action is inserted as the delayed action of an empty
 ;;; lazy array.
@@ -259,9 +259,7 @@
   (make-lazy-array
    :shape (load-time-value (make-shape '()))
    :ntype (typo:ntype-of object)
-   :delayed-action
-   (make-delayed-array
-    :storage (make-rank-zero-array object))))
+   :delayed-action (make-delayed-array (make-rank-zero-array object))))
 
 (defun lazy-array-from-array (array)
   (declare (array array))
@@ -271,7 +269,7 @@
        :shape (array-shape array)
        :ntype (typo:array-element-ntype array)
        :delayed-action
-       (make-delayed-array :storage (simplify-array array)))))
+       (make-delayed-array (simplify-array array)))))
 
 ;;; Turn arrays into simple arrays.
 (defun simplify-array (array)
@@ -410,3 +408,61 @@
                                       :element-type ',element-type
                                       :initial-element value)))))))
     (body)))
+
+(defun array-value (array)
+  (declare (array array))
+  (if (zerop (array-rank array))
+      (aref array)
+      array))
+
+(defun value-array (object)
+  (typecase object
+    (array object)
+    (otherwise (make-rank-zero-array object))))
+
+(defun trivial-object-p (object)
+  "Returns whether the supplied OBJECT is an array, a lazy array that can
+be cheaply converted to an array, or a scalar."
+  (typecase object
+    (lazy-array (trivial-lazy-array-p object (lazy-array-delayed-action object)))
+    (otherwise t)))
+
+(defgeneric trivial-lazy-array-p (lazy-array delayed-action)
+  (:documentation
+   "Returns whether the supplied LAZY-ARRAYS and its DELAYED-ACTION have a
+corresponding collapsed array that can be obtained cheaply.")
+  (:method ((lazy-array lazy-array)
+            (delayed-action delayed-action))
+    nil)
+  (:method ((lazy-array lazy-array)
+            (delayed-array delayed-array))
+    t)
+  (:method ((lazy-array lazy-array)
+            (delayed-reshape delayed-reshape))
+    (and (identity-transformation-p (delayed-reshape-transformation delayed-reshape))
+         (shape= (lazy-array-shape lazy-array)
+                 (lazy-array-shape (delayed-reshape-input delayed-reshape)))
+         (trivial-array-p (delayed-reshape-input delayed-reshape)))))
+
+(defun trivial-object-value (object)
+  "Returns the value of an OBJECT that is trivial in the sense of
+TRIVIAL-OBJECT-P."
+  (typecase object
+    (array (array-value object))
+    (lazy-array (trivial-lazy-array-value object (lazy-array-delayed-action object)))
+    (otherwise object)))
+
+(defgeneric trivial-lazy-array-value (lazy-array delayed-action)
+  (:documentation
+   "Obtain the array corresponding to the supplied LAZY-ARRAY, which must be
+trivial in the sense of TRIVIAL-LAZY-ARRAY-P.")
+  (:method ((lazy-array lazy-array)
+            (delayed-array delayed-array))
+    (array-value (delayed-array-storage delayed-array)))
+  (:method ((lazy-array lazy-array)
+            (delayed-reshape delayed-reshape))
+    (trivial-object-value (delayed-reshape-input delayed-reshape))))
+
+;;; This lock must be held when mutating lazy array delayed actions.
+(defvar *lazy-array-lock*
+  (bordeaux-threads:make-recursive-lock "Petalisp Lazy Array Lock"))
