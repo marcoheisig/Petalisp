@@ -5,6 +5,7 @@
 
   :depends-on
   ("alexandria"
+   "closer-mop"
    "uiop"
    "trivial-features"
    "petalisp.utilities"
