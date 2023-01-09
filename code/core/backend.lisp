@@ -262,7 +262,7 @@ already been computed."))
 (defun compute-asynchronously (&rest arrays)
   (backend-compute-asynchronously
    *backend*
-   (remove-if #'trivial-array-p arrays)))
+   (remove-if #'trivial-object-p arrays)))
 
 (defun wait (&rest requests)
   (mapc #'request-wait requests)
