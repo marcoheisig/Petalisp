@@ -229,8 +229,7 @@ already been computed."))
    (compute-list-of-arrays arrays)))
 
 (defun compute-list-of-arrays (arrays)
-  (let* ((lazy-arrays (or (remove-if #'trivial-object-p arrays)
-                          (return-from compute-list-of-arrays '())))
+  (let* ((lazy-arrays (remove-if #'trivial-object-p arrays))
          (transformations
            (loop for lazy-array in lazy-arrays
                  collect
