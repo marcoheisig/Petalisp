@@ -22,4 +22,5 @@
    (:file "petalisp")
    (:file "data-flow-graph")
    (:file "ir")
+   (:file "class-diagram")
    (:file "view")))
