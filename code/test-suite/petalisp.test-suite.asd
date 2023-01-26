@@ -7,9 +7,7 @@
   ("asdf"
    "bordeaux-threads"
    "closer-mop"
-   "petalisp"
    "petalisp.examples"
-   "petalisp.graphviz"
    "petalisp.xmas-backend")
 
   :perform

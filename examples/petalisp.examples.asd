@@ -4,7 +4,7 @@
   :license "AGPLv3"
 
   :depends-on
-  ("petalisp"
+  ("petalisp.api"
    "numpy-file-format"
    "asdf")
 

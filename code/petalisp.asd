@@ -4,4 +4,6 @@
   :license "AGPLv3"
 
   :in-order-to ((test-op (test-op "petalisp.test-suite")))
-  :depends-on ("petalisp.api"))
+  :depends-on
+  ("petalisp.api"
+   "petalisp.test-suite"))
