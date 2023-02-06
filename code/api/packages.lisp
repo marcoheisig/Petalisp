@@ -156,6 +156,9 @@
   (:shadowing-import-from :petalisp.ir #:make-ir-backend)
   (:shadowing-import-from :petalisp.xmas-backend #:make-xmas-backend))
 
+(defpackage #:petalisp-user
+  (:use #:common-lisp #:petalisp))
+
 (in-package #:petalisp.api)
 
 (defvar *backend* (make-xmas-backend))
