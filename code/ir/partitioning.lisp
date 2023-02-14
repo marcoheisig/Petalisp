@@ -223,7 +223,7 @@ for debugging."
            for chunk-range in (shape-ranges chunk-domain)
            for buffer-range in (shape-ranges (buffer-shape buffer))
            collect
-           (if (range-equal chunk-range buffer-range)
+           (if (range= chunk-range buffer-range)
                buffer-range
                (let* ((step (range-step buffer-range))
                       (left-padding (ghostspec-left-padding ghostspec axis))

@@ -29,7 +29,7 @@
    #:size-one-range-p
    #:split-range
    #:map-range
-   #:range-equal
+   #:range=
    #:range-contains
    #:range-intersection
    #:range-intersectionp
@@ -43,6 +43,7 @@
    #:fuse-ranges
 
    ;; Shapes
+   #:rank
    #:shape
    #:shapep
    #:make-shape
@@ -61,8 +62,10 @@
    #:shape-contains
    #:shrink-shape
    #:enlarge-shape
+   #:inflate-shape
    #:subdivide-arrays
    #:subdivide-shapes
+   #:subshape
    #:subshapep
    #:split-shape
    #:fuse-shapes
@@ -82,7 +85,6 @@
    #:transform-sequence
    #:transform-shape
    #:transform-axis
-   #:transform-lazy-array
    #:identity-transformation-p
    #:transformation-input-rank
    #:transformation-output-rank
@@ -100,6 +102,7 @@
    #:collapsing-transformation
    #:normalizing-transformation
    #:enlarge-transformation
+   #:inflate-transformation
    #:map-transformation-inputs
    #:map-transformation-outputs
 
@@ -120,6 +123,7 @@
    #:lazy-array-element-type
    #:lazy-array-rank
    #:lazy-array-size
+   #:lazy-array-range
    #:lazy-array-ranges
    #:lazy-array-inputs
    #:lazy-array
@@ -127,6 +131,7 @@
    #:lazy-multiple-value-map
    #:lazy-reshape
    #:lazy-ref
+   #:lazy-reshape-using-transformation
    #:lazy-fuse
    #:lazy-collapse
    #:make-unknown

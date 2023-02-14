@@ -34,7 +34,7 @@
   (zerop (shape-size shape)))
 
 (defun shape-range (shape axis)
-  (declare (shape shape))
+  (declare (shape shape) (rank axis))
   (unless (<= 0 axis (1- (shape-rank shape)))
     (error "Invalid axis ~D for shape ~S." axis shape))
   (nth axis (shape-ranges shape)))
@@ -46,7 +46,7 @@
        (= (shape-size shape1)
           (shape-size shape2))
        (or (zerop (shape-size shape1))
-           (every #'range-equal
+           (every #'range=
                   (shape-ranges shape1)
                   (shape-ranges shape2)))))
 
@@ -135,6 +135,29 @@
            (range range))
   (make-shape
    (list* range (shape-ranges shape))))
+
+(defun inflate-shape (shape n)
+  (check-type n unsigned-byte "a non-negative integer")
+  (if (zerop n)
+      shape
+      (%make-shape
+       (append (shape-ranges shape)
+               (make-list n :initial-element (range 0)))
+       (+ (shape-rank shape) n)
+       (shape-size shape))))
+
+(defun subshape (shape start &optional end)
+  (declare (shape shape))
+  (check-type start rank "a valid lazy array rank")
+  (let* ((rank (shape-rank shape))
+         (end (or end rank)))
+    (check-type end rank "a valid lazy array rank")
+    (assert (<= end rank) (start end))
+    (assert (<= start end) (start end))
+    (if (and (zerop start) (= end rank))
+        shape
+        (make-shape
+         (subseq (shape-ranges shape) start end)))))
 
 (defun subshapep (shape1 shape2)
   (declare (shape shape1 shape2))

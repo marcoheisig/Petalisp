@@ -20,19 +20,21 @@
    (:file "lazy-array-indices" :depends-on ("lazy-shape-indices"))
    (:file "lazy-array-interior" :depends-on ("shape-interior"))
    (:file "lazy-broadcast" :depends-on ("lazy-reshape"))
+   (:file "lazy-change-shape" :depends-on ("shape-syntax"))
    (:file "lazy-drop-axes" :depends-on ("lazy-reshape"))
    (:file "lazy-flatten" :depends-on ("lazy-reshape"))
    (:file "lazy" :depends-on ("lazy-broadcast"))
    (:file "lazy-multiple-value" :depends-on ("lazy-broadcast"))
    (:file "lazy-overwrite" :depends-on ("packages"))
    (:file "lazy-reduce" :depends-on ("lazy-multiple-value" "lazy-reshape" "lazy-drop-axes" "lazy-stack"))
-   (:file "lazy-reshape" :depends-on ("shape-syntax"))
+   (:file "lazy-reshape" :depends-on ("shape-syntax" "lazy-change-shape"))
    (:file "lazy-shape-indices" :depends-on ("packages"))
    (:file "lazy-slice" :depends-on ("packages"))
    (:file "lazy-slices" :depends-on ("packages"))
    (:file "lazy-stack" :depends-on ("lazy-overwrite" "lazy-reshape"))
    (:file "network" :depends-on ("lazy" "lazy-reshape"))
    (:file "packages")
+   (:file "reshapers" :depends-on ("lazy-reshape"))
    (:file "shape-interior" :depends-on ("packages"))
    (:file "shape-syntax" :depends-on ("packages"))
    (:file "transform" :depends-on ("packages"))
@@ -51,6 +53,7 @@
      "lazy-overwrite"
      "lazy-reduce"
      "lazy-reshape"
+     "reshapers"
      "lazy-shape-indices"
      "lazy-slice"
      "lazy-slices"

@@ -61,6 +61,11 @@
   (shape-size
    (lazy-array-shape lazy-array)))
 
+(declaim (inline lazy-array-range))
+(defun lazy-array-range (lazy-array axis)
+  (declare (lazy-array lazy-array) (rank axis))
+  (shape-range (lazy-array-shape lazy-array) axis))
+
 (declaim (inline lazy-array-ranges))
 (defun lazy-array-ranges (lazy-array)
   (declare (lazy-array lazy-array))

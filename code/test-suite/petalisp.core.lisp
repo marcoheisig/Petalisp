@@ -21,7 +21,7 @@
              (if (= 1 (range-size range))
                  (is (size-one-range-p range))
                  (is (not (size-one-range-p range))))
-             (is (range-equal range range))
+             (is (range= range range))
              (cond ((empty-range-p range)
                     (is (zerop (range-size range)))
                     (return-from test-range))
@@ -45,7 +45,7 @@
                    (differences1 (range-difference-list range1 range2))
                    (differences2 (range-difference-list range2 range1)))
                (when (range-intersectionp range1 range2)
-                 (is (range-equal intersection1 intersection2))
+                 (is (range= intersection1 intersection2))
                  (is (= (reduce #'+ differences1 :key #'range-size)
                         (- (range-size range1)
                            (range-size intersection1))))
@@ -146,7 +146,7 @@
   (compute (lazy-reshape #(1 2 3 4) (~ 1 3)))
   (compute (lazy-reshape (lazy-shape-indices (~ 1 10)) (~ 3 ~ 3)))
   (compute (lazy-reshape #2A((1 2) (3 4)) (transform i j to j i)))
-  (compute (lazy-reshape #(1 2 3 4) (~ 1 3) (~ 0 2 ~ 0 2)))
+  (compute (lazy-reshape #(1 2 3 4) (~ 1 3) (collapsing-reshaper) (~ 0 2 ~ 0 2)))
   (alexandria:map-permutations
    (lambda (shapes)
      (compute

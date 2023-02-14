@@ -73,16 +73,26 @@
          transformation
          (make-transformation :input-mask input-mask)))))
 
-(defun transform-lazy-array (lazy-array transformation)
+(defun lazy-reshape-using-transformation (lazy-array transformation)
   (declare (lazy-array lazy-array)
            (transformation transformation))
-  (lazy-ref
-   lazy-array
-   (transform-shape (lazy-array-shape lazy-array) transformation)
-   (invert-transformation transformation)))
+  (let* ((input-shape (lazy-array-shape lazy-array))
+         (input-rank (shape-rank input-shape))
+         (current-rank (transformation-input-rank transformation))
+         (inflation (- input-rank current-rank))
+         (transformation
+           (if (minusp inflation)
+               (error "~@<Cannot reshape the lazy array ~S with rank ~R ~
+                          with the transformation ~S that expects rank ~R.~:@>"
+                      lazy-array input-rank transformation current-rank)
+               (inflate-transformation transformation inflation))))
+    (lazy-ref
+     lazy-array
+     (transform-shape (lazy-array-shape lazy-array) transformation)
+     (invert-transformation transformation))))
 
 (defun lazy-collapse (array)
   (let* ((lazy-array (lazy-array array))
          (shape (lazy-array-shape lazy-array)))
-    (transform-lazy-array lazy-array (collapsing-transformation shape))))
+    (lazy-reshape-using-transformation lazy-array (collapsing-transformation shape))))
 

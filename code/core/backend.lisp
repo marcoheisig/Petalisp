@@ -236,7 +236,7 @@ already been computed."))
                  (collapsing-transformation
                   (lazy-array-shape lazy-array))))
          (collapsed-lazy-arrays
-           (mapcar #'transform-lazy-array lazy-arrays transformations))
+           (mapcar #'lazy-reshape-using-transformation lazy-arrays transformations))
          (delayed-arrays
            (backend-compute *backend* collapsed-lazy-arrays)))
     ;; Project the results back to the shape of the original lazy arrays,

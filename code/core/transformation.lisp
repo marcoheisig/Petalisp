@@ -95,6 +95,8 @@
 
 (defgeneric enlarge-transformation (transformation scale offset))
 
+(defgeneric inflate-transformation (transformation n))
+
 (defgeneric transform-sequence (sequence transformation)
   (:argument-precedence-order transformation sequence))
 
@@ -384,6 +386,46 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; INFLATE-TRANSFORMATION
+
+(defmethod inflate-transformation :around
+    ((transformation transformation)
+     (n integer))
+  (check-type n unsigned-byte "a non-negative integer")
+  (if (zerop n)
+      transformation
+      (call-next-method)))
+
+(defmethod inflate-transformation
+    ((transformation identity-transformation)
+     (n integer))
+  (identity-transformation
+   (+ (transformation-input-rank transformation) n)))
+
+(defmethod inflate-transformation
+    ((transformation hairy-transformation)
+     (n integer))
+  (let ((input-rank (+ (transformation-input-rank transformation) n))
+        (output-rank (+ (transformation-output-rank transformation) n)))
+    (let ((input-mask (make-array input-rank :initial-element nil))
+          (output-mask (make-array output-rank :initial-element (1- input-rank)))
+          (scalings (make-array output-rank :initial-element 1))
+          (offsets (make-array output-rank :initial-element 0)))
+      (replace input-mask (transformation-input-mask transformation))
+      (replace output-mask (transformation-output-mask transformation))
+      (replace scalings (transformation-scalings transformation))
+      (replace offsets (transformation-offsets transformation))
+      (dotimes (i n)
+        (setf (aref output-mask (- output-rank 1 i))
+              (- input-rank 1 i)))
+      (%make-hairy-transformation
+       input-rank output-rank
+       input-mask output-mask
+       scalings offsets
+       (and (transformation-inverse transformation) t)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; TRANSFORM-SEQUENCE
 
 (defmethod transform-sequence :before
@@ -476,8 +518,9 @@
           for constraint across input-mask
           for index from 0 do
             (when constraint
-              (unless (and (size-one-range-p range)
-                           (= constraint (range-start range)))
+              (unless (or (empty-range-p range)
+                          (and (size-one-range-p range)
+                               (= constraint (range-start range))))
                 (error "~@<The ~:R axis of the shape ~W violates ~
                            the input constraint ~W of the transformation ~W.~:@>"
                        (1+ index) shape constraint transformation))))))
@@ -497,12 +540,14 @@
                    (if (not input-index)
                        (range offset (1+ offset))
                        (let ((input-range (elt input-ranges input-index)))
-                         (range
-                          (+ offset (* scaling (range-start input-range)))
-                          (1+ (+ offset (* scaling (range-last input-range))))
-                          (if (size-one-range-p input-range)
-                              1
-                              (* scaling (range-step input-range)))))))))
+                         (if (empty-range-p input-range)
+                             input-range
+                             (range
+                              (+ offset (* scaling (range-start input-range)))
+                              (1+ (+ offset (* scaling (range-last input-range))))
+                              (if (size-one-range-p input-range)
+                                  1
+                                  (* scaling (range-step input-range))))))))))
       (map-transformation-outputs #'store-output-range transformation))
     (make-shape output-ranges)))
 

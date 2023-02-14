@@ -69,12 +69,12 @@ that range, in ascending order."
     (map-range (lambda (i) (push i l)) (range 1 9 2))
     (nreverse l)))
 
-(document-function range-equal
+(document-function range=
   "Check whether two supplied ranges describe the same set of integers."
-  (range-equal (range 1) (range 2))
-  (range-equal (range 2) (range 2))
-  (range-equal (range 0 8 2) (range 0 9 2))
-  (range-equal (range 0 8 3) (range 0 9 3)))
+  (range= (range 1) (range 2))
+  (range= (range 2) (range 2))
+  (range= (range 0 8 2) (range 0 9 2))
+  (range= (range 0 8 3) (range 0 9 3)))
 
 (document-function range-contains
   "Check whether the supplied range contains a particular integer."
@@ -441,13 +441,6 @@ applying the transformation to the index while retaining the value."
   (compute (lazy-reshape (lazy-shape-indices (~ 9)) (~ 3 ~ 3)))
   (compute (lazy-reshape #2A((1 2) (3 4)) (transform i j to j i)))
   (compute (lazy-reshape #(1 2 3 4) (~ 1 3) (~ 0 2 ~ 0 2))))
-
-(document-function lazy-broadcast-arrays
-  "Returns as many lazy arrays as there are supplied arrays, but broadcast
-such that all resulting arrays have the same shape.  If there is no
-suitable broadcast shape for all supplied arrays, an error is signaled."
-  (lazy-broadcast-arrays #(1 2 3) 5)
-  (lazy-broadcast-arrays #(2 3 4) #2a((1 2 3) (4 5 6))))
 
 (document-function lazy-broadcast-list-of-arrays
   "Returns a list of lazy arrays of the same length as the list of supplied

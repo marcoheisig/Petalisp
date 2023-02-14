@@ -27,8 +27,6 @@
    ;; High-level API
    #:lazy-array-indices
    #:lazy-array-interior
-   #:lazy-broadcast-to
-   #:lazy-broadcast-arrays
    #:lazy-broadcast-list-of-arrays
    #:lazy-collapse
    #:lazy-drop-axes
@@ -77,7 +75,7 @@
    #:size-one-range-p
    #:split-range
    #:map-range
-   #:range-equal
+   #:range=
    #:range-contains
    #:range-intersection
    #:range-intersectionp
@@ -138,6 +136,8 @@
    #:lazy-array-shape
    #:lazy-array-element-type
    #:lazy-array-rank
+   #:lazy-array-range
+   #:lazy-array-ranges
    #:lazy-array-size
    #:make-unknown
 
@@ -148,6 +148,11 @@
    #:make-network
    #:call-network
    #:differentiator
+
+   ;; Reshapers
+   #:collapsing-reshaper
+   #:peeling-reshaper
+   #:permuting-reshaper
 
    ;; Utilities
    #:move-axis-to-front

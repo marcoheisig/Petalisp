@@ -147,7 +147,7 @@
            (zerop (rem (- integer (range-start range))
                        (range-step range))))))
 
-(defun range-equal (range1 range2)
+(defun range= (range1 range2)
   (declare (range range1 range2))
   (if (empty-range-p range1)
       (empty-range-p range2)
