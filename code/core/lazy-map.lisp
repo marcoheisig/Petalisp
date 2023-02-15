@@ -8,7 +8,9 @@
 
 (defun lazy-multiple-value-map
     (function n-outputs inputs
-     &aux (shape (lazy-array-shape (first inputs))))
+     &aux (shape (if (null inputs)
+                     (make-shape '())
+                     (lazy-array-shape (first inputs)))))
   (declare (type (or symbol function) function)
            (unsigned-byte n-outputs)
            (shape shape)
