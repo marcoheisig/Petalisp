@@ -111,7 +111,7 @@
            collect
            (lazy-ref
             lazy-array
-            (~l prefix ~ offset (1+ offset) ~r range-2 ~l suffix)
+            (make-shape (append prefix (list (range offset (1+ offset)) range-2) suffix))
             (let ((input-mask (make-array (1+ rank) :initial-element nil))
                   (output-mask (make-array rank :initial-element nil))
                   (offsets (make-array rank :initial-element 0)))
@@ -143,7 +143,7 @@
            collect
            (lazy-ref
             lazy-array
-            (~l prefix ~r range-1 ~ offset (1+ offset) ~l suffix)
+            (make-shape (append prefix (list range-1 (range offset (1+ offset))) suffix))
             (let ((input-mask (make-array (1+ rank) :initial-element nil))
                   (output-mask (make-array rank :initial-element nil))
                   (offsets (make-array rank :initial-element 0))
@@ -178,7 +178,7 @@
            collect
            (lazy-ref
             lazy-array
-            (~l prefix ~ (* offset size-2) (* (1+ offset) size-2) ~l suffix)
+            (make-shape (append prefix (list (range (* offset size-2) (* (1+ offset) size-2))) suffix))
             (let ((input-mask (make-array (1- rank) :initial-element nil))
                   (output-mask (make-array rank :initial-element nil))
                   (offsets (make-array rank :initial-element 0)))
@@ -211,7 +211,7 @@
            collect
            (lazy-ref
             lazy-array
-            (~l prefix ~ offset (* size-1 size-2) size-2 ~l suffix)
+            (make-shape (append prefix (list (range offset (* size-1 size-2) size-2)) suffix))
             (let ((input-mask (make-array (1- rank) :initial-element nil))
                   (output-mask (make-array rank :initial-element nil))
                   (scalings (make-array rank :initial-element 1))

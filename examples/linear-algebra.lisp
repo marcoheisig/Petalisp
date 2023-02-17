@@ -7,10 +7,6 @@
   (:export
    #:coerce-to-matrix
    #:coerce-to-scalar
-   #:matrix
-   #:square-matrix
-   #:matrix
-   #:square-matrix
    #:zeros
    #:eye
    #:transpose
@@ -30,49 +26,26 @@
 (defun coerce-to-matrix (x)
   (setf x (lazy-array x))
   (trivia:ematch (lazy-array-shape x)
-    ((~)
-     (lazy-reshape x (~ 1 ~ 1)))
-    ((~l (list range))
+    ((~* _ _)
+     (lazy-reshape x 2 (collapsing-reshaper)))
+    ((~* range)
      (lazy-reshape x (~ (range-size range) ~ 1)))
-    ((~l (list range-1 range-2))
-     (lazy-reshape x (~ (range-size range-1) ~ (range-size range-2))))))
+    ((~)
+     (lazy-reshape x (~ 1 ~ 1)))))
 
 (defun coerce-to-scalar (x)
   (setf x (lazy-array x))
   (trivia:ematch (lazy-array-shape x)
-    ((~) x)
-    ((~ i 1+i)
-     (unless (= (1+ i) 1+i)
-       (trivia.fail:fail))
-     (lazy-reshape x (make-transformation :input-mask (vector i) :output-rank 0)))
     ((~ i 1+i ~ j 1+j)
      (unless (and (= (1+ i) 1+i)
                   (= (1+ j) 1+j))
        (trivia.fail:fail))
-     (lazy-reshape x (make-transformation :input-mask (vector i j) :output-rank 0)))))
-
-(trivia:defpattern matrix (m n)
-  (alexandria:with-gensyms (it)
-    `(trivia:guard1 ,it (lazy-array-p ,it)
-                    (lazy-array-shape ,it) (~ ,m ~ ,n))))
-
-(trivia:defpattern square-matrix (m)
-  (alexandria:with-gensyms (g)
-    `(matrix (and ,m ,g) (= ,g))))
-
-(trivia:defun-match matrix-p (object)
-  ((matrix _ _) t)
-  (_ nil))
-
-(trivia:defun-match square-matrix-p (object)
-  ((square-matrix _) t)
-  (_ nil))
-
-(deftype matrix ()
-  '(satisfies matrix-p))
-
-(deftype square-matrix ()
-  '(satisfies square-matrix-p))
+     (lazy-reshape x (make-transformation :input-mask (vector i j) :output-rank 0)))
+    ((~ i 1+i)
+     (unless (= (1+ i) 1+i)
+       (trivia.fail:fail))
+     (lazy-reshape x (make-transformation :input-mask (vector i) :output-rank 0)))
+    ((~) x)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -126,19 +99,20 @@
 
 (defun pivot-and-value (A d)
   (setf A (coerce-to-matrix A))
-  (trivia:ematch A
-    ((square-matrix m)
+  (trivia:ematch (lazy-array-shape A)
+    ((~ m ~ n)
+     (assert (= m n))
      (multiple-value-bind (v p)
          (max* (lazy #'abs (lazy-reshape A (~ d m ~ d (1+ d)))))
        (let ((p (coerce-to-scalar p))
              (v (coerce-to-scalar v)))
-         ;(schedule A p v)
          (compute p v))))))
 
 (defun swap-rows (A i j)
   (setf A (coerce-to-matrix A))
-  (trivia:ematch A
-    ((square-matrix m)
+  (trivia:ematch (lazy-array-shape A)
+    ((~ m ~ n)
+     (assert (= m n))
      (assert (< -1 i m))
      (assert (< -1 j m))
      (if (= i j)
@@ -152,8 +126,9 @@
 
 (defun lu (A)
   (setf A (coerce-to-matrix A))
-  (trivia:ematch A
-    ((square-matrix m)
+  (trivia:ematch (lazy-array-shape A)
+    ((~ m ~ n)
+     (assert (= m n))
      (labels
          ((rec (d P L U)
             (if (= (1+ d) m)
@@ -165,7 +140,7 @@
                          (L (swap-rows L d pivot))
                          (U (swap-rows U d pivot))
                          (S (lazy #'/ (lazy-reshape U (~ (1+ d) m ~ d (1+ d)))
-                               (coerce-to-matrix value))))
+                                  (coerce-to-matrix value))))
                     (rec (1+ d)
                          P
                          (lazy-overwrite

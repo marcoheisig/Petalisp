@@ -42,10 +42,6 @@
    #:lazy-slice
    #:lazy-slices
    #:lazy-stack
-   #:~
-   #:~l
-   #:~s
-   #:~r
    #:transform
    #:to
    #:transform-sequence
@@ -72,6 +68,7 @@
    #:range
    #:rangep
    #:make-range
+   #:empty-range
    #:size-one-range-p
    #:split-range
    #:map-range
@@ -87,12 +84,18 @@
    #:range-size
 
    ;; Shapes
+   #:~
+   #:~*
+   #:make-shape
    #:shape
    #:shapep
+   #:empty-shape-p
    #:shape-rank
+   #:shape-range
    #:shape-ranges
    #:shape-size
    #:shape=
+   #:shape<
    #:shape-difference-list
    #:shape-intersection
    #:shape-intersectionp
@@ -102,6 +105,8 @@
    #:shape-contains
    #:shrink-shape
    #:enlarge-shape
+   #:subshape
+   #:subshapep
    #:shape-union
    #:subdivide-arrays
    #:subdivide-shapes

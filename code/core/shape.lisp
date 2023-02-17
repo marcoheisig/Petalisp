@@ -52,14 +52,23 @@
 
 (defun shape< (shape1 shape2)
   (declare (shape shape1 shape2))
-  (or (< (shape-size shape1)
-         (shape-size shape2))
-      (< (shape-rank shape1)
-         (shape-rank shape2))
-      (loop for range1 in (shape-ranges shape1)
-            for range2 in (shape-ranges shape2)
-              thereis (< (range-size range1)
-                         (range-size range2)))))
+  (block nil
+    (let ((ssize1 (shape-size shape1))
+          (ssize2 (shape-size shape2)))
+      (cond ((< ssize1 ssize2) (return t))
+            ((> ssize1 ssize2) (return nil)))
+      (let ((srank1 (shape-rank shape1))
+            (srank2 (shape-rank shape2)))
+        (cond ((< srank1 srank2) (return t))
+              ((> srank1 srank2) (return nil)))
+        (mapc
+         (lambda (range1 range2)
+           (let ((rsize1 (range-size range1))
+                 (rsize2 (range-size range2)))
+             (cond ((< rsize1 rsize2) (return t))
+                   ((> rsize1 rsize2) (return nil)))))
+         (shape-ranges shape1)
+         (shape-ranges shape2))))))
 
 (defun shape-intersection (shape1 shape2)
   (declare (shape shape1 shape2))
@@ -77,11 +86,11 @@
 
 (defun shape-intersectionp (shape1 shape2)
   (declare (shape shape1 shape2))
-  (and (= (shape-rank shape1)
-          (shape-rank shape2))
-       (every #'range-intersectionp
-              (shape-ranges shape1)
-              (shape-ranges shape2))))
+  (assert (= (shape-rank shape1)
+             (shape-rank shape2)))
+  (every #'range-intersectionp
+           (shape-ranges shape1)
+           (shape-ranges shape2)))
 
 (defun shape-difference-list (shape1 shape2)
   (declare (shape shape1 shape2))
@@ -142,7 +151,7 @@
       shape
       (%make-shape
        (append (shape-ranges shape)
-               (make-list n :initial-element (range 0)))
+               (make-list n :initial-element (range 1)))
        (+ (shape-rank shape) n)
        (shape-size shape))))
 
@@ -161,11 +170,12 @@
 
 (defun subshapep (shape1 shape2)
   (declare (shape shape1 shape2))
-  (and (= (shape-rank shape1)
-          (shape-rank shape2))
-       (loop for range1 in (shape-ranges shape1)
-             for range2 in (shape-ranges shape2)
-             always (subrangep range1 range2))))
+  (unless (= (shape-rank shape1) (shape-rank shape2))
+    (error "~@<The shapes ~S and ~S don't have the same rank.~:@>"
+           shape1 shape2))
+  (loop for range1 in (shape-ranges shape1)
+        for range2 in (shape-ranges shape2)
+        always (subrangep range1 range2)))
 
 (defun fuse-shapes (shape &rest more-shapes)
   (declare (shape shape))

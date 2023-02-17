@@ -117,7 +117,7 @@
           ((list start end step) (values start end step))
           ((list start end) (values start end 1))
           ((list length) (values 0 length 1)))
-      `(trivia:guard1 ,it (non-empty-range-p ,it)
+      `(trivia:guard1 ,it (rangep ,it)
                       (range-start ,it) ,start
                       (range-end ,it) ,end
                       (range-step ,it) ,step))))

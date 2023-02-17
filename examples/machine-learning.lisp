@@ -107,18 +107,18 @@
               (maxf (aref upper-bounds index) offset)))
     ;; Use the bounding box to compute the shape of the result.
     (let ((result-shape
-            (~ 1 ~l
-               (loop for lb across lower-bounds
-                     for ub across upper-bounds
-                     for range in (shape-ranges (lazy-array-shape lazy-array))
-                     collect
-                     (if (and (integerp lb)
-                              (integerp ub))
-                         (let ((lo (- (range-start range) lb))
-                               (hi (- (range-end range) ub)))
-                           (assert (< lo hi))
-                           (range lo hi))
-                         range))))
+            (apply ~ 1 ~*
+                   (loop for lb across lower-bounds
+                         for ub across upper-bounds
+                         for range in (shape-ranges (lazy-array-shape lazy-array))
+                         collect
+                         (if (and (integerp lb)
+                                  (integerp ub))
+                             (let ((lo (- (range-start range) lb))
+                                   (hi (- (range-end range) ub)))
+                               (assert (< lo hi))
+                               (range lo hi))
+                             range))))
           (filters
             (make-trainable-parameter
              (make-random-array
@@ -165,7 +165,7 @@
      (apply #'lazy #'max
             (apply #'alexandria:map-product
                    (lambda (&rest ranges)
-                     (lazy-reshape lazy-array (~l ranges)))
+                     (lazy-reshape lazy-array (apply ~* ranges)))
                    pooling-ranges)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

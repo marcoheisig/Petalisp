@@ -19,36 +19,67 @@ by a fixed stride STEP, to an exclusive upper bound END.")
 (document-function range
   "Returns a new, normalized range from the supplied parameters.
 
-This function can be invoked with one, two or three integers.  In the case
-of a single integer, it constructs the range from zero with step size one
-up to but excluding that integer.  In the case of two integers, it creates
-a range from the first integer with step size one up to but excluding the
-second integer.  In the case of three arguments, it creates a range from
-the first integer up to but excluding the second integer, using the third
-integer as the step size.  If the first, inclusive integer and final,
-exclusive integer are not congruent modulo the step size, the latter one is
-moved towards the former until they are."
+This function can be invoked with one, two or three integers.  If it is
+called with a single argument, the result is a range starting from zero,
+with step size one, up to but excluding the supplied argument.  In other
+words, a single argument is treated just like one of the dimensions of a
+regular array.  If the range constructor is called with two arguments, then
+the result is still a range with a step size of one, but with the first
+argument as the inclusive lower bound, and with the second argument as the
+exclusive upper bound.  The three argument version behaves just like the
+two argument version, except that the additional third argument denotes the
+step size.  The sign of the step size gives the direction of the range: If
+the sign is positive, then the exclusive upper bound must be larger than
+the inclusive lower bound or the resulting range is empty.  If the sign is
+negative, the first argument is used as an inclusive upper bound, and the
+second argument is used as an exclusive lower bound.
+
+It is worth mentioning that the range constructor has the exact same name
+and semantics as the range constructor in the Python programming language."
   (range 5)
   (range 5 9)
   (range 5 13 2)
   (range 5 14 2)
-  (range 7 -3 3))
+  (range 1 7 -2)
+  (range 7 1 -2))
+
+(document-function empty-range
+  "Returns a range with size zero.")
 
 (document-function rangep
-  "Checks whether a supplied object is a range."
+  "Returns whether a supplied object is a range."
   (rangep 42)
   (rangep (range 1 3 2)))
 
 (document-function size-one-range-p
-  "Checks whether the supplied range has a size of one."
+  "Returns whether the supplied range has a size of one."
   (size-one-range-p (range 5))
   (size-one-range-p (range 5 7 2))
   (size-one-range-p (range 5 7 3)))
 
+(document-function range-size
+  "Returns the number of elements in the supplied range.")
+
+(document-function range-start
+  "Returns the lowest integer contained in the supplied range.  An error is
+signaled in case the range has zero elements.")
+
+(document-function range-step
+  "Returns the difference between any two successive integers in the supplied
+range.  An error is signaled in case the range has zero elements.")
+
+(document-function range-last
+  "Returns the highest integer contained in the supplied range.  An error is
+signaled in case the range has zero elements.")
+
+(document-function range-end
+  "Returns an integer that is larger than any integer in the supplied
+range.  An error is signaled in case the range has zero elements.")
+
 (document-function split-range
   "Splits the supplied range R into a lower and an upper half and returns
-them as multiple values.  In case R has an odd number of elements, the
-lower half will have one more element than the upper half.
+those two halves as multiple values.  In case R has an odd number of
+elements, the lower half will have one more element than the upper half.
 
 The optional POSITION argument is a real number that can be used to
 prescribe the point at which to split the range."
@@ -64,20 +95,20 @@ prescribe the point at which to split the range."
 
 (document-function map-range
   "Takes a function and a range and applies the function to all integers of
-that range, in ascending order."
+that range, in ascending order.  Returns the range being mapped over."
   (let ((l '()))
     (map-range (lambda (i) (push i l)) (range 1 9 2))
     (nreverse l)))
 
 (document-function range=
-  "Check whether two supplied ranges describe the same set of integers."
+  "Returns whether two supplied ranges describe the same set of integers."
   (range= (range 1) (range 2))
   (range= (range 2) (range 2))
   (range= (range 0 8 2) (range 0 9 2))
   (range= (range 0 8 3) (range 0 9 3)))
 
 (document-function range-contains
-  "Check whether the supplied range contains a particular integer."
+  "Returns whether the supplied range contains a particular integer."
   (range-contains (range 1 10) 5)
   (range-contains (range 1 10) -5)
   (range-contains (range 1 10 3) 4))
@@ -89,34 +120,41 @@ supplied ranges.."
   (range-intersection (range 3 14 2) (range 1 14 3)))
 
 (document-function range-intersectionp
-  "Check whether two supplied ranges have at least one common element."
+  "Returns whether two supplied ranges have at least one common element."
   (range-intersectionp (range 1 10) (range 2 20))
   (range-intersectionp (range 0 7 2) (range 1 8 2)))
 
 (document-function range-difference-list
-  "Compute the difference of two ranges R1 and R2.  Returns a list of
-disjoint subranges of R1 that describe exactly those integers appearing in
-R1 but not in R2.")
+  "Compute the difference of the two supplied ranges RANGE1 and RANGE2.
+Returns a list of disjoint subranges of RANGE1 that describe exactly those
+integers appearing in RANGE1 but not in RANGE2.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Shapes
 
-(document-variables (~ ~l ~s ~r)
-  "The symbols ~, ~l, ~s and ~r are self-evaluating.  Their only purpose is
-to separate range designators in the functions named ~, ~l, ~s and ~r.")
+(document-variables (~ ~*)
+  "The symbols ~, ~* are self-evaluating.  Their only purpose is to separate
+range designators in the functions named ~, ~*.")
 
-(document-functions (~ ~l ~s ~r)
-  "The functions ~, ~l, ~s and ~r can be used to construct new shapes from
-some given range designators, from lists of ranges, from shapes, or from a
-single range, respectively.  Each of these patterns can be used repeatedly
-in a single call."
+(document-functions (~ ~*)
+  "Returns a shape whose ranges are derived by looking at each occurrence of
+one of the self-evaluating delimiter symbols ~ and ~*, and the arguments
+following such a delimiter up to the next one.  Each such group contributes
+one or more ranges to the resulting shape.  The behavior of each delimiter
+is as follows:
+
+- The ~ delimiter must be followed by one, two, or three integers that are
+  then supplied to the RANGE function to construct the single resulting
+  range.
+
+- The ~* delimiter must be followed by any number of ranges that are
+  incorporated into the resulting shape as they are."
   (~)
   (~ 8)
   (~ 1 10)
   (~ 0 10 2 ~ 0 10 2)
-  (~ 5 ~s (~ 1 4 2 ~ 4 10 5) ~ 5)
-  (~r (range 1 10) ~l (list (range 2 9)) ~ 42)
+  (~* (range 1 10) (range 2 9) ~ 42)
   (apply #'~ 1 10 (loop repeat 3 append '(~ 2 6))))
 
 (document-type shape
@@ -126,10 +164,20 @@ of integers.  The rank of a shape is the length of these lists.  For
 example, the shape (~ 0 1 ~ 1 3 ~ 3 8 4) has rank three and consists of the
 integer tuples (0 1 3), (0 1 7), (0 2 3), (0 2 7).")
 
+(document-function make-shape
+  "Returns a shape whose axes are determined by the supplied list of ranges.")
+
 (document-function shapep
-  "Checks whether a supplied object is a shape."
+  "Returns whether the supplied object is a shape."
   (shapep 42)
   (shapep (~ 1 ~ 2 ~ 3 4)))
+
+(document-function empty-shape-p
+  "Returns whether the supplied object is a shape with zero elements, i.e.,
+has at least one range with size zero."
+  (empty-shape-p (~ 1))
+  (empty-shape-p (~ 0))
+  (shapep (~ 1 ~ 2 ~ 3 3)))
 
 (document-function shape-rank
   "Returns the rank of the supplied shape, i.e., the number of ranges it
@@ -137,6 +185,11 @@ contains."
   (shape-rank (~))
   (shape-rank (~ 1 ~ 2 ~ 3))
   (shape-rank (~ 0 9 ~ 0 9)))
+
+(document-function shape-range
+  "Returns the range denoted by the supplied SHAPE and AXIS."
+  (shape-range (~ 1 ~ 2 ~ 3) 0)
+  (shape-range (~ 1 ~ 2 ~ 3) 2))
 
 (document-function shape-ranges
   "Returns a list of all ranges contained in the supplied shape."
@@ -161,11 +214,26 @@ than one."
   (shape-size (~ 1 9 ~ 1 8)))
 
 (document-function shape=
-  "Checks whether two supplied shapes denote the same set of integer tuples."
+  "Returns whether two supplied shapes denote the same set of integer tuples."
   (shape= (~) (~))
   (shape= (~ 42) (~ 42))
   (shape= (~ 1 42) (~ 1 42))
   (shape= (~ 1 42) (~ 2 42)))
+
+(document-function shape<
+  "Returns whether SHAPE1 has less elements than SHAPE2, or, if both shapes
+have the same size, whether SHAPE1 has lower rank than SHAPE2, or, if both
+shapes have the same rank, whether the range of SHAPE1 is smaller than the
+range of SHAPE2 ranges in the lowest axis where both ranges differ in size.
+
+The main use case for this function is to sort sequences of shapes, such
+that they can be accessed in logarithmic time."
+  (shape< (~ 2) (~ 3))
+  (shape< (~ 3) (~ 2))
+  (shape< (~ 2 ~ 4) (~ 2 ~ 2 ~ 2))
+  (shape< (~ 2 ~ 2 ~ 2) (~ 2 ~ 4))
+  (shape< (~ 2 ~ 2 ~ 4) (~ 2 ~ 4 ~ 2))
+  (shape< (~ 2 ~ 4 ~ 2) (~ 2 ~ 2 ~ 4)))
 
 (document-function shape-difference-list
   "Computes the difference of two shapes S1 and S2.  Returns a list of
@@ -178,13 +246,14 @@ appearing in S1 but not in S2."
   (shape-difference-list (~ 1 21 2) (~ 1 21 3)))
 
 (document-function shape-intersection
-  "Returns the shape containing exactly those integer tuples that occur in
-both supplied shapes.  Returns NIL if there are no such elements."
+  "Returns the shape whose ranges are the RANGE-INTERSECTION of each pair of
+ranges of the two supplied shapes.  Signals an error if the supplied shapes
+don't have the same rank."
   (shape-intersection (~ 1 11 ~ 3 14 2) (~ 1 6 ~ 1 14 3))
   (shape-intersection (~ 1 6) (~ 6 11)))
 
 (document-function shape-intersectionp
-  "Check whether two supplied shapes have at least one common element."
+  "Returns whether two supplied shapes have at least one common element."
   (shape-intersectionp (~ 1 6) (~ 6 10))
   (shape-intersectionp (~ 1 5) (~ 6 10)))
 
@@ -196,7 +265,8 @@ tuples of that range, in ascending order."
     (nreverse l)))
 
 (document-function shape-contains
-  "Check whether the supplied shape contains a particular integer tuple."
+  "Returns whether the supplied shape contains the index denoted by the
+supplied list of integers."
   (shape-contains (~ 1 9) (list 4))
   (shape-contains (~ 1 2 9) (list 4)))
 
@@ -228,13 +298,25 @@ supersets of the corresponding resulting shape."
   (subdivide-shapes (list (~ 1 3 ~ 1 3) (~ 1 2 ~ 1 2)))
   (subdivide-shapes (list (~ 1 10) (~ 2 20))))
 
+(document-function subshape
+  "Returns the shape consisting of all ranges of the supplied shape in the
+axes interval between the supplied start and end.  If the end argument is
+not supplied, it defaults to the rank of the supplied shape."
+  (subshape (~ 2 ~ 3 ~ 4) 0)
+  (subshape (~ 2 ~ 3 ~ 4) 2)
+  (subshape (~ 2 ~ 3 ~ 4) 1 2))
+
 (document-function subshapep
-  "Checks for two shapes whether the former is fully contained in the
-latter."
+  "Returns whether all elements of the first supplied shape are also
+contained in the second supplied shape.  Signals an error if the supplied
+shapes don't have the same rank."
   (subshapep (~) (~))
   (subshapep (~ 0 9) (~ 0 9))
   (subshapep (~ 0 3) (~ 1 9))
   (subshapep (~ 0 3 ~ 0 3) (~ 0 9 ~ 0 9)))
+
+(document-function array-shape
+  "Returns the shape of the supplied array.")
 
 (document-function split-shape
   "Split the supplied SHAPE at AXIS.  The optional POSITION argument can be
@@ -278,12 +360,12 @@ from lists of length N to lists of rank M.")
 itself.  An identity transformation is its own inverse.")
 
 (document-function transformation-invertiblep
-  "Check whether a supplied transformation is invertible."
+  "Returns whether a supplied transformation is invertible."
   (transformation-invertiblep (transform i j to j i))
   (transformation-invertiblep (transform i j to i)))
 
 (document-function transformation=
-  "Check whether two supplied transformations describe the same mapping."
+  "Returns whether two supplied transformations describe the same mapping."
   (transformation=
    (transform i to (* 2 (1+ i)))
    (transform i to (+ 2 (* 2 i))))
@@ -292,7 +374,7 @@ itself.  An identity transformation is its own inverse.")
    (transform i j to j i)))
 
 (document-function transformation-similar
-  "Check whether two supplied transformations are similar.  Two
+  "Returns whether two supplied transformations are similar.  Two
 transformations are similar if they have the same permutation, the same
 inputs constraints, the same scalings, and offsets whose entries differ in
 at most DELTA."
@@ -451,16 +533,15 @@ supplied arrays, an error is signaled."
   (lazy-broadcast-list-of-arrays (list #(2 3 4) #2a((1 2 3) (4 5 6)))))
 
 (document-function lazy
-  "Returns one or more lazy arrays, whose contents are the values returned
-by the supplied function when applied element-wise to the contents of the
-remaining argument arrays.  If the arguments don't agree in shape, they are
-first broadcast with the function BROADCAST-ARRAYS."
-  (lazy #'+ #(1 2) #(3 4))
+  "Returns a lazy arrays whose contents are the results of applying the
+supplied function element-wise to the contents of the remaining argument
+arrays.  If the arguments don't agree in shape, they are first broadcast
+with the function LAZY-BROADCAST-LIST-OF-ARRAYS."
+  (compute (lazy #'*))
   (compute (lazy #'+ 2 3))
+  (compute (lazy #'+ #(1 2) #(3 4)))
   (compute (lazy #'+ 2 #(1 2 3 4 5)))
-  (compute (lazy #'* #(2 3) #2a((1 2) (3 4))))
-  (compute (lazy #'floor 7.5))
-  (compute (lazy #'floor 7.5 #(1 2 3 4 5))))
+  (compute (lazy #'* #(2 3) #2a((1 2) (3 4)))))
 
 (document-function lazy-collapse
   "Turns the supplied array into an array with the same rank and contents,

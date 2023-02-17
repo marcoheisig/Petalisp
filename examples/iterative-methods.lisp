@@ -68,8 +68,8 @@
     (labels ((red-black-shapes (red black ranges)
                (if (null ranges)
                    (values
-                    (mapcar #'~l red)
-                    (mapcar #'~l black))
+                    (mapcar #'make-shape red)
+                    (mapcar #'make-shape black))
                    (with-accessors ((start range-start)
                                     (step range-step)
                                     (end range-end)
@@ -154,34 +154,6 @@
 (defun prolongate (u)
   (let ((u* (scale-array u 2)))
     (trivia:ematch (lazy-array-shape u*)
-      ((~ start-1 end-1 2)
-       (let ((space-1 (~ (1+ start-1) end-1 2)))
-         (lazy-fuse
-          u*
-          (lazy #'* 1/2
-                (lazy #'+
-                      (lazy-reshape u* (transform i to (1+ i)) space-1)
-                      (lazy-reshape u* (transform i to (1- i)) space-1))))))
-      ((~ start-1 end-1 2 ~ start-2 end-2 2)
-       (let ((space-1 (~ (1+ start-1) end-1 2  ~ start-2 end-2 2))
-             (space-2 (~ start-1 end-1 2 ~ (1+ start-2) end-2 2))
-             (space-3 (~ (1+ start-1) end-1 2 ~ (1+ start-2) end-2 2)))
-         (lazy-fuse
-          u*
-          (lazy #'* 1/2
-                (lazy #'+
-                      (lazy-reshape u* (transform i j to (1+ i) j) space-1)
-                      (lazy-reshape u* (transform i j to (1- i) j) space-1)))
-          (lazy #'* 1/2
-                (lazy #'+
-                      (lazy-reshape u* (transform i j to i (1+ j)) space-2)
-                      (lazy-reshape u* (transform i j to i (1- j)) space-2)))
-          (lazy #'* 1/4
-                (lazy #'+
-                      (lazy-reshape u* (transform i j to (1+ i) (1+ j)) space-3)
-                      (lazy-reshape u* (transform i j to (1+ i) (1- j)) space-3)
-                      (lazy-reshape u* (transform i j to (1- i) (1+ j)) space-3)
-                      (lazy-reshape u* (transform i j to (1- i) (1- j)) space-3))))))
       ((~ start-1 end-1 2 ~ start-2 end-2 2 ~ start-3 end-3 2)
        (let ((space-1 (~ (1+ start-1) end-1 2 ~ start-2 end-2 2 ~ start-3 end-3 2))
              (space-2 (~ start-1 end-1 2 ~ (1+ start-2) end-2 2 ~ start-3 end-3 2))
@@ -231,44 +203,39 @@
                       (lazy-reshape u* (transform i j k to (1- i) (1+ j) (1+ k)) space-7)
                       (lazy-reshape u* (transform i j k to (1- i) (1+ j) (1- k)) space-7)
                       (lazy-reshape u* (transform i j k to (1- i) (1- j) (1+ k)) space-7)
-                      (lazy-reshape u* (transform i j k to (1- i) (1- j) (1- k)) space-7)))))))))
+                      (lazy-reshape u* (transform i j k to (1- i) (1- j) (1- k)) space-7))))))
+      ((~ start-1 end-1 2 ~ start-2 end-2 2)
+       (let ((space-1 (~ (1+ start-1) end-1 2  ~ start-2 end-2 2))
+             (space-2 (~ start-1 end-1 2 ~ (1+ start-2) end-2 2))
+             (space-3 (~ (1+ start-1) end-1 2 ~ (1+ start-2) end-2 2)))
+         (lazy-fuse
+          u*
+          (lazy #'* 1/2
+                (lazy #'+
+                      (lazy-reshape u* (transform i j to (1+ i) j) space-1)
+                      (lazy-reshape u* (transform i j to (1- i) j) space-1)))
+          (lazy #'* 1/2
+                (lazy #'+
+                      (lazy-reshape u* (transform i j to i (1+ j)) space-2)
+                      (lazy-reshape u* (transform i j to i (1- j)) space-2)))
+          (lazy #'* 1/4
+                (lazy #'+
+                      (lazy-reshape u* (transform i j to (1+ i) (1+ j)) space-3)
+                      (lazy-reshape u* (transform i j to (1+ i) (1- j)) space-3)
+                      (lazy-reshape u* (transform i j to (1- i) (1+ j)) space-3)
+                      (lazy-reshape u* (transform i j to (1- i) (1- j)) space-3))))))
+      ((~ start-1 end-1 2)
+       (let ((space-1 (~ (1+ start-1) end-1 2)))
+         (lazy-fuse
+          u*
+          (lazy #'* 1/2
+                (lazy #'+
+                      (lazy-reshape u* (transform i to (1+ i)) space-1)
+                      (lazy-reshape u* (transform i to (1- i)) space-1)))))))))
 
 (defun restrict (u)
   (let ((u (lazy-array u)))
     (trivia:ematch (lazy-array-shape u)
-      ((~ start-1 end-1)
-       (let* ((selection (~ start-1 end-1 2))
-              (interior (shape-interior selection)))
-         (lazy-reshape
-          (lazy-overwrite
-           (lazy-reshape u selection)
-           (lazy #'+
-              (lazy #'* 1/2 (lazy-reshape u interior))
-              (lazy #'* 1/4 (lazy-reshape u (transform i to (1+ i)) interior))
-              (lazy #'* 1/4 (lazy-reshape u (transform i to (1- i)) interior))))
-          (transform i to (+ start-1 (/ (- i start-1) 2))))))
-      ((~ start-1 end-1 ~ start-2 end-2)
-       (let* ((selection (~ start-1 end-1 2 ~ start-2 end-2 2))
-              (interior (shape-interior selection)))
-         (lazy-reshape
-          (lazy-overwrite
-           (lazy-reshape u selection)
-           (lazy #'+
-              (lazy #'* 1/4
-                 (lazy-reshape u interior))
-              (lazy #'* 1/8
-                 (lazy #'+
-                    (lazy-reshape u (transform i j to (1+ i) j) interior)
-                    (lazy-reshape u (transform i j to (1- i) j) interior)
-                    (lazy-reshape u (transform i j to i (1+ j)) interior)
-                    (lazy-reshape u (transform i j to i (1- j)) interior)))
-              (lazy #'* 1/16
-                 (lazy-reshape u (transform i j to (1+ i) (1+ j)) interior)
-                 (lazy-reshape u (transform i j to (1- i) (1+ j)) interior)
-                 (lazy-reshape u (transform i j to (1+ i) (1- j)) interior)
-                 (lazy-reshape u (transform i j to (1- i) (1- j)) interior))))
-          (transform i j to (+ start-1 (/ (- i start-1) 2))
-                     (+ start-2 (/ (- j start-2) 2))))))
       ((~ start-1 end-1 1 ~ start-2 end-2 1 ~ start-3 end-3 1)
        (let* ((selection (~ start-1 end-1 2 ~ start-2 end-2 2 ~ start-3 end-3 2))
               (interior (shape-interior selection)))
@@ -276,40 +243,73 @@
           (lazy-overwrite
            (lazy-reshape u selection)
            (lazy #'+
-              (lazy #'* 1/8
-                 (lazy-reshape u interior))
-              (lazy #'* 1/16
-                 (lazy-reshape u (transform i j k to (1+ i) j k) interior)
-                 (lazy-reshape u (transform i j k to i (1+ j) k) interior)
-                 (lazy-reshape u (transform i j k to i j (1+ k)) interior)
-                 (lazy-reshape u (transform i j k to (1- i) j k) interior)
-                 (lazy-reshape u (transform i j k to i (1- j) k) interior)
-                 (lazy-reshape u (transform i j k to i j (1- k)) interior))
-              (lazy #'* 1/32
-                 (lazy-reshape u (transform i j k to i (1+ j) (1+ k)) interior)
-                 (lazy-reshape u (transform i j k to (1+ i) j (1+ k)) interior)
-                 (lazy-reshape u (transform i j k to (1+ i) (1+ j) k) interior)
-                 (lazy-reshape u (transform i j k to i (1- j) (1+ k)) interior)
-                 (lazy-reshape u (transform i j k to (1- i) j (1+ k)) interior)
-                 (lazy-reshape u (transform i j k to (1- i) (1+ j) k) interior)
-                 (lazy-reshape u (transform i j k to i (1+ j) (1- k)) interior)
-                 (lazy-reshape u (transform i j k to (1+ i) j (1- k)) interior)
-                 (lazy-reshape u (transform i j k to (1+ i) (1- j) k) interior)
-                 (lazy-reshape u (transform i j k to i (1- j) (1- k)) interior)
-                 (lazy-reshape u (transform i j k to (1- i) j (1- k)) interior)
-                 (lazy-reshape u (transform i j k to (1- i) (1- j) k) interior))
-              (lazy #'* 1/64
-                 (lazy-reshape u (transform i j k to (1+ i) (1+ j) (1+ k)) interior)
-                 (lazy-reshape u (transform i j k to (1+ i) (1+ j) (1- k)) interior)
-                 (lazy-reshape u (transform i j k to (1+ i) (1- j) (1+ k)) interior)
-                 (lazy-reshape u (transform i j k to (1+ i) (1- j) (1- k)) interior)
-                 (lazy-reshape u (transform i j k to (1- i) (1+ j) (1+ k)) interior)
-                 (lazy-reshape u (transform i j k to (1- i) (1+ j) (1- k)) interior)
-                 (lazy-reshape u (transform i j k to (1- i) (1- j) (1+ k)) interior)
-                 (lazy-reshape u (transform i j k to (1- i) (1- j) (1- k)) interior))))
+                 (lazy #'* 1/8
+                       (lazy-reshape u interior))
+                 (lazy #'* 1/16
+                       (lazy-reshape u (transform i j k to (1+ i) j k) interior)
+                       (lazy-reshape u (transform i j k to i (1+ j) k) interior)
+                       (lazy-reshape u (transform i j k to i j (1+ k)) interior)
+                       (lazy-reshape u (transform i j k to (1- i) j k) interior)
+                       (lazy-reshape u (transform i j k to i (1- j) k) interior)
+                       (lazy-reshape u (transform i j k to i j (1- k)) interior))
+                 (lazy #'* 1/32
+                       (lazy-reshape u (transform i j k to i (1+ j) (1+ k)) interior)
+                       (lazy-reshape u (transform i j k to (1+ i) j (1+ k)) interior)
+                       (lazy-reshape u (transform i j k to (1+ i) (1+ j) k) interior)
+                       (lazy-reshape u (transform i j k to i (1- j) (1+ k)) interior)
+                       (lazy-reshape u (transform i j k to (1- i) j (1+ k)) interior)
+                       (lazy-reshape u (transform i j k to (1- i) (1+ j) k) interior)
+                       (lazy-reshape u (transform i j k to i (1+ j) (1- k)) interior)
+                       (lazy-reshape u (transform i j k to (1+ i) j (1- k)) interior)
+                       (lazy-reshape u (transform i j k to (1+ i) (1- j) k) interior)
+                       (lazy-reshape u (transform i j k to i (1- j) (1- k)) interior)
+                       (lazy-reshape u (transform i j k to (1- i) j (1- k)) interior)
+                       (lazy-reshape u (transform i j k to (1- i) (1- j) k) interior))
+                 (lazy #'* 1/64
+                       (lazy-reshape u (transform i j k to (1+ i) (1+ j) (1+ k)) interior)
+                       (lazy-reshape u (transform i j k to (1+ i) (1+ j) (1- k)) interior)
+                       (lazy-reshape u (transform i j k to (1+ i) (1- j) (1+ k)) interior)
+                       (lazy-reshape u (transform i j k to (1+ i) (1- j) (1- k)) interior)
+                       (lazy-reshape u (transform i j k to (1- i) (1+ j) (1+ k)) interior)
+                       (lazy-reshape u (transform i j k to (1- i) (1+ j) (1- k)) interior)
+                       (lazy-reshape u (transform i j k to (1- i) (1- j) (1+ k)) interior)
+                       (lazy-reshape u (transform i j k to (1- i) (1- j) (1- k)) interior))))
           (transform i j k to (+ start-1 (/ (- i start-1) 2))
                      (+ start-2 (/ (- j start-2) 2))
-                     (+ start-3 (/ (- k start-3) 2)))))))))
+                     (+ start-3 (/ (- k start-3) 2))))))
+      ((~ start-1 end-1 ~ start-2 end-2)
+       (let* ((selection (~ start-1 end-1 2 ~ start-2 end-2 2))
+              (interior (shape-interior selection)))
+         (lazy-reshape
+          (lazy-overwrite
+           (lazy-reshape u selection)
+           (lazy #'+
+                 (lazy #'* 1/4
+                       (lazy-reshape u interior))
+                 (lazy #'* 1/8
+                       (lazy #'+
+                             (lazy-reshape u (transform i j to (1+ i) j) interior)
+                             (lazy-reshape u (transform i j to (1- i) j) interior)
+                             (lazy-reshape u (transform i j to i (1+ j)) interior)
+                             (lazy-reshape u (transform i j to i (1- j)) interior)))
+                 (lazy #'* 1/16
+                       (lazy-reshape u (transform i j to (1+ i) (1+ j)) interior)
+                       (lazy-reshape u (transform i j to (1- i) (1+ j)) interior)
+                       (lazy-reshape u (transform i j to (1+ i) (1- j)) interior)
+                       (lazy-reshape u (transform i j to (1- i) (1- j)) interior))))
+          (transform i j to (+ start-1 (/ (- i start-1) 2))
+                     (+ start-2 (/ (- j start-2) 2))))))
+      ((~ start-1 end-1)
+       (let* ((selection (~ start-1 end-1 2))
+              (interior (shape-interior selection)))
+         (lazy-reshape
+          (lazy-overwrite
+           (lazy-reshape u selection)
+           (lazy #'+
+                 (lazy #'* 1/2 (lazy-reshape u interior))
+                 (lazy #'* 1/4 (lazy-reshape u (transform i to (1+ i)) interior))
+                 (lazy #'* 1/4 (lazy-reshape u (transform i to (1- i)) interior))))
+          (transform i to (+ start-1 (/ (- i start-1) 2)))))))))
 
 (defun residual (u b h)
   (let* ((u (lazy-array u))
