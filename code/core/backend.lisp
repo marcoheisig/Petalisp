@@ -48,8 +48,8 @@ value of NIL indicates that the corresponding result shall be a fresh
 array.  A value that is an array ensures that the result is written to that
 array.
 
-An error is signaled if any of the supplied arrays has a different shape or
-element type as the corresponding result or unknown."))
+An error is signaled if any of the arguments of an evaluator has a
+different shape or element type as the corresponding result or unknown."))
 
 (defgeneric backend-compute-asynchronously (backend lazy-arrays)
   (:argument-precedence-order lazy-arrays backend)
@@ -272,4 +272,6 @@ already been computed."))
   (values))
 
 (defun evaluator (unknowns arrays)
-  (backend-evaluator *backend* unknowns (mapcar #'lazy-array arrays)))
+  (declare (list unknowns arrays))
+  (the (values function &optional)
+       (backend-evaluator *backend* unknowns (mapcar #'lazy-array arrays))))

@@ -155,7 +155,7 @@
        (+ (shape-rank shape) n)
        (shape-size shape))))
 
-(defun subshape (shape start &optional end)
+(defun shape-subseq (shape start &optional end)
   (declare (shape shape))
   (check-type start rank "a valid lazy array rank")
   (let* ((rank (shape-rank shape))
@@ -204,7 +204,7 @@
 
 (defgeneric shape-designator-shape (shape-designator)
   (:method ((object t))
-    (error "Not a valid shape designator: ~S." object))
+    (make-shape '()))
   (:method ((shape shape))
     shape)
   (:method ((array array))

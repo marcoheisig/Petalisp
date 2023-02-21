@@ -324,7 +324,7 @@
    :delayed-action (load-time-value (make-delayed-nop))))
 
 (declaim (inline make-unknown))
-(defun make-unknown (&key (shape (make-shape '())) element-type)
+(defun make-unknown (&key (shape (make-shape '())) (element-type 't))
   (declare (shape shape))
   (make-lazy-array
    :shape shape

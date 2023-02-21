@@ -65,7 +65,7 @@
    #:inflate-shape
    #:subdivide-arrays
    #:subdivide-shapes
-   #:subshape
+   #:shape-subseq
    #:subshapep
    #:split-shape
    #:fuse-shapes

@@ -92,7 +92,7 @@
                   (floatify
                    (lazy (lambda (i j) (if (= i j) 1.0 0.0))
                       (lazy-reshape (lazy-slices *train-labels* batch) (transform i to i 0))
-                      (lazy-shape-indices (~ 10))))))
+                      (lazy-index-components (~ 10))))))
                ;; Feed forward
                (a1 (relu (matmul train-images W1)))
                (a2 (relu (matmul a1 W2)))

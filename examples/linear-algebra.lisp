@@ -62,8 +62,8 @@
 (defun eye (m &optional (n m))
   (let ((shape (~ m ~ n)))
     (lazy #'δ
-          (lazy-shape-indices shape 0)
-          (lazy-shape-indices shape 1))))
+          (lazy-index-components shape 0)
+          (lazy-index-components shape 1))))
 
 (defun transpose (x)
   (lazy-reshape
@@ -89,7 +89,7 @@
      (if (> lv rv)
          (values lv li)
          (values rv ri)))
-     x (lazy-array-indices x)))
+   x (lazy-index-components x)))
 
 (defun matmul (A B)
   (lazy-reduce #'+

@@ -41,7 +41,7 @@ obtained after applying the modifier."
         (lazy-reshape-using-transformation lazy-array modifier)))
       ;; Case 2: Reshape using a shape function.
       (function
-       (dolist (modifier (multiple-value-list (funcall modifier (subshape shape 0 n-axes))))
+       (dolist (modifier (multiple-value-list (funcall modifier (shape-subseq shape 0 n-axes))))
          (multiple-value-setq (n-axes lazy-array)
            (lazy-reshape-aux n-axes lazy-array modifier)))
        (values n-axes lazy-array))

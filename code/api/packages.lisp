@@ -25,7 +25,6 @@
   (:export
 
    ;; High-level API
-   #:lazy-array-indices
    #:lazy-array-interior
    #:lazy-broadcast-list-of-arrays
    #:lazy-collapse
@@ -38,7 +37,7 @@
    #:lazy-reduce
    #:lazy-allreduce
    #:lazy-reshape
-   #:lazy-shape-indices
+   #:lazy-index-components
    #:lazy-slice
    #:lazy-slices
    #:lazy-stack
@@ -106,7 +105,7 @@
    #:shape-contains
    #:shrink-shape
    #:enlarge-shape
-   #:subshape
+   #:shape-subseq
    #:subshapep
    #:shape-union
    #:subdivide-arrays
@@ -119,6 +118,7 @@
    #:shape-table-value
    #:remove-shape-table-entry
    #:clear-shape-table
+   #:shape-designator-shape
 
    ;; Transformations
    #:transformation

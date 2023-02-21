@@ -113,7 +113,7 @@
     #(+1 -1 +2 -2 +3 -3)))
   (loop for n from 1 to 111 do
     (let* ((v (make-array n :initial-element 1 :element-type '(signed-byte 32)))
-           (i (lazy-array-indices v)))
+           (i (lazy-index-components v)))
       (multiple-value-bind (max imax min imin)
           (lazy-reduce
            (lambda (lmax limax lmin limin rmax rimax rmin rimin)
@@ -144,13 +144,13 @@
   (compute (lazy-reshape 4 (~ 5)))
   (compute (lazy-reshape #(1 2 3) (transform i to (- i))) #(3 2 1))
   (compute (lazy-reshape #(1 2 3 4) (~ 1 3)))
-  (compute (lazy-reshape (lazy-shape-indices (~ 1 10)) (~ 3 ~ 3)))
+  (compute (lazy-reshape (lazy-index-components (~ 1 10)) (~ 3 ~ 3)))
   (compute (lazy-reshape #2A((1 2) (3 4)) (transform i j to j i)))
   (compute (lazy-reshape #(1 2 3 4) (~ 1 3) (collapsing-reshaper) (~ 0 2 ~ 0 2)))
   (alexandria:map-permutations
    (lambda (shapes)
      (compute
-      (apply #'lazy-reshape (lazy-shape-indices (~ 1 101)) shapes)))
+      (apply #'lazy-reshape (lazy-index-components (~ 1 101)) shapes)))
    (list (~ 0 5 ~ 0 5 ~ 0 4)
          (~ 0 2 ~ 0 5 ~ 0 1 ~ 0 2 ~ 0 5)
          (~ 1 3 ~ 1 6 ~ 1 3 ~ 1 6)
@@ -159,14 +159,14 @@
   (alexandria:map-permutations
    (lambda (shapes)
      (compute
-      (apply #'lazy-reshape (lazy-shape-indices (~ 1 201)) shapes)))
+      (apply #'lazy-reshape (lazy-index-components (~ 1 201)) shapes)))
    (list (~ 0 2 ~ 0 5 ~ 0 5 ~ 0 4)
          (~ 0 2 ~ 0 2 ~ 0 5 ~ 0 1 ~ 0 2 ~ 0 5)
          (~ 0 2 ~ 0 100)))
   (alexandria:map-permutations
    (lambda (shapes)
      (compute
-      (apply #'lazy-reshape (lazy-shape-indices (~ 1 201)) shapes)))
+      (apply #'lazy-reshape (lazy-index-components (~ 1 201)) shapes)))
    (list (~ 0 5 ~ 0 5 ~ 0 4 ~ 0 2)
          (~ 0 2 ~ 0 5 ~ 0 1 ~ 0 2 ~ 0 5 ~ 0 2)
          (~ 0 100 ~ 0 2)))
@@ -181,13 +181,13 @@
   (compute 1 2 3 4 5 6 7 8 9 (lazy #'+ 5 5) (lazy-reduce #'+ #(1 2 3 4 1))))
 
 (define-test indices-test
-  (compute (lazy-array-indices #(5 6 7)))
+  (compute (lazy-index-components #(5 6 7)))
   (let ((a (make-array '(2 3 4))))
-    (compute (lazy-array-indices a 1))
+    (compute (lazy-index-components a 1))
     (compute (lazy #'+
-                (lazy-array-indices a 0)
-                (lazy-array-indices a 1)
-                (lazy-array-indices a 2)))))
+                (lazy-index-components a 0)
+                (lazy-index-components a 1)
+                (lazy-index-components a 2)))))
 
 
 (define-test sum-of-pairs

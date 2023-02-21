@@ -299,13 +299,13 @@ shapes are supersets of the corresponding resulting shape."
   (subdivide-shapes (list (~ 1 3 ~ 1 3) (~ 1 2 ~ 1 2)))
   (subdivide-shapes (list (~ 1 10) (~ 2 20))))
 
-(document-function subshape
+(document-function shape-subseq
   "Returns the shape consisting of all ranges of the supplied shape in the
 axes interval between the supplied start and end.  If the end argument is
 not supplied, it defaults to the rank of the supplied shape."
-  (subshape (~ 2 ~ 3 ~ 4) 0)
-  (subshape (~ 2 ~ 3 ~ 4) 2)
-  (subshape (~ 2 ~ 3 ~ 4) 1 2))
+  (shape-subseq (~ 2 ~ 3 ~ 4) 0)
+  (shape-subseq (~ 2 ~ 3 ~ 4) 2)
+  (shape-subseq (~ 2 ~ 3 ~ 4) 1 2))
 
 (document-function subshapep
   "Returns whether all elements of the first supplied shape are also
@@ -318,6 +318,12 @@ shapes don't have the same rank."
 
 (document-function array-shape
   "Returns the shape of the supplied array.")
+
+(document-function shape-designator-shape
+  "Returns the shape of the supplied shape designator.  If the designator
+is already a shape, the result is that shape.  If the designator is a
+regular array or lazy array, the result is the shape of that array.  If the
+result is any other object, the result is a shape with rank zero.")
 
 (document-function split-shape
   "Split the supplied SHAPE at AXIS.  The optional POSITION argument can be
@@ -545,7 +551,7 @@ taking each index and corresponding value of the original array and
 applying the transformation to the index while retaining the value."
   (compute (lazy-reshape 4 (~ 0 4)))
   (compute (lazy-reshape #(1 2 3 4) (~ 1 2)))
-  (compute (lazy-reshape (lazy-shape-indices (~ 9)) (~ 3 ~ 3)))
+  (compute (lazy-reshape (lazy-index-components (~ 9)) (~ 3 ~ 3)))
   (compute (lazy-reshape #2A((1 2) (3 4)) (transform i j to j i)))
   (compute (lazy-reshape #(1 2 3 4) (~ 1 3) (~ 0 2 ~ 0 2))))
 
@@ -588,21 +594,16 @@ arguments overlap partially, the value of the rightmost object is used."
   (compute (lazy-overwrite (lazy-reshape 1 (~ 0 4))
                            (lazy-reshape 0 (~ 2 4)))))
 
-(document-function lazy-array-indices
-  "Returns a lazy array of integers with the shape as the supplied ARRAY,
-where each array element at a certain index maps to the integer of that
-index at the supplied AXIS.  If AXIS is not supplied, it defaults to zero."
-  (compute (lazy-array-indices #2a((1 2) (3 4))))
-  (compute (lazy-array-indices #2a((1 2) (3 4)) 1))
-  (compute (lazy-array-indices "abc")))
-
-(document-function lazy-shape-indices
-  "Returns a lazy array of integers of the shape of SHAPE, where each array
-element at a certain index maps to the integer of that index at the supplied AXIS.
-If AXIS is not supplied, it defaults to zero."
-  (compute (lazy-shape-indices (~ 9)))
-  (compute (lazy-shape-indices (~ 0 4 2 ~ 1 5 2) 0))
-  (compute (lazy-shape-indices (~ 0 4 2 ~ 1 5 2) 1)))
+(document-function lazy-index-components
+  "Returns a lazy array containing the index components of the designated
+shape in the supplied axis.  If the first argument is not a shape, the
+function SHAPE-DESIGNATOR—SHAPE is used to convert it a shape.  If no axis
+is not supplied, it defaults to zero."
+  (compute (lazy-index-components (~ 9)))
+  (compute (lazy-index-components (~ 0 4 2 ~ 1 5 2) 0))
+  (compute (lazy-index-components (~ 0 4 2 ~ 1 5 2) 1))
+  (compute (lazy-index-components #2a((1 2) (3 4))))
+  (compute (lazy-index-components #2a((1 2) (3 4)) 1)))
 
 (document-function lazy-array-interior
   "For a given ARRAY and WIDTH, return a new, lazy array with those
@@ -701,7 +702,7 @@ the following rules:
            (if (> lv rv)
                (values lv li)
                (values rv ri)))
-         a (lazy-array-indices a 0))
+         a (lazy-index-components a 0))
       (compute max index))))
 
 (document-function vectorize
@@ -768,9 +769,9 @@ The individual steps it performs are:
 4. Optimize the dependency graph, discard all unused parts, and plan a
    schedule that is fast and has reasonable memory requirements.
 
-5. Execute the schedule on the available hardware.  Make use of CPUs, GPUs,
-   or even distributed systems where possible. Gather the results in the
-   form of regular arrays.
+5. Execute the schedule on the available hardware.  Make use of all
+   processing units, accelerators, or even distributed systems where
+   possible. Gather the results in the form of regular arrays.
 
 6. Change the internal representation of all the originally supplied lazy
    arrays such that future calculations involving them directly use the
@@ -807,16 +808,31 @@ result of any other object is that object itself."
 asynchronously.  Returns a request object that can be passed to the
 functions WAIT and COMPLETEDP.")
 
+(document-function make-unknown
+  "Returns a lazy array whose contents are not known and consequently cannot be computed.
+Lazy arrays depending on such an array also cannot be computed.  The main
+purpose such unknowns is to construct the arguments to the EVALUATOR function."
+  (make-unknown :shape (~ 5 ~ 5))
+  (make-unknown :element-type 'double-float))
+
 (document-function evaluator
-  "Returns a function that can be applied to arrays to achieve the effect
-described by the supplied UNKNOWNS and ARRAYS.")
+  "For a supplied list of unknowns of length N and list of LAZY-ARRAYS of length K,
+returns a function with K+N arguments that returns, as multiple values, the
+K array values obtained by computing the supplied arrays after substituting
+the Ith unknown with the supplied argument in position K+I.
+
+The first N arguments specify which storage to use for the results.  A
+value of NIL indicates that the corresponding result shall be a fresh
+array.  A value that is an array ensures that the result is written to that
+array.
+
+An error is signaled if any of the arguments of an evaluator has a
+different shape or element type as the corresponding result or unknown.")
 
 (document-function wait
-  "Blocks until the work designated by some COMPUTE-ASYNCHRONOUSLY operations
-has been completed.  Each argument must be a request returned by
-COMPUTE-ASYNCHRONOUSLY.")
+  "Blocks until the requests resulting from some COMPUTE-ASYNCHRONOUSLY operations
+has been completed.")
 
 (document-function completedp
-  "Returns whether the work designated by some COMPUTE-ASYNCHRONOUSLY
-operations has been completed.  Each argument must be a requests returned
-by COMPUTE-ASYNCHRONOUSLY.")
+  "Returns whether all the requests resulting from some COMPUTE-ASYNCHRONOUSLY
+operations has been completed.")
