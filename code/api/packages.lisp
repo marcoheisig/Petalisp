@@ -52,6 +52,7 @@
    #:compute-list-of-arrays
    #:compute-asynchronously
    #:wait
+   #:completedp
    #:vectorize
    #:evaluator
 

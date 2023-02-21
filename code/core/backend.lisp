@@ -267,5 +267,9 @@ already been computed."))
   (mapc #'request-wait requests)
   (values))
 
+(defun completedp (&rest requests)
+  (mapc #'request-completedp requests)
+  (values))
+
 (defun evaluator (unknowns arrays)
   (backend-evaluator *backend* unknowns (mapcar #'lazy-array arrays)))

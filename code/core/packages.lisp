@@ -205,6 +205,7 @@
    #:compute-list-of-arrays
    #:compute-asynchronously
    #:wait
+   #:completedp
    #:evaluator
    #:request
    #:requestp

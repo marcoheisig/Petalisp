@@ -291,10 +291,11 @@ range R1 that has been peeled off."
   (subdivide-arrays (list #(1 2 3 4) #(1 2))))
 
 (document-function subdivide-shapes
-  "Returns a list of (shape . bitmask) conses.  Each shape is a proper
-subshape of one or more of the supplied shapes and their fusion covers all
-supplied shapes.  The bitmask indicates which of the supplied shapes are
-supersets of the corresponding resulting shape."
+  "Returns a list of cons cells whose CAR is a shape and whose CDR is an
+integer.  Each shape is a proper subshape of one or more of the supplied
+shapes and their fusion covers all supplied shapes.  The bits of each
+integer, when viewed in two's complement, encode which of the supplied
+shapes are supersets of the corresponding resulting shape."
   (subdivide-shapes (list (~ 1 3 ~ 1 3) (~ 1 2 ~ 1 2)))
   (subdivide-shapes (list (~ 1 10) (~ 2 20))))
 
@@ -503,6 +504,30 @@ argument is not supplied, it defaults to a sequence of zeros."
   "A lazy array encapsulates some information that can be used to compute
 actual Common Lisp arrays.")
 
+(document-function lazy-array
+  "Returns a lazy array that is derived from the supplied object in the
+following way:
+
+- If the supplied object is a lazy array, the result is that lazy array.
+
+- If the supplied object is a regular array, the result is a lazy array
+  of the same shape, and whose indices map to the same elements.
+
+- If the supplied object is neither a lazy array, nor a regular array, it
+  is treated like an array of rank zero whose sole element is that supplied
+  object.
+
+By convention, all functions that expect an argument to be a lazy array
+actually accept any kind of object and use the LAZY-ARRAY function to
+convert that object to a lazy array.  Unless user code violates this
+convention, scalars, regular arrays, and lazy arrays can be used
+interchangeably in any argument position."
+  (lazy-array #2a((1 2 3) (4 5 6)))
+  (lazy-array #(1 2 3))
+  (lazy-array 5)
+  (lazy-array (lazy-array 5))
+  (lazy-array (make-array 2 :element-type 'double-float :initial-element 0d0)))
+
 (document-function lazy-reshape
   "Returns a lazy array with the contents of ARRAY, but after applying the
 supplied MODIFIERS in left-to-right order.  A modifier must either be a
@@ -564,17 +589,17 @@ arguments overlap partially, the value of the rightmost object is used."
                            (lazy-reshape 0 (~ 2 4)))))
 
 (document-function lazy-array-indices
-  "Returns a lazy array of integers of the shape of ARRAY, where each array
-element at index (i_0 ... i_N) has the value i_AXIS.  If AXIS is not
-supplied, it defaults to zero."
+  "Returns a lazy array of integers with the shape as the supplied ARRAY,
+where each array element at a certain index maps to the integer of that
+index at the supplied AXIS.  If AXIS is not supplied, it defaults to zero."
   (compute (lazy-array-indices #2a((1 2) (3 4))))
   (compute (lazy-array-indices #2a((1 2) (3 4)) 1))
   (compute (lazy-array-indices "abc")))
 
 (document-function lazy-shape-indices
-  "Returns a lazy array of integers of the shape of SHAPE, where each
-array element at index (i_0 ... i_N) has the value i_AXIS.  If AXIS is not
-supplied, it defaults to zero."
+  "Returns a lazy array of integers of the shape of SHAPE, where each array
+element at a certain index maps to the integer of that index at the supplied AXIS.
+If AXIS is not supplied, it defaults to zero."
   (compute (lazy-shape-indices (~ 9)))
   (compute (lazy-shape-indices (~ 0 4 2 ~ 1 5 2) 0))
   (compute (lazy-shape-indices (~ 0 4 2 ~ 1 5 2) 1)))
@@ -710,16 +735,60 @@ An error is signaled of any of the inputs is not of type NETWORK-INPUT, or
 if additional network inputs are reachable from the network outputs.")
 
 (document-function compute
-  "Returns, as multiple values, the computed result of each supplied
-argument.
+  "The primary interface for evaluating lazy arrays.  It takes any number of
+arguments that must be lazy arrays or objects that can be converted to lazy
+arrays with the function LAZY-ARRAY --- and returns the same number of
+possibly specialized regular arrays with the corresponding contents.  A
+special case is that whenever an array with rank zero would be returned, it
+instead returns the sole element of that array.  The reason for this
+treatment of scalars is that Petalisp treats every object as an array,
+whereas in Common Lisp the rank zero array containing an object and that
+object are distinct entities.  Of those two distinct representations, the
+non-array one is much more intuitive and useful in practice, so this is the
+one being returned.
 
-The computed result of an array or lazy array with rank zero is the one
-element contained in this array.  The computed result of any other array or
-lazy array is an array with the same rank and dimensions.  The computed
-result of any other object is that object itself."
-  (compute (lazy #'+ 2 #(3 4)))
-  (compute (lazy-reshape #2a((1 2) (3 4)) (transform i j to j i)))
-  (compute 2 #0A3 #(4)))
+Whenever a shape of any of the supplied arrays is not a valid shape for a
+regular array, that array is collapsed before being computed, i.e., each
+axis is shifted to begin with zero, and divided by the step size.
+
+All the heavy lifting in Petalisp happens within this function.  The exact
+details of how it operates aren't important for application programmers,
+but it is valuable to understand the rough steps that happen internally.
+The individual steps it performs are:
+
+1. Convert each supplied argument to a lazy array.
+
+2. Collapse each lazy array whose shape isn't equivalent to that of a
+   regular array.
+
+3. Determine the dependency graph whose roots are the collapsed lazy
+   arrays, and whose leaves are lazy arrays resulting from a call to
+   LAZY-ARRAY on a regular array or scalar.
+
+4. Optimize the dependency graph, discard all unused parts, and plan a
+   schedule that is fast and has reasonable memory requirements.
+
+5. Execute the schedule on the available hardware.  Make use of CPUs, GPUs,
+   or even distributed systems where possible. Gather the results in the
+   form of regular arrays.
+
+6. Change the internal representation of all the originally supplied lazy
+   arrays such that future calculations involving them directly use the
+   computed results.
+
+7. Return the results as multiple values, while replacing any array with
+   rank zero with the single element contained in that array.
+
+This function is the workhorse of Petalisp.  A lot of effort went into
+making it not only powerful, but also extremely fast.  The overhead of
+assembling a graph of lazy arrays and passing it to COMPUTE instead of
+invoking an already compiled and optimized imperative program is usually on
+the order of just a few microseconds."
+  (compute (lazy-array #(1 2 3)))
+  (compute #(1 2 3))
+  (compute 5)
+  (compute #0a42)
+  (compute #(1 2 3) 5 #0a42))
 
 (document-function compute-list-of-arrays
   "Returns a list of computed results - one for each element in the list
@@ -735,21 +804,19 @@ result of any other object is that object itself."
 
 (document-function compute-asynchronously
   "Hints that it would be worthwhile to compute the supplied arrays
-asynchronously.  Returns an opaque object that can be supplied to WAIT to
-wait until the scheduled operation has been performed.
+asynchronously.  Returns a request object that can be passed to the
+functions WAIT and COMPLETEDP.")
 
-This function allows speeding up certain programs like
-
- (progn (run-expensive-task)
-        (compute array-1 array-2))
-
-by rewriting them to something like
-
- (progn (compute-asynchronously array-1 array-2)
-        (run-expensive-task)
-        (compute array-1 array-2)).")
+(document-function evaluator
+  "Returns a function that can be applied to arrays to achieve the effect
+described by the supplied UNKNOWNS and ARRAYS.")
 
 (document-function wait
   "Blocks until the work designated by some COMPUTE-ASYNCHRONOUSLY operations
-has been completed.  Each argument must be one of the opaque objects
-returned by COMPUTE-ASYNCHRONOUSLY.")
+has been completed.  Each argument must be a request returned by
+COMPUTE-ASYNCHRONOUSLY.")
+
+(document-function completedp
+  "Returns whether the work designated by some COMPUTE-ASYNCHRONOUSLY
+operations has been completed.  Each argument must be a requests returned
+by COMPUTE-ASYNCHRONOUSLY.")
