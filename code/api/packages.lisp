@@ -124,8 +124,12 @@
    #:transformation
    #:transformationp
    #:identity-transformation-p
-   #:input-rank
-   #:output-rank
+   #:transformation-input-rank
+   #:transformation-output-rank
+   #:transformation-input-mask
+   #:transformation-output-mask
+   #:transformation-scalings
+   #:transformation-offsets
    #:transformation-invertiblep
    #:make-transformation
    #:identity-transformation

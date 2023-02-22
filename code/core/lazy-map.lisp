@@ -4,10 +4,10 @@
 
 (declaim (inline lazy-map))
 (defun lazy-map (function inputs)
-  (lazy-multiple-value-map function 1 inputs))
+  (lazy-multiple-value-map 1 function inputs))
 
 (defun lazy-multiple-value-map
-    (function n-outputs inputs
+    (n-outputs function inputs
      &aux (shape (if (null inputs)
                      (make-shape '())
                      (lazy-array-shape (first inputs)))))

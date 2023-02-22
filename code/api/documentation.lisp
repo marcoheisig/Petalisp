@@ -366,8 +366,50 @@ from lists of length N to lists of rank M.")
   "An identity transformation of rank N maps every list of length N to
 itself.  An identity transformation is its own inverse.")
 
+(document-function transformationp
+  "Returns whether a supplied object is a transformation."
+  (identity-transformation-p (transform i j to j i))
+  (identity-transformation-p (transform i j to i j)))
+
+(document-function identity-transformation-p
+  "Returns whether a supplied object is an identity transformation."
+  (identity-transformation-p (transform i j to j i))
+  (identity-transformation-p (transform i j to i j)))
+
+(document-function transformation-input-rank
+  "Returns the rank that any shape that can be transformed with this
+transformation must have.")
+
+(document-function transformation-input-mask
+  "Returns a vector with one element per axis of any possible input.  Each
+element of this vector is either an integer, meaning the index component of
+any input index in the corresponding axis must be that integer, or NIL,
+meaning that the index component can be any integer.")
+
+(document-function transformation-output-rank
+  "Returns the rank that shapes created by applying this transformation will
+have.")
+
+(document-function transformation-output-mask
+  "Returns a vector with one element per axis of any possible output.  Each
+element of this vector is either an integer that is the corresponding input
+axis that is referenced by this output axis, or NIL, if and only if the
+scaling of that output axis is zero.")
+
+(document-function transformation-scalings
+  "Returns a vector with one element per axis of any possible output.  Each
+element of this vector is a rational number that is multiplied with the
+input index component indicated by the corresponding output mask entry
+before it is added to the corresponding offset.")
+
+(document-function transformation-offsets
+  "Returns a vector with one element per axis of any possible output.  Each
+element of this vector is a rational number that is added to the
+input index component indicated by the corresponding output mask entry
+after it is multiplied with the corresponding scaling.")
+
 (document-function transformation-invertiblep
-  "Returns whether a supplied transformation is invertible."
+  "Returns whether a supplied object is an invertible transformation."
   (transformation-invertiblep (transform i j to j i))
   (transformation-invertiblep (transform i j to i)))
 
@@ -564,7 +606,7 @@ supplied arrays, an error is signaled."
   (lazy-broadcast-list-of-arrays (list #(2 3 4) #2a((1 2 3) (4 5 6)))))
 
 (document-function lazy
-  "Returns a lazy arrays whose contents are the results of applying the
+  "Returns a lazy array whose contents are the results of applying the
 supplied function element-wise to the contents of the remaining argument
 arrays.  If the arguments don't agree in shape, they are first broadcast
 with the function LAZY-BROADCAST-LIST-OF-ARRAYS."
@@ -573,6 +615,17 @@ with the function LAZY-BROADCAST-LIST-OF-ARRAYS."
   (compute (lazy #'+ #(1 2) #(3 4)))
   (compute (lazy #'+ 2 #(1 2 3 4 5)))
   (compute (lazy #'* #(2 3) #2a((1 2) (3 4)))))
+
+(document-function lazy-multiple-value
+  "Returns as many lazy arrays as indicated by the integer that is the first
+supplied argument, whose contents are the results of applying the function
+that is the second supplied argument element-wise to the contents of the
+remaining argument arrays.  If the arguments don't agree in shape, they are
+first broadcast with the function LAZY-BROADCAST-LIST-OF-ARRAYS."
+  (compute (lazy-multiple-value 0 #'*))
+  (compute (lazy-multiple-value 1 #'*))
+  (compute (lazy-multiple-value 2 #'*))
+  (compute (lazy-multiple-value 2 #'floor #(2 3) #2a((1 2) (3 4)))))
 
 (document-function lazy-collapse
   "Turns the supplied array into an array with the same rank and contents,

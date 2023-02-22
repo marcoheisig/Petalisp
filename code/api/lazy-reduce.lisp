@@ -27,7 +27,7 @@
                  (rest  (if (zerop rem) (~ 0) (~ last (1+ last))))
                  (results
                    (multiple-value-list
-                    (apply #'lazy-multiple-value function n-values
+                    (apply #'lazy-multiple-value n-values function
                            (petalisp.utilities:with-collectors ((arguments collect))
                              (dolist (input inputs)
                                (collect (lazy-reshape input 1 left (collapsing-reshaper))))

@@ -2,5 +2,5 @@
 
 (in-package #:petalisp.api)
 
-(defun lazy-multiple-value (function n-values &rest arrays)
-  (lazy-multiple-value-map function n-values (lazy-broadcast-list-of-arrays arrays)))
+(defun lazy-multiple-value (n-values function &rest arrays)
+  (lazy-multiple-value-map n-values function (lazy-broadcast-list-of-arrays arrays)))
