@@ -4,22 +4,25 @@
 
 (defun lazy-broadcast-list-of-arrays (list-of-arrays)
   (let* ((lazy-arrays (mapcar #'lazy-array list-of-arrays))
-         (shapes
-           (let ((shapes '()))
-             (dolist (lazy-array lazy-arrays shapes)
-               (pushnew (lazy-array-shape lazy-array) shapes :test #'shape=))))
+         (shapes (remove-duplicates (mapcar #'lazy-array-shape lazy-arrays) :test #'shape=))
          (broadcast-shape
-           (let* ((vector-of-ranges (map 'vector #'shape-ranges shapes))
-                  (number-of-shapes (length vector-of-ranges))
-                  (ranges '()))
-             (loop until (every #'null vector-of-ranges) do
-               (let ((range (range 1)))
-                 (loop for index below number-of-shapes do
-                   (unless (null (aref vector-of-ranges index))
-                     (let ((other-range (pop (aref vector-of-ranges index))))
-                       (setf range (broadcast-ranges range other-range)))))
-                 (push range ranges)))
-             (make-shape (nreverse ranges))))
+           (trivia:match shapes
+             ((list shape)
+              shape)
+             ((list* shapes)
+              (let* ((vector-of-ranges (map 'vector #'shape-ranges shapes))
+                     (number-of-shapes (length vector-of-ranges))
+                     (ranges '()))
+                (loop until (every #'null vector-of-ranges) do
+                  (let ((range nil))
+                    (loop for index below number-of-shapes do
+                      (unless (null (aref vector-of-ranges index))
+                        (let ((other-range (pop (aref vector-of-ranges index))))
+                          (if (null range)
+                              (setf range other-range)
+                              (setf range (broadcast-ranges range other-range))))))
+                    (push range ranges)))
+                (make-shape (nreverse ranges))))))
          (alist
            (loop for shape in shapes
                  collect
@@ -34,12 +37,12 @@
      broadcast-shape)))
 
 (defun broadcast-ranges (range-1 range-2)
-  (cond ((size-one-range-p range-1) range-2)
-        ((size-one-range-p range-2) range-1)
+  (cond ((size-one-range-p range-2) range-1)
+        ((size-one-range-p range-1) range-2)
         ((= (range-size range-1)
             (range-size range-2))
-         range-2)
-        ((range= range-1 range-2) range-2)
+         range-1)
+        ((range= range-1 range-2) range-1)
         (t
          (error "~@<Cannot broadcast the ranges ~S and ~S.~:@>"
                 range-1 range-2))))

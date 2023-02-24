@@ -39,13 +39,13 @@ obtained after applying the modifier."
        (values
         (transformation-output-rank modifier)
         (lazy-reshape-using-transformation lazy-array modifier)))
-      ;; Case 2: Reshape using a shape function.
+      ;; Case 3: Reshape using a shape function.
       (function
        (dolist (modifier (multiple-value-list (funcall modifier (shape-subseq shape 0 n-axes))))
          (multiple-value-setq (n-axes lazy-array)
            (lazy-reshape-aux n-axes lazy-array modifier)))
        (values n-axes lazy-array))
-      ;; Case 3: Reshape using a shape designator.
+      ;; Case 4: Reshape using a shape designator.
       (otherwise
        (lazy-reshape-aux/shape n-axes lazy-array (shape-designator-shape modifier))))))
 
@@ -60,7 +60,7 @@ obtained after applying the modifier."
     (values
      (shape-rank shape)
      (cond
-       ;; Case 3a: Select a subset of elements.
+       ;; Case 4a: Select a subset of elements.
        ((< target-size source-size)
         (unless (= n-axes (shape-rank shape))
           (error "~@<When selecting values, the number of relevant axes must be ~
@@ -71,11 +71,11 @@ obtained after applying the modifier."
          lazy-array
          target-shape
          (identity-transformation source-rank)))
-       ;; Case 3b: Change the index scheme while preserving the original
+       ;; Case 4b: Change the index scheme while preserving the original
        ;; lexicographic ordering.
        ((= target-size source-size)
         (lazy-change-shape lazy-array target-shape))
-       ;; Case 3c: Broadcast values of the input.
+       ;; Case 4c: Broadcast values of the input.
        ((> target-size source-size)
         (lazy-ref
          lazy-array

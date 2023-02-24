@@ -2,7 +2,6 @@
 
 (in-package #:petalisp.core)
 
-(declaim (inline lazy-map))
 (defun lazy-map (function inputs)
   (lazy-multiple-value-map 1 function inputs))
 

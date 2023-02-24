@@ -577,33 +577,95 @@ interchangeably in any argument position."
   (lazy-array (make-array 2 :element-type 'double-float :initial-element 0d0)))
 
 (document-function lazy-reshape
-  "Returns a lazy array with the contents of ARRAY, but after applying the
-supplied MODIFIERS in left-to-right order.  A modifier must either be a
-shape, or a transformation.
+  "Returns the lazy array that is obtained by successively reshaping the
+supplied array with the supplied modifiers in left-to-right order.  There
+are four kinds of modifiers: Transformations that describe a reordering of
+values, shapes that describe a selection, shape change, or broadcasting of
+values depending on whether the shape modifier has fewer, equal, or more
+elements than the current lazy array, functions, that are applied to the
+shape of the current lazy array to obtain additional modifiers, and
+integers that can restrict the operation of any of the other modifiers to
+just the first few axes while leaving the remaining axes as they are.
 
-A shape can denote one of three different modifications, depending on
-whether it is larger than the array, smaller than the array, or has the
-same number of elements as the array.  If the shape is larger than the
-array, it denotes a broadcasting operation.  If the shape is smaller than
-the array, it denotes a selection of a sub-array.  If the shape has the
-same number of elements, it denotes a lexicographic reordering operation.
+More precisely, the processing maintains a lazy array L of rank R that is
+initialized to the result of applying LAZY-ARRAY constructor to the
+supplied first argument, and a shape S with rank P that initialized to the
+shape of L, and updates L and S for each modifier while maintaining the
+invariant that P is less than or equal to R, and that the first P ranges of
+the shape S are equal to the first P ranges of the lazy array L.  The rules
+for updating L and S are as follows:
 
-In case the modifier is a transformation, the new array is obtained by
-taking each index and corresponding value of the original array and
-applying the transformation to the index while retaining the value."
-  (compute (lazy-reshape 4 (~ 0 4)))
-  (compute (lazy-reshape #(1 2 3 4) (~ 1 2)))
-  (compute (lazy-reshape (lazy-index-components (~ 9)) (~ 3 ~ 3)))
+1. If the modifier is a non-negative integer N, set S to the shape
+   consisting of the first N ranges of L.  Signal an error if N exceeds R.
+
+2. If the modifier is an invertible transformation with input rank M and
+   output rank N, extend the transformation with R minus M trailing
+   identity mappings such that it has input rank R and output rank N plus R
+   minus M.  Create a new lazy array by reordering L with that extended
+   transformation.  Set L to the newly created lazy array, and set S to
+   the first N ranges of the newly created lazy array.  Signal an error if
+   M is larger than R.
+
+3. If the modifier is a function, apply it to S to obtain a number of new
+   modifiers.  Process all of the multiple values returned by this function
+   application as if they were supplied instead of this function modifier.
+
+4. If the modifier is a shape designator, compare the designated shape with
+   S, and chose one of the following rules to update L and S such that the
+   latter is equal to the designated one.
+
+   a) If the modifier designates a shape with rank N that denotes a strict
+      subset of S, create a new lazy array of rank R whose first N ranges
+      are equal to those of the designated shape, whose trailing R minus N
+      ranges are equal to the corresponding ones of L, and where each index
+      maps to the same value as L.  Then, set L to that newly created lazy
+      array and set S to the designated shape.  Signal an error unless N is
+      equal to P.
+
+   b) If the designated shape has rank N and the same number of elements as
+      S, create a new lazy array with the same contents and the same
+      lexicographical order as L, whose shape consists of the N ranges of
+      the designated shape followed by the last R minus P ranges of L.  Set
+      L to the newly created lazy array, and set S to the designated shape.
+
+   c) If the designated shape has rank N and more elements than the current
+      shape, create a new lazy array that is a broadcasting reference to L,
+      whose shape consists of the N ranges of the designated shape followed
+      by the last R minus P ranges of the current lazy array.  Set L to the
+      newly created lazy array, and set S to the designated shape.
+
+The result of this function is the final value of the lazy array L after
+processing all modifiers."
+  (compute (lazy-reshape #(1 2 3 4 5 6) (~ 1 5)))
+  (compute (lazy-reshape #(1 2 3 4 5 6) (~ 2 ~ 3)))
+  (compute (lazy-reshape #(1 2 3 4 5 6) (~ 6 ~ 2)))
+  (compute (lazy-reshape #(1 2 3 4 5 6) (transform i to (- i))))
   (compute (lazy-reshape #2A((1 2) (3 4)) (transform i j to j i)))
-  (compute (lazy-reshape #(1 2 3 4) (~ 1 3) (~ 0 2 ~ 0 2))))
+  )
 
 (document-function lazy-broadcast-list-of-arrays
-  "Returns a list of lazy arrays of the same length as the list of supplied
-arrays, but where each element is broadcast such that all resulting arrays
-have the same shape.  If there is no suitable broadcast shape for all
-supplied arrays, an error is signaled."
+  "Returns a list of lazy arrays of the same shape, where each lazy array is
+a broadcasting reference to the corresponding element of the supplied list
+of arrays.  As a second value, returns the shape of all the resulting lazy
+arrays.  Signals an error if there is no suitable shape to which all the
+supplied arrays can be broadcast.
+
+The resulting shape is constructed according to the following rules:
+
+1. The rank of the resulting shape is the maximum of the rank of all the
+   supplied arrays.
+
+2. Each range of any of the supplied arrays must either have a size of one,
+   or it must be equal to the range of the resulting shape in the same
+   axis.
+
+3. In case there is an axis in which all supplied arrays have a range with
+only a single element, the resulting shape uses the range of the first
+supplied array."
   (lazy-broadcast-list-of-arrays (list #(1 2 3) 5))
-  (lazy-broadcast-list-of-arrays (list #(2 3 4) #2a((1 2 3) (4 5 6)))))
+  (apply #'compute (lazy-broadcast-list-of-arrays (list #(1 2 3) 5)))
+  (apply #'compute (lazy-broadcast-list-of-arrays (list #(1 2 3) #(5))))
+  (apply #'compute (lazy-broadcast-list-of-arrays (list #2a((1 2) (3 4)) #(7 8)))))
 
 (document-function lazy
   "Returns a lazy array whose contents are the results of applying the
@@ -622,10 +684,11 @@ supplied argument, whose contents are the results of applying the function
 that is the second supplied argument element-wise to the contents of the
 remaining argument arrays.  If the arguments don't agree in shape, they are
 first broadcast with the function LAZY-BROADCAST-LIST-OF-ARRAYS."
-  (compute (lazy-multiple-value 0 #'*))
-  (compute (lazy-multiple-value 1 #'*))
-  (compute (lazy-multiple-value 2 #'*))
-  (compute (lazy-multiple-value 2 #'floor #(2 3) #2a((1 2) (3 4)))))
+  (multiple-value-call #'compute (lazy-multiple-value 0 #'*))
+  (multiple-value-call #'compute (lazy-multiple-value 1 #'*))
+  (multiple-value-call #'compute (lazy-multiple-value 2 #'*))
+  (multiple-value-call #'compute (lazy-multiple-value 2 #'floor #(2 3) #2a((1 2) (3 4))))
+  (multiple-value-call #'compute (lazy-multiple-value 3 #'values-list #((1 2 3) (4 5 6)))))
 
 (document-function lazy-collapse
   "Turns the supplied array into an array with the same rank and contents,
