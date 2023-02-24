@@ -580,12 +580,12 @@ interchangeably in any argument position."
   "Returns the lazy array that is obtained by successively reshaping the
 supplied array with the supplied modifiers in left-to-right order.  There
 are four kinds of modifiers: Transformations that describe a reordering of
-values, shapes that describe a selection, shape change, or broadcasting of
-values depending on whether the shape modifier has fewer, equal, or more
-elements than the current lazy array, functions, that are applied to the
-shape of the current lazy array to obtain additional modifiers, and
-integers that can restrict the operation of any of the other modifiers to
-just the first few axes while leaving the remaining axes as they are.
+values, shapes that describe a selection, move, or broadcasting of values
+depending on whether the shape modifier has fewer, equal, or more elements
+than the current lazy array, functions, that are applied to the shape of
+the current lazy array to obtain additional modifiers, and integers that
+can restrict the operation of any of the other modifiers to just the first
+few axes while leaving the remaining axes as they are.
 
 More precisely, the processing maintains a lazy array L of rank R that is
 initialized to the result of applying LAZY-ARRAY constructor to the
@@ -640,8 +640,10 @@ processing all modifiers."
   (compute (lazy-reshape #(1 2 3 4 5 6) (~ 2 ~ 3)))
   (compute (lazy-reshape #(1 2 3 4 5 6) (~ 6 ~ 2)))
   (compute (lazy-reshape #(1 2 3 4 5 6) (transform i to (- i))))
+  (compute (lazy-reshape #(1 2 3 4 5 6) (transform i to (- i)) (~ -4 0)))
   (compute (lazy-reshape #2A((1 2) (3 4)) (transform i j to j i)))
-  )
+  (compute (lazy-reshape #2A((1 2) (3 4)) 1 (~ 2 ~ 2)))
+  (compute (lazy-reshape #2A((1 2) (3 4)) (lambda (s) (~ (shape-size s))))))
 
 (document-function lazy-broadcast-list-of-arrays
   "Returns a list of lazy arrays of the same shape, where each lazy array is
@@ -696,19 +698,30 @@ but where all ranges start from zero and have a step size of one."
   (lazy-collapse (lazy-reshape 42 (~ 1 100 3 ~ 1 100 8))))
 
 (document-function lazy-fuse
-  "Combine ARRAYS into a single strided array.  It is an error if some of
-the supplied arrays overlap, or if there exists no suitable strided array
-to represent the fusion."
+  "Returns a lazy array that is a combination of all the values of all the
+supplied arrays.  Signals an error if any of the supplied arrays overlap,
+don't have the same rank, or if the union of all their shapes cannot be
+represented as a shape."
   (compute (lazy-fuse (lazy-reshape 1 (~ 0 2))
-                      (lazy-reshape 0 (~ 2 4))))
+                      (lazy-reshape 2 (~ 2 4))))
   (compute (lazy-fuse (lazy-reshape 1 (~ 0 7 2))
-                      (lazy-reshape 0 (~ 1 7 2)))))
+                      (lazy-reshape 2 (~ 1 7 2))))
+  (compute (lazy-fuse (lazy-reshape 1 (~ 0 2 ~ 0 2))
+                      (lazy-reshape 2 (~ 0 2 ~ 2 4))
+                      (lazy-reshape 3 (~ 2 4 ~ 0 2))
+                      (lazy-reshape 4 (~ 2 4 ~ 2 4)))))
 
 (document-function lazy-overwrite
-  "Combines ARRAYS into a single strided array.  When some of the supplied
-arguments overlap partially, the value of the rightmost object is used."
+  "Returns a lazy array that is a combination of all the values of all the
+supplied arrays.  If any of the supplied arrays overlap at some index, the
+value of the result in that index is that of the rightmost array containing
+that index.  Signals an error unless all the supplied arrays have the same
+rank, or if the union of all their shapes cannot be represented as a
+shape."
   (compute (lazy-overwrite (lazy-reshape 1 (~ 0 4))
-                           (lazy-reshape 0 (~ 2 4)))))
+                           (lazy-reshape 2 (~ 2 4))))
+  (compute (lazy-overwrite (lazy-reshape 1 (~ 3 ~ 3))
+                           (lazy-reshape 2 (~ 1 2 ~ 1 2)))))
 
 (document-function lazy-index-components
   "Returns a lazy array containing the index components of the designated
