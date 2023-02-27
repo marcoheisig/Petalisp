@@ -138,7 +138,7 @@ integers appearing in RANGE1 but not in RANGE2.")
 range designators in the functions named ~, ~*.")
 
 (document-functions (~ ~*)
-  "Returns a shape whose ranges are derived by looking at each occurrence of
+  "Returns a shape whose ranges are derived by processing each occurrence of
 one of the self-evaluating delimiter symbols ~ and ~*, and the arguments
 following such a delimiter up to the next one.  Each such group contributes
 one or more ranges to the resulting shape.  The behavior of each delimiter
@@ -150,7 +150,7 @@ is as follows:
 
 - The ~* delimiter must be followed by any number of ranges that are
   incorporated into the resulting shape as they are."
-  (~)
+  (~*)
   (~ 8)
   (~ 1 10)
   (~ 0 10 2 ~ 0 10 2)
@@ -182,7 +182,7 @@ has at least one range with size zero."
 (document-function shape-rank
   "Returns the rank of the supplied shape, i.e., the number of ranges it
 contains."
-  (shape-rank (~))
+  (shape-rank (~*))
   (shape-rank (~ 1 ~ 2 ~ 3))
   (shape-rank (~ 0 9 ~ 0 9)))
 
@@ -193,7 +193,7 @@ contains."
 
 (document-function shape-ranges
   "Returns a list of all ranges contained in the supplied shape."
-  (shape-ranges (~))
+  (shape-ranges (~*))
   (shape-ranges (~ 1 ~ 2 ~ 3))
   (shape-ranges (~ 0 9 ~ 0 9)))
 
@@ -201,7 +201,7 @@ contains."
   "Return the array dimensions corresponding to a shape.  Signal an error
 if any of the ranges of the shape have a nonzero start or a step size other
 than one."
-  (shape-dimensions (~))
+  (shape-dimensions (~*))
   (shape-dimensions (~ 0 9))
   (shape-dimensions (~ 1 9))
   (shape-dimensions (~ 0 2 9))
@@ -209,13 +209,13 @@ than one."
 
 (document-function shape-size
   "Returns that number of integer tuples denoted by the supplied shape."
-  (shape-size (~))
+  (shape-size (~*))
   (shape-size (~ 2 9))
   (shape-size (~ 1 9 ~ 1 8)))
 
 (document-function shape=
   "Returns whether two supplied shapes denote the same set of integer tuples."
-  (shape= (~) (~))
+  (shape= (~*) (~*))
   (shape= (~ 42) (~ 42))
   (shape= (~ 1 42) (~ 1 42))
   (shape= (~ 1 42) (~ 2 42)))
@@ -280,7 +280,7 @@ range R1 that has been peeled off."
 (document-function enlarge-shape
   "For a given shape S and range R, this function returns a shape whose
   first range is R, and whose remaining ranges are those of S."
-  (enlarge-shape (~) (range 1 10))
+  (enlarge-shape (~*) (range 1 10))
   (enlarge-shape (~ 1 3) (range 1 4)))
 
 (document-function subdivide-arrays
@@ -311,7 +311,7 @@ not supplied, it defaults to the rank of the supplied shape."
   "Returns whether all elements of the first supplied shape are also
 contained in the second supplied shape.  Signals an error if the supplied
 shapes don't have the same rank."
-  (subshapep (~) (~))
+  (subshapep (~*) (~*))
   (subshapep (~ 0 9) (~ 0 9))
   (subshapep (~ 0 3) (~ 1 9))
   (subshapep (~ 0 3 ~ 0 3) (~ 0 9 ~ 0 9)))
@@ -940,7 +940,8 @@ functions WAIT and COMPLETEDP.")
 (document-function make-unknown
   "Returns a lazy array whose contents are not known and consequently cannot be computed.
 Lazy arrays depending on such an array also cannot be computed.  The main
-purpose such unknowns is to construct the arguments to the EVALUATOR function."
+purpose such unknown lazy arrays is to construct the arguments to the
+EVALUATOR function."
   (make-unknown :shape (~ 5 ~ 5))
   (make-unknown :element-type 'double-float))
 
@@ -964,4 +965,4 @@ has been completed.")
 
 (document-function completedp
   "Returns whether all the requests resulting from some COMPUTE-ASYNCHRONOUSLY
-operations has been completed.")
+operations have been completed.")

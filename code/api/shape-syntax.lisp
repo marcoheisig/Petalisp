@@ -14,7 +14,7 @@
 
 (defun listify-shape-for-printing (shape)
   (if (zerop (shape-rank shape))
-      '((~))
+      '((~*))
       (mapcar #'listify-range-for-printing
               (shape-ranges shape))))
 
@@ -45,9 +45,7 @@
   '(type (not shape-syntax-delimiter)))
 
 (defun ~ (&rest tokens)
-  (if (null tokens)
-      (make-shape '())
-      (parse-shape (list* ~ tokens))))
+  (parse-shape (list* ~ tokens)))
 
 (defun ~* (&rest tokens)
   (parse-shape (list* ~* tokens)))
@@ -77,10 +75,7 @@
     (make-shape (nreverse ranges))))
 
 (trivia:defpattern ~ (&rest args)
-   (parse-shape-pattern
-    (if (null args)
-        `(~*)
-        `(~ ,@args))))
+   (parse-shape-pattern `(~ ,@args)))
 
 (trivia:defpattern ~* (&rest args)
   (parse-shape-pattern `(~* ,@args)))

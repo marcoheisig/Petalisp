@@ -30,7 +30,7 @@
      (lazy-reshape x 2 (collapsing-reshaper)))
     ((~* range)
      (lazy-reshape x (~ (range-size range) ~ 1)))
-    ((~)
+    ((~*)
      (lazy-reshape x (~ 1 ~ 1)))))
 
 (defun coerce-to-scalar (x)
@@ -45,7 +45,7 @@
      (unless (= (1+ i) 1+i)
        (trivia.fail:fail))
      (lazy-reshape x (make-transformation :input-mask (vector i) :output-rank 0)))
-    ((~) x)))
+    ((~*) x)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

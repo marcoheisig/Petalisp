@@ -22,7 +22,7 @@
 ;;; Lazy Map
 
 (present
- (lazy-reshape 0 (~))) ; the empty space
+ (lazy-reshape 0 (~*))) ; the empty space
 
 (defun zeros (shape)
   (lazy-reshape 0 shape))
