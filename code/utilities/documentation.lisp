@@ -23,13 +23,13 @@
         (format stream "~&~%Example~P:" (length example-forms))
         (loop for example-form in example-forms
               for example-thunk in example-thunks do
-                (format stream "~&~% ~A~%" example-form)
+                (format stream "~&~% ~S~%" example-form)
                 (handler-case
-                    (format stream "~{  => ~A~%~}"
+                    (format stream "~{  => ~S~%~}"
                             (multiple-value-list
                              (funcall example-thunk)))
                   (error (e)
-                    (format stream "  >> ~A" (class-name (class-of e))))))))))
+                    (format stream "  >> ~S" (class-name (class-of e))))))))))
 
 (defmacro expand-documentation (form &rest examples)
   `(build-documentation

@@ -163,6 +163,7 @@
    #:collapsing-reshaper
    #:peeling-reshaper
    #:permuting-reshaper
+   #:flattening-reshaper
 
    ;; Utilities
    #:move-axis-to-front

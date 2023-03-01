@@ -341,17 +341,22 @@ two values, which are two shapes resulting from the split."
 ;;; Transformations
 
 (document-function transform
-  "Creates a transformation that maps some inputs to the specified outputs.
-The syntax is (transform INPUT-1 ... INPUT-N to OUTPUT-1 OUTPUT-N).
+  "Returns a transformation that maps the supplied inputs to the supplied outputs.
+The input forms and the output forms are separated by the symbol
+PETALISP:TO.
 
-Each input can either be a variable, an integer, or a list whose first
-element is a variable and whose second element is a form that evaluates
-to an integer.
+Each input can either be a symbol, an integer, or a list whose first
+element is a symbol and whose second element is a form that evaluates
+either to an integer or to NIL.  The symbol is the name under which the
+value of that input can be referenced in one of the outputs.  Other value
+is the input constraint of the transformation in that axis.
 
 Each output is a form that may reference up to one of the input variables.
-The result of an output form in a context where the referenced input
-variable is bound to an integer must be an integer.  The mapping form the
-input to the output must be linear."
+The output form is evaluated repeatedly in a context where the referenced
+input variable is bound to an integer to determine the coefficients for the
+linear mapping from the referenced input to the output.  Signals an error
+if the output form returns anything other than an integer, or if the
+mapping is not linear."
   (transform i to (+ i 1))
   (transform i to (+ (+ i 1) 5))
   (transform 1 2 3 to)
@@ -494,50 +499,53 @@ return a transformation mapping from (i0 i1 ... iN iN+1) to
   "Returns an identity transformation of the specified rank.")
 
 (document-function make-transformation
-  "Returns a transformation according to the supplied keyword arguments.
-Valid keyword arguments are:
+  "Returns a transformation that is created according to the supplied keyword
+arguments.  Valid keyword arguments are:
 
-:INPUT-RANK
+- :INPUT-RANK A non-negative integer that is the rank of any valid index or
+  shape supplied to this transformation.  Defaults to the length of the
+  supplied input mask, or, if no input mask is supplied, to the default
+  value of the output rank.  Signals an error if neither the input rank or
+  the output rank can be derived in any way.
 
-The length or rank of any valid transformation input.  A non-negative
-integer.
+- :OUTPUT-RANK A non-negative integer that is the rank of any valid index
+  or shape supplied to this transformation.  Defaults to the length of the
+  supplied scalings, offsets, or output mask, or, if none of these are
+  supplied, to the default value of the input rank.  Signals an error if
+  neither the input rank or the output rank can be derived in any way.
 
-:OUTPUT-RANK
+- :INPUT-MASK A sequence with one element per axis of the transformation's
+  input. Each element must either be an integer, in which case only this
+  integer may occur in the corresponding axis of the input, or NIL, in
+  which case any integer may occur in the corresponding axis.
 
-The length or rank of any transformation output.  A non-negative integer.
+- :OUTPUT-MASK A sequence with one element per axis of the transformation's
+  output.  Each element must either be an integer, in which case this
+  integer denotes the axis of the input that is to be scaled, shifted and
+  sent to the current position's output, or NIL, in which case only the
+  corresponding offset value is sent to the current output.  This way, the
+  output mask can encode both permutations of the input, as well as
+  insertion and removal of axes.  If this keyword argument is not supplied,
+  it defaults to a sequence of consecutive integers as long as the minimum
+  of the input rank and the output rank, followed by entries of NIL in case
+  the output rank exceeds the input rank.
 
-:INPUT-MASK
+- :SCALINGS A sequence with one element per axis of the transformation's
+  output.  Each element must be a rational number.  Every transformation
+  output is the input denoted by the output mask, scaled with its
+  corresponding entry in this sequence, and then added to the corresponding
+  offset.  In case of an output mask entry of NIL, the corresponding
+  scaling is ignored and the offset of that output axis is returned as is.
+  If this keyword argument is not supplied, it defaults to a sequence of
+  ones.
 
-A sequence with as many elements as the input rank of the transformation.
-Each element must either be an integer, in which case only this integer may
-occur in the corresponding input position, or NIL, in which case any
-integer may occur in the corresponding input position.
+- :OFFSETS A sequence with one element per axis of the transformation's
+  output.  Each element must be a rational number that is added to the
+  corresponding output value after scaling has taken place.  If this
+  keyword argument is not supplied, it defaults to a sequence of zeros.
 
-:OUTPUT-MASK
-
-A sequence with as many elements as the output rank of the transformation.
-Every element must either be an integer, in which case this integer denotes
-the input entry that is to be scaled, shifted and sent to the current
-position's output, or NIL, in which case only the corresponding offset
-value is sent to the current output.  This way, the output mask can encode
-both permutations of the input, as well as insertion and removal of axes.
-If this keyword argument is not supplied, it defaults to a sequence with up
-to input rank ascending integers, starting from zero, and followed by
-entries of NIL in case the output rank is larger than the input rank.
-
-:SCALINGS
-
-A sequence with as many elements as the output rank of the transformation.
-Each element must be a rational number.  Every transformation output is
-scaled with its corresponding entry in this sequence.  If this keyword
-argument is not supplied, it defaults to a sequence of ones.
-
-:OFFSETS
-
-A sequence with as many elements as the output rank of the transformation.
-Each element must be a rational number that is added to the corresponding
-output value after permutation and scaling has taken place. If this keyword
-argument is not supplied, it defaults to a sequence of zeros."
+Signals an error if some of the sequences supplied as :OUTPUT-MASK,
+:SCALINGS, or :OFFSETS differ in length."
   (make-transformation :input-rank 2)
   (make-transformation :input-rank 2 :output-rank 1)
   (make-transformation :input-mask '(2 nil 3))

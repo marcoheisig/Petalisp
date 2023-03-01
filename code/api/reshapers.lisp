@@ -47,3 +47,7 @@
     (lambda (shape)
       (declare (ignore shape))
       transformation)))
+
+(defun flattening-reshaper ()
+  (lambda (shape)
+    (~ (shape-size shape))))
