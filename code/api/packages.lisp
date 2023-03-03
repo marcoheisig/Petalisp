@@ -35,7 +35,7 @@
    #:lazy-multiple-value
    #:lazy-overwrite
    #:lazy-reduce
-   #:lazy-allreduce
+   #:lazy-multireduce
    #:lazy-reshape
    #:lazy-index-components
    #:lazy-slice

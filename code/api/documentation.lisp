@@ -750,8 +750,9 @@ is not supplied, it defaults to zero."
   (compute (lazy-array-interior #2a((1 2 3 4) (5 6 7 8) (1 2 3 4) (5 6 7 8)) 2)))
 
 (document-function lazy-drop-axes
-  "Removes zero or more axes whose corresponding range has only a single
-element from a supplied array."
+  "Returns a lazy array with the same contents as the supplied array, but
+whose shape has all ranges referred to by the supplied axes removed.  All of
+the ranges being referred to must have a size of one."
   (lazy-drop-axes (lazy-reshape 1 (~ 1 2 ~ 2 3)) 1)
   (compute (lazy-drop-axes (lazy-reshape 1 (~ 1 2 ~ 2 3)) 1))
   (compute (lazy-drop-axes (lazy-reshape 1 (~ 1 2 ~ 2 3)) 0 1))
@@ -764,9 +765,10 @@ lexicographic ordering of the elements."
   (compute (lazy-flatten #3a(((1 2) (3 4)) ((5 6) (7 8))))))
 
 (document-function lazy-slice
-  "For a supplied ARRAY with rank n, returns an array of rank n-1 that
-contains all entries that have the supplied INDEX in the position specified
-by AXIS."
+  "Returns a lazy array whose rank is one less than the rank of the supplied
+array, and that contains all entries of the supplied array whose index
+component is equal to the supplied index in the optionally supplied axis.
+If the axis is not supplied, it defaults to zero."
   (compute (lazy-slice #(1 2 3 4) 2))
   (compute (lazy-slice #2A((1 2) (3 4)) 0))
   (compute (lazy-slice #2A((1 2) (3 4)) 1))
@@ -774,9 +776,14 @@ by AXIS."
   (compute (lazy-slice #2A((1 2) (3 4)) 1 1)))
 
 (document-function lazy-slices
-  "Selects those elements from ARRAY whose indices at the specified AXIS
-are contained in the supplied RANGE."
-  (compute (lazy-slices #(1 2 3 4) (range 0 2 2)))
+  "Returns a lazy array containing all those elements of the supplied array
+whose index components in the optionally supplied axis are contained in the
+supplied range.  If the axis is not supplied, it defaults to zero.  The
+resulting array has the same shape as the supplied array, except that its
+range in the axis being sliced along is the supplied range.  Signals an
+error if the supplied range is not fully contained in the original range of
+that axis."
+  (compute (lazy-slices #(1 2 3 4) (range 0 3 2)))
   (compute (lazy-slices
             #2A((1 0 0)
                 (0 1 0)
@@ -795,9 +802,20 @@ are contained in the supplied RANGE."
             1)))
 
 (document-function lazy-stack
-  "Stacks multiple array next to each other along the specified AXIS such
-that along this axis, the leftmost array will have the lowest indices, and
-the rightmost array will have the highest indices."
+  "Returns a lazy array whose contents are the supplied arrays, stacked next
+to each other along the specified AXIS such that along this axis, the
+leftmost array will have the lowest indices, and the rightmost array will
+have the highest indices.
+
+The supplied arrays must all have the same rank, and also the same ranges
+in all but the one axis that is being stacked along.  The range of the
+resulting lazy array in that axis that is being stacked along has the same
+start as the leftmost corresponding argument range that is non-empty, a
+size that is the sum of the sizes of all corresponding ranges, and a step
+size is that of the leftmost corresponding argument range that has more
+than one element, or one if there is no such range.  Signals an error if
+multiple arguments have a range with more than one element but differing
+step sizes in the axis being stacked along."
   (compute (lazy-stack 0 #(1) #(2) #(3)))
   (compute (lazy-stack 0 #(1 2) #(3 4) #(5 6)))
   (compute (lazy-stack 0 #2A((1 2) (3 4)) #2A((5 6) (7 8))))
@@ -842,6 +860,15 @@ the following rules:
          a (lazy-index-components a 0))
       (compute max index))))
 
+(document-function lazy-multireduce
+  "Returns the lazy array obtained by repeatedly invoking LAZY-REDUCE as
+often as indicated by the supplied first argument.  The remaining arguments
+are the function to be used for the reduction and a number of lazy arrays
+that are broadcast and reduced along their first axes."
+  (compute (lazy-multireduce 0 #'+ #2a((1 2) (3 4))))
+  (compute (lazy-multireduce 1 #'+ #2a((1 2) (3 4))))
+  (compute (lazy-multireduce 2 #'+ #2a((1 2) (3 4)))))
+
 (document-function vectorize
   "Turns the supplied function into a lazy, vector-valued Petalisp function.
 The desired number of return values can be supplied as an optional second
@@ -871,6 +898,54 @@ Networks can also be differentiated, using the function NETWORK-GRADIENTS.")
 
 An error is signaled of any of the inputs is not of type NETWORK-INPUT, or
 if additional network inputs are reachable from the network outputs.")
+
+(document-function collapsing-reshaper
+  "Returns a function that can be supplied as a modifier to LAZY-RESHAPE to
+turn any lazy array shape into modifiers that collapse that shape, such
+that each range therein starts with zero and has a step size of one.")
+
+(document-function peeling-reshaper
+  "Returns a function that can be supplied as modifier to LAZY-RESHAPE to
+turn any lazy array shape into modifiers that select the interior of that
+shape.  The nature of this function is determined by the three keyword
+arguments :LAYERS, :LOWER-LAYERS, and :UPPER-LAYERS.  Each of these keyword
+arguments can be a non-negative integer, in which case it denotes the
+number of boundary layers to be peeled off in each axis, or it can be a
+sequence of non-negative integers, in which case each element of that
+sequence denotes the number of boundary layers to be peeled off in the
+corresponding axis.
+
+The :LOWER-LAYERS keyword argument describes how many of the lowest
+integers in each range are to be peeled off, and the :UPPER-LAYERS keyword
+argument describes how many of the highest integers in each range are to be
+peeled off.  The :LAYERS keyword argument describes the default values for
+both of the lower and upper layers when they aren't specified explicitly.
+If the layers keyword argument is not supplied, it defaults to zero.
+
+The resulting function signals an error if an attempt is made to peel more
+layers from a lazy array than the size of the range in that axis."
+  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (peeling-reshaper :layers 1)))
+  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (peeling-reshaper :lower-layers 1)))
+  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (peeling-reshaper :upper-layers 1)))
+  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (peeling-reshaper :lower-layers '(0 2)))))
+
+(document-function permuting-reshaper
+  "Returns a function that can be supplied as a modifier to LAZY-RESHAPE to
+turn any lazy array shape into a permuting transformation.  The supplied
+arguments must be non-negative integers that denote the ordering of axes
+that is established by that transformation."
+  (compute (lazy-reshape #2A((1 2) (3 4)) (permuting-reshaper 1 0)))
+  (compute (lazy-reshape #3A(((1 2 3) (4 5 6)) ((7 8 9) (10 11 12))) (permuting-reshaper 0 2 1)))
+  (compute (lazy-reshape #3A(((1 2 3) (4 5 6)) ((7 8 9) (10 11 12))) (permuting-reshaper 2 0 1))))
+
+(document-function flattening-reshaper
+  "Returns a function that can be supplied as a modifier to LAZY-RESHAPE to
+turn any lazy array shape into modifiers that flatten a lazy array of that
+shape.  A flattened lazy array has the same contents as the original one in
+the same lexicographical ordering, but has rank one."
+  (compute (lazy-reshape #2A((1 2) (3 4)) (flattening-reshaper)))
+  (compute (lazy-reshape #3A(((1 2 3) (4 5 6)) ((7 8 9) (10 11 12))) (flattening-reshaper)))
+  (compute (lazy-reshape #3A(((1 2 3) (4 5 6)) ((7 8 9) (10 11 12))) 2 (flattening-reshaper))))
 
 (document-function compute
   "The primary interface for evaluating lazy arrays.  It takes any number of

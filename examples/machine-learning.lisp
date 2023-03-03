@@ -40,7 +40,7 @@
 (defun average (array)
   (let ((lazy-array (lazy-array array)))
     (lazy #'/
-          (lazy-allreduce #'+ lazy-array)
+          (lazy-multireduce (lazy-array-rank lazy-array) #'+ lazy-array)
           (lazy-array-size lazy-array))))
 
 (defun make-random-array (dimensions &key (element-type 't))
@@ -51,8 +51,9 @@
     array))
 
 (defun softmax (array)
-  (let ((totals (lazy #'exp array)))
-    (lazy #'/ totals (lazy-allreduce #'+ totals))))
+  (let* ((lazy-array (lazy-array array))
+         (totals (lazy #'exp lazy-array)))
+    (lazy #'/ totals (lazy-multireduce (lazy-array-rank lazy-array) #'+ totals))))
 
 (defun relu (array)
   (let ((lazy-array (lazy-array array)))
