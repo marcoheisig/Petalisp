@@ -25,23 +25,23 @@
 (defun relu (x)
   (floatify
    (lazy (lambda (v)
-        (declare (single-float v))
-        (if (plusp v) v 0.0))
-      x)))
+           (declare (single-float v))
+           (if (plusp v) v 0.0))
+    x)))
 
 (defun relu-prime (x)
   (floatify
    (lazy (lambda (v)
-        (declare (single-float v))
-        (if (plusp v) 1.0 0.0))
-      x)))
+           (declare (single-float v))
+           (if (plusp v) 1.0 0.0))
+    x)))
 
 (defun softmax (x)
   (let* ((max (lazy-reduce #'max (move-axis-to-front x 1)))
          (totals (lazy #'exp (lazy #'- x (lazy-reshape max (transform i to i 0))))))
     (lazy #'/ totals
-          (lazy-reshape (lazy-reduce #'+ (move-axis-to-front totals 1))
-                        (transform i to i 0)))))
+     (lazy-reshape (lazy-reduce #'+ (move-axis-to-front totals 1))
+      (transform i to i 0)))))
 
 (defun sigmoid (x)
   (lazy #'/ (lazy #'1+ (lazy #'exp (lazy #'- x)))))
@@ -86,13 +86,13 @@
                (train-images
                  (compute
                   (lazy-reshape (lazy-slices *train-images* batch)
-                                (~ batch-size ~ (* w h)))))
+                   (~ batch-size ~ (* w h)))))
                (train-labels
                  (compute
                   (floatify
                    (lazy (lambda (i j) (if (= i j) 1.0 0.0))
-                      (lazy-reshape (lazy-slices *train-labels* batch) (transform i to i 0))
-                      (lazy-index-components (~ 10))))))
+                    (lazy-reshape (lazy-slices *train-labels* batch) (transform i to i 0))
+                    (lazy-index-components (~ 10))))))
                ;; Feed forward
                (a1 (relu (matmul train-images W1)))
                (a2 (relu (matmul a1 W2)))

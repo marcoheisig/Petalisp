@@ -320,7 +320,7 @@
            shape))
   (make-lazy-array
    :shape shape
-   :ntype nil
+   :ntype (typo:empty-ntype)
    :delayed-action (load-time-value (make-delayed-nop))))
 
 (declaim (inline make-unknown))
@@ -447,7 +447,7 @@ corresponding collapsed array that can be obtained cheaply.")
     (and (identity-transformation-p (delayed-reshape-transformation delayed-reshape))
          (shape= (lazy-array-shape lazy-array)
                  (lazy-array-shape (delayed-reshape-input delayed-reshape)))
-         (trivial-lazy-array-p (delayed-reshape-input delayed-reshape)))))
+         (trivial-object-p (delayed-reshape-input delayed-reshape)))))
 
 (defun trivial-object-value (object)
   "Returns the value of an OBJECT that is trivial in the sense of

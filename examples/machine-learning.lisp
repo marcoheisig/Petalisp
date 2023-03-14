@@ -40,8 +40,8 @@
 (defun average (array)
   (let ((lazy-array (lazy-array array)))
     (lazy #'/
-          (lazy-multireduce (lazy-array-rank lazy-array) #'+ lazy-array)
-          (lazy-array-size lazy-array))))
+     (lazy-multireduce (lazy-array-rank lazy-array) #'+ lazy-array)
+     (lazy-array-size lazy-array))))
 
 (defun make-random-array (dimensions &key (element-type 't))
   (let ((array (make-array dimensions :element-type element-type)))
@@ -58,7 +58,7 @@
 (defun relu (array)
   (let ((lazy-array (lazy-array array)))
     (lazy #'max (coerce 0 (lazy-array-element-type lazy-array))
-          lazy-array)))
+     lazy-array)))
 
 (defun make-fully-connected-layer (array output-shape)
   (let* ((lazy-array (lazy-array array))
@@ -68,21 +68,21 @@
          (weights
            (make-trainable-parameter
             (lazy #'/
-                  (make-random-array (list m n) :element-type element-type)
-                  (* m n))))
+             (make-random-array (list m n) :element-type element-type)
+             (* m n))))
          (biases
            (make-trainable-parameter
             (lazy #'/
-                  (make-random-array m :element-type element-type)
-                  m))))
+             (make-random-array m :element-type element-type)
+             m))))
     (lazy-reshape
      (lazy #'+
-           (lazy-reduce
-            #'+
-            (lazy #'*
-                  (lazy-reshape weights (transform m n to n m))
-                  (lazy-reshape (lazy-flatten array) (transform n to n 0))))
-           biases)
+      (lazy-reduce
+       #'+
+       (lazy #'*
+        (lazy-reshape weights (transform m n to n m))
+        (lazy-reshape (flattening-reshaper) (transform n to n 0))))
+      biases)
      output-shape)))
 
 (define-modify-macro minf (&rest numbers) min)
@@ -128,21 +128,22 @@
                      (make-list rank :initial-element 1))
               :element-type (lazy-array-element-type lazy-array)))))
       ;; Compute the result.
-      (lazy-collapse
+      (lazy-reshape
        (apply #'lazy #'+
               (loop for offsets in stencil
                     for index from 0
                     collect
                     (lazy #'*
-                       (lazy-slice filters index)
-                       (lazy-reshape
-                        lazy-array
-                        (make-transformation
-                         :offsets
-                         (append
-                          (make-list (- rank d) :initial-element 0)
-                          (mapcar #'- offsets)))
-                        result-shape))))))))
+                     (lazy-slice filters index)
+                     (lazy-reshape
+                      lazy-array
+                      (make-transformation
+                       :offsets
+                       (append
+                        (make-list (- rank d) :initial-element 0)
+                        (mapcar #'- offsets)))
+                      result-shape))))
+       (collapsing-reshaper)))))
 
 (defun make-maxpool-layer (array pooling-factors)
   (let* ((pooling-factors (coerce pooling-factors 'vector))
@@ -162,12 +163,13 @@
                        (range (+ (range-start range) offset)
                               (range-end range)
                               (* (range-step range) pooling-factor))))))
-    (lazy-collapse
+    (lazy-reshape
      (apply #'lazy #'max
             (apply #'alexandria:map-product
                    (lambda (&rest ranges)
                      (lazy-reshape lazy-array (apply ~* ranges)))
-                   pooling-ranges)))))
+                   pooling-ranges))
+     (collapsing-reshaper))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -195,8 +197,8 @@
                   (loop for trainable-parameter in trainable-parameters
                         collect
                         (lazy #'- trainable-parameter
-                           (lazy #'* learning-rate
-                              (funcall gradient trainable-parameter))))))
+                         (lazy #'* learning-rate
+                          (funcall gradient trainable-parameter))))))
          (n nil))
     ;; Determine the training data size.
     (dolist (data output-training-data)
@@ -215,9 +217,9 @@
       (let ((args '()))
         ;; Inputs.
         (alexandria:doplist (parameter data training-data-plist)
-            (unless (symbolp parameter)
-              (push parameter args)
-              (push (lazy-slice data index) args)))
+          (unless (symbolp parameter)
+            (push parameter args)
+            (push (lazy-slice data index) args)))
         ;; Outputs.
         (loop for data in output-training-data
               for output-parameter in output-parameters do
@@ -294,16 +296,18 @@
              (batch-labels (lazy-slices *train-labels* batch-range))
              (input-data
                (compute
-                (lazy-collapse
-                 (lazy #'/ batch-data 255.0))))
+                (lazy-reshape
+                 (lazy #'/ batch-data 255.0)
+                 (collapsing-reshaper))))
              (output-data
                (compute
-                (lazy-collapse
+                (lazy-reshape
                  (lazy 'coerce
-                    (lazy (lambda (n i) (if (= n i) 1.0 0.0))
-                       (lazy-reshape batch-labels (transform i to i 0))
-                       #(0 1 2 3 4 5 6 7 8 9))
-                    'single-float)))))
+                  (lazy (lambda (n i) (if (= n i) 1.0 0.0))
+                   (lazy-reshape batch-labels (transform i to i 0))
+                   #(0 1 2 3 4 5 6 7 8 9))
+                  'single-float)
+                 (collapsing-reshaper)))))
         (format t "Training batch ~S.~%" batch-range)
         (train network (list output-data)
                :learning-rate 0.02

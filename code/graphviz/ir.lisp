@@ -148,7 +148,11 @@
                (etypecase instruction
                  (petalisp.ir:call-instruction
                   (format nil "~S~{ ~S~}~%"
-                          (petalisp.ir:call-instruction-function instruction)
+                          (or
+                           (typo:fnrecord-name
+                            (petalisp.ir:call-instruction-fnrecord instruction))
+                           (typo:fnrecord-function
+                            (petalisp.ir:call-instruction-fnrecord instruction)))
                           (mapcar #'simplify-input
                                   (petalisp.ir:instruction-inputs instruction))))
                  (petalisp.ir:iref-instruction

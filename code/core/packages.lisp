@@ -133,7 +133,6 @@
    #:lazy-ref
    #:lazy-reshape-using-transformation
    #:lazy-fuse
-   #:lazy-collapse
    #:make-unknown
    #:lazy-unknowns
    #:empty-lazy-array

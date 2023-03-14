@@ -25,11 +25,8 @@
   (:export
 
    ;; High-level API
-   #:lazy-array-interior
    #:lazy-broadcast-list-of-arrays
-   #:lazy-collapse
    #:lazy-drop-axes
-   #:lazy-flatten
    #:lazy-fuse
    #:lazy
    #:lazy-multiple-value
@@ -52,7 +49,6 @@
    #:compute-asynchronously
    #:wait
    #:completedp
-   #:vectorize
    #:evaluator
 
    ;; Backends
@@ -100,7 +96,6 @@
    #:shape-intersection
    #:shape-intersectionp
    #:shape-dimensions
-   #:shape-interior
    #:map-shape
    #:shape-contains
    #:shrink-shape

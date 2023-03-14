@@ -38,7 +38,7 @@
 
 (present
  (lazy-reshape #2a((1 2 3 4) (5 6 7 8))
-               (transform i j to j i))) ; transforming
+  (transform i j to j i))) ; transforming
 
 ;; arrays can be merged with fuse
 
@@ -84,8 +84,8 @@
 
 (present
  (lazy-reduce #'+
-    ;; only the axis zero is reduced
-    #2A((1 2 3) (4 5 6))))
+  ;; only the axis zero is reduced
+  #2A((1 2 3) (4 5 6))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -93,9 +93,9 @@
 
 (defun matmul (A B)
   (lazy-reduce #'+
-     (lazy #'*
-        (lazy-reshape A (transform m n to n m 0))
-        (lazy-reshape B (transform n k to n 0 k)))))
+   (lazy #'*
+    (lazy-reshape A (transform m n to n m 0))
+    (lazy-reshape B (transform n k to n 0 k)))))
 
 (defparameter MI #2a((1.0 0.0)
                      (0.0 1.0)))
@@ -125,15 +125,15 @@
 ;;;  Jacobi's Method
 
 (defun jacobi-2d (grid)
-  (let ((interior (lazy-array-interior grid)))
+  (let ((interior (lazy-reshape grid 2 (peeling-reshaper :layers 1))))
     (lazy-overwrite
      grid
      (lazy #'* 1/4
-           (lazy #'+
-                 (lazy-reshape grid (transform i j to (1+ i) j) interior)
-                 (lazy-reshape grid (transform i j to (1- i) j) interior)
-                 (lazy-reshape grid (transform i j to i (1+ j)) interior)
-                 (lazy-reshape grid (transform i j to i (1- j)) interior))))))
+      (lazy #'+
+       (lazy-reshape grid (transform i j to (1+ i) j) interior)
+       (lazy-reshape grid (transform i j to (1- i) j) interior)
+       (lazy-reshape grid (transform i j to i (1+ j)) interior)
+       (lazy-reshape grid (transform i j to i (1- j)) interior))))))
 
 (defparameter domain
   (lazy-overwrite

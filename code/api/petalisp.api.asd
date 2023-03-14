@@ -16,11 +16,9 @@
 
   :components
   ((:file "differentiator" :depends-on ("lazy-reshape" "lazy-overwrite" "lazy" "lazy-reduce"))
-   (:file "lazy-array-interior" :depends-on ("shape-interior"))
    (:file "lazy-broadcast" :depends-on ("lazy-reshape"))
    (:file "lazy-change-shape" :depends-on ("shape-syntax"))
    (:file "lazy-drop-axes" :depends-on ("lazy-reshape"))
-   (:file "lazy-flatten" :depends-on ("lazy-reshape"))
    (:file "lazy-index-components" :depends-on ("packages"))
    (:file "lazy" :depends-on ("lazy-broadcast"))
    (:file "lazy-multiple-value" :depends-on ("lazy-broadcast"))
@@ -34,17 +32,13 @@
    (:file "network" :depends-on ("lazy" "lazy-reshape"))
    (:file "packages")
    (:file "reshapers" :depends-on ("lazy-reshape"))
-   (:file "shape-interior" :depends-on ("packages"))
    (:file "shape-syntax" :depends-on ("packages"))
    (:file "transform" :depends-on ("packages"))
-   (:file "vectorize" :depends-on ("lazy-multiple-value"))
    (:file "documentation"
     :depends-on
     ("differentiator"
-     "lazy-array-interior"
      "lazy-broadcast"
      "lazy-drop-axes"
-     "lazy-flatten"
      "lazy-index-components"
      "lazy"
      "lazy-multiple-value"
@@ -58,7 +52,5 @@
      "lazy-stack"
      "network"
      "packages"
-     "shape-interior"
      "shape-syntax"
-     "transform"
-     "vectorize"))))
+     "transform"))))

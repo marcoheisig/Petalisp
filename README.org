@@ -24,11 +24,10 @@ Example 1: transposing a matrix
 Example 2: matrix-matrix multiplication
 #+BEGIN_SRC lisp
 (defun matrix-multiplication (A B)
-  (lazy-reduce
-   #'+
+  (lazy-reduce #'+
    (lazy #'*
-         (lazy-reshape A (transform m n to n m 1))
-         (lazy-reshape B (transform n k to n 1 k)))))
+    (lazy-reshape A (transform m n to n m 1))
+    (lazy-reshape B (transform n k to n 1 k)))))
 #+END_SRC
 
 Example 3: the numerical Jacobi scheme in two dimensions
@@ -37,13 +36,14 @@ Example 3: the numerical Jacobi scheme in two dimensions
   (let ((interior (interior grid)))
     (if (zerop iterations) grid
         (lazy-jacobi-2d
-         (lazy-fuse x
-               (lazy #'* 0.25
-                  (lazy #'+
-                     (lazy-reshape x (transform i0 i1 to (+ i0 1) i1) interior)
-                     (lazy-reshape x (transform i0 i1 to (- i0 1) i1) interior)
-                     (lazy-reshape x (transform i0 i1 to i0 (+ i1 1)) interior)
-                     (lazy-reshape x (transform i0 i1 to i0 (- i1 1)) interior))))
+         (lazy-fuse
+          x
+          (lazy #'* 0.25
+           (lazy #'+
+            (lazy-reshape x (transform i0 i1 to (+ i0 1) i1) interior)
+            (lazy-reshape x (transform i0 i1 to (- i0 1) i1) interior)
+            (lazy-reshape x (transform i0 i1 to i0 (+ i1 1)) interior)
+            (lazy-reshape x (transform i0 i1 to i0 (- i1 1)) interior))))
          (- iterations 1)))))
 #+END_SRC
 
@@ -72,6 +72,18 @@ why I am also working on some [[https://github.com/marcoheisig/petalisp-for-pyth
 
 But: If you ever have time to learn Lisp, do it!  It is an enlightening
 experience.
+
+*** How can I get Emacs to indent Petalisp code nicely?
+
+Put the following code in your initialization file:
+
+#+begin_src elisp
+(put 'lazy 'common-lisp-indent-function '(1 &rest 1))
+(put 'lazy-reduce 'common-lisp-indent-function '(1 &rest 1))
+(put 'lazy-multireduce 'common-lisp-indent-function '(1 1 &rest 1))
+(put 'lazy-multiple-value 'common-lisp-indent-function '(1 1 &rest 1))
+(put 'lazy-reshape 'common-lisp-indent-function '(1 &rest 1))
+#+end_src
 
 *** Why is Petalisp licensed under AGPL?
 I am aware that this license prevents some people from using or

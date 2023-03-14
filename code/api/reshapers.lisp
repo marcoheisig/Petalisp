@@ -10,35 +10,39 @@
     (&key
        (layers 0)
        (lower-layers layers)
-       (upper-layers layers))
-  (declare (type (or null unsigned-byte sequence) layers lower-layers upper-layers))
-  (flet ((number-of-layers (thing index)
+       (upper-layers layers)
+       (strides 1))
+  (declare (type (or null unsigned-byte sequence)
+                 layers lower-layers upper-layers strides))
+  (flet ((nth-thing (thing index default)
            (etypecase thing
              (unsigned-byte thing)
-             (list (or (nth index thing) 0))
-             (sequence
+             (list #1=
               (if (< index (length thing))
-                  0
-                  (elt thing index))))))
+                  (elt thing index)
+                  default))
+             (simple-vector #1#)
+             (sequence #1#))))
     (lambda (shape)
       (make-shape
        (loop for range in (shape-ranges shape)
              for index from 0
              collect
-             (let* ((lower-number-of-layers (number-of-layers lower-layers index))
-                    (upper-number-of-layers (number-of-layers upper-layers index))
-                    (total-number-of-layers (+ lower-number-of-layers upper-number-of-layers))
+             (let* ((lower (nth-thing lower-layers index 0))
+                    (upper (nth-thing upper-layers index 0))
+                    (total (+ lower upper))
+                    (stride (nth-thing strides index 1))
                     (start (range-start range))
                     (end (range-end range))
                     (step (range-step range))
                     (size (range-size range)))
-               (unless (<= total-number-of-layers size)
+               (unless (<= total size)
                  (error "~@<Cannot peel ~R layers from the range ~S that ~
                           has only ~R elements.~:@>"
-                        total-number-of-layers range size))
-               (range (+ start (* lower-number-of-layers step))
-                      (- end (* upper-number-of-layers step))
-                      step)))))))
+                        total range size))
+               (range (+ start (* lower step))
+                      (- end (* upper step))
+                      (* step stride))))))))
 
 (defun permuting-reshaper (&rest indices)
   (let ((transformation

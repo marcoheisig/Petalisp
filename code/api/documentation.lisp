@@ -700,11 +700,6 @@ first broadcast with the function LAZY-BROADCAST-LIST-OF-ARRAYS."
   (multiple-value-call #'compute (lazy-multiple-value 2 #'floor #(2 3) #2a((1 2) (3 4))))
   (multiple-value-call #'compute (lazy-multiple-value 3 #'values-list #((1 2 3) (4 5 6)))))
 
-(document-function lazy-collapse
-  "Turns the supplied array into an array with the same rank and contents,
-but where all ranges start from zero and have a step size of one."
-  (lazy-collapse (lazy-reshape 42 (~ 1 100 3 ~ 1 100 8))))
-
 (document-function lazy-fuse
   "Returns a lazy array that is a combination of all the values of all the
 supplied arrays.  Signals an error if any of the supplied arrays overlap,
@@ -742,13 +737,6 @@ is not supplied, it defaults to zero."
   (compute (lazy-index-components #2a((1 2) (3 4))))
   (compute (lazy-index-components #2a((1 2) (3 4)) 1)))
 
-(document-function lazy-array-interior
-  "For a given ARRAY and WIDTH, return a new, lazy array with those
-  elements that are at least WIDTH entries away from any boundary.  If not
-  supplied, WIDTH defaults to one."
-  (compute (lazy-array-interior #2a((1 2 3 4) (5 6 7 8) (1 2 3 4) (5 6 7 8))))
-  (compute (lazy-array-interior #2a((1 2 3 4) (5 6 7 8) (1 2 3 4) (5 6 7 8)) 2)))
-
 (document-function lazy-drop-axes
   "Returns a lazy array with the same contents as the supplied array, but
 whose shape has all ranges referred to by the supplied axes removed.  All of
@@ -757,12 +745,6 @@ the ranges being referred to must have a size of one."
   (compute (lazy-drop-axes (lazy-reshape 1 (~ 1 2 ~ 2 3)) 1))
   (compute (lazy-drop-axes (lazy-reshape 1 (~ 1 2 ~ 2 3)) 0 1))
   (compute (lazy-drop-axes (lazy-reshape 1 (~ 1 2 ~ 2 5)) 0)))
-
-(document-function lazy-flatten
-  "Turns the supplied array into a rank one array, while preserving the
-lexicographic ordering of the elements."
-  (compute (lazy-flatten #2a((1 2) (3 4))))
-  (compute (lazy-flatten #3a(((1 2) (3 4)) ((5 6) (7 8))))))
 
 (document-function lazy-slice
   "Returns a lazy array whose rank is one less than the rank of the supplied
@@ -869,16 +851,6 @@ that are broadcast and reduced along their first axes."
   (compute (lazy-multireduce 1 #'+ #2a((1 2) (3 4))))
   (compute (lazy-multireduce 2 #'+ #2a((1 2) (3 4)))))
 
-(document-function vectorize
-  "Turns the supplied function into a lazy, vector-valued Petalisp function.
-The desired number of return values can be supplied as an optional second
-argument."
-  (compute (funcall (vectorize #'+) #(1 2 3 4) 5))
-  (let ((fn (vectorize #'floor 2)))
-    (multiple-value-bind (quot rem)
-        (funcall fn #(1 2 3 4) #(4 3 2 1))
-      (compute quot rem))))
-
 (document-function differentiator
   "Returns a function that, for each node in a network whose roots are the
 supplied OUTPUTS will return the gradient at that node.
@@ -906,21 +878,22 @@ that each range therein starts with zero and has a step size of one.")
 
 (document-function peeling-reshaper
   "Returns a function that can be supplied as modifier to LAZY-RESHAPE to
-turn any lazy array shape into modifiers that select the interior of that
-shape.  The nature of this function is determined by the three keyword
-arguments :LAYERS, :LOWER-LAYERS, and :UPPER-LAYERS.  Each of these keyword
-arguments can be a non-negative integer, in which case it denotes the
-number of boundary layers to be peeled off in each axis, or it can be a
-sequence of non-negative integers, in which case each element of that
-sequence denotes the number of boundary layers to be peeled off in the
-corresponding axis.
+turn any lazy array shape into modifiers that select certain interior
+points of that shape.  The nature of this function is determined by the
+four keyword arguments :LAYERS, :LOWER-LAYERS, :UPPER-LAYERS, and :STRIDES.
+Each of these keyword arguments can be a non-negative integer, in which
+case it applies to each axis of the lazy array being reshaped, or it can be
+a sequence of non-negative integers, in which case each element of that
+sequence applies only to the corresponding axis.
 
 The :LOWER-LAYERS keyword argument describes how many of the lowest
 integers in each range are to be peeled off, and the :UPPER-LAYERS keyword
 argument describes how many of the highest integers in each range are to be
-peeled off.  The :LAYERS keyword argument describes the default values for
-both of the lower and upper layers when they aren't specified explicitly.
-If the layers keyword argument is not supplied, it defaults to zero.
+peeled off.  The :LAYERS keyword argument, which defaults to zero,
+describes the default values for both of the lower and upper layers when
+they aren't specified explicitly.  The :STRIDES keyword argument, which
+defaults to one, denotes a factor for scaling the original step size of
+each range, such that a stride of K means selecting only every Kth element.
 
 The resulting function signals an error if an attempt is made to peel more
 layers from a lazy array than the size of the range in that axis."

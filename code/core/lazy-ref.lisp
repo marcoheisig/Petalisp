@@ -90,9 +90,3 @@
      lazy-array
      (transform-shape (lazy-array-shape lazy-array) transformation)
      (invert-transformation transformation))))
-
-(defun lazy-collapse (array)
-  (let* ((lazy-array (lazy-array array))
-         (shape (lazy-array-shape lazy-array)))
-    (lazy-reshape-using-transformation lazy-array (collapsing-transformation shape))))
-

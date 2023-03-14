@@ -62,8 +62,8 @@
 (defun eye (m &optional (n m))
   (let ((shape (~ m ~ n)))
     (lazy #'δ
-          (lazy-index-components shape 0)
-          (lazy-index-components shape 1))))
+     (lazy-index-components shape 0)
+     (lazy-index-components shape 1))))
 
 (defun transpose (x)
   (lazy-reshape
@@ -93,9 +93,9 @@
 
 (defun matmul (A B)
   (lazy-reduce #'+
-               (lazy #'*
-                     (lazy-reshape (coerce-to-matrix A) (transform m n to n m 0))
-                     (lazy-reshape (coerce-to-matrix B) (transform n k to n 0 k)))))
+   (lazy #'*
+    (lazy-reshape (coerce-to-matrix A) (transform m n to n m 0))
+    (lazy-reshape (coerce-to-matrix B) (transform n k to n 0 k)))))
 
 (defun pivot-and-value (A d)
   (setf A (coerce-to-matrix A))
@@ -140,7 +140,7 @@
                          (L (swap-rows L d pivot))
                          (U (swap-rows U d pivot))
                          (S (lazy #'/ (lazy-reshape U (~ (1+ d) m ~ d (1+ d)))
-                                  (coerce-to-matrix value))))
+                             (coerce-to-matrix value))))
                     (rec (1+ d)
                          P
                          (lazy-overwrite
@@ -150,6 +150,6 @@
                          (lazy-overwrite
                           U
                           (lazy #'-
-                                (lazy-reshape U (~ (1+ d) m ~ d m))
-                                (lazy #'* S (lazy-reshape U (~ d (1+ d) ~ d m)))))))))))
+                           (lazy-reshape U (~ (1+ d) m ~ d m))
+                           (lazy #'* S (lazy-reshape U (~ d (1+ d) ~ d m)))))))))))
        (rec 0 (eye m) (zeros m) A)))))
