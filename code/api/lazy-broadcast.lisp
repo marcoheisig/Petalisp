@@ -2,6 +2,9 @@
 
 (in-package #:petalisp.api)
 
+(defun lazy-broadcast (&rest arrays)
+  (values-list (lazy-broadcast-list-of-arrays arrays)))
+
 (defun lazy-broadcast-list-of-arrays (list-of-arrays)
   (let* ((lazy-arrays (mapcar #'lazy-array list-of-arrays))
          (shapes (remove-duplicates (mapcar #'lazy-array-shape lazy-arrays) :test #'shape=))
