@@ -2,54 +2,84 @@
 
 (in-package #:petalisp.api)
 
-(declaim (ftype (function (rank lazy-array t) (values rank lazy-array &optional))
-                lazy-reshape-aux lazy-reshape-aux/shape))
+(declaim (ftype (function (lazy-array rank t) (values lazy-array rank &optional))
+                lazy-reshape-aux
+                lazy-reshape-aux/integer
+                lazy-reshape-aux/transformation
+                lazy-reshape-aux/function
+                lazy-reshape-aux/shape))
 
 (defun lazy-reshape (array &rest modifiers)
-  (let* ((lazy-array (lazy-array array))
-         (n-axes (lazy-array-rank lazy-array)))
-    (dolist (modifier modifiers lazy-array)
-      (multiple-value-setq (n-axes lazy-array)
-        (lazy-reshape-aux n-axes lazy-array modifier)))))
+  (let* ((L (lazy-array array))
+         (K (lazy-array-rank L)))
+    (dolist (M modifiers L)
+      (multiple-value-setq (L K)
+        (lazy-reshape-aux L K M)))))
 
-(defun lazy-reshape-aux (n-axes lazy-array modifier)
+(defun lazy-reshape-aux (lazy-array n-axes modifier)
   "An auxiliary function for LAZY-RESHAPE that processes a single modifier,
-and returns both the new number of relevant axes and the lazy array
+and returns both the new lazy array and the new number of relevant axes
 obtained after applying the modifier."
-  (declare (rank n-axes) (lazy-array lazy-array))
   (let* ((shape (lazy-array-shape lazy-array))
          (rank (shape-rank shape)))
-    (unless (<= n-axes rank)
-      (error "~@<Cannot reshape ~R axes of the array ~A with rank ~R.~:@>"
-             n-axes lazy-array rank))
+    (assert (<= n-axes rank))
     (typecase modifier
-      ;; Case 1: Reshape with a non-negative integer.
+      ;; Case 2: Reshape with an integer.
       (integer
-       (check-type modifier rank "a valid array rank")
-       (unless (<= modifier rank)
-         (error "~@<Invalid rank modifier ~D for the array ~S with rank ~D.~:@>"
-                modifier lazy-array rank))
-       (values modifier lazy-array))
+       (lazy-reshape-aux/integer lazy-array n-axes modifier))
       ;; Case 2: Reshape with a transformation.
       (transformation
-       (unless (<= (transformation-input-rank modifier) n-axes)
-         (error "~@<Cannot reshape ~R relevant axes of the lazy array ~S ~
-                    with the transformation ~S that has input rank ~R.~:@>"
-                n-axes lazy-array modifier (transformation-input-rank modifier)))
-       (values
-        (transformation-output-rank modifier)
-        (lazy-reshape-using-transformation lazy-array modifier)))
-      ;; Case 3: Reshape using a shape function.
+       (lazy-reshape-aux/transformation lazy-array n-axes modifier))
+      ;; Case 3: Reshape with a function
       (function
-       (dolist (modifier (multiple-value-list (funcall modifier (shape-subseq shape 0 n-axes))))
-         (multiple-value-setq (n-axes lazy-array)
-           (lazy-reshape-aux n-axes lazy-array modifier)))
-       (values n-axes lazy-array))
-      ;; Case 4: Reshape using a shape designator.
+       (lazy-reshape-aux/function lazy-array n-axes modifier))
+      ;; Case 4: Reshape with a shape designator.
       (otherwise
-       (lazy-reshape-aux/shape n-axes lazy-array (shape-designator-shape modifier))))))
+       (lazy-reshape-aux/shape lazy-array n-axes (shape-designator-shape modifier))))))
 
-(defun lazy-reshape-aux/shape (n-axes lazy-array shape)
+(defun lazy-reshape-aux/integer (lazy-array n-axes integer)
+  (declare (integer integer))
+  (cond ((< integer 0)
+         (error "~@<An integer modifier must be non-negative, got ~D.~:@>"
+                integer))
+        ((<= 0 integer n-axes)
+         (values lazy-array integer))
+        ((< n-axes integer)
+         (let* ((rank (lazy-array-rank lazy-array))
+                (growth (- integer n-axes))
+                (output-mask (make-array (+ rank growth) :initial-element nil)))
+           (loop for axis below rank do
+             (setf (aref output-mask (+ axis growth)) axis))
+           (values
+            (lazy-reshape-using-transformation
+             lazy-array
+             (make-transformation
+              :input-rank rank
+              :output-mask output-mask))
+            integer)))))
+
+(defun lazy-reshape-aux/transformation (lazy-array n-axes transformation)
+  (declare (transformation transformation))
+  (unless (<= (transformation-input-rank transformation) n-axes)
+    (error "~@<Cannot reshape ~R relevant axes of the lazy array ~S ~
+               with the transformation ~S that has input rank ~R.~:@>"
+           n-axes lazy-array transformation (transformation-input-rank transformation)))
+  (values
+   (lazy-reshape-using-transformation lazy-array transformation)
+   (transformation-output-rank transformation)))
+
+(defun lazy-reshape-aux/function (lazy-array n-axes function)
+  (declare (function function))
+  (let* ((shape (shape-subseq (lazy-array-shape lazy-array) 0 n-axes))
+         (modifiers (multiple-value-list (funcall function shape)))
+         (L lazy-array)
+         (K n-axes))
+    (dolist (M modifiers)
+      (multiple-value-setq (L K)
+        (lazy-reshape-aux L K M)))
+    (values L K)))
+
+(defun lazy-reshape-aux/shape (lazy-array n-axes shape)
   (declare (rank n-axes) (lazy-array lazy-array) (shape shape))
   (let* ((source-shape (lazy-array-shape lazy-array))
          (source-size (shape-size source-shape))
@@ -58,7 +88,6 @@ obtained after applying the modifier."
          (target-shape (make-shape (append (shape-ranges shape) (subseq source-ranges n-axes))))
          (target-size (shape-size target-shape)))
     (values
-     (shape-rank shape)
      (cond
        ;; Case 4a: Select a subset of elements.
        ((< target-size source-size)
@@ -80,4 +109,5 @@ obtained after applying the modifier."
         (lazy-ref
          lazy-array
          target-shape
-         (make-broadcasting-transformation source-shape target-shape n-axes)))))))
+         (make-broadcasting-transformation source-shape target-shape n-axes))))
+     (shape-rank shape))))

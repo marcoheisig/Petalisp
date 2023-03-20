@@ -587,70 +587,72 @@ interchangeably in any argument position."
 (document-function lazy-reshape
   "Returns the lazy array that is obtained by successively reshaping the
 supplied array with the supplied modifiers in left-to-right order.  There
-are four kinds of modifiers: Transformations that describe a reordering of
-values, shapes that describe a selection, move, or broadcasting of values
-depending on whether the shape modifier has fewer, equal, or more elements
-than the current lazy array, functions, that are applied to the shape of
-the current lazy array to obtain additional modifiers, and integers that
-can restrict the operation of any of the other modifiers to just the first
-few axes while leaving the remaining axes as they are.
+are four kinds of modifiers: Integers that express an increase or decrease
+in the number of active axes, transformations that describe a reordering of
+values, functions which are applied to the shape consisting of all active
+axes to obtain additional modifiers, and shape designators that describe a
+selection, move, or broadcasting of values, depending on whether the
+designated shape has fewer, equal, or more elements than the active axes of
+the current lazy array.
 
-More precisely, the processing maintains a lazy array L of rank R that is
-initialized to the result of applying LAZY-ARRAY constructor to the
-supplied first argument, and a shape S with rank P that initialized to the
-shape of L, and updates L and S for each modifier while maintaining the
-invariant that P is less than or equal to R, and that the first P ranges of
-the shape S are equal to the first P ranges of the lazy array L.  The rules
-for updating L and S are as follows:
+More precisely, the processing maintains a lazy array L that is initialized
+to the result of applying LAZY-ARRAY constructor to the supplied first
+argument, a number of active ranges K that initialized to the rank of L,
+and updates L and K for each modifier while maintaining the invariant that
+K is less than or equal to the rank of L.  The rules for updating L and K
+are as follows:
 
-1. If the modifier is a non-negative integer N, set S to the shape
-   consisting of the first N ranges of L.  Signal an error if N exceeds R.
+1. If the modifier is a non-negative integer N, compare it with the number
+   of active ranges K.  If N is less than or equal to K, set K to N and
+   leave L as it is.  Otherwise, if N is larger than K, create a new lazy
+   array with the same contents as L, whose shape starts with N minus K
+   ranges that only contain the integer zero, followed by the ranges of L.
+   Then, set L to that newly created lazy array, and set K to N.
 
-2. If the modifier is an invertible transformation with input rank M and
-   output rank N, extend the transformation with R minus M trailing
-   identity mappings such that it has input rank R and output rank N plus R
-   minus M.  Create a new lazy array by reordering L with that extended
-   transformation.  Set L to the newly created lazy array, and set S to
-   the first N ranges of the newly created lazy array.  Signal an error if
-   M is larger than R.
+2. If the modifier is an invertible transformation with input rank M (which
+   must be less than the number of active ranges K) and output rank N,
+   extend the transformation with trailing identity mappings such that it
+   has an input rank equal to the rank of L.  Create a new lazy array by
+   reordering L with that extended transformation.  Set L to that newly
+   created lazy array, and K to N.
 
-3. If the modifier is a function, apply it to S to obtain a number of new
-   modifiers.  Process all of the multiple values returned by this function
-   application as if they were supplied instead of this function modifier.
+3. If the modifier is a function, apply it to the shape consisting of the
+   first K ranges of L to obtain a number of new modifiers as multiple
+   values.  Process the new modifiers as if they were supplied instead of
+   this function modifier.
 
-4. If the modifier is a shape designator, compare the designated shape with
-   S, and chose one of the following rules to update L and S such that the
-   latter is equal to the designated one.
+4. If the modifier is a shape designator, compare the designated shape M
+   with the shape S that consists of the first K ranges of L, and chose one
+   of the following rules to update L and K.
 
-   a) If the modifier designates a shape with rank N that denotes a strict
-      subset of S, create a new lazy array of rank R whose first N ranges
-      are equal to those of the designated shape, whose trailing R minus N
-      ranges are equal to the corresponding ones of L, and where each index
-      maps to the same value as L.  Then, set L to that newly created lazy
-      array and set S to the designated shape.  Signal an error unless N is
-      equal to P.
+   a) If the shape M has rank K and denotes a strict subset of S, create a
+      new lazy array whose first N ranges are equal to those of M, whose
+      remaining ranges are equal to the corresponding ones of L, and where
+      each index maps to the same value as L.  Then, set L to that newly
+      created lazy array.
 
-   b) If the designated shape has rank N and the same number of elements as
-      S, create a new lazy array with the same contents and the same
-      lexicographical order as L, whose shape consists of the N ranges of
-      the designated shape followed by the last R minus P ranges of L.  Set
-      L to the newly created lazy array, and set S to the designated shape.
+   b) If the shape M has the same number of elements as S, create a new
+      lazy array with the same contents and the same lexicographical
+      ordering as L, whose shape consists of the ranges of M followed by
+      all but the first K ranges of L.  Then, set L to that newly created
+      lazy array, and set K to the rank of M.
 
-   c) If the designated shape has rank N and more elements than the current
-      shape, create a new lazy array that is a broadcasting reference to L,
-      whose shape consists of the N ranges of the designated shape followed
-      by the last R minus P ranges of the current lazy array.  Set L to the
-      newly created lazy array, and set S to the designated shape.
+   c) If the shape M has more elements than the current shape, create a new
+      lazy array that is a broadcasting reference to L, whose shape
+      consists of the ranges of M, followed by all but the first K ranges
+      of L.  Then, set L to the newly created lazy array, and set K to the
+      rank of M.
 
 The result of this function is the final value of the lazy array L after
 processing all modifiers."
   (compute (lazy-reshape #(1 2 3 4 5 6) (~ 1 5)))
   (compute (lazy-reshape #(1 2 3 4 5 6) (~ 2 ~ 3)))
   (compute (lazy-reshape #(1 2 3 4 5 6) (~ 6 ~ 2)))
-  (compute (lazy-reshape #(1 2 3 4 5 6) (transform i to (- i))))
-  (compute (lazy-reshape #(1 2 3 4 5 6) (transform i to (- i)) (~ -4 0)))
+  (compute (lazy-reshape #(1 2 3 4) (transform i to (- i))))
+  (compute (lazy-reshape #(1 2 3 4) (transform i to (- i)) (~ -2 0)))
   (compute (lazy-reshape #2A((1 2) (3 4)) (transform i j to j i)))
   (compute (lazy-reshape #2A((1 2) (3 4)) 1 (~ 2 ~ 2)))
+  (compute (lazy-reshape #(1 2 3) 0 1))
   (compute (lazy-reshape #2A((1 2) (3 4)) (lambda (s) (~ (shape-size s))))))
 
 (document-function lazy-broadcast-list-of-arrays
