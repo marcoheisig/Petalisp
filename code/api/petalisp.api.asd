@@ -19,6 +19,7 @@
    (:file "lazy-broadcast" :depends-on ("lazy-reshape"))
    (:file "lazy-change-shape" :depends-on ("shape-syntax"))
    (:file "lazy-drop-axes" :depends-on ("lazy-reshape"))
+   (:file "lazy-harmonize" :depends-on ("lazy-overwrite"))
    (:file "lazy-index-components" :depends-on ("packages"))
    (:file "lazy" :depends-on ("lazy-broadcast"))
    (:file "lazy-multiple-value" :depends-on ("lazy-broadcast"))
@@ -34,11 +35,13 @@
    (:file "reshapers" :depends-on ("lazy-reshape"))
    (:file "shape-syntax" :depends-on ("packages"))
    (:file "transform" :depends-on ("packages"))
+   (:file "with-lazy-arrays" :depends-on ("packages"))
    (:file "documentation"
     :depends-on
     ("differentiator"
      "lazy-broadcast"
      "lazy-drop-axes"
+     "lazy-harmonize"
      "lazy-index-components"
      "lazy"
      "lazy-multiple-value"
@@ -53,4 +56,5 @@
      "network"
      "packages"
      "shape-syntax"
-     "transform"))))
+     "transform"
+     "with-lazy-arrays"))))

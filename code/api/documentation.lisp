@@ -307,6 +307,20 @@ not supplied, it defaults to the rank of the supplied shape."
   (shape-subseq (~ 2 ~ 3 ~ 4) 2)
   (shape-subseq (~ 2 ~ 3 ~ 4) 1 2))
 
+(document-function shape-prefix
+  "Returns the shape that consists of the lower axes of the supplied first
+argument, and whose rank is given by the second argument."
+  (shape-prefix (~ 1 ~ 2  ~ 3) 0)
+  (shape-prefix (~ 1 ~ 2  ~ 3) 1)
+  (shape-prefix (~ 1 ~ 2  ~ 3) 2))
+
+(document-function shape-suffix
+  "Returns the shape that consists of the higher axes of the supplied first
+argument, and whose rank is given by the second argument."
+  (shape-suffix (~ 1 ~ 2  ~ 3) 0)
+  (shape-suffix (~ 1 ~ 2  ~ 3) 1)
+  (shape-suffix (~ 1 ~ 2  ~ 3) 2))
+
 (document-function subshapep
   "Returns whether all elements of the first supplied shape are also
 contained in the second supplied shape.  Signals an error if the supplied
@@ -1024,3 +1038,46 @@ has been completed.")
 (document-function completedp
   "Returns whether all the requests resulting from some COMPUTE-ASYNCHRONOUSLY
 operations have been completed.")
+
+(document-function harmonized-element-type
+  "Returns a type to which all elements of all the supplied lazy arrays can
+be coerced safely.  If the element types of all supplied lazy arrays are
+number types, the resulting type is obtained by the standard rules of
+numeric contagion (CLHS 12.1.4.1 and CLHS 12.1.4.4).  Otherwise, the
+resulting type is one that encompasses the union of the element types of
+all supplied lazy arrays."
+  (harmonized-element-type 5 6f0)
+  (harmonized-element-type 5d0 #C(0 1))
+  (harmonized-element-type 'foo 'bar 'baz 42))
+
+(document-function lazy-harmonize
+  "Lazily coerce each of the supplied arrays to the common harmonized element
+type, and return the resulting lazy arrays as multiple values."
+  (multiple-value-call #'compute (lazy-harmonize 5 6f0)))
+
+(document-function lazy-harmonize-list-of-arrays
+  "Lazily coerce each array in the supplied list of arrays to the common
+harmonized element type, and return a list of the resulting lazy arrays."
+  (apply #'compute (lazy-harmonize-list-of-arrays (list 5 6f0))))
+
+(document-function lazy-fuse-and-harmonize
+  "Returns the result of first harmonizing all the supplied arrays, and then
+passing them to LAZY-FUSE.")
+
+(document-function lazy-overwrite-and-harmonize
+  "Returns the result of first harmonizing all the supplied arrays, and then
+passing them to LAZY-OVERWRITE.")
+
+(document-function with-lazy-arrays
+  "Execute the body in an environment where each of the supplied symbols is
+shadowed by the lazy array equivalent of the previous value of that symbol.
+
+An alternative notation can be used to avoid shadowing the original array:
+If any array name is not a symbol but a list of a symbol and a form, the
+symbol is bound to the lazy array equivalent of what's produced by that
+form.
+
+It is good practice to start each function that expects some of its
+arguments to be lazy arrays to start with a suitable use of this macro."
+  (let ((a 5) (b #(1 2 3)))
+    (with-lazy-arrays (a (c b)) (values a b c))))

@@ -102,6 +102,8 @@
    #:shrink-shape
    #:enlarge-shape
    #:shape-subseq
+   #:shape-prefix
+   #:shape-suffix
    #:subshapep
    #:shape-union
    #:subdivide-arrays
@@ -161,9 +163,16 @@
    #:permuting-reshaper
    #:flattening-reshaper
 
+   ;; Harmonization
+   #:harmonized-element-type
+   #:lazy-harmonize
+   #:lazy-harmonize-list-of-arrays
+   #:lazy-fuse-and-harmonize
+   #:lazy-overwrite-and-harmonize
+
    ;; Utilities
    #:move-axis-to-front
-   )
+   #:with-lazy-arrays)
 
   (:shadowing-import-from :petalisp.ir #:make-ir-backend)
   (:shadowing-import-from :petalisp.xmas-backend #:make-xmas-backend))

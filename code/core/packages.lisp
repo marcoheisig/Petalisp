@@ -66,6 +66,8 @@
    #:subdivide-arrays
    #:subdivide-shapes
    #:shape-subseq
+   #:shape-prefix
+   #:shape-suffix
    #:subshapep
    #:split-shape
    #:fuse-shapes

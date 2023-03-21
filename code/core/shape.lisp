@@ -168,6 +168,14 @@
         (make-shape
          (subseq (shape-ranges shape) start end)))))
 
+(defun shape-prefix (shape n)
+  (declare (shape shape))
+  (shape-subseq shape 0 n))
+
+(defun shape-suffix (shape n)
+  (declare (shape shape))
+  (shape-subseq shape (- (shape-rank shape) n)))
+
 (defun subshapep (shape1 shape2)
   (declare (shape shape1 shape2))
   (unless (= (shape-rank shape1) (shape-rank shape2))
