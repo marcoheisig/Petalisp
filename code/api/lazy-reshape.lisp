@@ -38,13 +38,12 @@ obtained after applying the modifier."
        (lazy-reshape-aux/shape lazy-array n-axes (shape-designator-shape modifier))))))
 
 (defun lazy-reshape-aux/integer (lazy-array n-axes integer)
-  (declare (integer integer))
-  (cond ((< integer 0)
-         (error "~@<An integer modifier must be non-negative, got ~D.~:@>"
-                integer))
-        ((<= 0 integer n-axes)
+  (declare (lazy-array lazy-array)
+           (rank n-axes)
+           (integer integer))
+  (cond ((<= 0 integer n-axes)
          (values lazy-array integer))
-        ((< n-axes integer)
+        ((< n-axes integer array-rank-limit)
          (let* ((rank (lazy-array-rank lazy-array))
                 (growth (- integer n-axes))
                 (output-mask (make-array (+ rank growth) :initial-element nil)))
@@ -56,7 +55,13 @@ obtained after applying the modifier."
              (make-transformation
               :input-rank rank
               :output-mask output-mask))
-            integer)))))
+            integer)))
+        ((> integer array-rank-limit)
+         (error "~@<The integer modifier ~D exceeds the rank limit ~D.~:@>"
+                integer array-rank-limit))
+        (t
+         (error "~@<The integer ~D isn't a valid reshape modifier.~:@>"
+                integer))))
 
 (defun lazy-reshape-aux/transformation (lazy-array n-axes transformation)
   (declare (transformation transformation))
