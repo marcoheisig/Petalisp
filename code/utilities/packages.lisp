@@ -20,12 +20,6 @@
    #:document-variable
    #:document-variables
 
-   ;; bitfield.lisp
-   #:define-bitfield
-
-   ;; defalias.lisp
-   #:defalias
-
    ;; queue.lisp
    #:queue
    #:queuep
@@ -33,39 +27,12 @@
    #:queue-enqueue
    #:queue-dequeue
 
-   ;; wsdeque.lisp
-   #:wsdeque
-   #:wsdequep
-   #:make-wsdeque
-   #:wsdeque-push
-   #:wsdeque-pop
-   #:wsdeque-steal
-
    ;; extended-euclid.lisp
    #:extended-euclid
-
-   ;; identical.lisp
-   #:identical
-
-   ;; memoization.lisp
-   #:with-memoization
-   #:with-multiple-value-memoization
-   #:with-hash-table-memoization
-   #:with-multiple-value-hash-table-memoization
-   #:with-vector-memoization
-   #:with-multiple-value-vector-memoization
 
    ;; prime-factors.lisp
    #:prime-factors
    #:primep
-
-   ;; weak-set.lisp
-   #:weak-set
-   #:weak-set-p
-   #:make-weak-set
-   #:map-weak-set
-   #:weak-set-size
-   #:weak-set-add
 
    ;; with-collectors.lisp
    #:with-collectors
@@ -83,7 +50,4 @@
    #:cgraph-coloring
 
    ;; karmarkar-karp.lisp
-   #:karmarkar-karp
-
-   ;; with-pinned-objects.lisp
-   #:with-pinned-objects))
+   #:karmarkar-karp))

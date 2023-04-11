@@ -19,8 +19,7 @@
    #:document-structure
    #:document-type
    #:document-variable
-   #:document-variables
-   #:defalias)
+   #:document-variables)
 
   (:export
 

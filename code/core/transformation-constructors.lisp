@@ -2,25 +2,35 @@
 
 (in-package #:petalisp.core)
 
-(defun identity-transformation (rank)
-  (petalisp.utilities:with-vector-memoization (rank)
-    (let ((input-mask (make-array rank :initial-element nil))
-          (output-mask (make-array rank))
-          (scalings (make-array rank :initial-element 1))
-          (offsets (make-array rank :initial-element 0)))
-      (loop for index below rank do
-        (setf (svref output-mask index) index))
-      (let ((result
-              (%make-identity-transformation
-               rank
-               rank
-               input-mask
-               output-mask
-               scalings
-               offsets
-               nil)))
-        (setf (transformation-inverse result) result)
-        result))))
+(defun make-identity-transformation (rank)
+  (let ((input-mask (make-array rank :initial-element nil))
+        (output-mask (make-array rank))
+        (scalings (make-array rank :initial-element 1))
+        (offsets (make-array rank :initial-element 0)))
+    (loop for index below rank do
+      (setf (svref output-mask index) index))
+    (let ((result
+            (%make-identity-transformation
+             rank
+             rank
+             input-mask
+             output-mask
+             scalings
+             offsets
+             nil)))
+      (setf (transformation-inverse result) result)
+      result)))
+
+(let* ((cache-size 100)
+       (cache (make-array cache-size)))
+  (loop for rank below cache-size do
+    (setf (svref cache rank)
+          (make-identity-transformation rank)))
+  (defun identity-transformation (rank)
+    (declare (rank rank))
+    (if (< rank cache-size)
+        (the transformation (aref cache rank))
+        (make-identity-transformation rank))))
 
 (defun make-transformation
     (&key

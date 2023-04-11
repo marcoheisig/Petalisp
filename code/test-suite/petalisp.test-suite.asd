@@ -22,6 +22,5 @@
    (:file "defgenerator")
    (:file "generators")
    (:file "run-petalisp-test-suite")
-   (:file "petalisp.utilities")
    (:file "petalisp.core")
    (:file "petalisp.examples")))
