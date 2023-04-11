@@ -55,11 +55,14 @@
          (chunks (compute-program-primogenitor-chunk-vector program))
          (*nodes* (make-hash-table :test #'eq))
          (*worklist* '()))
-    ;; TODO We partition all buffers into chunks, but don't use that
-    ;; information at all.
     (flet ((buffer-chunk (buffer)
              (svref chunks (buffer-number buffer))))
-      (partition-chunks chunks :buffer-chunk #'buffer-chunk))
+      ;; TODO We partition all buffers into chunks, but don't use that
+      ;; information at all.
+      (partition-chunks chunks :buffer-chunk #'buffer-chunk)
+      ;; TODO We plan allocations for all chunks, but don't use this
+      ;; information.
+      (allocator chunks))
     (map-buffers-and-kernels
      ;; Ensure that each buffer has an attached storage array.
      (lambda (buffer)
