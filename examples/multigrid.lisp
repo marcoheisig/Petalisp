@@ -9,7 +9,10 @@
    #:lazy-rbgs-2d
    #:lazy-prolongate-2d
    #:lazy-restrict-2d
-   #:lazy-v-cycle-2d))
+   #:lazy-v-cycle-2d
+   #:lazy-w-cycle-2d
+   #:lazy-f-cycle-2d
+   #:multigrid-test))
 
 (in-package #:petalisp.examples.multigrid)
 
