@@ -16,7 +16,6 @@
    #:graph-object-nodes
    #:graph-ensure-node
    #:graph-ensure-edge
-   #:graph-depth-first-schedule
    #:graph-parallel-depth-first-schedule))
 
 (in-package #:petalisp.scheduling)
@@ -48,6 +47,25 @@
   (print-unreadable-object (node stream :type t)
     (format stream "~S" (node-object node))))
 
+(defun copy-node-into (node other-node)
+  (declare (node node other-node))
+  (setf (node-predecessors other-node)
+        (node-predecessors node))
+  (setf (node-successors other-node)
+        (node-successors node))
+  (setf (node-object other-node)
+        (node-object node))
+  (setf (node-depth other-node)
+        (node-depth node))
+  (setf (node-height other-node)
+        (node-height node))
+  (setf (node-eagerness other-node)
+        (node-eagerness node))
+  (setf (node-counter other-node)
+        (node-counter node))
+  (setf (node-position other-node)
+        (node-position node)))
+
 (defun node-more-important-p (node1 node2)
   (declare (node node1 node2))
   (block nil
@@ -69,15 +87,6 @@
       ;; neighboring nodes are scheduled.
       (cmp (node-eagerness node1)
            (node-eagerness node2))
-      ;; The next criterion is to prioritize nodes with fewer successors.  The
-      ;; effect is that when a homogeneous array is partitioned into multiple
-      ;; scheduling nodes, the processing starts at one of the boundaries.
-      (cmp (length (node-successors node2))
-           (length (node-successors node1)))
-      ;; The final criterion is to prioritize nodes with more predecessors,
-      ;; hoping that doing so will free more memory, sooner.
-      (cmp (length (node-predecessors node1))
-           (length (node-predecessors node2)))
       ;; Otherwise, none of the nodes are equally important.
       nil)))
 
@@ -142,14 +151,22 @@
               (push output worklist)))))
       initial-nodes)))
 
-(defun graph-depth-first-schedule (graph &key (finalize-node #'node-object))
-  "Returns a list of finalized nodes in a depth-first order, where each node
-appears later than all its predecessors."
-  (declare (graph graph) (function finalize-node))
+(defun graph-parallel-depth-first-schedule (graph p)
+  "Returns a list of vectors, where each vector describes one step of the
+schedule.  Each vector has length P, and elements that are either NIL or one of
+the objects that have been scheduled.  The schedule ensures that each node
+appears later than all its predecessors, and that all entries of one vector can
+be executed in parallel.
+
+This function uses the P-DFS algorithm from Blelloch, Gibbons, and
+Matias (https://doi.org/10.1145/301970.301974), with some augmentations to
+improve data locality."
+  (declare (graph graph) (type (integer 1) p))
   (graph-compute-node-depth graph)
   (graph-compute-node-height graph)
   ;; Maintain a priority queue of all nodes that are ready to be scheduled.
-  (let ((queue (queues:make-queue :priority-queue :compare #'node-more-important-p)))
+  (let ((queue (queues:make-queue :priority-queue :compare #'node-more-important-p))
+        (tmpnode (make-node)))
     (flet ((push-node (node)
              (assert (null (node-position node)))
              (setf (node-position node)
@@ -160,13 +177,16 @@ appears later than all its predecessors."
                (setf (node-position node) nil)
                node))
            (increase-node-eagerness (node increment)
-             (prog1 (incf (node-eagerness node) increment)
-               (when (node-position node)
-                 ;; This deletion is the reason why we track the node's queue
-                 ;; position in the first place:
-                 (queues:queue-delete queue (node-position node))
-                 (setf (node-position node)
-                       (nth-value 1 (queues:qpush queue node)))))))
+             ;; This function is complicated by the fact that we want to avoid
+             ;; consing when updating the queue position.
+             (if (not (node-position node))
+                 (incf (node-eagerness node) increment)
+                 (let ((position (node-position node)))
+                   (copy-node-into node tmpnode)
+                   (incf (node-eagerness tmpnode) increment)
+                   (queues:queue-change queue position tmpnode)
+                   (incf (node-eagerness node) increment)
+                   (setf (queues::node-value position) node)))))
       ;; Initialize node counters and the queue.
       (loop for node being the hash-values of (graph-object-nodes graph) do
         (let ((n (length (node-predecessors node))))
@@ -176,72 +196,50 @@ appears later than all its predecessors."
       ;; Generate the schedule.
       (loop until (zerop (queues:qsize queue))
             collect
-            (let ((node (pop-node)))
-              ;; Check with successors become ready once this node has been
-              ;; scheduled.
-              (loop for successor in (node-successors node) do
-                (if (zerop (decf (node-counter successor)))
-                    (push-node successor)
-                    ;; If the node's successor is not ready, yet, increase the
-                    ;; eagerness of each predecessor thereof.
-                    (loop for neighbor in (node-predecessors successor) do
-                      (increase-node-eagerness neighbor 1))))
-              (funcall finalize-node node))))))
+            (let ((vector (make-array p :initial-element nil))
+                  (end 0))
+              ;; Grab up to P nodes form the queue.
+              (loop repeat p until (zerop (queues:qsize queue)) do
+                (let ((node (pop-node)))
+                  ;; Increase the eagerness of each neighbor.
+                  (loop for successor in (node-successors node) do
+                    (unless (zerop (node-counter successor))
+                      (loop for neighbor in (node-predecessors successor) do
+                        (increase-node-eagerness neighbor 1))))
+                  ;; TODO Insert the node at the position that maximizes memory
+                  ;; locality with respect to earlier nodes.
+                  (setf (svref vector end) node)
+                  (incf end)))
+              ;; Mark all nodes as completed and unwrap them.
+              (loop for index below p do
+                (let ((node (svref vector index)))
+                  (when (nodep node)
+                    (loop for successor in (node-successors node) do
+                      (when (zerop (decf (node-counter successor)))
+                        (queues:qpush queue successor)))
+                    (setf (svref vector index)
+                          (node-object node)))))
+              vector)))))
 
-(defun node-lower-position-p (node1 node2)
-  (< (node-position node1)
-     (node-position node2)))
-
-(defun graph-parallel-depth-first-schedule (graph p &key (finalize-node #'node-object))
-  "Returns a list of vectors of length P whose entries are either NIL, or finalized nodes.
-Each list entry describes the actions to be taken, possibly in parallel, in
-each step of the schedule.  The K-th vector entry describes the action to be
-taken by the K-th worker.
-
-The schedule is computed using the P-DFS algorithm from Blelloch, Gibbons, and
-Matias (https://doi.org/10.1145/301970.301974), with some augmentations to
-improve data locality."
-  (declare (graph graph) (unsigned-byte p) (function finalize-node))
-  (let ((dfs (graph-depth-first-schedule graph :finalize-node #'identity))
-        (queue (queues:make-queue :priority-queue :compare #'node-lower-position-p)))
-    ;; Initialize each node's counter and position and fill the queue.
-    (loop for node in dfs for position from 0 do
-      (let ((n (length (node-predecessors node))))
-        (setf (node-counter node) n)
-        (setf (node-position node) position)
-        (when (zerop n)
-          (queues:qpush queue node))))
-    ;; Generate the schedule.
-    (loop until (zerop (queues:qsize queue))
-          collect
-          (let ((vector (make-array p :initial-element nil)))
-            (loop until (zerop (queues:qsize queue)) for index below p do
-              (setf (svref vector index)
-                    (queues:qpop queue)))
-            (loop for node across vector for index from 0 until (not node) do
-              (setf (svref vector index)
-                    (funcall finalize-node node))
-              (loop for successor in (node-successors node) do
-                (when (zerop (decf (node-counter successor)))
-                  (queues:qpush queue successor))))
-            vector))))
-
-#+(or) ;; Usage example:
+;;;#+(or) ;; Usage example:
 (let* ((g (make-graph))
-       (a (make-array '(3 4)))
-       (b (make-array '(3 4)))
-       (c (make-array '(3 4)))
-       (l (list a b c)))
-  (loop for array in l for letter across "abcdefg" do
-    (loop for i below (array-dimension array 0) do
-      (loop for j below (array-dimension array 1) do
-        (setf (aref array i j)
-              (graph-ensure-node g (format nil "~C~D~D" letter i j))))))
-  (loop for (src dst) on (list a b c) while dst do
-    (loop for i below (array-dimension src 0) do
-      (loop for j below (array-dimension src 1) do
-        (graph-ensure-edge g (aref src i j) (aref dst i j))
-        (loop for (di dj) in '((0 1) (0 -1) (1 0) (-1 0)) do
-          (when (array-in-bounds-p src (+ i di) (+ j dj))
-            (graph-ensure-edge g (aref src (+ i di) (+ j dj)) (aref dst i j)))))))
-  (values l (graph-depth-first-schedule g)))
+       (dims '(3 4))
+       (a (make-array dims))
+       (b (make-array dims))
+       (c (make-array dims))
+       (arrays (list a b c))
+       (coords (apply #'alexandria:map-product #'list (mapcar #'alexandria:iota dims))))
+  (setf coords (alexandria:shuffle coords))
+  (loop for array in arrays for letter across "abcdefg" do
+    (loop for (i j) in coords do
+      (setf (aref array i j)
+            (graph-ensure-node g (format nil "~C~D~D" letter i j)))))
+  (loop for (src dst) on arrays while dst do
+    (setf coords (alexandria:shuffle coords))
+    (loop for (i j) in coords do
+      (graph-ensure-edge g (aref src i j) (aref dst i j))
+      (loop for (di dj) in '((0 1) (0 -1) (1 0) (-1 0)) do
+        (when (array-in-bounds-p src (+ i di) (+ j dj))
+          (graph-ensure-edge g (aref src (+ i di) (+ j dj)) (aref dst i j))))))
+  (time
+   (loop for p from 1 to 5 collect (graph-parallel-depth-first-schedule g p))))
