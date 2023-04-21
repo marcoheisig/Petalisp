@@ -22,4 +22,5 @@
    (:file "number-of-cpus")
    (:file "topological-sort")
    (:file "graph-coloring")
-   (:file "karmarkar-karp")))
+   (:file "karmarkar-karp")
+   (:file "scheduling" :depends-on ("queue"))))
