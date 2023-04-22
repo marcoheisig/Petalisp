@@ -2,9 +2,9 @@
 
 (in-package #:petalisp.ir)
 
-;;; During the allocation phase, we look at each writer into an infant ---
+;;; During the allocation phase, we look at each action to an infant ---
 ;;; because only infants have to be actually executed in the end --- and then
-;;; assign each chunk that is referenced by such a writer an allocation.  Also,
+;;; assign each chunk that is referenced by such a action an allocation.  Also,
 ;;; each chunk corresponding to a root or leaf buffer gets its own allocation.
 ;;; The assignment of allocations to chunks is made such that all children of
 ;;; an allocated chunk share the same allocation.
@@ -29,8 +29,8 @@ to NIL in case the chunk doesn't have to be allocated at all."
                (incf (gethash chunk table 0)))
              (scan-chunk (chunk)
                (if (not (chunk-split chunk))
-                   (loop for (nil nil . other-chunks) in (chunk-writers chunk) do
-                     (mapc #'reference other-chunks))
+                   (loop for action in (chunk-actions chunk) do
+                     (mapc #'reference (action-source-chunks action)))
                    (let ((split (chunk-split chunk)))
                      (scan-chunk (split-left-child split))
                      (scan-chunk (split-right-child split)))))

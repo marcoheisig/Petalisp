@@ -15,6 +15,19 @@
 ;;; have good data locality and qualify for later being scheduled on the
 ;;; same worker.
 
+(defstruct (action
+            (:predicate actionp)
+            (:constructor make-action))
+  (iteration-space nil :type shape :read-only t)
+  (kernel nil :type kernel :read-only t)
+  (source-chunks '() :type list :read-only t))
+
+;; This comparison function is used to sort the list of actions that write into
+;; a particular chunk.
+(defun action> (action1 action2)
+  (> (shape-size (action-iteration-space action1))
+     (shape-size (action-iteration-space action2))))
+
 (defstruct (chunk
             (:predicate chunkp)
             (:constructor make-chunk))
@@ -27,9 +40,8 @@
   (shape nil :type shape :read-only t)
   ;; The chunk that was split to create this one.
   (parent nil :type (or null chunk) :read-only t)
-  ;; A list of entries of the form (ITERATION-SPACE KERNEL . CHUNKS),
-  ;; sorted in descending order of the size of each iteration space.
-  (writers '() :type list)
+  ;; A list of actions that write into this chunk.
+  (actions '() :type list)
   ;; A cache for the chunk's split priority.
   (split-priority-cache nil :type (or null unsigned-byte))
   ;; The split operation in case this chunk has been split, or NIL, if it
@@ -67,20 +79,22 @@ to the buffer with number N."
              :buffer buffer
              :domain (buffer-shape buffer)
              :shape (buffer-shape buffer))))
-    ;; Initialize the WRITERS slot of each initial chunk.
+    ;; Initialize the ACTIONS slot of each initial chunk.
     (do-program-buffers (buffer program result)
-      (let ((writers '()))
+      (let ((actions '()))
         (do-buffer-inputs (kernel buffer)
           (let* ((iteration-space (kernel-iteration-space kernel))
                  (chunks '()))
             (do-kernel-inputs (buffer kernel)
               (push (svref result (buffer-number buffer))
                     chunks))
-            (push (list* iteration-space kernel (nreverse chunks))
-                  writers)))
-        ;; Sort writers such that large iteration spaces come first.
-        (setf (chunk-writers (svref result (buffer-number buffer)))
-              (sort writers #'> :key (lambda (w) (shape-size (first w)))))))))
+            (push (make-action :iteration-space iteration-space
+                               :kernel kernel
+                               :source-chunks (nreverse chunks))
+                  actions)))
+        ;; Sort actions such that large iteration spaces come first.
+        (setf (chunk-actions (svref result (buffer-number buffer)))
+              (sort actions #'action>))))))
 
 (defstruct (split
             (:predicate splitp)
@@ -125,12 +139,12 @@ for debugging."
   (labels ((chain-elements (chunk)
              (list*
               chunk
-              (let ((writers (chunk-writers chunk)))
-                (if (not writers)
+              (let ((actions (chunk-actions chunk)))
+                (if (not actions)
                     '()
                     (chain-elements
                      ;; Only follow the largest chunk.
-                     (first (sort (copy-list (cddr (first writers))) #'>
+                     (first (sort (copy-list (cddr (first actions))) #'>
                                   :key #'chunk-bits))))))))
     (list*
      (chain-elements chunk)
@@ -412,12 +426,12 @@ of ghost points to interior points for a split.
     (loop while (next-chunk-p) for chunk = (next-chunk) do
       ;; Skip chunks that have already been split.
       (unless (chunk-split chunk)
-        (attempt-split chunk (chunk-split-axis chunk))
+        (attempt-split chunk (find-chunk-split-axis chunk))
         ;; For each split that hasn't been propagated yet, compute the
-        ;; writers of its left and right child, which happens to propagate
+        ;; actions of its left and right child, which happens to propagate
         ;; the split as a side-effect.
         (loop until (null *unpropagated-splits*) do
-          (propagate-split/determine-child-writers (pop *unpropagated-splits*)))))))
+          (propagate-split/determine-child-actions (pop *unpropagated-splits*)))))))
 
 (defun attempt-split (chunk axis &optional position)
   "Attempt to split CHUNK at the supplied AXIS and POSITION.  If the split
@@ -492,7 +506,7 @@ existed, return that split.  Otherwise, return NIL."
           (setf (chunk-split chunk) split)
           split)))))
 
-(defun chunk-split-axis (chunk)
+(defun find-chunk-split-axis (chunk)
   "Returns the axis where chunk can be split while introducing the minimum
 number of ghost points, or NIL, if the chunk cannot be split further."
   (let* ((domain (chunk-domain chunk))
@@ -512,7 +526,7 @@ number of ghost points, or NIL, if the chunk cannot be split further."
               (setf minimum-number-of-ghost-points number-of-ghost-points)
               (setf best-axis axis))))))))
 
-(defun propagate-split/determine-child-writers (split)
+(defun propagate-split/determine-child-actions (split)
   ;; This function is called only for successful splits, meaning that the
   ;; ghostspec entries of the chunk's buffer at the split axis are non-NIL.
   ;; The ghostspec for an axis is non-NIL only if all writes to that buffer
@@ -544,18 +558,17 @@ number of ghost points, or NIL, if the chunk cannot be split further."
                     (transform-axis-and-position store-instruction axis1 position1)
                   (attempt-split target-chunk axis2 position2))))))))
     ;; Propagate the split to all kernels writing to this buffer, and
-    ;; compute the child writers.
-    (let ((left-writers '())
-          (right-writers '())
-          ;; A writer is boring if it writes only to one half of the split.
+    ;; compute the child actions.
+    (let ((left-actions '())
+          (right-actions '())
+          ;; An action is boring if it writes only to one half of the split.
           ;; The boring part is that this also means there is no way to
-          ;; propagate the split across this kernel.  We collect these
-          ;; writers and process them last, because often another
-          ;; propagated split makes it possible to narrow down their.
-          ;; chunks, too.
-          (boring-writers '()))
-      (dolist (writer (chunk-writers parent))
-        (destructuring-bind (iteration-space kernel . chunks) writer
+          ;; propagate the split across it.  We collect these actions and
+          ;; process them last, because often another propagated split makes it
+          ;; possible to narrow down their chunks, too.
+          (boring-actions '()))
+      (dolist (action (chunk-actions parent))
+        (with-slots (iteration-space kernel (chunks source-chunks)) action
           (multiple-value-bind (axis1 position1 flip1)
               (reverse-transform-axis-and-position
                (second (assoc parent-buffer (kernel-targets kernel)))
@@ -565,7 +578,7 @@ number of ghost points, or NIL, if the chunk cannot be split further."
                     (let ((range (shape-range iteration-space axis1)))
                       (not (and (< (range-start range) position1)
                                 (<= position1 (range-last range))))))
-                (push writer boring-writers)
+                (push action boring-actions)
                 (let ((left-chunks '())
                       (right-chunks '()))
                   (loop for (buffer stencil) in (kernel-sources kernel)
@@ -585,13 +598,17 @@ number of ghost points, or NIL, if the chunk cannot be split further."
                   (multiple-value-bind (left-iteration-space right-iteration-space)
                       (split-shape iteration-space axis1 position1)
                     (when flip1 (rotatef left-iteration-space right-iteration-space))
-                    (push (list* left-iteration-space kernel (nreverse left-chunks))
-                          left-writers)
-                    (push (list* right-iteration-space kernel (nreverse right-chunks))
-                          right-writers)))))))
-      ;; Now refine the boring writers.
-      (dolist (writer boring-writers)
-        (destructuring-bind (iteration-space kernel . chunks) writer
+                    (push (make-action :iteration-space left-iteration-space
+                                       :kernel kernel
+                                       :source-chunks (nreverse left-chunks))
+                          left-actions)
+                    (push (make-action :iteration-space right-iteration-space
+                                       :kernel kernel
+                                       :source-chunks (nreverse right-chunks))
+                          right-actions)))))))
+      ;; Now refine the boring actions.
+      (dolist (action boring-actions)
+        (with-slots (iteration-space kernel (chunks source-chunks)) action
           (let* ((child-chunks
                    (loop for (buffer stencil) in (kernel-sources kernel)
                          for source-chunk in chunks
@@ -603,20 +620,22 @@ number of ghost points, or NIL, if the chunk cannot be split further."
                                (:left (split-left-child source-split))
                                (:right (split-right-child source-split))
                                (:both source-chunk)))))
-                 (child-writer (list* iteration-space kernel child-chunks)))
+                 (child-action (make-action :iteration-space iteration-space
+                                            :kernel kernel
+                                            :source-chunks child-chunks)))
             (ecase (relative-position
                     iteration-space
                     (second (assoc parent-buffer (kernel-targets kernel)))
                     axis
                     position)
-              (:left (push child-writer left-writers))
-              (:right (push child-writer right-writers))
-              (:both (error "Not a boring writer: ~S" writer))))))
-      ;; Finalize the child writers.
-      (setf (chunk-writers left-child)
-            (sort left-writers #'> :key (lambda (w) (shape-size (first w)))))
-      (setf (chunk-writers right-child)
-            (sort right-writers #'> :key (lambda (w) (shape-size (first w)))))
+              (:left (push child-action left-actions))
+              (:right (push child-action right-actions))
+              (:both (error "Not a boring action: ~S" action))))))
+      ;; Finalize the child actions.
+      (setf (chunk-actions left-child)
+            (sort left-actions #'action>))
+      (setf (chunk-actions right-child)
+            (sort right-actions #'action>))
       split)))
 
 (defun transform-axis-and-position (transformoid axis position)
@@ -681,7 +700,7 @@ relates to the supplied transformoid."
      (destructure-transformoid (instruction-transformation transformoid)))))
 
 (defun find-most-specific-target-chunk (buffer kernel source-chunk)
-  "Returns the most specific child chunk of BUFFER whose writes from kernel
+  "Returns the most specific child chunk of BUFFER whose actions from kernel
 only reference the SOURCE-CHUNK part of the corresponding source buffer."
   (let* ((source-buffer (chunk-buffer source-chunk))
          (position (or (position source-buffer (kernel-sources kernel) :key #'car)
@@ -695,11 +714,13 @@ only reference the SOURCE-CHUNK part of the corresponding source buffer."
                          (let* ((split (chunk-split target))
                                 (left-child (split-left-child split))
                                 (right-child (split-right-child split))
-                                (left-writer (find kernel (chunk-writers left-child) :key #'second))
-                                (right-writer (find kernel (chunk-writers right-child) :key #'second)))
-                           (cond ((and left-writer (eq source (nth position (cddr left-writer))))
+                                (left-action (find kernel (chunk-actions left-child) :key #'action-kernel))
+                                (right-action (find kernel (chunk-actions right-child) :key #'action-kernel)))
+                           (cond ((and left-action
+                                       (eq source (nth position (action-source-chunks left-action))))
                                   left-child)
-                                 ((and right-writer (eq source (nth position (cddr right-writer))))
+                                 ((and right-action
+                                       (eq source (nth position (action-source-chunks right-action))))
                                   right-child)
                                  (t
                                   (return-from find-most-specific-target-chunk
