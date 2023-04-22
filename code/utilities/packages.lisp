@@ -40,9 +40,6 @@
    ;; number-of-cpus.lisp
    #:number-of-cpus
 
-   ;; topological-sort.lisp
-   #:topological-sort
-
    ;; graph-coloring.lisp
    #:make-cgraph
    #:cgraph-ensure-cnode
