@@ -70,31 +70,35 @@
 (defun compute-program-primogenitor-chunk-vector (program)
   "Returns a vector whose Nth entry is the primogenitor chunk corresponding
 to the buffer with number N."
-  (let* ((size (program-number-of-buffers program))
-         (result (make-array size :initial-element nil)))
-    ;; Create the initial chunk for each buffer.
+  (let* ((nbuffers (program-number-of-buffers program))
+         (nkernels (program-number-of-kernels program))
+         (pcv (make-array nbuffers :initial-element nil))
+         (actions (make-array nkernels :initial-element nil)))
+    ;; Create the primogenitor chunk of each buffer.
     (do-program-buffers (buffer program)
-      (setf (svref result (buffer-number buffer))
+      (setf (svref pcv (buffer-number buffer))
             (make-chunk
              :buffer buffer
              :domain (buffer-shape buffer)
              :shape (buffer-shape buffer))))
+    ;; Create the initial ACTION of each kernel.
+    (do-program-kernels (kernel program)
+      (petalisp.utilities:with-collectors
+          ((source-chunks collect-source-chunk))
+        (do-kernel-inputs (buffer kernel)
+          (collect-source-chunk (svref pcv (buffer-number buffer))))
+        (setf (svref actions (kernel-number kernel))
+              (make-action :iteration-space (kernel-iteration-space kernel)
+                           :kernel kernel
+                           :source-chunks (source-chunks)))))
     ;; Initialize the ACTIONS slot of each initial chunk.
-    (do-program-buffers (buffer program result)
-      (let ((actions '()))
+    (do-program-buffers (buffer program)
+      (petalisp.utilities:with-collectors ((actions collect-action))
         (do-buffer-inputs (kernel buffer)
-          (let* ((iteration-space (kernel-iteration-space kernel))
-                 (chunks '()))
-            (do-kernel-inputs (buffer kernel)
-              (push (svref result (buffer-number buffer))
-                    chunks))
-            (push (make-action :iteration-space iteration-space
-                               :kernel kernel
-                               :source-chunks (nreverse chunks))
-                  actions)))
-        ;; Sort actions such that large iteration spaces come first.
-        (setf (chunk-actions (svref result (buffer-number buffer)))
-              (sort actions #'action>))))))
+          (collect-action (svref actions (kernel-number kernel))))
+        (setf (chunk-actions (svref pcv (buffer-number buffer)))
+              (sort (actions) #'action>))))
+    pcv))
 
 (defstruct (split
             (:predicate splitp)
@@ -144,7 +148,7 @@ for debugging."
                     '()
                     (chain-elements
                      ;; Only follow the largest chunk.
-                     (first (sort (copy-list (cddr (first actions))) #'>
+                     (first (sort (copy-list (action-source-chunks (first actions))) #'>
                                   :key #'chunk-bits))))))))
     (list*
      (chain-elements chunk)
@@ -426,7 +430,7 @@ of ghost points to interior points for a split.
     (loop while (next-chunk-p) for chunk = (next-chunk) do
       ;; Skip chunks that have already been split.
       (unless (chunk-split chunk)
-        (attempt-split chunk (find-chunk-split-axis chunk))
+        (attempt-split chunk (find-optimal-chunk-split-axis chunk))
         ;; For each split that hasn't been propagated yet, compute the
         ;; actions of its left and right child, which happens to propagate
         ;; the split as a side-effect.
@@ -506,7 +510,7 @@ existed, return that split.  Otherwise, return NIL."
           (setf (chunk-split chunk) split)
           split)))))
 
-(defun find-chunk-split-axis (chunk)
+(defun find-optimal-chunk-split-axis (chunk)
   "Returns the axis where chunk can be split while introducing the minimum
 number of ghost points, or NIL, if the chunk cannot be split further."
   (let* ((domain (chunk-domain chunk))
@@ -557,18 +561,18 @@ number of ghost points, or NIL, if the chunk cannot be split further."
                 (multiple-value-bind (axis2 position2)
                     (transform-axis-and-position store-instruction axis1 position1)
                   (attempt-split target-chunk axis2 position2))))))))
-    ;; Propagate the split to all kernels writing to this buffer, and
-    ;; compute the child actions.
-    (let ((left-actions '())
-          (right-actions '())
-          ;; An action is boring if it writes only to one half of the split.
-          ;; The boring part is that this also means there is no way to
-          ;; propagate the split across it.  We collect these actions and
-          ;; process them last, because often another propagated split makes it
-          ;; possible to narrow down their chunks, too.
-          (boring-actions '()))
+    ;; Propagate the split to all actions writing to the parent chunk.
+    (petalisp.utilities:with-collectors
+        ((left-actions collect-left-action)
+         (right-actions collect-right-action)
+         ;; An action is boring if it writes only to one half of the split.
+         ;; The boring part is that this also means there is no way to
+         ;; propagate the split across it.  We collect these actions and
+         ;; process them last, because often another propagated split makes it
+         ;; possible to narrow down their chunks, too.
+         (boring-actions collect-boring-action))
       (dolist (action (chunk-actions parent))
-        (with-slots (iteration-space kernel (chunks source-chunks)) action
+        (with-slots (iteration-space kernel source-chunks) action
           (multiple-value-bind (axis1 position1 flip1)
               (reverse-transform-axis-and-position
                (second (assoc parent-buffer (kernel-targets kernel)))
@@ -578,38 +582,41 @@ number of ghost points, or NIL, if the chunk cannot be split further."
                     (let ((range (shape-range iteration-space axis1)))
                       (not (and (< (range-start range) position1)
                                 (<= position1 (range-last range))))))
-                (push action boring-actions)
-                (let ((left-chunks '())
-                      (right-chunks '()))
+                (collect-boring-action action)
+                ;; In case the action is being split, proceed to split all its
+                ;; sources and targets.
+                (petalisp.utilities:with-collectors
+                    ((left-source-chunks collect-left-source-chunk)
+                     (right-source-chunks collect-right-source-chunk))
                   (loop for (buffer stencil) in (kernel-sources kernel)
-                        for chunk in chunks
+                        for source-chunk in source-chunks
                         do (multiple-value-bind (axis2 position2 flip2)
                                (transform-axis-and-position stencil axis1 position1)
-                             (let ((split (attempt-split chunk axis2 position2)))
+                             (let ((split (attempt-split source-chunk axis2 position2)))
                                (cond ((not split)
-                                      (push chunk left-chunks)
-                                      (push chunk right-chunks))
+                                      (collect-left-source-chunk source-chunk)
+                                      (collect-right-source-chunk source-chunk))
                                      ((alexandria:xor flip1 flip2)
-                                      (push (split-left-child split) right-chunks)
-                                      (push (split-right-child split) left-chunks))
+                                      (collect-right-source-chunk (split-left-child split))
+                                      (collect-left-source-chunk (split-right-child split)))
                                      (t
-                                      (push (split-left-child split) left-chunks)
-                                      (push (split-right-child split) right-chunks))))))
+                                      (collect-left-source-chunk (split-left-child split))
+                                      (collect-right-source-chunk (split-right-child split)))))))
                   (multiple-value-bind (left-iteration-space right-iteration-space)
                       (split-shape iteration-space axis1 position1)
                     (when flip1 (rotatef left-iteration-space right-iteration-space))
-                    (push (make-action :iteration-space left-iteration-space
-                                       :kernel kernel
-                                       :source-chunks (nreverse left-chunks))
-                          left-actions)
-                    (push (make-action :iteration-space right-iteration-space
-                                       :kernel kernel
-                                       :source-chunks (nreverse right-chunks))
-                          right-actions)))))))
+                    (collect-left-action
+                     (make-action :iteration-space left-iteration-space
+                                  :kernel kernel
+                                  :source-chunks (left-source-chunks)))
+                    (collect-right-action
+                     (make-action :iteration-space right-iteration-space
+                                  :kernel kernel
+                                  :source-chunks (right-source-chunks)))))))))
       ;; Now refine the boring actions.
-      (dolist (action boring-actions)
+      (dolist (action (boring-actions))
         (with-slots (iteration-space kernel (chunks source-chunks)) action
-          (let* ((child-chunks
+          (let* ((source-chunks
                    (loop for (buffer stencil) in (kernel-sources kernel)
                          for source-chunk in chunks
                          for source-split = (chunk-split source-chunk)
@@ -622,20 +629,20 @@ number of ghost points, or NIL, if the chunk cannot be split further."
                                (:both source-chunk)))))
                  (child-action (make-action :iteration-space iteration-space
                                             :kernel kernel
-                                            :source-chunks child-chunks)))
+                                            :source-chunks source-chunks)))
             (ecase (relative-position
                     iteration-space
                     (second (assoc parent-buffer (kernel-targets kernel)))
                     axis
                     position)
-              (:left (push child-action left-actions))
-              (:right (push child-action right-actions))
+              (:left (collect-left-action child-action))
+              (:right (collect-right-action child-action))
               (:both (error "Not a boring action: ~S" action))))))
       ;; Finalize the child actions.
       (setf (chunk-actions left-child)
-            (sort left-actions #'action>))
+            (sort (left-actions) #'action>))
       (setf (chunk-actions right-child)
-            (sort right-actions #'action>))
+            (sort (right-actions) #'action>))
       split)))
 
 (defun transform-axis-and-position (transformoid axis position)
