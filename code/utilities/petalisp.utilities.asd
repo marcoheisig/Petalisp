@@ -14,7 +14,7 @@
   :components
   ((:file "packages")
    (:file "documentation")
-   (:file "queue")
+   (:file "cqueue")
    (:file "extended-euclid")
    (:file "powers-of-two")
    (:file "prime-factors")
@@ -22,4 +22,4 @@
    (:file "number-of-cpus")
    (:file "graph-coloring")
    (:file "karmarkar-karp")
-   (:file "scheduling" :depends-on ("queue"))))
+   (:file "scheduling")))

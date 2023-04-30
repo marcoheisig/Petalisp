@@ -1,15 +1,24 @@
 ;;;; © 2016-2023 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package #:petalisp.utilities)
+(defpackage #:petalisp.cqueue
+  (:use #:common-lisp)
+  (:export
+   #:cqueue
+   #:cqueuep
+   #:make-cqueue
+   #:cqueue-enqueue
+   #:cqueue-dequeue))
+
+(in-package #:petalisp.cqueue)
 
 ;;; This file contains an implementation of a simple, thread-safe queue.
 ;;; It uses the two-lock concurrent queue algorithm by Michael and Scott
 ;;; (https://doi.org/10.1145/248052.248106).
 
-(defstruct (queue
+(defstruct (cqueue
             (:copier nil)
-            (:predicate queuep)
-            (:constructor make-queue (&aux (head (list nil)) (tail head))))
+            (:predicate cqueuep)
+            (:constructor make-cqueue (&aux (head (list nil)) (tail head))))
   (h-lock (bordeaux-threads:make-lock "H-Lock") :type bordeaux-threads:lock)
   (t-lock (bordeaux-threads:make-lock "T-Lock") :type bordeaux-threads:lock)
   ;; Invariants:
@@ -17,30 +26,30 @@
   ;; - HEAD and TAIL are cons cells.
   ;;
   ;; - HEAD is a cons whose CAR is NIL and whose CDR is the list of items
-  ;;   in the queue.
+  ;;   in the cqueue.
   ;;
-  ;; - TAIL is the last cons of the list of items in the queue, or HEAD, if
-  ;;   the queue is empty
+  ;; - TAIL is the last cons of the list of items in the cqueue, or HEAD, if
+  ;;   the cqueue is empty
   (head nil :type cons)
   (tail nil :type cons))
 
-(defun queue-enqueue (queue object)
-  "Inserts OBJECT at the back of QUEUE."
-  (with-accessors ((t-lock queue-t-lock)
-                   (tail queue-tail)) queue
+(defun cqueue-enqueue (cqueue object)
+  "Inserts OBJECT at the back of CQUEUE."
+  (with-accessors ((t-lock cqueue-t-lock)
+                   (tail cqueue-tail)) cqueue
     (let ((new-tail (list object)))
       (bordeaux-threads:with-lock-held (t-lock)
         (setf (cdr tail) new-tail)
         (setf tail new-tail))))
-  queue)
+  cqueue)
 
-(defun queue-dequeue (queue)
-  "Removes and returns the element at the front of QUEUE, or return NIL if
-the queue was empty.  Return a second value that is a boolean indicating
-whether an object was taken from the queue or not."
-  (with-accessors ((h-lock queue-h-lock)
-                   (head queue-head)
-                   (tail queue-tail)) queue
+(defun cqueue-dequeue (cqueue)
+  "Removes and returns the element at the front of CQUEUE, or return NIL if the
+cqueue was empty.  Return a second value that is a boolean indicating whether
+an object was taken from the cqueue or not."
+  (with-accessors ((h-lock cqueue-h-lock)
+                   (head cqueue-head)
+                   (tail cqueue-tail)) cqueue
     (bordeaux-threads:with-lock-held (h-lock)
       (if (atom (cdr head))
           (values nil nil)

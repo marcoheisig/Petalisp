@@ -20,13 +20,6 @@
    #:document-variable
    #:document-variables
 
-   ;; queue.lisp
-   #:queue
-   #:queuep
-   #:make-queue
-   #:queue-enqueue
-   #:queue-dequeue
-
    ;; extended-euclid.lisp
    #:extended-euclid
 
