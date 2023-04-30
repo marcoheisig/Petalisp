@@ -15,7 +15,7 @@
    #:graph-final-nodes
    #:graph-object-nodes
    #:graph-ensure-node
-   #:graph-ensure-edge
+   #:graph-add-edge
    #:graph-parallel-depth-first-schedule))
 
 (in-package #:petalisp.scheduling)
@@ -23,10 +23,10 @@
 (defstruct (node
             (:predicate nodep)
             (:constructor make-node))
-  ;; The nodes that this node immediately depends on.
-  (predecessors '() :type list)
-  ;; The nodes that depend on this node.
-  (successors '() :type list)
+  ;; A (node . weight) alist of incoming edges.
+  (predecessor-alist '() :type list)
+  ;; A (node . weight) alist of outgoing edges.
+  (successor-alist '() :type list)
   ;; The object that is managed by this node.
   (object nil :type t)
   ;; The distance of the longest path to a node with zero predecessors.
@@ -36,11 +36,14 @@
   ;; A measure that is dynamically adapted during scheduling to prioritize
   ;; nodes that lead to good data locality.
   (eagerness 0 :type unsigned-byte)
+  ;; The number of the worker that this node has been scheduled on, or, if the
+  ;; node hasn't been scheduled yet, the node it should ideally be scheduled
+  ;; to, or NIL if there is no clear affinity to any worker.
+  (affinity nil :type (or unsigned-byte null))
   ;; A counter used for various purposes during scheduling.
   (counter 0 :type unsigned-byte)
-  ;; This slot is used in depth-first scheduling to track the node's position
-  ;; in the priority queue, and later in parallel depth-first scheduling to
-  ;; track the node's position in the underlying depth-first schedule.
+  ;; During scheduling, this slot tracks the node's queue position so that it
+  ;; its priority can be adapted more cheaply.
   (position nil))
 
 (defmethod print-object ((node node) stream)
@@ -49,10 +52,10 @@
 
 (defun copy-node-into (node other-node)
   (declare (node node other-node))
-  (setf (node-predecessors other-node)
-        (node-predecessors node))
-  (setf (node-successors other-node)
-        (node-successors node))
+  (setf (node-predecessor-alist other-node)
+        (node-predecessor-alist node))
+  (setf (node-successor-alist other-node)
+        (node-successor-alist node))
   (setf (node-object other-node)
         (node-object node))
   (setf (node-depth other-node)
@@ -103,30 +106,30 @@
    (graph-object-nodes graph)
    (make-node :object object)))
 
-(defun graph-ensure-edge (graph from to)
+(defun graph-add-edge (graph from to weight)
   (declare (graph graph) (node from to))
   (declare (ignore graph))
   (assert (not (eq from to)))
-  (pushnew from (node-predecessors to))
-  (pushnew to (node-successors from)))
+  (push (cons from weight) (node-predecessor-alist to))
+  (push (cons to weight) (node-successor-alist from)))
 
 (defun graph-compute-node-height (graph)
   (graph-compute-distances
    graph
    #'node-height
    #'(setf node-height)
-   #'node-successors
-   #'node-predecessors))
+   #'node-successor-alist
+   #'node-predecessor-alist))
 
 (defun graph-compute-node-depth (graph)
   (graph-compute-distances
    graph
    #'node-depth
    #'(setf node-depth)
-   #'node-predecessors
-   #'node-successors))
+   #'node-predecessor-alist
+   #'node-successor-alist))
 
-(defun graph-compute-distances (graph get-distance set-distance inputs outputs)
+(defun graph-compute-distances (graph get-distance set-distance input-alist output-alist)
   (flet ((node-distance (node)
            (funcall get-distance node))
          ((setf node-distance) (value node)
@@ -134,7 +137,7 @@
     (let ((initial-nodes '()))
       ;; Initialize the nodes and the worklist.
       (loop for node being the hash-values of (graph-object-nodes graph) do
-        (let ((n (length (funcall inputs node))))
+        (let ((n (length (funcall input-alist node))))
           (setf (node-counter node) n)
           (when (zerop n)
             (push node initial-nodes))))
@@ -142,14 +145,71 @@
       (let ((worklist initial-nodes))
         (loop until (null worklist) for node = (pop worklist) do
           (setf (node-distance node)
-                (1+ (reduce #'max (funcall inputs node)
-                              :key #'node-distance
+                (1+ (reduce #'max (funcall input-alist node)
+                              :key (alexandria:compose #'node-distance #'car)
                               :initial-value 0)))
-          (loop for output in (funcall outputs node) do
+          (loop for (output . weight) in (funcall output-alist node) do
             ;; Decrement counter.
             (when (zerop (decf (node-counter output)))
               (push output worklist)))))
       initial-nodes)))
+
+(defstruct (pdfs-queue
+            (:predicate pdfs-queue-p)
+            (:constructor make-pdfs-queue ()))
+  ;; The priority queue determines the order in which nodes are scheduled.
+  (priority-queue (queues:make-queue :priority-queue :compare #'node-more-important-p)
+   :type queues:priority-queue
+   :read-only t)
+  ;; When updating node eagerness in the priority queue, we use this temporary
+  ;; node as non-consing intermediate storage.
+  (tmpnode (make-node) :type node))
+
+(defun pdfs-queue-push (pdfs-queue node)
+  (declare (pdfs-queue pdfs-queue) (node node))
+  (assert (not (node-position node)))
+  ;; Determine whether the node has an affinity to a particular worker.
+  (with-slots (affinity predecessor-alist) node
+    (when (not affinity)
+      (let ((total 0)
+            (max-weight 0)
+            (max-affinity nil))
+        (loop for (predecessor . weight) in predecessor-alist do
+          (incf total weight)
+          (when (> weight max-weight)
+            (setf max-weight weight)
+            (setf max-affinity (node-affinity predecessor))))
+        (when (> (* 2 max-weight) total)
+          (setf affinity max-affinity)))))
+  ;; Push the node to the priority queue and record its position therein.
+  (with-slots (priority-queue) pdfs-queue
+    (setf (node-position node)
+          (nth-value 1 (queues:qpush priority-queue node)))
+    node))
+
+(defun pdfs-queue-pop (pdfs-queue)
+  (declare (pdfs-queue pdfs-queue))
+  (with-slots (priority-queue) pdfs-queue
+    (let ((node (queues:qpop priority-queue)))
+      (setf (node-position node) nil)
+      node)))
+
+(defun pdfs-queue-size (pdfs-queue)
+  (declare (pdfs-queue pdfs-queue))
+  (queues:qsize (pdfs-queue-priority-queue pdfs-queue)))
+
+(defun pdfs-queue-increase-node-eagerness (pdfs-queue node increment)
+  (with-slots (priority-queue tmpnode) pdfs-queue
+    ;; This function is complicated by the fact that we want to avoid
+    ;; consing when updating the queue position.
+    (if (not (node-position node))
+        (incf (node-eagerness node) increment)
+        (let ((position (node-position node)))
+          (copy-node-into node tmpnode)
+          (incf (node-eagerness tmpnode) increment)
+          (queues:queue-change priority-queue position tmpnode)
+          (incf (node-eagerness node) increment)
+          (setf (queues::node-value position) node)))))
 
 (defun graph-parallel-depth-first-schedule (graph p)
   "Returns a list of vectors, where each vector describes one step of the
@@ -165,63 +225,84 @@ improve data locality."
   (graph-compute-node-depth graph)
   (graph-compute-node-height graph)
   ;; Maintain a priority queue of all nodes that are ready to be scheduled.
-  (let ((queue (queues:make-queue :priority-queue :compare #'node-more-important-p))
-        (tmpnode (make-node)))
-    (flet ((push-node (node)
-             (assert (null (node-position node)))
-             (setf (node-position node)
-                   (nth-value 1 (queues:qpush queue node)))
-             node)
-           (pop-node ()
-             (let ((node (queues:qpop queue)))
-               (setf (node-position node) nil)
-               node))
-           (increase-node-eagerness (node increment)
-             ;; This function is complicated by the fact that we want to avoid
-             ;; consing when updating the queue position.
-             (if (not (node-position node))
-                 (incf (node-eagerness node) increment)
-                 (let ((position (node-position node)))
-                   (copy-node-into node tmpnode)
-                   (incf (node-eagerness tmpnode) increment)
-                   (queues:queue-change queue position tmpnode)
-                   (incf (node-eagerness node) increment)
-                   (setf (queues::node-value position) node)))))
-      ;; Initialize node counters and the queue.
-      (loop for node being the hash-values of (graph-object-nodes graph) do
-        (let ((n (length (node-predecessors node))))
-          (setf (node-counter node) n)
-          (when (zerop n)
-            (push-node node))))
-      ;; Generate the schedule.
-      (loop until (zerop (queues:qsize queue))
-            collect
-            (let ((vector (make-array p :initial-element nil))
-                  (end 0))
-              ;; Grab up to P nodes form the queue.
-              (loop repeat p until (zerop (queues:qsize queue)) do
-                (let ((node (pop-node)))
-                  ;; Increase the eagerness of each neighbor.
-                  (loop for successor in (node-successors node) do
-                    (unless (zerop (node-counter successor))
-                      (loop for neighbor in (node-predecessors successor) do
-                        (increase-node-eagerness neighbor 1))))
-                  ;; TODO Insert the node at the position that maximizes memory
-                  ;; locality with respect to earlier nodes.
-                  (setf (svref vector end) node)
-                  (incf end)))
-              ;; Mark all nodes as completed and unwrap them.
-              (loop for index below p do
-                (let ((node (svref vector index)))
-                  (when (nodep node)
-                    (loop for successor in (node-successors node) do
-                      (when (zerop (decf (node-counter successor)))
-                        (queues:qpush queue successor)))
-                    (setf (svref vector index)
-                          (node-object node)))))
-              vector)))))
+  (let ((pdfs-queue (make-pdfs-queue)))
+    ;; Initialize node counters and the queue.
+    (loop for node being the hash-values of (graph-object-nodes graph) do
+      (let ((n (length (node-predecessor-alist node))))
+        (setf (node-counter node) n)
+        (setf (node-affinity node) nil)
+        (setf (node-eagerness node) 0)
+        (when (zerop n)
+          (pdfs-queue-push pdfs-queue node))))
+    ;; Generate the schedule.
+    (petalisp.utilities:with-collectors ((steps collect-step))
+      ;; When collecting a node vector, replace all nodes therein with the
+      ;; corresponding objects.
+      (flet ((collect-node-vector (node-vector)
+               (loop for index below p do
+                 (symbol-macrolet ((place (aref node-vector index)))
+                   (when (nodep place)
+                     (setf place (node-object place)))))
+               (collect-step node-vector)))
+        (let ((current-node-vector (make-array p :initial-element nil))
+              (ensuing-node-vector (make-array p :initial-element nil))
+              (stack (make-array p :initial-element nil :fill-pointer 0)))
+          (loop until (zerop (pdfs-queue-size pdfs-queue)) do
+            ;; Fill one node vector.
+            (let ((current-nodes 0)
+                  (ensuing-nodes 0))
+              (loop until (= (+ current-nodes (length stack)) p) do
+                (when (zerop (pdfs-queue-size pdfs-queue))
+                  ;; If control reaches this point, there aren't enough nodes to
+                  ;; fill the current node vector.  However, we can still try to
+                  ;; steal some nodes from the ensuing node vector.  This will
+                  ;; ruin their affinity, but scheduling them earlier will make
+                  ;; up for that.
+                  (loop for index below p until (zerop ensuing-nodes) do
+                    (when (nodep (aref ensuing-node-vector index))
+                      (vector-push (shiftf (aref ensuing-node-vector index) nil) stack)
+                      (decf ensuing-nodes)
+                      (incf current-nodes)))
+                  (loop-finish))
+                ;; Pick one node from the queue and place it in the most suitable
+                ;; location.
+                (let* ((node (pdfs-queue-pop pdfs-queue))
+                       (affinity (node-affinity node)))
+                  (cond ((null affinity)
+                         (vector-push node stack))
+                        ((null (aref current-node-vector affinity))
+                         (setf (aref current-node-vector affinity) node)
+                         (incf current-nodes))
+                        ((null (aref ensuing-node-vector affinity))
+                         (setf (aref ensuing-node-vector affinity) node)
+                         (incf ensuing-nodes))
+                        (t
+                         (vector-push node stack)))))
+              ;; Use nodes from the stack to fill workers that don't have
+              ;; anything to do, yet.
+              (loop for index from (1- p) downto 0 until (zerop (length stack)) do
+                (unless (aref current-node-vector index)
+                  (let ((node (vector-pop stack)))
+                    (setf (node-affinity node) index)
+                    (setf (aref current-node-vector index) node)
+                    (incf current-nodes))))
+              ;; Mark all nodes in the current node vector as completed.
+              (loop for elt across current-node-vector do
+                (when (nodep elt)
+                  (loop for (successor . weight) in (node-successor-alist elt) do
+                    (when (zerop (decf (node-counter successor)))
+                      (pdfs-queue-push pdfs-queue successor)))))
+              (collect-node-vector
+               (shiftf current-node-vector
+                       ensuing-node-vector
+                       (make-array p :initial-element nil)))))
+          ;; If there are still some nodes left in the node vector after the last
+          ;; iteration, add that node vector to the schedule, too.
+          (unless (every #'null current-node-vector)
+            (collect-node-vector current-node-vector))))
+      (steps))))
 
-;;;#+(or) ;; Usage example:
+#+(or) ;; Usage example:
 (let* ((g (make-graph))
        (dims '(3 4))
        (a (make-array dims))
@@ -237,9 +318,23 @@ improve data locality."
   (loop for (src dst) on arrays while dst do
     (setf coords (alexandria:shuffle coords))
     (loop for (i j) in coords do
-      (graph-ensure-edge g (aref src i j) (aref dst i j))
+      (graph-add-edge g (aref src i j) (aref dst i j) 100)
       (loop for (di dj) in '((0 1) (0 -1) (1 0) (-1 0)) do
         (when (array-in-bounds-p src (+ i di) (+ j dj))
-          (graph-ensure-edge g (aref src (+ i di) (+ j dj)) (aref dst i j))))))
+          (graph-add-edge g (aref src (+ i di) (+ j dj)) (aref dst i j) 1)))))
   (time
-   (loop for p from 1 to 5 collect (graph-parallel-depth-first-schedule g p))))
+   (loop for p from 1 to 12
+         collect
+         (let ((schedule (graph-parallel-depth-first-schedule g p)))
+           `(:length ,(length schedule)
+             :coordinates-per-worker
+             ,(loop for k below p
+                    collect
+                    (length
+                     (remove-duplicates
+                      (mapcan
+                       (lambda (v)
+                         (when (elt v k)
+                           (list (subseq (elt v k) 1))))
+                       schedule)
+                      :test #'equal))))))))
