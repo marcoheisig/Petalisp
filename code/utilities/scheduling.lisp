@@ -248,10 +248,14 @@ improve data locality."
               (ensuing-node-vector (make-array p :initial-element nil))
               (current-nodes 0)
               (ensuing-nodes 0)
-              (stack (make-array p :initial-element nil :fill-pointer 0)))
+              ;; Nodes that will be scheduled in this step.
+              (node-stack (make-array p :initial-element nil :fill-pointer 0))
+              ;; The workers that will pick work from the node stack.
+              (worker-stack (make-array p :initial-element nil :fill-pointer 0)))
+          (declare (unsigned-byte current-nodes ensuing-nodes))
           (loop until (zerop (pdfs-queue-size pdfs-queue)) do
             ;; Fill one node vector.
-            (loop until (= (+ current-nodes (length stack)) p) do
+            (loop until (= (+ current-nodes (length node-stack)) p) do
               (when (zerop (pdfs-queue-size pdfs-queue))
                 ;; If control reaches this point, there aren't enough nodes
                 ;; ready in the queue to fill the current node vector.
@@ -260,16 +264,16 @@ improve data locality."
                 ;; scheduling them earlier will make up for that.
                 (loop for index below p until (zerop ensuing-nodes) do
                   (when (nodep (aref ensuing-node-vector index))
-                    (vector-push (shiftf (aref ensuing-node-vector index) nil) stack)
+                    (vector-push (shiftf (aref ensuing-node-vector index) nil) node-stack)
                     (decf ensuing-nodes)
                     (incf current-nodes)))
                 (loop-finish))
               ;; Pick one node from the queue and place it either in a location
-              ;; it has affinity to, or in the stack.
+              ;; it has affinity to, or in the node stack.
               (let* ((node (pdfs-queue-pop pdfs-queue))
                      (affinity (node-affinity node)))
                 (cond ((null affinity)
-                       (vector-push node stack))
+                       (vector-push node node-stack))
                       ((null (aref current-node-vector affinity))
                        (setf (aref current-node-vector affinity) node)
                        (incf current-nodes))
@@ -277,15 +281,25 @@ improve data locality."
                        (setf (aref ensuing-node-vector affinity) node)
                        (incf ensuing-nodes))
                       (t
-                       (vector-push node stack)))))
-            ;; Use nodes from the stack to fill workers that don't have
+                       (vector-push node node-stack)))))
+            ;; Determine the workers that have anything to do, yet.
+            (loop for index below p do
+              (when (not (aref current-node-vector index))
+                (vector-push index worker-stack)))
+            ;; Shuffle the worker stack.
+            (let ((end (length worker-stack)))
+              (loop for index below end do
+                (rotatef (aref worker-stack index)
+                         (aref worker-stack (random end)))))
+            ;; Use nodes from the node stack to fill workers that don't have
             ;; anything to do, yet.
-            (loop for index from (1- p) downto 0 until (zerop (length stack)) do
-              (unless (aref current-node-vector index)
-                (let ((node (vector-pop stack)))
-                  (setf (node-affinity node) index)
-                  (setf (aref current-node-vector index) node)
-                  (incf current-nodes))))
+            (loop for worker across worker-stack
+                  for node across node-stack
+                  do (setf (node-affinity node) worker)
+                     (setf (aref current-node-vector worker) node)
+                     (incf current-nodes))
+            (setf (fill-pointer worker-stack) 0)
+            (setf (fill-pointer node-stack) 0)
             ;; Mark all nodes in the current node vector as completed.
             (loop for elt across current-node-vector do
               (when (nodep elt)
