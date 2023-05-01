@@ -90,7 +90,7 @@
       ;; neighboring nodes are scheduled.
       (cmp (node-eagerness node1)
            (node-eagerness node2))
-      ;; Otherwise, none of the nodes are equally important.
+      ;; Otherwise, the nodes are equally important.
       nil)))
 
 (defstruct (graph
@@ -246,59 +246,61 @@ improve data locality."
                (collect-step node-vector)))
         (let ((current-node-vector (make-array p :initial-element nil))
               (ensuing-node-vector (make-array p :initial-element nil))
+              (current-nodes 0)
+              (ensuing-nodes 0)
               (stack (make-array p :initial-element nil :fill-pointer 0)))
           (loop until (zerop (pdfs-queue-size pdfs-queue)) do
             ;; Fill one node vector.
-            (let ((current-nodes 0)
-                  (ensuing-nodes 0))
-              (loop until (= (+ current-nodes (length stack)) p) do
-                (when (zerop (pdfs-queue-size pdfs-queue))
-                  ;; If control reaches this point, there aren't enough nodes to
-                  ;; fill the current node vector.  However, we can still try to
-                  ;; steal some nodes from the ensuing node vector.  This will
-                  ;; ruin their affinity, but scheduling them earlier will make
-                  ;; up for that.
-                  (loop for index below p until (zerop ensuing-nodes) do
-                    (when (nodep (aref ensuing-node-vector index))
-                      (vector-push (shiftf (aref ensuing-node-vector index) nil) stack)
-                      (decf ensuing-nodes)
-                      (incf current-nodes)))
-                  (loop-finish))
-                ;; Pick one node from the queue and place it in the most suitable
-                ;; location.
-                (let* ((node (pdfs-queue-pop pdfs-queue))
-                       (affinity (node-affinity node)))
-                  (cond ((null affinity)
-                         (vector-push node stack))
-                        ((null (aref current-node-vector affinity))
-                         (setf (aref current-node-vector affinity) node)
-                         (incf current-nodes))
-                        ((null (aref ensuing-node-vector affinity))
-                         (setf (aref ensuing-node-vector affinity) node)
-                         (incf ensuing-nodes))
-                        (t
-                         (vector-push node stack)))))
-              ;; Use nodes from the stack to fill workers that don't have
-              ;; anything to do, yet.
-              (loop for index from (1- p) downto 0 until (zerop (length stack)) do
-                (unless (aref current-node-vector index)
-                  (let ((node (vector-pop stack)))
-                    (setf (node-affinity node) index)
-                    (setf (aref current-node-vector index) node)
-                    (incf current-nodes))))
-              ;; Mark all nodes in the current node vector as completed.
-              (loop for elt across current-node-vector do
-                (when (nodep elt)
-                  (loop for (successor . weight) in (node-successor-alist elt) do
-                    (when (zerop (decf (node-counter successor)))
-                      (pdfs-queue-push pdfs-queue successor)))))
-              (collect-node-vector
-               (shiftf current-node-vector
-                       ensuing-node-vector
-                       (make-array p :initial-element nil)))))
+            (loop until (= (+ current-nodes (length stack)) p) do
+              (when (zerop (pdfs-queue-size pdfs-queue))
+                ;; If control reaches this point, there aren't enough nodes
+                ;; ready in the queue to fill the current node vector.
+                ;; However, we can still try to steal some nodes from the
+                ;; ensuing node vector.  This will ruin their affinity, but
+                ;; scheduling them earlier will make up for that.
+                (loop for index below p until (zerop ensuing-nodes) do
+                  (when (nodep (aref ensuing-node-vector index))
+                    (vector-push (shiftf (aref ensuing-node-vector index) nil) stack)
+                    (decf ensuing-nodes)
+                    (incf current-nodes)))
+                (loop-finish))
+              ;; Pick one node from the queue and place it either in a location
+              ;; it has affinity to, or in the stack.
+              (let* ((node (pdfs-queue-pop pdfs-queue))
+                     (affinity (node-affinity node)))
+                (cond ((null affinity)
+                       (vector-push node stack))
+                      ((null (aref current-node-vector affinity))
+                       (setf (aref current-node-vector affinity) node)
+                       (incf current-nodes))
+                      ((null (aref ensuing-node-vector affinity))
+                       (setf (aref ensuing-node-vector affinity) node)
+                       (incf ensuing-nodes))
+                      (t
+                       (vector-push node stack)))))
+            ;; Use nodes from the stack to fill workers that don't have
+            ;; anything to do, yet.
+            (loop for index from (1- p) downto 0 until (zerop (length stack)) do
+              (unless (aref current-node-vector index)
+                (let ((node (vector-pop stack)))
+                  (setf (node-affinity node) index)
+                  (setf (aref current-node-vector index) node)
+                  (incf current-nodes))))
+            ;; Mark all nodes in the current node vector as completed.
+            (loop for elt across current-node-vector do
+              (when (nodep elt)
+                (loop for (successor . weight) in (node-successor-alist elt) do
+                  (when (zerop (decf (node-counter successor)))
+                    (pdfs-queue-push pdfs-queue successor)))))
+            ;; Prepare the stage for the next iteration
+            (shiftf current-nodes ensuing-nodes 0)
+            (collect-node-vector
+             (shiftf current-node-vector
+                     ensuing-node-vector
+                     (make-array p :initial-element nil))))
           ;; If there are still some nodes left in the node vector after the last
           ;; iteration, add that node vector to the schedule, too.
-          (unless (every #'null current-node-vector)
+          (unless (zerop current-nodes)
             (collect-node-vector current-node-vector))))
       (steps))))
 
