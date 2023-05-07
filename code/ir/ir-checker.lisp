@@ -18,6 +18,9 @@
     (loop until (null *ir-checker-worklist*)
           do (check-ir-node (pop *ir-checker-worklist*)))))
 
+(defun check-program (program)
+  (apply #'check-ir (program-root-buffers program)))
+
 (defun check-reverse-link (node map-object map-fn)
   (funcall
    map-fn

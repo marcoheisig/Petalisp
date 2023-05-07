@@ -61,6 +61,5 @@ to NIL in case the chunk doesn't have to be allocated at all."
                        :ntype (buffer-ntype (chunk-buffer chunk))))))))
       (map nil #'scan-chunk primogenitor-chunk-vector))
     (lambda (chunk)
-      (declare (chunk chunk))
       (values
        (gethash chunk table)))))

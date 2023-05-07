@@ -10,6 +10,9 @@
 (deftype rank ()
   `(integer 0 (,array-rank-limit)))
 
+(deftype axis ()
+  `(integer 0 (,(1- array-rank-limit))))
+
 (defstruct (shape
             (:predicate shapep)
             (:copier nil)

@@ -2,122 +2,105 @@
 
 (in-package #:petalisp.ir)
 
-;;; In this file, we partition buffers into chunks.  Each chunk describes
-;;; the allocation of a part of that buffer, plus the ghost layers
-;;; necessary to exchange information with neighboring chunks.
+;;; In this file, we partition buffers and kernels into shards.  The goal is
+;;; that the cost of each shard is below a certain user-supplied threshold.  By
+;;; definition, kernels have no data dependencies and can be split however we
+;;; like, so the main challenge is to partition buffers in a way that respects
+;;; all access patterns, maximizes data locality, and minimizes the amount of
+;;; ghost layers.  There are also be cases where buffers cannot be split at
+;;; all, e.g., when a vector appears twice as input of a particular kernel, and
+;;; the Ith iteration of that kernel accesses both the Ith element of the
+;;; vector and the END-Ith element.
 ;;;
-;;; The algorithm for partitioning buffers into chunks initially assigns
-;;; each buffer a single chunk.  Then, each large chunk is split repeatedly
-;;; into two chunks until a certain stopping criterion is reached.  Also,
-;;; whenever a chunk is split, the splitting is propagated to chunks that
-;;; use or produce this chunk's data until another stopping criterion is
-;;; reached, so that all chunks that result from a single splitting step
-;;; have good data locality and qualify for later being scheduled on the
-;;; same worker.
+;;; Initially, the partitioning algorithm annotates each buffer with a
+;;; specification that expresses along which axes it can be split, and what
+;;; ghost layers would have to be introduced so that the same split can later
+;;; be used to split kernels with stencils that reference this buffer.  Then,
+;;; also during initialization, each kernel and buffer is assigned a
+;;; corresponding initial kernel shard and buffer shard, and all buffer shards
+;;; whose cost is above a threshold are placed in a priority queue.  Then,
+;;; until that priority queue is empty, the partitioning algorithm picks the
+;;; costliest buffer shard from the queue, splits it in the most suitable axis
+;;; and position, and then propagates that split.
+;;;
+;;; A split is propagated by placing it in another priority queue that
+;;; prioritizes each split by the cost of the buffer shard it splits. Then,
+;;; until that queue of splits is empty, one split is taken and transformed to
+;;; the iteration space of any kernel shard reading and writing to that split's
+;;; buffer shard, and from there to the buffer shards being referenced by those
+;;; kernel shards.  Any buffer shard that is being reached this way and that
+;;; fulfills certain user-supplied criteria is split, and the new split is then
+;;; placed in the priority queue of splits so that it will be propagated
+;;; further.
+;;;
+;;; The purpose of propagating splits this way is that subsequent buffer and
+;;; kernel shards have good data locality and qualify for later being scheduled
+;;; on the same worker.
 
-(defstruct (action
-            (:predicate actionp)
-            (:constructor make-action))
-  (iteration-space nil :type shape :read-only t)
+(defstruct (kernel-shard (:constructor %make-kernel-shard))
+  ;; The kernel being partitioned by this kernel shard.
   (kernel nil :type kernel :read-only t)
-  (source-chunks '() :type list :read-only t))
+  ;; The part of the kernel iteration space assigned to this shard.
+  (iteration-space nil :type shape :read-only t)
+  ;; One buffer shard for each of the kernel's target buffers.
+  (targets '() :type list :read-only t)
+  ;; One buffer shard for each of the kernel's source buffers.
+  (sources '() :type list :read-only t))
 
-;; This comparison function is used to sort the list of actions that write into
-;; a particular chunk.
-(defun action> (action1 action2)
-  (> (shape-size (action-iteration-space action1))
-     (shape-size (action-iteration-space action2))))
+(defmethod print-object ((kernel-shard kernel-shard) stream)
+  (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
+          (class-name (class-of kernel-shard))
+          :kernel (kernel-shard-kernel kernel-shard)
+          :iteration-space (kernel-shard-iteration-space kernel-shard)))
 
-(defstruct (chunk
-            (:predicate chunkp)
-            (:constructor make-chunk))
-  ;; The buffer being partitioned by this chunk.
+;; This comparison function is used to sort the readers and writers slot of
+;; each buffer shard, so that more important kernels are considered first when
+;; propagating a split.
+(defun kernel-shard-more-important-p (kernel-shard-1 kernel-shard-2)
+  (> (shape-size (kernel-shard-iteration-space kernel-shard-1))
+     (shape-size (kernel-shard-iteration-space kernel-shard-2))))
+
+(defstruct buffer-shard
+  ;; The buffer being partitioned by this buffer shard.
   (buffer nil :type buffer :read-only t)
-  ;; The part of the chunk's buffer's shape that is exclusively owned by
-  ;; that chunk and its children.
+  ;; The buffer shard that was split to create this one.
+  (parent nil :type (or null buffer-shard) :read-only t)
+  ;; The shard of the buffer-shard's buffer's shape that is exclusively owned by
+  ;; that buffer-shard and its children.
   (domain nil :type shape :read-only t)
-  ;; The chunk's domain, padded with ghost layers.
+  ;; The buffer-shard's domain, padded with ghost layers.
   (shape nil :type shape :read-only t)
-  ;; The chunk that was split to create this one.
-  (parent nil :type (or null chunk) :read-only t)
-  ;; A list of actions that write into this chunk.
-  (actions '() :type list)
-  ;; A cache for the chunk's split priority.
+  ;; A list of kernel shards that read from this buffer shard.
+  (readers '() :type list :read-only nil)
+  ;; A list of kernel shards that write into this buffer shard.
+  (writers '() :type list :read-only nil)
+  ;; A cache for the buffer-shard's split priority.
   (split-priority-cache nil :type (or null unsigned-byte))
-  ;; The split operation in case this chunk has been split, or NIL, if it
+  ;; The split operation in case this buffer-shard has been split, or NIL, if it
   ;; hasn't been split so far.
   (split nil :type (or null structure-object)))
 
-(defmethod print-object ((chunk chunk) stream)
+(defmethod print-object ((buffer-shard buffer-shard) stream)
   (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
-          (class-name (class-of chunk))
-          :domain (chunk-domain chunk)
-          :buffer (chunk-buffer chunk)
-          :split (chunk-split chunk)))
+          (class-name (class-of buffer-shard))
+          :domain (buffer-shard-domain buffer-shard)
+          :buffer (buffer-shard-buffer buffer-shard)
+          :split (buffer-shard-split buffer-shard)))
 
-(defun chunk-bits (chunk)
-  (declare (chunk chunk))
-  (* (typo:ntype-bits (buffer-ntype (chunk-buffer chunk)))
-     (shape-size (chunk-shape chunk))))
+(defun buffer-shard-bits (buffer-shard)
+  (declare (buffer-shard buffer-shard))
+  (* (typo:ntype-bits (buffer-ntype (buffer-shard-buffer buffer-shard)))
+     (shape-size (buffer-shard-shape buffer-shard))))
 
-(defun chunk-primogenitor (chunk)
-  (declare (chunk chunk))
-  (if (not (chunk-parent chunk))
-      chunk
-      (the (values chunk &optional)
-           (chunk-primogenitor (chunk-parent chunk)))))
-
-(defun compute-program-primogenitor-chunk-vector (program)
-  "Returns a vector whose Nth entry is the primogenitor chunk corresponding
-to the buffer with number N."
-  (let* ((nbuffers (program-number-of-buffers program))
-         (nkernels (program-number-of-kernels program))
-         (pcv (make-array nbuffers :initial-element nil))
-         (actions (make-array nkernels :initial-element nil)))
-    ;; Create the primogenitor chunk of each buffer.
-    (do-program-buffers (buffer program)
-      (setf (svref pcv (buffer-number buffer))
-            (make-chunk
-             :buffer buffer
-             :domain (buffer-shape buffer)
-             :shape (buffer-shape buffer))))
-    ;; Create the initial ACTION of each kernel.
-    (do-program-kernels (kernel program)
-      (petalisp.utilities:with-collectors
-          ((source-chunks collect-source-chunk))
-        (do-kernel-inputs (buffer kernel)
-          (collect-source-chunk (svref pcv (buffer-number buffer))))
-        (setf (svref actions (kernel-number kernel))
-              (make-action :iteration-space (kernel-iteration-space kernel)
-                           :kernel kernel
-                           :source-chunks (source-chunks)))))
-    ;; Initialize the ACTIONS slot of each initial chunk.
-    (do-program-buffers (buffer program)
-      (petalisp.utilities:with-collectors ((actions collect-action))
-        (do-buffer-inputs (kernel buffer)
-          (collect-action (svref actions (kernel-number kernel))))
-        (setf (chunk-actions (svref pcv (buffer-number buffer)))
-              (sort (actions) #'action>))))
-    pcv))
-
-(defstruct (split
-            (:predicate splitp)
-            (:constructor make-split))
-  ;; The chunk being split.
-  (parent nil :type chunk :read-only t)
-  ;; The axis at which the chunk is split.
-  (axis nil :type unsigned-byte :read-only t)
-  ;; The left child of the split chunk.
-  (left-child nil :type chunk :read-only t)
-  ;; The right child of the split chunk.
-  (right-child nil :type chunk :read-only t))
-
-(defun split-position (split)
-  (range-start
-   (shape-range
-    (chunk-domain
-     (split-right-child split))
-    (split-axis split))))
+(defstruct (split (:predicate splitp))
+  ;; The axis at which the buffer-shard is split.
+  (axis nil :type axis :read-only t)
+  ;; The lowest element of the right child's range in the axis being split.
+  (position nil :type integer :read-only t)
+  ;; The left child of the split.
+  (left-child nil :type buffer-shard :read-only t)
+  ;; The right child of the split.
+  (right-child nil :type buffer-shard :read-only t))
 
 (defmethod print-object ((split split) stream)
   (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
@@ -127,36 +110,105 @@ to the buffer with number N."
           :left-child (split-left-child split)
           :right-child (split-right-child split)))
 
-(defun chunk-infants (chunk)
-  "An infant is a chunk without a split.  This function returns the list of
-infants whose line of ancestry contains the supplied CHUNK."
-  (let ((split (chunk-split chunk)))
-    (if (not split)
-        (list chunk)
-        (append
-         (chunk-infants (split-left-child split))
-         (chunk-infants (split-right-child split))))))
+(defun split-parent (split)
+  (declare (split split))
+  (the (values buffer-shard &optional)
+       (buffer-shard-parent (split-left-child split))))
 
-(defun chunk-chains (chunk)
-  "A list of all chains of chunks writing to CHUNK and its children.  Useful
-for debugging."
-  (labels ((chain-elements (chunk)
+(defun buffer-shard-add-reader (buffer-shard kernel-shard)
+  ;; TODO sort
+  (push kernel-shard (buffer-shard-readers buffer-shard)))
+
+(defun buffer-shard-add-writer (buffer-shard kernel-shard)
+  ;; TODO sort
+  (push kernel-shard (buffer-shard-writers buffer-shard)))
+
+(defun make-kernel-shard
+    (&key kernel iteration-space targets sources)
+  "Returns a new kernel shard from the supplied keyword arguments.  Ensure that
+this kernel shard appears in the list of writers of all of its target buffer
+shards, and in the list of readers of all its source buffer shards."
+  (let ((kernel-shard
+          (%make-kernel-shard
+           :kernel kernel
+           :iteration-space iteration-space
+           :targets targets
+           :sources sources)))
+    (dolist (buffer-shard targets)
+      (buffer-shard-add-writer buffer-shard kernel-shard))
+    (dolist (buffer-shard sources)
+      (buffer-shard-add-reader buffer-shard kernel-shard))
+    kernel-shard))
+
+(defun compute-program-primogenitor-buffer-shard-vector (program)
+  "Returns a vector whose Nth entry is the primogenitor buffer shard
+corresponding to the buffer with number N."
+  (let* ((nbuffers (program-number-of-buffers program))
+         (nkernels (program-number-of-kernels program))
+         (buffer-shards (make-array nbuffers :initial-element nil))
+         (kernel-shards (make-array nkernels :initial-element nil)))
+    (flet ((buffer-shard (buffer)
+             (svref buffer-shards (buffer-number buffer)))
+           ((setf buffer-shard) (value buffer)
+             (setf (svref buffer-shards (buffer-number buffer)) value))
+           ((setf kernel-shard) (value kernel)
+             (setf (svref kernel-shards (kernel-number kernel)) value)))
+      ;; Create the primogenitor buffer shard of each buffer.
+      (do-program-buffers (buffer program)
+        (setf (buffer-shard buffer)
+              (make-buffer-shard
+               :buffer buffer
+               :domain (buffer-shape buffer)
+               :shape (buffer-shape buffer))))
+      ;; Create the initial kernel shard of each kernel.
+      (do-program-kernels (kernel program)
+        (setf (kernel-shard kernel)
+              (make-kernel-shard
+               :kernel kernel
+               :iteration-space (kernel-iteration-space kernel)
+               :targets
+               (petalisp.utilities:with-collectors ((targets collect-target))
+                 (do-kernel-outputs (target kernel (targets))
+                   (collect-target (buffer-shard target))))
+               :sources
+               (petalisp.utilities:with-collectors ((sources collect-source))
+                 (do-kernel-inputs (source kernel (sources))
+                   (collect-source (buffer-shard source)))))))
+      buffer-shards)))
+
+(defun buffer-shard-infants (buffer-shard)
+  "An infant is a buffer-shard without a split.  This function returns the list
+of infants whose line of ancestry contains the supplied buffer shard."
+  (let ((split (buffer-shard-split buffer-shard)))
+    (if (not split)
+        (list buffer-shard)
+        (append
+         (buffer-shard-infants (split-left-child split))
+         (buffer-shard-infants (split-right-child split))))))
+
+(defun buffer-shard-chains (buffer-shard)
+  "A list of all chains of buffer shards writing to buffer shard and its
+children.  Useful for debugging."
+  (declare (buffer-shard buffer-shard))
+  (labels ((chain-elements (buffer-shard)
              (list*
-              chunk
-              (let ((actions (chunk-actions chunk)))
-                (if (not actions)
+              buffer-shard
+              (let ((kernel-shards (buffer-shard-writers buffer-shard)))
+                (if (not kernel-shards)
                     '()
-                    (chain-elements
-                     ;; Only follow the largest chunk.
-                     (first (sort (copy-list (action-source-chunks (first actions))) #'>
-                                  :key #'chunk-bits))))))))
+                     (chain-elements
+                      ;; Only follow the largest buffer-shard.
+                      (let* ((kernel-shard (first kernel-shards))
+                             (buffer-shards (kernel-shard-sources kernel-shard)))
+                        (first (sort (copy-list buffer-shards) #'>
+                                     :key #'buffer-shard-bits)))))))))
     (list*
-     (chain-elements chunk)
-     (if (not (chunk-split chunk))
+     (chain-elements buffer-shard)
+     (if (not (buffer-shard-split buffer-shard))
          '()
-         (append
-          (chunk-chains (split-left-child (chunk-split chunk)))
-          (chunk-chains (split-right-child (chunk-split chunk))))))))
+          (append
+           (buffer-shard-chains (split-left-child (buffer-shard-split buffer-shard)))
+           (buffer-shard-chains (split-right-child (buffer-shard-split buffer-shard))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -165,9 +217,9 @@ for debugging."
 (defstruct (ghostspec
             (:predicate ghostspecp)
             (:constructor make-ghostspec))
-  ;; A vector with one entry per axis, denoting how many layers must be
-  ;; copied on the left of the right child of a split chunk.  An entry of
-  ;; NIL means there is no way to split that axis.
+  ;; A vector with one entry per axis, denoting how many layers must be copied
+  ;; on the left of the right child of a split buffer-shard.  An entry of NIL
+  ;; means there is no way to split that axis.
   (left-padding-vec nil :type simple-vector :read-only t)
   ;; A vector with the same semantics as the left padding, except that it
   ;; denotes the number of layers on the right of the left child.
@@ -233,28 +285,9 @@ for debugging."
      :left-padding-vec left-padding-vec
      :right-padding-vec right-padding-vec)))
 
-(defun compute-chunk-shape (chunk-domain buffer)
-  (declare (shape chunk-domain) (buffer buffer))
-  (let ((ghostspec (buffer-ghostspec buffer)))
-    (make-shape
-     (loop for axis from 0
-           for chunk-range in (shape-ranges chunk-domain)
-           for buffer-range in (shape-ranges (buffer-shape buffer))
-           collect
-           (if (range= chunk-range buffer-range)
-               buffer-range
-               (let* ((step (range-step buffer-range))
-                      (left-padding (ghostspec-left-padding ghostspec axis))
-                      (right-padding (ghostspec-right-padding ghostspec axis)))
-                 (range
-                  (max (- (range-start chunk-range) (* left-padding step))
-                       (range-start buffer-range))
-                  (min (+ (range-end chunk-range) (* right-padding step))
-                       (range-end buffer-range)))))))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Reasoning About Chunk Neighbors
+;;; Reasoning About Buffer Shard Neighbors
 
 (defstruct (vicinity
             (:predicate vicinityp))
@@ -267,23 +300,23 @@ for debugging."
 (defun vicinity-right-neighbors (vicinity axis)
   (svref (vicinity-right-neighbors-vec vicinity) axis))
 
-(defun compute-chunk-vicinity (chunk)
-  (declare (chunk chunk))
-  (let* ((shape (chunk-shape chunk))
+(defun compute-buffer-shard-vicinity (buffer-shard)
+  (declare (buffer-shard buffer-shard))
+  (let* ((shape (buffer-shard-shape buffer-shard))
          (rank (shape-rank shape))
          (left-neighbors-vec (make-array rank :initial-element '()))
          (right-neighbors-vec (make-array rank :initial-element '())))
     (labels (;; The other child of the closest ancestor that has a split at
-             ;; AXIS with CHUNK as a child of the supplied SIDE.
-             (sibling (chunk axis side)
-               (let ((parent (chunk-parent chunk)))
+             ;; AXIS with BUFFER-SHARD as a child of the supplied SIDE.
+             (sibling (buffer-shard axis side)
+               (let ((parent (buffer-shard-parent buffer-shard)))
                  (if (not parent)
                      nil
-                     (let* ((split (chunk-split parent))
+                     (let* ((split (buffer-shard-split parent))
                             (left-child (split-left-child split))
                             (right-child (split-right-child split)))
                        (if (and (= axis (split-axis split))
-                                (eq chunk
+                                (eq buffer-shard
                                     (ecase side
                                       (:left right-child)
                                       (:right left-child))))
@@ -297,36 +330,36 @@ for debugging."
              (relevant-children (ancestor axis side)
                (if (not ancestor)
                    '()
-                    (let ((split (chunk-split ancestor)))
-                      (if (not split)
-                          (list ancestor)
-                          (let ((split-axis (split-axis split))
-                                (left-child (split-left-child split))
-                                (right-child (split-right-child split)))
-                            (if (= split-axis axis)
-                                (relevant-children
-                                 (ecase side
-                                   (:left left-child)
-                                   (:right right-child))
-                                 axis
-                                 side)
-                                (append
-                                 (when (relevant-child-p left-child split-axis)
-                                   (relevant-children left-child axis side))
-                                 (when (relevant-child-p right-child split-axis)
-                                   (relevant-children right-child axis side)))))))))
+                   (let ((split (buffer-shard-split ancestor)))
+                     (if (not split)
+                         (list ancestor)
+                         (let ((split-axis (split-axis split))
+                               (left-child (split-left-child split))
+                               (right-child (split-right-child split)))
+                           (if (= split-axis axis)
+                               (relevant-children
+                                (ecase side
+                                  (:left left-child)
+                                  (:right right-child))
+                                axis
+                                side)
+                               (append
+                                (when (relevant-child-p left-child split-axis)
+                                  (relevant-children left-child axis side))
+                                (when (relevant-child-p right-child split-axis)
+                                  (relevant-children right-child axis side)))))))))
              ;; Returns whether CHILD's range in an AXIS coincides with any
-             ;; part of the shape of the chunk whose vicinity we're
+             ;; shard of the shape of the buffer-shard whose vicinity we're
              ;; computing.
              (relevant-child-p (child axis)
                (range-intersectionp
                 (shape-range shape axis)
-                (shape-range (chunk-domain child) axis))))
+                (shape-range (buffer-shard-domain child) axis))))
       (loop for axis below rank do
         (setf (svref left-neighbors-vec axis)
-              (relevant-children (sibling chunk axis :left) axis :right))
+              (relevant-children (sibling buffer-shard axis :left) axis :right))
         (setf (svref right-neighbors-vec axis)
-              (relevant-children (sibling chunk axis :right) axis :left)))
+              (relevant-children (sibling buffer-shard axis :right) axis :left)))
       (make-vicinity
        :left-neighbors-vec left-neighbors-vec
        :right-neighbors-vec right-neighbors-vec))))
@@ -335,117 +368,155 @@ for debugging."
 ;;;
 ;;; Partitioning
 
-;;; The function for computing the split priority of a chunk that was
+;;; The vector that contains the primogenitor shard of each buffer.
+(defvar *primogenitor-buffer-shard-vector*)
+
+(defun primogenitor-buffer-shard (buffer)
+  (declare (buffer buffer))
+  (the (values buffer-shard &optional)
+       (svref *primogenitor-buffer-shard-vector* (buffer-number buffer))))
+
+;;; The function for computing the split priority of a buffer-shard that was
 ;;; supplied to the partitioning operation.
-(defvar *chunk-split-priority*)
+(defvar *buffer-shard-split-priority*)
 
-(defun chunk-split-priority (chunk)
-  (or (chunk-split-priority-cache chunk)
-      (setf (chunk-split-priority-cache chunk)
-            (funcall *chunk-split-priority* chunk))))
+(defun buffer-shard-split-priority (buffer-shard)
+  (declare (buffer-shard buffer-shard))
+  (or (buffer-shard-split-priority-cache buffer-shard)
+      (setf (buffer-shard-split-priority-cache buffer-shard)
+            (funcall *buffer-shard-split-priority* buffer-shard))))
 
-;;; The minimum priority that a chunk must have in order to be considered
+(defun buffer-shard-more-important-p (buffer-shard-1 buffer-shard-2)
+  (> (buffer-shard-split-priority buffer-shard-1)
+     (buffer-shard-split-priority buffer-shard-2)))
+
+(defun split-more-important-p (split-1 split-2)
+  (> (buffer-shard-split-priority (split-parent split-1))
+     (buffer-shard-split-priority (split-parent split-2))))
+
+;;; The minimum priority that a buffer-shard must have in order to be considered
 ;;; for splitting.
-(declaim (type (real 0 *) *chunk-split-min-priority*))
-(defvar *chunk-split-min-priority*)
+(declaim (type (real 0 *) *buffer-shard-split-min-priority*))
+(defvar *buffer-shard-split-min-priority*)
 
 ;;; A real number that is the maximum permissible ratio of ghost points to
 ;;; interior points for a split.
-(declaim (type (real 0 1) *chunk-split-max-redundancy*))
-(defvar *chunk-split-max-redundancy*)
+(declaim (type (real 0 1) *buffer-shard-split-max-redundancy*))
+(defvar *buffer-shard-split-max-redundancy*)
 
-;;; A vector for looking up each buffer's initial chunk.
-(declaim (ftype (function (buffer) (values chunk &optional)) *buffer-chunk*))
-(defvar *buffer-chunk*)
-
-(defun buffer-chunk (buffer)
-  (funcall *buffer-chunk* buffer))
-
-;;; A hash table for looking up each buffer's ghostspec.
-(declaim (type hash-table *buffer-ghostspec-table*))
-(defvar *buffer-ghostspec-table*)
+;;; A vector for looking up each buffer's ghostspec.
+(defvar *buffer-ghostspec-vector*)
 
 (defun buffer-ghostspec (buffer)
   (declare (buffer buffer))
-  (symbol-macrolet ((place (gethash buffer *buffer-ghostspec-table*)))
-    (the (values ghostspec &optional)
-         (or place (setf place (compute-buffer-ghostspec buffer))))))
+  (let ((position (buffer-number buffer)))
+    (symbol-macrolet ((place (svref *buffer-ghostspec-vector* position)))
+      (the (values ghostspec &optional)
+           (or place (setf place (compute-buffer-ghostspec buffer)))))))
 
-;;; A list of splits that have yet to be propagated to nearby chunks.
-(declaim (type list *unpropagated-splits*))
-(defvar *unpropagated-splits*)
-
-;;; A priority queue of chunks that have yet to be considered for being
+;;; A priority queue of buffer-shards that have yet to be considered for being
 ;;; split.
-(defvar *chunk-pqueue*)
+(defvar *buffer-shard-queue*)
 
-(defun enqueue-chunk (chunk)
-  (let ((priority (chunk-split-priority chunk)))
-    ;; Immediately discard chunks whose priority doesn't match
-    ;; the minimum priority.
-    (when (>= priority *chunk-split-min-priority*)
-      (priority-queue:pqueue-push chunk priority *chunk-pqueue*))
-    chunk))
+(defun make-buffer-shard-queue ()
+  (queues:make-queue :priority-queue :compare #'buffer-shard-more-important-p))
 
-(defun next-chunk ()
-  (priority-queue:pqueue-pop *chunk-pqueue*))
+(defun buffer-shard-queue-maybe-push (buffer-shard)
+  (let ((priority (buffer-shard-split-priority buffer-shard)))
+    ;; Only enqueue buffer shards whose priority exceeds the threshold...
+    (when (>= priority *buffer-shard-split-min-priority*)
+      ;; ... and which have at least one axis that can be split.
+      (let ((ghostspec (buffer-ghostspec (buffer-shard-buffer buffer-shard))))
+        (when (loop for axis below (shape-rank (buffer-shard-domain buffer-shard))
+                      thereis (and (ghostspec-left-padding ghostspec axis)
+                                   (ghostspec-left-padding ghostspec axis)))
+          (queues:qpush *buffer-shard-queue* buffer-shard))))
+    buffer-shard))
 
-(defun next-chunk-p ()
-  (not (priority-queue:pqueue-empty-p *chunk-pqueue*)))
+(defun buffer-shard-queue-cleanup ()
+  (loop while (plusp (queues:qsize *buffer-shard-queue*))
+        while (buffer-shard-split (queues:qtop *buffer-shard-queue*))
+        do (queues:qpop *buffer-shard-queue*)))
 
-(defun partition-chunks
-    (chunks
+(defun buffer-shard-queue-pop ()
+  (buffer-shard-queue-cleanup)
+  (queues:qpop *buffer-shard-queue*))
+
+(defun buffer-shard-queue-emptyp ()
+  (buffer-shard-queue-cleanup)
+  (zerop (queues:qsize *buffer-shard-queue*)))
+
+;;; A priority queue of splits that have yet to be propagated to all adjacent
+;;; kernel shards and buffer shards.
+(defvar *split-queue*)
+
+(defun make-split-queue ()
+  (queues:make-queue :priority-queue :compare #'split-more-important-p))
+
+(defun split-queue-push (split)
+  (queues:qpush *split-queue* split))
+
+(defun split-queue-pop ()
+  (queues:qpop *split-queue*))
+
+(defun split-queue-emptyp ()
+  (zerop (queues:qsize *split-queue*)))
+
+(defun partition-program
+    (program
      &key
-       (buffer-chunk (alexandria:required-argument :buffer-chunk))
-       (split-priority 'chunk-bits)
-       (split-min-priority (* 30 1024))
+       (split-priority 'buffer-shard-bits)
+       (split-min-priority (* 30 1024 1)) ; Aim for L1 cache sized shards.
        (split-max-redundancy 0.125))
-  "Attempt to split the supplied sequence of chunks based on the supplied
-keyword arguments.
+  "Partition all buffers and kernels in the supplied program into shards.
+Returns, as multiple values, a vector mapping each buffer to its corresponding
+primogenitor buffer shard, a vector mapping each kernel to its corresponding
+primogenitor kernel shard, and a vector mapping each buffer to its
+corresponding ghostspec.
 
-BUFFER-CHUNK - A function for looking up the root chunk of each buffer that
-is encountered during partitioning.
+SPLIT-PRIORITY - A function that takes a buffer shard and returns an unsigned
+integer that is the priority when considering whether to split that buffer
+shard.  Buffer shards with higher priority are split first, and buffer shards
+whose priority is below a certain minimum priority are not split at all.
 
-SPLIT-PRIORITY - A function that takes a chunk and returns an unsigned
-integer that is the priority when considering whether to split the chunk.
-Chunks with higher priority are split first, and chunks whose priority is
-below a certain minimum priority are not split at all.
+SPLIT-MIN-PRIORITY - An unsigned integer that is the priority a buffer shard
+must exceed to be considered for splitting.
 
-SPLIT-MIN-PRIORITY - An unsigned integer that is the priority a chunk must
-exceed to be considered for splitting.
+SPLIT-MAX-REDUNDANCY - A real number that is the maximum permissible ratio of
+ghost points to interior points for a split."
+  (declare (program program))
+  (let ((*buffer-shard-split-priority* split-priority)
+        (*buffer-shard-split-min-priority* split-min-priority)
+        (*buffer-shard-split-max-redundancy* split-max-redundancy)
+        (*buffer-shard-queue* (make-buffer-shard-queue))
+        (*split-queue* (make-split-queue))
+        (*primogenitor-buffer-shard-vector*
+          (compute-program-primogenitor-buffer-shard-vector program))
+        (*buffer-ghostspec-vector*
+          (make-array (program-number-of-buffers program) :initial-element nil)))
+    ;; Enqueue all qualifying primogenitor buffer shards.
+    (map nil #'buffer-shard-queue-maybe-push *primogenitor-buffer-shard-vector*)
+    ;; Split buffer shards until the queue is empty.
+    (loop until (buffer-shard-queue-emptyp) for buffer-shard = (buffer-shard-queue-pop) do
+      ;; TODO use binary search to find the optimal split position.
+      (attempt-split buffer-shard (find-optimal-buffer-shard-split-axis buffer-shard))
+      ;; For each split that hasn't been propagated yet, compute the
+      ;; kernel-shards of its left and right child, which happens to
+      ;; propagate the split as a side-effect.
+      (loop until (split-queue-emptyp) do
+        (propagate-split (split-queue-pop))))
+    (values *primogenitor-buffer-shard-vector* *buffer-ghostspec-vector*)))
 
-SPLIT-MAX-REDUNDANCY - A real number that is the maximum permissible ratio
-of ghost points to interior points for a split.
-"
-  (let ((*buffer-chunk* buffer-chunk)
-        (*chunk-split-priority* split-priority)
-        (*chunk-split-min-priority* split-min-priority)
-        (*chunk-split-max-redundancy* split-max-redundancy)
-        (*buffer-ghostspec-table* (make-hash-table :test #'eq))
-        (*chunk-pqueue* (priority-queue:make-pqueue #'>))
-        (*unpropagated-splits* '()))
-    ;; Enqueue all supplied chunks.
-    (map nil #'enqueue-chunk chunks)
-    ;; Split chunks until the queue is empty.
-    (loop while (next-chunk-p) for chunk = (next-chunk) do
-      ;; Skip chunks that have already been split.
-      (unless (chunk-split chunk)
-        (attempt-split chunk (find-optimal-chunk-split-axis chunk))
-        ;; For each split that hasn't been propagated yet, compute the
-        ;; actions of its left and right child, which happens to propagate
-        ;; the split as a side-effect.
-        (loop until (null *unpropagated-splits*) do
-          (propagate-split/determine-child-actions (pop *unpropagated-splits*)))))))
-
-(defun attempt-split (chunk axis &optional position)
-  "Attempt to split CHUNK at the supplied AXIS and POSITION.  If the split
-could be introduced successfully, or if an equivalent split already
-existed, return that split.  Otherwise, return NIL."
+(defun attempt-split (buffer-shard axis &optional position)
+  "Attempt to split buffer shard at the supplied axis and position.  If the split
+could be introduced successfully, or if an equivalent split already existed,
+return that split.  Otherwise, return NIL."
   (flet ((give-up () (return-from attempt-split nil)))
     ;; Ensure AXIS is not NIL.
     (unless axis (give-up))
-    ;; Ensure the supplied AXIS and POSITION denote a split within the chunk's shape
-    (let* ((domain (chunk-domain chunk))
+    ;; Ensure the supplied AXIS and POSITION denote a split within the
+    ;; buffer-shard's shape.
+    (let* ((domain (buffer-shard-domain buffer-shard))
            (range (shape-range domain axis)))
       (if (not position)
           (unless (<= 2 (range-size range))
@@ -453,70 +524,95 @@ existed, return that split.  Otherwise, return NIL."
           (unless (and (< (range-start range) position)
                        (<= position (range-last range)))
             (give-up))))
-    ;; Attempt to reuse an existing split.
-    (when (chunk-split chunk)
-      (let* ((split (chunk-split chunk))
+    ;; Attempt to reuse an existing split.  Give up if there is already a split
+    ;; but it cannot be reused.
+    (when (buffer-shard-split buffer-shard)
+      (let* ((split (buffer-shard-split buffer-shard))
              (split-axis (split-axis split))
              (split-position (split-position split))
-             (split-range (shape-range (chunk-shape chunk) split-axis)))
+             (split-range (shape-range (buffer-shard-shape buffer-shard) split-axis)))
         (if (and (= split-axis axis)
                  (< (abs (- split-position position))
                     (range-step split-range)))
             (return-from attempt-split split)
             (give-up))))
-    ;; Ensure that the CHUNK has a priority that is sufficiently high.
-    (unless (>= (chunk-split-priority chunk) *chunk-split-min-priority*)
+    ;; Ensure that the buffer shard has a priority that is sufficiently high.
+    (unless (>= (buffer-shard-split-priority buffer-shard) *buffer-shard-split-min-priority*)
       (give-up))
-    (let* ((buffer (chunk-buffer chunk))
+    ;; Ensure that the ghostspec permits splitting at that axis.
+    (let* ((buffer (buffer-shard-buffer buffer-shard))
            (ghostspec (buffer-ghostspec buffer))
            (left-padding (ghostspec-left-padding ghostspec axis))
            (right-padding (ghostspec-right-padding ghostspec axis)))
-      ;; Ensure that the ghostspec permits splitting at that axis.
       (unless (and left-padding right-padding)
         (give-up))
+      ;; Plan the two domains that would result from a split.
       (multiple-value-bind (left-domain right-domain)
-          (split-shape (chunk-domain chunk) axis position)
+          (split-shape (buffer-shard-domain buffer-shard) axis position)
         ;; Ensure the split won't introduce too many ghost layers.
         (unless (<= right-padding
-                    (* *chunk-split-max-redundancy*
+                    (* *buffer-shard-split-max-redundancy*
                        (range-size (shape-range left-domain axis))))
           (give-up))
         (unless (<= left-padding
-                    (* *chunk-split-max-redundancy*
+                    (* *buffer-shard-split-max-redundancy*
                        (range-size (shape-range right-domain axis))))
           (give-up))
-        ;; Success!
+        ;; Success!  Create the split and push the newly created split and its
+        ;; two children to the appropriate queues.
         (let* ((left-child
-                 (make-chunk
+                 (make-buffer-shard
                   :buffer buffer
                   :domain left-domain
-                  :parent chunk
-                  :shape (compute-chunk-shape left-domain buffer)))
+                  :parent buffer-shard
+                  :shape (compute-buffer-shard-shape left-domain buffer)))
                (right-child
-                 (make-chunk
+                 (make-buffer-shard
                   :buffer buffer
                   :domain right-domain
-                  :parent chunk
-                  :shape (compute-chunk-shape right-domain buffer)))
+                  :parent buffer-shard
+                  :shape (compute-buffer-shard-shape right-domain buffer)))
                (split
                  (make-split
-                  :parent chunk
                   :axis axis
+                  :position (range-start (shape-range right-domain axis))
                   :left-child left-child
                   :right-child right-child)))
-          (enqueue-chunk left-child)
-          (enqueue-chunk right-child)
-          (push split *unpropagated-splits*)
-          (setf (chunk-split chunk) split)
+          (setf (buffer-shard-split buffer-shard) split)
+          (buffer-shard-queue-maybe-push left-child)
+          (buffer-shard-queue-maybe-push right-child)
+          (split-queue-push split)
           split)))))
 
-(defun find-optimal-chunk-split-axis (chunk)
-  "Returns the axis where chunk can be split while introducing the minimum
-number of ghost points, or NIL, if the chunk cannot be split further."
-  (let* ((domain (chunk-domain chunk))
-         (buffer (chunk-buffer chunk))
+(defun compute-buffer-shard-shape (domain buffer)
+  "Extend the domain of a buffer shard with suitable ghost layers."
+  (declare (shape domain) (buffer buffer))
+  (let ((ghostspec (buffer-ghostspec buffer)))
+    (make-shape
+     (loop for axis from 0
+           for buffer-shard-range in (shape-ranges domain)
+           for buffer-range in (shape-ranges (buffer-shape buffer))
+           collect
+           (if (range= buffer-shard-range buffer-range)
+               buffer-range
+               (let* ((step (range-step buffer-range))
+                      (left-padding (ghostspec-left-padding ghostspec axis))
+                      (right-padding (ghostspec-right-padding ghostspec axis)))
+                 (range
+                  (max (- (range-start buffer-shard-range) (* left-padding step))
+                       (range-start buffer-range))
+                  (min (+ (range-end buffer-shard-range) (* right-padding step))
+                       (range-end buffer-range)))))))))
+
+(defun find-optimal-buffer-shard-split-axis (buffer-shard)
+  "Returns the axis where buffer shard can be split while introducing the minimum
+number of ghost points, or NIL, if the buffer-shard cannot be split further.
+If there are multiple axes with the same number of ghost points, pick the
+lowest axis."
+  (let* ((domain (buffer-shard-domain buffer-shard))
+         (buffer (buffer-shard-buffer buffer-shard))
          (ghostspec (buffer-ghostspec buffer))
-         (minimum-number-of-ghost-points (* *chunk-split-max-redundancy* (shape-size domain)))
+         (minimum-number-of-ghost-points (* *buffer-shard-split-max-redundancy* (shape-size domain)))
          (best-axis nil))
     (dotimes (axis (shape-rank domain) best-axis)
       (let ((left (ghostspec-left-padding ghostspec axis))
@@ -530,120 +626,142 @@ number of ghost points, or NIL, if the chunk cannot be split further."
               (setf minimum-number-of-ghost-points number-of-ghost-points)
               (setf best-axis axis))))))))
 
-(defun propagate-split/determine-child-actions (split)
-  ;; This function is called only for successful splits, meaning that the
-  ;; ghostspec entries of the chunk's buffer at the split axis are non-NIL.
-  ;; The ghostspec for an axis is non-NIL only if all writes to that buffer
-  ;; have the same permutation, scaling, and offset, and if all stencils of
-  ;; the reading kernels have the same permutation, scaling, and center.
-  ;; Hence it is sufficient to only look at the first store instruction and
-  ;; the first stencil when propagating the split.
-  (let* ((axis (split-axis split))
-         (position (split-position split))
-         (parent (split-parent split))
-         (left-child (split-left-child split))
-         (right-child (split-right-child split))
-         (parent-buffer (chunk-buffer parent)))
-    ;; Propagate the split to all kernels reading from this buffer.
-    (do-buffer-outputs (kernel parent-buffer)
-      (multiple-value-bind (axis1 position1)
-          (reverse-transform-axis-and-position
-           (first (kernel-stencils kernel parent-buffer))
-           axis
-           ;; We shift the position by -1/2, so that it will still be the
-           ;; correct place to split even if there is a flip along that
-           ;; axis.
-           (- position 1/2))
-        (when axis1
-          (loop for (target-buffer store-instruction) in (kernel-targets kernel) do
-            (let ((target-chunk (find-most-specific-target-chunk target-buffer kernel parent)))
-              (unless (chunk-split target-chunk)
-                (multiple-value-bind (axis2 position2)
-                    (transform-axis-and-position store-instruction axis1 position1)
-                  (attempt-split target-chunk axis2 position2))))))))
-    ;; Propagate the split to all actions writing to the parent chunk.
-    (petalisp.utilities:with-collectors
-        ((left-actions collect-left-action)
-         (right-actions collect-right-action)
-         ;; An action is boring if it writes only to one half of the split.
-         ;; The boring part is that this also means there is no way to
-         ;; propagate the split across it.  We collect these actions and
-         ;; process them last, because often another propagated split makes it
-         ;; possible to narrow down their chunks, too.
-         (boring-actions collect-boring-action))
-      (dolist (action (chunk-actions parent))
-        (with-slots (iteration-space kernel source-chunks) action
-          (multiple-value-bind (axis1 position1 flip1)
-              (reverse-transform-axis-and-position
-               (second (assoc parent-buffer (kernel-targets kernel)))
-               axis
-               (- position 1/2))
-            (if (or (not axis1)
-                    (let ((range (shape-range iteration-space axis1)))
-                      (not (and (< (range-start range) position1)
-                                (<= position1 (range-last range))))))
-                (collect-boring-action action)
-                ;; In case the action is being split, proceed to split all its
-                ;; sources and targets.
-                (petalisp.utilities:with-collectors
-                    ((left-source-chunks collect-left-source-chunk)
-                     (right-source-chunks collect-right-source-chunk))
-                  (loop for (buffer stencil) in (kernel-sources kernel)
-                        for source-chunk in source-chunks
-                        do (multiple-value-bind (axis2 position2 flip2)
-                               (transform-axis-and-position stencil axis1 position1)
-                             (let ((split (attempt-split source-chunk axis2 position2)))
-                               (cond ((not split)
-                                      (collect-left-source-chunk source-chunk)
-                                      (collect-right-source-chunk source-chunk))
-                                     ((alexandria:xor flip1 flip2)
-                                      (collect-right-source-chunk (split-left-child split))
-                                      (collect-left-source-chunk (split-right-child split)))
-                                     (t
-                                      (collect-left-source-chunk (split-left-child split))
-                                      (collect-right-source-chunk (split-right-child split)))))))
-                  (multiple-value-bind (left-iteration-space right-iteration-space)
-                      (split-shape iteration-space axis1 position1)
-                    (when flip1 (rotatef left-iteration-space right-iteration-space))
-                    (collect-left-action
-                     (make-action :iteration-space left-iteration-space
-                                  :kernel kernel
-                                  :source-chunks (left-source-chunks)))
-                    (collect-right-action
-                     (make-action :iteration-space right-iteration-space
-                                  :kernel kernel
-                                  :source-chunks (right-source-chunks)))))))))
-      ;; Now refine the boring actions.
-      (dolist (action (boring-actions))
-        (with-slots (iteration-space kernel (chunks source-chunks)) action
-          (let* ((source-chunks
-                   (loop for (buffer stencil) in (kernel-sources kernel)
-                         for source-chunk in chunks
-                         for source-split = (chunk-split source-chunk)
-                         collect
-                         (if (not source-split)
-                             source-chunk
-                             (ecase (relative-position iteration-space stencil axis position)
-                               (:left (split-left-child source-split))
-                               (:right (split-right-child source-split))
-                               (:both source-chunk)))))
-                 (child-action (make-action :iteration-space iteration-space
-                                            :kernel kernel
-                                            :source-chunks source-chunks)))
-            (ecase (relative-position
-                    iteration-space
-                    (second (assoc parent-buffer (kernel-targets kernel)))
-                    axis
-                    position)
-              (:left (collect-left-action child-action))
-              (:right (collect-right-action child-action))
-              (:both (error "Not a boring action: ~S" action))))))
-      ;; Finalize the child actions.
-      (setf (chunk-actions left-child)
-            (sort (left-actions) #'action>))
-      (setf (chunk-actions right-child)
-            (sort (right-actions) #'action>))
-      split)))
+(defun propagate-split (split)
+  (let* ((parent (split-parent split))
+         (axis (split-axis split))
+         (position (split-position split)))
+    ;; Iterate over all adjacent kernel shards.
+    (propagate-split/kmap
+     (lambda (kernel-shard kaxis kposition)
+       ;; Attempt a split of each adjacent buffer shard.
+       (propagate-split/bmap #'attempt-split kernel-shard kaxis kposition)
+       ;; Replace the kernel shard by one or two more refined kernel shards.
+       (let ((iteration-space (kernel-shard-iteration-space kernel-shard)))
+         (if (not kaxis)
+             (refine-kernel-shard kernel-shard)
+             (let* ((range (shape-range iteration-space kaxis))
+                    (start (range-start range))
+                    (end (range-end range)))
+               (if (or (< kposition start) (<= end kposition))
+                   (refine-kernel-shard kernel-shard)
+                   (multiple-value-bind (left right)
+                       (split-shape iteration-space kaxis kposition)
+                     (unlink-kernel-shard kernel-shard)
+                     (add-child-kernel-shard kernel-shard left)
+                     (add-child-kernel-shard kernel-shard right)))))))
+     parent axis position)))
+
+(defun propagate-split/kmap (function buffer-shard axis position)
+  "Map the supplied function over all kernel shards neighboring the supplied
+buffer shard.  At the same time, change the coordinate system from the supplied
+axis and position from to that of each kernel shard being mapped over and pass
+the resulting axis and position as additional arguments to the supplied
+function."
+  ;; We shift the position by -1/2, so that it will still be the
+  ;; correct place to split even if there is a flip along that axis.
+  (decf position 1/2)
+  (let ((buffer (buffer-shard-buffer buffer-shard)))
+    ;; Call function for each writer.
+    (dolist (kernel-shard (buffer-shard-writers buffer-shard))
+      (let* ((kernel (kernel-shard-kernel kernel-shard))
+             (transformoid (second (find buffer (kernel-targets kernel) :key #'first))))
+        (multiple-value-bind (kaxis kposition)
+            (reverse-transform-axis-and-position transformoid axis position)
+          (funcall function kernel-shard kaxis kposition))))
+    ;; Call function for each reader.
+    (dolist (kernel-shard (buffer-shard-readers buffer-shard))
+      (let* ((kernel (kernel-shard-kernel kernel-shard))
+             (transformoid (second (find buffer (kernel-sources kernel) :key #'first))))
+        (multiple-value-bind (kaxis kposition)
+            (reverse-transform-axis-and-position transformoid axis position)
+          (funcall function kernel-shard kaxis kposition))))))
+
+(defun propagate-split/bmap (function kernel-shard axis position)
+  "Map the supplied function over all split-worthy buffer shards neighboring the
+supplied kernel shard.  At the same time, change the coordinate system from the
+supplied axis and position from to that of each buffer shard being mapped over
+and pass the resulting axis and position as additional arguments to the
+supplied function."
+  ;; Only proceed if that kernel shard's iteration space is actually being
+  ;; split.
+  (when (and (integerp axis)
+             (let* ((shape (kernel-shard-iteration-space kernel-shard))
+                    (range (shape-range shape axis)))
+               (and (<= (range-start range) position)
+                    (< position (range-end range)))))
+    (let ((kernel (kernel-shard-kernel kernel-shard)))
+      ;; Call the function for each target.
+      (dolist (buffer-shard (kernel-shard-targets kernel-shard))
+        (unless (buffer-shard-split buffer-shard)
+          (let* ((buffer (buffer-shard-buffer buffer-shard))
+                 (transformoid (second (find kernel (buffer-writers buffer) :key #'first))))
+            (multiple-value-bind (baxis bposition)
+                (transform-axis-and-position transformoid axis position)
+              (funcall function buffer-shard baxis bposition)))))
+      ;; Call the function for each source.
+      (dolist (buffer-shard (kernel-shard-sources kernel-shard))
+        (unless (buffer-shard-split buffer-shard)
+          (let* ((buffer (buffer-shard-buffer buffer-shard))
+                 (transformoid (second (find kernel (buffer-readers buffer) :key #'first))))
+            (multiple-value-bind (baxis bposition)
+                (transform-axis-and-position transformoid axis position)
+              (funcall function buffer-shard baxis bposition))))))))
+
+(defun refine-kernel-shard (kernel-shard)
+  "Replace any of the kernel shard's sources or targets that have one or more
+splits with the most specific buffer shard in that tree of splits that still
+provides all the data referenced by the kernel shard.  Update the writers and
+readers slot of all affected buffers accordingly."
+  (with-slots (kernel iteration-space targets sources) kernel-shard
+    (labels ((refine-buffer-shard (transformoid buffer-shard)
+               (with-slots (split domain) buffer-shard
+                 (if (not split)
+                     buffer-shard
+                     (with-slots (left-child right-child axis position) split
+                       (ecase (relative-position iteration-space transformoid axis position)
+                         (:both buffer-shard)
+                         (:left (refine-buffer-shard transformoid left-child))
+                         (:right (refine-buffer-shard transformoid right-child))))))))
+      (setf targets
+            (loop for old-buffer-shard in targets
+                  for buffer = (buffer-shard-buffer old-buffer-shard)
+                  for transformoid = (second (find buffer (kernel-targets kernel) :key #'first))
+                  for new-buffer-shard = (refine-buffer-shard transformoid old-buffer-shard)
+                  do (unless (eq old-buffer-shard new-buffer-shard)
+                       (setf (buffer-shard-writers old-buffer-shard)
+                             (remove kernel-shard (buffer-shard-writers old-buffer-shard)))
+                       (buffer-shard-add-writer new-buffer-shard kernel-shard))
+                  collect new-buffer-shard))
+      (setf sources
+            (loop for old-buffer-shard in sources
+                  for buffer = (buffer-shard-buffer old-buffer-shard)
+                  for transformoid = (second (find buffer (kernel-sources kernel) :key #'first))
+                  for new-buffer-shard = (refine-buffer-shard transformoid old-buffer-shard)
+                  do (unless (eq old-buffer-shard new-buffer-shard)
+                       (setf (buffer-shard-readers old-buffer-shard)
+                             (remove kernel-shard (buffer-shard-readers old-buffer-shard)))
+                       (buffer-shard-add-reader new-buffer-shard kernel-shard))
+                  collect new-buffer-shard)))))
+
+(defun unlink-kernel-shard (kernel-shard)
+  "Ensure that no buffer shards reference this kernel shard."
+  (dolist (buffer-shard (kernel-shard-sources kernel-shard))
+    (setf (buffer-shard-readers buffer-shard)
+          (remove kernel-shard (buffer-shard-readers buffer-shard))))
+  (dolist (buffer-shard (kernel-shard-targets kernel-shard))
+    (setf (buffer-shard-writers buffer-shard)
+          (remove kernel-shard (buffer-shard-writers buffer-shard)))))
+
+(defun add-child-kernel-shard (old-kernel-shard new-iteration-space)
+  (with-slots (kernel old-iteration-space targets sources)
+      old-kernel-shard
+    (unless (empty-shape-p new-iteration-space)
+      (refine-kernel-shard
+       (make-kernel-shard
+        :kernel kernel
+        :iteration-space new-iteration-space
+        :targets targets
+        :sources sources)))))
 
 (defun transform-axis-and-position (transformoid axis position)
   (multiple-value-bind (output-mask scalings offsets)
@@ -706,30 +824,85 @@ relates to the supplied transformoid."
     (iterating-instruction
      (destructure-transformoid (instruction-transformation transformoid)))))
 
-(defun find-most-specific-target-chunk (buffer kernel source-chunk)
-  "Returns the most specific child chunk of BUFFER whose actions from kernel
-only reference the SOURCE-CHUNK part of the corresponding source buffer."
-  (let* ((source-buffer (chunk-buffer source-chunk))
+(defun find-most-specific-target-buffer-shard (buffer kernel source-buffer-shard)
+  "Returns the most specific child buffer-shard of BUFFER whose kernel-shards from kernel
+only reference the SOURCE-BUFFER-SHARD shard of the corresponding source buffer."
+  (let* ((source-buffer (buffer-shard-buffer source-buffer-shard))
          (position (or (position source-buffer (kernel-sources kernel) :key #'car)
-                       (error "Could not find a valid target chunk."))))
-    (labels ((refine-search (target source)
-               (if (not (chunk-parent source))
-                   target
-                   (let ((target (refine-search target (chunk-parent source))))
-                     (if (not (chunk-split target))
-                         target
-                         (let* ((split (chunk-split target))
-                                (left-child (split-left-child split))
-                                (right-child (split-right-child split))
-                                (left-action (find kernel (chunk-actions left-child) :key #'action-kernel))
-                                (right-action (find kernel (chunk-actions right-child) :key #'action-kernel)))
-                           (cond ((and left-action
-                                       (eq source (nth position (action-source-chunks left-action))))
-                                  left-child)
-                                 ((and right-action
-                                       (eq source (nth position (action-source-chunks right-action))))
-                                  right-child)
-                                 (t
-                                  (return-from find-most-specific-target-chunk
-                                    target)))))))))
-      (refine-search (buffer-chunk buffer) source-chunk))))
+                       (error "Could not find a valid target buffer-shard."))))
+    (labels
+        ((refine-search (target source)
+           (if (not (buffer-shard-parent source))
+               target
+               (let ((target (refine-search target (buffer-shard-parent source))))
+                 (if (not (buffer-shard-split target))
+                     target
+                     (let* ((split (buffer-shard-split target))
+                            (left-child (split-left-child split))
+                            (right-child (split-right-child split))
+                            (left-kernel-shard (find kernel (buffer-shard-writers left-child) :key #'kernel-shard-kernel))
+                            (right-kernel-shard (find kernel (buffer-shard-writers right-child) :key #'kernel-shard-kernel)))
+                       (cond ((and left-kernel-shard
+                                   (eq source (nth position (kernel-shard-sources left-kernel-shard))))
+                              left-child)
+                             ((and right-kernel-shard
+                                   (eq source (nth position (kernel-shard-sources right-kernel-shard))))
+                              right-child)
+                             (t
+                              (return-from find-most-specific-target-buffer-shard
+                                target)))))))))
+      (refine-search (primogenitor-buffer-shard buffer) source-buffer-shard))))
+
+(defvar *check-shards-table*)
+
+(defvar *check-shards-worklist*)
+
+(defun check-shards ()
+  "Raise an error if any shards are malformed.  Useful for debugging."
+  (let ((*check-shards-worklist* (coerce *primogenitor-buffer-shard-vector* 'list))
+        (*check-shards-table* (make-hash-table)))
+    (loop until (null *check-shards-worklist*) do
+      (check-shard (pop *check-shards-worklist*)))))
+
+(defun check-shard-eventually (shard)
+  (unless (gethash shard *check-shards-table*)
+    (setf (gethash shard *check-shards-table*) t)
+    (push shard *check-shards-worklist*)))
+
+(defgeneric check-shard (shard))
+
+(defmethod check-shard ((buffer-shard buffer-shard))
+  (with-slots (buffer parent domain shape readers writers split) buffer-shard
+    (assert (subshapep domain shape))
+    (dolist (writer writers)
+      (assert (member buffer-shard (kernel-shard-targets writer)))
+      (check-shard-eventually writer))
+    (dolist (reader readers)
+      (assert (member buffer-shard (kernel-shard-sources reader)))
+      (check-shard-eventually reader))
+    (when parent
+      (assert (buffer-shard-split parent))
+      (with-slots (left-child right-child) (buffer-shard-split parent)
+        (assert (or (eq buffer-shard right-child)
+                    (eq buffer-shard left-child)))))
+    (when split
+      (with-slots (left-child right-child) split
+        (check-shard-eventually left-child)
+        (check-shard-eventually right-child)))))
+
+(defmethod check-shard ((kernel-shard kernel-shard))
+  (with-slots (kernel iteration-space targets sources) kernel-shard
+    (assert (= (length (kernel-targets kernel))
+               (length targets)))
+    (loop for target in targets
+          for (buffer) in (kernel-targets kernel)
+          do (assert (eq buffer (buffer-shard-buffer target)))
+          do (assert (member kernel-shard (buffer-shard-writers target)))
+          do (check-shard-eventually target))
+    (assert (= (length (kernel-sources kernel))
+               (length sources)))
+    (loop for source in sources
+          for (buffer) in (kernel-sources kernel)
+          do (assert (eq buffer (buffer-shard-buffer source)))
+          do (assert (member kernel-shard (buffer-shard-readers source)))
+          do (check-shard-eventually source))))

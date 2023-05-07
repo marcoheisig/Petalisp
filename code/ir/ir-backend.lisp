@@ -52,17 +52,9 @@
     ((ir-backend ir-backend)
      (lazy-arrays list))
   (let* ((program (program-from-lazy-arrays lazy-arrays))
-         (chunks (compute-program-primogenitor-chunk-vector program))
+         (buffer-shards (partition-program program))
          (*nodes* (make-hash-table :test #'eq))
          (*worklist* '()))
-    (flet ((buffer-chunk (buffer)
-             (svref chunks (buffer-number buffer))))
-      ;; TODO We partition all buffers into chunks, but don't use that
-      ;; information at all.
-      (partition-chunks chunks :buffer-chunk #'buffer-chunk)
-      ;; TODO We plan allocations for all chunks, but don't use this
-      ;; information.
-      (allocator chunks))
     (map-buffers-and-kernels
      ;; Ensure that each buffer has an attached storage array.
      (lambda (buffer)

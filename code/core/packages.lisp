@@ -44,6 +44,7 @@
 
    ;; Shapes
    #:rank
+   #:axis
    #:shape
    #:shapep
    #:make-shape

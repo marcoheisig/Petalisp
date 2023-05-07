@@ -22,6 +22,6 @@
    (:file "kernel-compiler")
    (:file "partitioning")
    (:file "coloring")
-   (:file "allocation")
+   ;(:file "allocation")
    (:file "ir-backend")
    (:file "documentation")))

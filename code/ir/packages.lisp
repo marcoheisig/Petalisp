@@ -180,17 +180,23 @@
    #:memory-parent-bandwidth
 
    ;; Partitioning
-   #:chunk
-   #:chunkp
-   #:chunk-buffer
-   #:chunk-shape
-   #:chunk-padded-shape
-   #:chunk-parent
-   #:chunk-writers
-   #:chunk-split
-   #:chunk-bits
-   #:chunk-primogenitor
-   #:chunk-infants
+   #:kernel-shard
+   #:kernel-shard-p
+   #:kernel-shard-kernel
+   #:kernel-shard-iteration-space
+   #:kernel-shard-targets
+   #:kernel-shard-sources
+   #:kernel-shard-more-important-p
+   #:buffer-shard
+   #:buffer-shard-p
+   #:buffer-shard-buffer
+   #:buffer-shard-parent
+   #:buffer-shard-domain
+   #:buffer-shard-shape
+   #:buffer-shard-readers
+   #:buffer-shard-writers
+   #:buffer-shard-split
+   #:buffer-shard-bits
    #:split
    #:splitp
    #:split-parent
@@ -202,9 +208,8 @@
    #:vicinityp
    #:vicinity-left-neighbors
    #:vicinity-right-neighbors
-   #:compute-chunk-vicinity
-   #:compute-program-primogenitor-chunk-vector
-   #:partition-chunks
+   #:compute-buffer-shard-vicinity
+   #:partition-program
 
    ;; Miscellaneous
    #:*stencil-max-radius*
