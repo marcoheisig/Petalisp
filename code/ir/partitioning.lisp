@@ -466,7 +466,7 @@ children.  Useful for debugging."
     (program
      &key
        (split-priority 'buffer-shard-bits)
-       (split-min-priority (* 30 1024 1)) ; Aim for L1 cache sized shards.
+       (split-min-priority (* 30 1024 8)) ; Aim for L1 cache sized shards.
        (split-max-redundancy 0.125))
   "Partition all buffers and kernels in the supplied program into shards.
 Returns, as multiple values, a vector mapping each buffer to its corresponding
@@ -857,12 +857,30 @@ only reference the SOURCE-BUFFER-SHARD shard of the corresponding source buffer.
 
 (defvar *check-shards-worklist*)
 
+(defvar *check-shards-buffer-shards*)
+
+(defvar *check-shards-kernel-shards*)
+
 (defun check-shards ()
   "Raise an error if any shards are malformed.  Useful for debugging."
   (let ((*check-shards-worklist* (coerce *primogenitor-buffer-shard-vector* 'list))
-        (*check-shards-table* (make-hash-table)))
+        (*check-shards-table* (make-hash-table))
+        (*check-shards-buffer-shards* (make-hash-table))
+        (*check-shards-kernel-shards* (make-hash-table)))
     (loop until (null *check-shards-worklist*) do
-      (check-shard (pop *check-shards-worklist*)))))
+      (check-shard (pop *check-shards-worklist*)))
+    (maphash
+     (lambda (buffer buffer-shards)
+       (assert (shape= (buffer-shape buffer)
+                       (apply #'fuse-shapes
+                              (mapcar #'buffer-shard-domain buffer-shards)))))
+     *check-shards-buffer-shards*)
+    (maphash
+     (lambda (kernel kernel-shards)
+       (assert (shape= (kernel-iteration-space kernel)
+                       (apply #'fuse-shapes
+                              (mapcar #'kernel-shard-iteration-space kernel-shards)))))
+     *check-shards-kernel-shards*)))
 
 (defun check-shard-eventually (shard)
   (unless (gethash shard *check-shards-table*)
@@ -888,7 +906,8 @@ only reference the SOURCE-BUFFER-SHARD shard of the corresponding source buffer.
     (when split
       (with-slots (left-child right-child) split
         (check-shard-eventually left-child)
-        (check-shard-eventually right-child)))))
+        (check-shard-eventually right-child)))
+    (push buffer-shard (gethash buffer *check-shards-buffer-shards* '()))))
 
 (defmethod check-shard ((kernel-shard kernel-shard))
   (with-slots (kernel iteration-space targets sources) kernel-shard
@@ -905,4 +924,5 @@ only reference the SOURCE-BUFFER-SHARD shard of the corresponding source buffer.
           for (buffer) in (kernel-sources kernel)
           do (assert (eq buffer (buffer-shard-buffer source)))
           do (assert (member kernel-shard (buffer-shard-readers source)))
-          do (check-shard-eventually source))))
+          do (check-shard-eventually source))
+    (push kernel-shard (gethash kernel *check-shards-kernel-shards* '()))))
