@@ -641,8 +641,8 @@ lowest axis."
              (refine-kernel-shard kernel-shard)
              (let* ((range (shape-range iteration-space kaxis))
                     (start (range-start range))
-                    (end (range-end range)))
-               (if (or (< kposition start) (<= end kposition))
+                    (last (range-last range)))
+               (if (not (and (< start kposition) (<= kposition last)))
                    (refine-kernel-shard kernel-shard)
                    (multiple-value-bind (left right)
                        (split-shape iteration-space kaxis kposition)
@@ -713,55 +713,73 @@ splits with the most specific buffer shard in that tree of splits that still
 provides all the data referenced by the kernel shard.  Update the writers and
 readers slot of all affected buffers accordingly."
   (with-slots (kernel iteration-space targets sources) kernel-shard
-    (labels ((refine-buffer-shard (transformoid buffer-shard)
-               (with-slots (split domain) buffer-shard
-                 (if (not split)
-                     buffer-shard
-                     (with-slots (left-child right-child axis position) split
-                       (ecase (relative-position iteration-space transformoid axis position)
-                         (:both buffer-shard)
-                         (:left (refine-buffer-shard transformoid left-child))
-                         (:right (refine-buffer-shard transformoid right-child))))))))
-      (setf targets
-            (loop for old-buffer-shard in targets
-                  for buffer = (buffer-shard-buffer old-buffer-shard)
-                  for transformoid = (second (find buffer (kernel-targets kernel) :key #'first))
-                  for new-buffer-shard = (refine-buffer-shard transformoid old-buffer-shard)
-                  do (unless (eq old-buffer-shard new-buffer-shard)
-                       (setf (buffer-shard-writers old-buffer-shard)
-                             (remove kernel-shard (buffer-shard-writers old-buffer-shard)))
-                       (buffer-shard-add-writer new-buffer-shard kernel-shard))
-                  collect new-buffer-shard))
-      (setf sources
-            (loop for old-buffer-shard in sources
-                  for buffer = (buffer-shard-buffer old-buffer-shard)
-                  for transformoid = (second (find buffer (kernel-sources kernel) :key #'first))
-                  for new-buffer-shard = (refine-buffer-shard transformoid old-buffer-shard)
-                  do (unless (eq old-buffer-shard new-buffer-shard)
-                       (setf (buffer-shard-readers old-buffer-shard)
-                             (remove kernel-shard (buffer-shard-readers old-buffer-shard)))
-                       (buffer-shard-add-reader new-buffer-shard kernel-shard))
-                  collect new-buffer-shard)))))
+    (setf targets
+          (loop for target in targets
+                collect (refine-target kernel-shard iteration-space target)))
+    (setf sources
+          (loop for source in sources
+                collect (refine-source kernel-shard iteration-space source)))))
+
+(defun refine-target (kernel-or-kernel-shard iteration-space target)
+  (multiple-value-bind (kernel kernel-shard)
+      (etypecase kernel-or-kernel-shard
+        (kernel (values kernel-or-kernel-shard nil))
+        (kernel-shard (values (kernel-shard-kernel kernel-or-kernel-shard) kernel-or-kernel-shard)))
+    (let* ((buffer (buffer-shard-buffer target))
+           (transformoid (second (find buffer (kernel-targets kernel) :key #'first)))
+           (new-target (refine-buffer-shard iteration-space transformoid target)))
+      (when kernel-shard
+        (unless (eq target new-target)
+          (setf (buffer-shard-writers target)
+                (remove kernel-shard (buffer-shard-writers target) :count 1))
+          (buffer-shard-add-writer new-target kernel-shard)))
+      new-target)))
+
+(defun refine-source (kernel-or-kernel-shard iteration-space source)
+  (multiple-value-bind (kernel kernel-shard)
+      (etypecase kernel-or-kernel-shard
+        (kernel (values kernel-or-kernel-shard nil))
+        (kernel-shard (values (kernel-shard-kernel kernel-or-kernel-shard) kernel-or-kernel-shard)))
+    (let* ((buffer (buffer-shard-buffer source))
+           (transformoid (second (find buffer (kernel-sources kernel) :key #'first)))
+           (new-source (refine-buffer-shard iteration-space transformoid source)))
+      (when kernel-shard
+        (unless (eq source new-source)
+          (setf (buffer-shard-readers source)
+                (remove kernel-shard (buffer-shard-readers source) :count 1))
+          (buffer-shard-add-reader new-source kernel-shard)))
+      new-source)))
+
+(defun refine-buffer-shard (iteration-space transformoid buffer-shard)
+  (with-slots (split domain) buffer-shard
+    (if (not split)
+        buffer-shard
+        (with-slots (left-child right-child axis position) split
+          (ecase (relative-position iteration-space transformoid axis position)
+            (:both buffer-shard)
+            (:left (refine-buffer-shard iteration-space transformoid left-child))
+            (:right (refine-buffer-shard iteration-space transformoid right-child)))))))
 
 (defun unlink-kernel-shard (kernel-shard)
   "Ensure that no buffer shards reference this kernel shard."
   (dolist (buffer-shard (kernel-shard-sources kernel-shard))
     (setf (buffer-shard-readers buffer-shard)
-          (remove kernel-shard (buffer-shard-readers buffer-shard))))
+          (remove kernel-shard (buffer-shard-readers buffer-shard) :count 1)))
   (dolist (buffer-shard (kernel-shard-targets kernel-shard))
     (setf (buffer-shard-writers buffer-shard)
-          (remove kernel-shard (buffer-shard-writers buffer-shard)))))
+          (remove kernel-shard (buffer-shard-writers buffer-shard) :count 1))))
 
-(defun add-child-kernel-shard (old-kernel-shard new-iteration-space)
-  (with-slots (kernel old-iteration-space targets sources)
-      old-kernel-shard
-    (unless (empty-shape-p new-iteration-space)
-      (refine-kernel-shard
-       (make-kernel-shard
-        :kernel kernel
-        :iteration-space new-iteration-space
-        :targets targets
-        :sources sources)))))
+(defun add-child-kernel-shard (kernel-shard new-iteration-space)
+  (with-slots (kernel targets sources) kernel-shard
+    (make-kernel-shard
+     :kernel kernel
+     :iteration-space new-iteration-space
+     :targets
+     (loop for target in targets
+           collect (refine-target kernel new-iteration-space target))
+     :sources
+     (loop for source in sources
+           collect (refine-source kernel new-iteration-space source)))))
 
 (defun transform-axis-and-position (transformoid axis position)
   (multiple-value-bind (output-mask scalings offsets)
@@ -823,35 +841,6 @@ relates to the supplied transformoid."
              (stencil-center transformoid)))
     (iterating-instruction
      (destructure-transformoid (instruction-transformation transformoid)))))
-
-(defun find-most-specific-target-buffer-shard (buffer kernel source-buffer-shard)
-  "Returns the most specific child buffer-shard of BUFFER whose kernel-shards from kernel
-only reference the SOURCE-BUFFER-SHARD shard of the corresponding source buffer."
-  (let* ((source-buffer (buffer-shard-buffer source-buffer-shard))
-         (position (or (position source-buffer (kernel-sources kernel) :key #'car)
-                       (error "Could not find a valid target buffer-shard."))))
-    (labels
-        ((refine-search (target source)
-           (if (not (buffer-shard-parent source))
-               target
-               (let ((target (refine-search target (buffer-shard-parent source))))
-                 (if (not (buffer-shard-split target))
-                     target
-                     (let* ((split (buffer-shard-split target))
-                            (left-child (split-left-child split))
-                            (right-child (split-right-child split))
-                            (left-kernel-shard (find kernel (buffer-shard-writers left-child) :key #'kernel-shard-kernel))
-                            (right-kernel-shard (find kernel (buffer-shard-writers right-child) :key #'kernel-shard-kernel)))
-                       (cond ((and left-kernel-shard
-                                   (eq source (nth position (kernel-shard-sources left-kernel-shard))))
-                              left-child)
-                             ((and right-kernel-shard
-                                   (eq source (nth position (kernel-shard-sources right-kernel-shard))))
-                              right-child)
-                             (t
-                              (return-from find-most-specific-target-buffer-shard
-                                target)))))))))
-      (refine-search (primogenitor-buffer-shard buffer) source-buffer-shard))))
 
 (defvar *check-shards-table*)
 
