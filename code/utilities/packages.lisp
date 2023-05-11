@@ -23,6 +23,10 @@
    ;; extended-euclid.lisp
    #:extended-euclid
 
+   ;; powers-of-two.lisp
+   #:flp2
+   #:clp2
+
    ;; prime-factors.lisp
    #:prime-factors
    #:primep

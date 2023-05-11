@@ -180,6 +180,16 @@
    #:memory-parent-bandwidth
 
    ;; Partitioning
+   #:storage
+   #:storagep
+   #:storage-ntype
+   #:storage-size
+   #:storage-allocation
+   #:layout
+   #:layoutp
+   #:layout-offset
+   #:layout-strides
+   #:layout-storage
    #:kernel-shard
    #:kernel-shard-p
    #:kernel-shard-kernel
@@ -197,6 +207,7 @@
    #:buffer-shard-writers
    #:buffer-shard-split
    #:buffer-shard-bits
+   #:buffer-shard-layout
    #:split
    #:splitp
    #:split-parent

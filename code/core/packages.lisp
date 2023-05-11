@@ -138,6 +138,7 @@
    #:lazy-fuse
    #:make-unknown
    #:lazy-unknowns
+   #:lazy-unknown-p
    #:empty-lazy-array
    #:empty-lazy-arrays
    #:move-axis-to-front

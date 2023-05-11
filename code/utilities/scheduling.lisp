@@ -9,6 +9,7 @@
    #:node-successors
    #:node-depth
    #:node-height
+   #:make-graph
    #:graph
    #:graphp
    #:graph-initial-nodes

@@ -204,7 +204,7 @@ already been computed."))
   nil)
 
 (defmethod requestp ((request request))
-  nil)
+  t)
 
 (defmethod request-wait ((completed-request completed-request))
   (values))

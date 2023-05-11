@@ -7,5 +7,6 @@
    #:common-lisp
    #:petalisp.core
    #:petalisp.ir)
+  (:shadow #:petalisp.core #:request #:backend)
   (:export
    #:make-native-backend))

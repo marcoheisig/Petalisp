@@ -250,6 +250,10 @@
    :type condition
    :read-only t))
 
+(defun lazy-unknown-p (lazy-array)
+  (declare (lazy-array lazy-array))
+  (typep (lazy-array-delayed-action lazy-array) 'delayed-unknown))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Lazy Array Constructors

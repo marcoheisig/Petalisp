@@ -36,6 +36,41 @@
 ;;; The purpose of propagating splits this way is that subsequent buffer and
 ;;; kernel shards have good data locality and qualify for later being scheduled
 ;;; on the same worker.
+;;;
+;;; The final phase of the partitioning is to assign memory layouts to all
+;;; buffer shards that are being referenced by at least one kernel shard.  Each
+;;; layout also has a reference to some storage, which is handed out such that
+;;; each buffer shard that is being referenced and that has an ancestor that is
+;;; also being referenced has the same storage as that ancestor.
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Reasoning about Memory Layouts
+
+(defstruct (storage
+            (:predicate storagep)
+            (:constructor make-storage))
+  ;; The ntype of the elements of the storage.
+  (ntype nil :type typo:ntype :read-only t)
+  ;; The number of elements being stored.
+  (size nil :type unsigned-byte :read-only t)
+  ;; An opaque object that encodes how the storage is being allocated.
+  (allocation nil))
+
+(defstruct (layout
+            (:predicate layoutp)
+            (:constructor make-layout))
+  ;; The index of the first storage element referenced by this layout.
+  (offset 0 :type unsigned-byte :read-only t)
+  ;; A vector whose Ith entry is the number of elements to skip when changing
+  ;; the Ith index component of an index by one.
+  (strides nil :type (simple-array unsigned-byte (*)) :read-only t)
+  ;; The storage being accessed.
+  (storage nil :type storage :read-only t))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Kernel and Buffer Shards
 
 (defstruct (kernel-shard (:constructor %make-kernel-shard))
   ;; The kernel being partitioned by this kernel shard.
@@ -78,7 +113,9 @@
   (split-priority-cache nil :type (or null unsigned-byte))
   ;; The split operation in case this buffer-shard has been split, or NIL, if it
   ;; hasn't been split so far.
-  (split nil :type (or null structure-object)))
+  (split nil :type (or null structure-object))
+  ;; The memory layout of the buffer shard.
+  (layout nil :type (or null layout)))
 
 (defmethod print-object ((buffer-shard buffer-shard) stream)
   (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
@@ -505,6 +542,7 @@ ghost points to interior points for a split."
       ;; propagate the split as a side-effect.
       (loop until (split-queue-emptyp) do
         (propagate-split (split-queue-pop))))
+    (map nil #'assign-layouts *primogenitor-buffer-shard-vector*)
     (values *primogenitor-buffer-shard-vector* *buffer-ghostspec-vector*)))
 
 (defun attempt-split (buffer-shard axis &optional position)
@@ -841,6 +879,66 @@ relates to the supplied transformoid."
              (stencil-center transformoid)))
     (iterating-instruction
      (destructure-transformoid (instruction-transformation transformoid)))))
+
+(defun assign-layouts (primogenitor-buffer-shard)
+  (declare (buffer-shard primogenitor-buffer-shard))
+  (labels
+      ((assign-layout (buffer-shard referenced-ancestor)
+         (declare (buffer-shard buffer-shard)
+                  (type (or null buffer-shard) referenced-ancestor))
+         (with-slots (buffer split domain shape layout) buffer-shard
+           ;; Check whether the buffer shard is being referenced.
+           (when (or (buffer-shard-readers buffer-shard)
+                     (buffer-shard-writers buffer-shard)
+                     (not (interior-buffer-p buffer)))
+             (if (not referenced-ancestor)
+                 ;; If there is no referenced ancestor, create both a new
+                 ;; layout and storage for all the shards's elements.
+                 (let* ((ntype (buffer-ntype buffer))
+                        (size (shape-size shape))
+                        (storage (make-storage :ntype ntype :size size))
+                        (strides (shape-strides shape)))
+                   (setf layout (make-layout :storage storage :strides strides))
+                   (setf referenced-ancestor buffer-shard))
+                 ;; If there is already an ancestor layout, reuse its storage
+                 ;; and strides and only compute a suitable offset.
+                 (let* ((ancestor-shape (buffer-shard-shape referenced-ancestor))
+                        (ancestor-layout (buffer-shard-layout referenced-ancestor))
+                        (storage (layout-storage ancestor-layout))
+                        (strides (layout-strides ancestor-layout))
+                        (offset
+                          (loop for stride across strides
+                                for range1 in (shape-ranges ancestor-shape)
+                                for range2 in (shape-ranges shape)
+                                sum (* stride
+                                       (- (range-start range2)
+                                          (range-start range1))))))
+                   (setf layout
+                         (make-layout
+                          :offset offset
+                          :strides strides
+                          :storage storage)))))
+           ;; If there is a split, descend into each child.
+           (when (splitp split)
+             (assign-layout (split-left-child split) referenced-ancestor)
+             (assign-layout (split-right-child split) referenced-ancestor)))))
+    (assign-layout primogenitor-buffer-shard nil)))
+
+(defun shape-strides (shape)
+  (declare (shape shape))
+  (let* ((rank (shape-rank shape))
+         (strides (make-array rank)))
+    (unless (zerop rank)
+      (setf (aref strides (- rank 1)) 1)
+      (loop for axis from (- rank 2) downto 0 do
+        (setf (aref strides axis)
+              (* (aref strides (1+ axis))
+                 (range-size (shape-range shape (1+ axis)))))))
+    strides))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Sanity Checks
 
 (defvar *check-shards-table*)
 

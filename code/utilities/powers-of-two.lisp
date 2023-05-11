@@ -8,7 +8,7 @@
 ;;; of 32bit unsigned integers.
 
 (defun flp2 (n)
-  "Round the unsigned integer N down to the next smaller multiple of two."
+  "Round the unsigned integer N down to the next smaller power of two."
   (etypecase n
     (fixnum
      (let ((x n))
@@ -27,7 +27,7 @@
   `(integer 0 ,(expt 2 (1- (integer-length most-positive-fixnum)))))
 
 (defun clp2 (n)
-  "Round the unsigned integer N up to the next larger multiple of two."
+  "Round the unsigned integer N up to the next larger power of two."
   (etypecase n
     (clp2-fixnum
      (when (zerop n)

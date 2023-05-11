@@ -6,6 +6,7 @@
   ("alexandria"
    "atomics"
    "bordeaux-threads"
+   "cffi"
    "lparallel"
    "trivia"
    "trivial-garbage"
@@ -17,5 +18,8 @@
   :serial t
   :components
   ((:file "packages")
-   (:file "memory-pool")
-   (:file "native-backend")))
+   (:file "request")
+   (:file "worker-pool")
+   (:file "backend")
+   (:file "scheduling")
+   (:file "evaluator")))
