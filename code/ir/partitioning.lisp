@@ -68,6 +68,10 @@
   ;; The storage being accessed.
   (storage nil :type storage :read-only t))
 
+(defun layout-rank (layout)
+  (declare (layout layout))
+  (length (layout-strides layout)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Kernel and Buffer Shards
@@ -78,9 +82,9 @@
   ;; The part of the kernel iteration space assigned to this shard.
   (iteration-space nil :type shape :read-only t)
   ;; One buffer shard for each of the kernel's target buffers.
-  (targets '() :type list :read-only t)
+  (targets '() :type list)
   ;; One buffer shard for each of the kernel's source buffers.
-  (sources '() :type list :read-only t))
+  (sources '() :type list))
 
 (defmethod print-object ((kernel-shard kernel-shard) stream)
   (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
@@ -106,9 +110,9 @@
   ;; The buffer-shard's domain, padded with ghost layers.
   (shape nil :type shape :read-only t)
   ;; A list of kernel shards that read from this buffer shard.
-  (readers '() :type list :read-only nil)
+  (readers '() :type list)
   ;; A list of kernel shards that write into this buffer shard.
-  (writers '() :type list :read-only nil)
+  (writers '() :type list)
   ;; A cache for the buffer-shard's split priority.
   (split-priority-cache nil :type (or null unsigned-byte))
   ;; The split operation in case this buffer-shard has been split, or NIL, if it
@@ -750,6 +754,7 @@ supplied function."
 splits with the most specific buffer shard in that tree of splits that still
 provides all the data referenced by the kernel shard.  Update the writers and
 readers slot of all affected buffers accordingly."
+  (declare (kernel-shard kernel-shard))
   (with-slots (kernel iteration-space targets sources) kernel-shard
     (setf targets
           (loop for target in targets
@@ -789,6 +794,7 @@ readers slot of all affected buffers accordingly."
       new-source)))
 
 (defun refine-buffer-shard (iteration-space transformoid buffer-shard)
+  (declare (shape iteration-space) (buffer-shard buffer-shard))
   (with-slots (split domain) buffer-shard
     (if (not split)
         buffer-shard
@@ -800,6 +806,7 @@ readers slot of all affected buffers accordingly."
 
 (defun unlink-kernel-shard (kernel-shard)
   "Ensure that no buffer shards reference this kernel shard."
+  (declare (kernel-shard kernel-shard))
   (dolist (buffer-shard (kernel-shard-sources kernel-shard))
     (setf (buffer-shard-readers buffer-shard)
           (remove kernel-shard (buffer-shard-readers buffer-shard) :count 1)))
@@ -808,6 +815,7 @@ readers slot of all affected buffers accordingly."
           (remove kernel-shard (buffer-shard-writers buffer-shard) :count 1))))
 
 (defun add-child-kernel-shard (kernel-shard new-iteration-space)
+  (declare (kernel-shard kernel-shard) (shape new-iteration-space))
   (with-slots (kernel targets sources) kernel-shard
     (make-kernel-shard
      :kernel kernel

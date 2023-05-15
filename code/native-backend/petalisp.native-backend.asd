@@ -22,4 +22,5 @@
    (:file "worker-pool")
    (:file "backend")
    (:file "scheduling")
+   (:file "allocation")
    (:file "evaluator")))

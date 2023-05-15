@@ -6,7 +6,7 @@
 
 (defgeneric backend-compile-cache (backend))
 
-(defgeneric backend-compile-kernel (backend kernel))
+(defgeneric backend-compile-blueprint (backend blueprint))
 
 (defclass backend (petalisp.core:backend)
   ((%worker-pool
@@ -24,14 +24,13 @@
   (make-instance 'backend
     :worker-pool (make-worker-pool threads)))
 
-(defmethod backend-compile-kernel
+(defmethod backend-compile-blueprint
     ((backend backend)
-     (kernel kernel))
-  (let ((blueprint (kernel-blueprint kernel)))
-    (alexandria:ensure-gethash
-     blueprint
-     (backend-compile-cache backend)
-     (compile nil (translate-blueprint blueprint)))))
+     (blueprint t))
+  (alexandria:ensure-gethash
+   blueprint
+   (backend-compile-cache backend)
+   (compile nil (translate-blueprint blueprint))))
 
 (defmethod delete-backend
     ((backend backend))

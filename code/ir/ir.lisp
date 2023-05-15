@@ -770,32 +770,41 @@
 
 (defun make-buffer-like-array (buffer)
   (declare (buffer buffer))
-  (let* ((shape (buffer-shape buffer))
-         (ntype (buffer-ntype buffer))
-         (etype (typo:ntype-type-specifier ntype)))
-    (make-array (shape-dimensions shape) :element-type etype)))
+  (make-array-from-shape-and-ntype
+   (buffer-shape buffer)
+   (buffer-ntype buffer)))
+
+(defun make-array-from-shape-and-ntype (shape ntype)
+  (declare (shape shape) (typo:ntype ntype))
+  (make-array
+   (shape-dimensions shape)
+   :element-type (typo:ntype-type-specifier ntype)))
 
 (defun ensure-array-buffer-compatibility (array buffer)
-  (declare (buffer buffer) (array array))
-  (let ((shape (buffer-shape buffer)))
-    (unless (= (shape-rank shape) (array-rank array))
-      (error "Expected an array of rank ~D, got~% ~S~%"
-             (array-rank array) array))
-    (loop for range in (shape-ranges shape) for axis from 0 do
-      (assert (= 0 (range-start range)))
-      (assert (= 1 (range-step range)))
-      (unless (= (array-dimension array axis) (range-size range))
-        (error "Expected an array dimension of ~D in axis ~D, but got a dimension of ~D."
-               (range-size range)
-               axis
-               (array-dimension array axis))))
-    (unless (typo:ntype=
-             (typo:array-element-ntype array)
-             (buffer-ntype buffer))
-      (error "Not an array of type ~S: ~S"
-             (array-element-type array)
-             array))
-    array))
+  (declare (array array) (buffer buffer))
+  (ensure-array-shape-ntype-compatibility
+   array
+   (buffer-shape buffer)
+   (buffer-ntype buffer)))
+
+(defun ensure-array-shape-ntype-compatibility (array shape ntype)
+  (declare (array array) (shape shape) (typo:ntype ntype))
+  (unless (= (shape-rank shape) (array-rank array))
+    (error "Expected an array of rank ~D, got~% ~S~%"
+           (array-rank array) array))
+  (loop for range in (shape-ranges shape) for axis from 0 do
+    (assert (= 0 (range-start range)))
+    (assert (= 1 (range-step range)))
+    (unless (= (array-dimension array axis) (range-size range))
+      (error "Expected an array dimension of ~D in axis ~D, but got a dimension of ~D."
+             (range-size range)
+             axis
+             (array-dimension array axis))))
+  (unless (typo:ntype= (typo:array-element-ntype array) ntype)
+    (error "Not an array of type ~S: ~S"
+           (array-element-type array)
+           array))
+  array)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

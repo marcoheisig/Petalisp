@@ -130,6 +130,8 @@
    #:buffer-reuse-potential
    #:kernel-iteration-space
    #:kernel-blueprint
+   #:iteration-space-blueprint
+   #:transformation-blueprint
    #:kernel-instruction-vector
    #:kernel-number-of-inputs
    #:kernel-number-of-outputs
@@ -190,6 +192,7 @@
    #:layout-offset
    #:layout-strides
    #:layout-storage
+   #:layout-rank
    #:kernel-shard
    #:kernel-shard-p
    #:kernel-shard-kernel
@@ -226,7 +229,9 @@
    #:*stencil-max-radius*
    #:compute-stencil-center
    #:make-buffer-like-array
+   #:make-array-from-shape-and-ntype
    #:ensure-array-buffer-compatibility
+   #:ensure-array-shape-ntype-compatibility
    #:make-ir-backend
    #:check-ir
    #:interpret-kernel

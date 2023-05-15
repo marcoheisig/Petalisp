@@ -34,12 +34,15 @@
 high-performance implementation of KERNEL.  Identical blueprints are EQ,
 which makes them ideal for caching."
   (ucons:ulist*
-   (iteration-space-blueprint (shape-ranges (kernel-iteration-space kernel)))
+   (iteration-space-blueprint (kernel-iteration-space kernel))
    (target-blueprints (kernel-targets kernel))
    (source-blueprints (kernel-sources kernel))
    (instruction-blueprints kernel)))
 
-(defun iteration-space-blueprint (ranges)
+(defun iteration-space-blueprint (iteration-space)
+  (ranges-blueprint (shape-ranges iteration-space)))
+
+(defun ranges-blueprint (ranges)
   (if (null ranges)
       '()
       (ucons:ucons
@@ -47,7 +50,7 @@ which makes them ideal for caching."
                (= 1 (range-step (first ranges))))
            :contiguous
            :strided)
-       (iteration-space-blueprint (rest ranges)))))
+       (ranges-blueprint (rest ranges)))))
 
 (defun target-blueprints (targets)
   (if (null targets)

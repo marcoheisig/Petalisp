@@ -16,89 +16,33 @@
             (:predicate cenvp)
             (:constructor %make-cenv))
   (backend nil :type backend :read-only t)
-  (program nil :type program :read-only t)
   (schedule nil :type list :read-only t)
   (result-shapes nil :type (simple-array shape (*)) :read-only t)
   (result-ntypes nil :type (simple-array typo:ntype (*)) :read-only t)
-  (result-allocations nil :type (simple-array allocation (*)) :read-only t)
   (argument-shapes nil :type (simple-array shape (*)) :read-only t)
   (argument-ntypes nil :type (simple-array typo:ntype (*)) :read-only t)
-  (argument-allocations nil :type (simple-array allocation (*)) :read-only t)
   (constant-arrays nil :type (simple-array array (*)) :read-only t)
-  (constant-allocations nil :type (simple-array allocation (*)) :read-only t)
-  (worker-temporary-allocations nil :type (simple-array (simple-array allocation (*)) (*)) :read-only t))
+  ;; A vector with three more entries than there are workers in the backend.
+  ;; The first three entries are a vector of constant allocations, a vector of
+  ;; result allocations, and a vector of argument allocations.  The remaining
+  ;; entries are one vector of local allocations per worker.
+  (allocations nil :type (simple-array simple-vector (*)) :read-only t))
 
 (defun make-cenv (backend unknowns lazy-arrays)
   (let* ((program (program-from-lazy-arrays lazy-arrays))
-         ;; Allocate result vectors.
-         (nresults (length lazy-arrays))
-         (result-shapes (make-array nresults))
-         (result-ntypes (make-array nresults))
-         (result-allocations (make-array nresults))
-         ;; Allocate argument vectors.
-         (narguments (length unknowns))
-         (argument-shapes (make-array narguments))
-         (argument-ntypes (make-array narguments))
-         (argument-allocations (make-array narguments))
-         ;; Allocate constant vectors.
-         (nconstants (count-if-not #'lazy-unknown-p (program-leaf-alist program) :key #'cdr))
-         (constant-arrays (make-array nconstants))
-         (constant-allocations (make-array nconstants))
-         ;; Allocate per-worker temporary vectors.
-         (nworkers (worker-pool-size (backend-worker-pool backend)))
-         (worker-temporary-allocations (make-array nworkers))
-         ;; Partition the program and compute a schedule.
          (primogenitor-buffer-shard-vector (partition-program program))
-         (schedule (compute-program-schedule program primogenitor-buffer-shard-vector)))
-    ;; Bind the result buffers and allocations.
-    (loop for buffer in (program-root-buffers program) for index from 0 do
-      (let* ((number (buffer-number buffer))
-             (buffer-shard (aref primogenitor-buffer-shard-vector number))
-             (layout (buffer-shard-layout buffer-shard))
-             (storage (layout-storage layout)))
-        (setf (aref result-shapes index)
-              (buffer-shard-shape buffer-shard))
-        (setf (aref result-ntypes index)
-              (storage-ntype storage))
-        (setf (aref result-allocations index)
-              (storage-allocation storage))))
-    ;; Bind the argument buffers and allocations.
-    (let ((constant-number 0))
-      (loop for (buffer . lazy-array) in (program-leaf-alist program) do
-        (let* ((number (buffer-number buffer))
-               (buffer-shard (aref primogenitor-buffer-shard-vector number))
-               (layout (buffer-shard-layout buffer-shard))
-               (storage (layout-storage layout))
-               (delayed-action (lazy-array-delayed-action lazy-array)))
-          (etypecase delayed-action
-            (delayed-array
-             (setf (aref constant-arrays constant-number)
-                   (delayed-array-storage delayed-action))
-             (setf (aref constant-allocations constant-number)
-                   (storage-allocation storage))
-             (incf constant-number))
-            (delayed-unknown
-             (let ((argument-number (position lazy-array unknowns)))
-               (assert (< -1 argument-number narguments))
-               (setf (aref argument-shapes argument-number)
-                     (buffer-shard-shape buffer-shard))
-               (setf (aref argument-ntypes argument-number)
-                     (storage-ntype storage))
-               (setf (aref argument-allocations argument-number)
-                     (storage-allocation storage))))))))
-    (%make-cenv
-     :backend backend
-     :program program
-     :schedule schedule
-     :result-shapes result-shapes
-     :result-ntypes result-ntypes
-     :result-allocations result-allocations
-     :argument-shapes argument-shapes
-     :argument-ntypes argument-ntypes
-     :argument-allocations argument-allocations
-     :constant-arrays constant-arrays
-     :constant-allocations constant-allocations
-     :worker-temporary-allocations worker-temporary-allocations)))
+         (schedule (compute-schedule primogenitor-buffer-shard-vector backend)))
+    (multiple-value-bind (allocations constant-arrays)
+        (compute-allocations schedule primogenitor-buffer-shard-vector unknowns backend)
+      (%make-cenv
+       :backend backend
+       :schedule schedule
+       :result-shapes (map 'vector #'buffer-shape (program-root-buffers program))
+       :result-ntypes (map 'vector #'buffer-ntype (program-root-buffers program))
+       :argument-shapes (map 'vector #'lazy-array-shape unknowns)
+       :argument-ntypes (map 'vector #'lazy-array-ntype unknowns)
+       :constant-arrays constant-arrays
+       :allocations allocations))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -107,46 +51,57 @@
 (defstruct (denv
             (:predicate denvp)
             (:constructor %make-denv))
-  (cenv (alexandria:required-argument :denv)
+  (cenv (alexandria:required-argument :cenv)
    :type cenv
-   :read-only t)
-  (worker-pointer-vector (alexandria:required-argument :worker-pointer-vector)
-   :type (simple-array (simple-array cffi:foreign-pointer (*)) (*))
    :read-only t)
   (result-arrays (alexandria:required-argument :result-arrays)
    :type (simple-array array (*))
-   :read-only t))
+   :read-only t)
+  ;; A vector of vectors with the same structure as the cenv's allocations,
+  ;; which contains the pointer to memory corresponding to each allocation.
+  (pointers nil
+   :type (simple-array simple-vector (*))
+   :read-only t)
+  ;; The serious condition that was signaled during evaluation, or NIL if
+  ;; everything went smoothly so far.  Once this slot is set to a non-NIL
+  ;; value, workers will just skip the remaining evaluation.
+  (serious-condition nil
+   :type (or null condition)))
+
+(defun make-denv (cenv)
+  (%make-denv
+   :cenv cenv
+   :result-arrays (make-array (length (cenv-result-shapes cenv)) :initial-element nil)
+   :pointers
+   (map 'vector
+        (lambda (vector)
+          (make-array (length vector) :initial-element (cffi:null-pointer)))
+        (cenv-allocations cenv))))
 
 (defun bind-result (denv result index)
-  (with-slots (cenv worker-pointer-vector) denv
-    (with-slots (result-allocations result-buffers result-arrays) cenv
-      (let ((allocation (aref result-allocations index))
-            (buffer (aref result-buffers index)))
+  (with-slots (cenv result-arrays pointers) denv
+    (with-slots (result-shapes result-ntypes allocations) cenv
+      (let ((shape (aref result-shapes index))
+            (ntype (aref result-ntypes index)))
         (if (not result)
-            (setf result (make-buffer-like-array buffer))
-            (ensure-array-buffer-compatibility result buffer))
+            (setf result (make-array-from-shape-and-ntype shape ntype))
+            (ensure-array-shape-ntype-compatibility result shape ntype))
         (setf (aref result-arrays index) result)
-        (with-slots (worker-id color) allocation
-          (let ((pointer-vector (aref worker-pointer-vector worker-id)))
-            (assert (cffi:null-pointer-p (aref pointer-vector color)))
-            (setf (aref pointer-vector color)
-                  (array-storage-pointer result))))))))
+        (setf (aref (aref pointers +result-allocation-category+) index)
+              (array-storage-pointer result))))))
 
 (defun get-result (denv index)
   (declare (denv denv))
   (aref (denv-result-arrays denv) index))
 
 (defun bind-argument (denv argument index)
-  (with-slots (cenv worker-pointer-vector) denv
-    (with-slots (argument-allocations argument-buffers) cenv
-      (let ((allocation (aref argument-allocations index))
-            (buffer (aref argument-buffers index)))
-        (ensure-array-buffer-compatibility argument buffer)
-        (with-slots (worker-id color) allocation
-          (let ((pointer-vector (aref worker-pointer-vector worker-id)))
-            (assert (cffi:null-pointer-p (aref pointer-vector color)))
-            (setf (aref pointer-vector color)
-                  (array-storage-pointer argument))))))))
+  (with-slots (cenv pointers) denv
+    (with-slots (argument-shapes argument-ntypes) cenv
+      (let ((shape (aref argument-shapes index))
+            (ntype (aref argument-ntypes index)))
+        (ensure-array-shape-ntype-compatibility argument shape ntype)
+        (setf (aref (aref pointers +argument-allocation-category+) index)
+              (array-storage-pointer argument))))))
 
 (defun array-storage-pointer (array)
   (sb-kernel:with-array-data ((data array) (start) (end))
@@ -156,33 +111,44 @@
      (sb-ext:array-storage-vector data))))
 
 (defun worker-allocate (denv)
-  (let* ((worker-id (worker-id *worker*))
-         (cenv (denv-cenv denv))
-         (temporary-allocations (aref (cenv-worker-temporary-allocations cenv) worker-id))
-         (pointer-vector (aref (denv-worker-pointer-vector denv) worker-id)))
-    (loop for index below (length temporary-allocations) do
-      (let* ((allocation (aref temporary-allocations index))
-             (count (expt 2 (allocation-exponent allocation))))
-        (setf (aref pointer-vector index)
-              (cffi:foreign-alloc :uint8 :count count))))))
-
-(defun worker-execute (denv action)
-  (barrier)
-  ;; Check error flag.
-  (break "TODO")
-  ;; Copy all ghost layers.
-  (break "TODO")
-  (barrier)
-  ;; Execute all subtasks.
-  (break "TODO"))
+  (declare (denv denv))
+  (with-slots (cenv pointers) denv
+    (with-slots (allocations) cenv
+      (let* ((worker-id (worker-id *worker*))
+             (category (+ worker-id +worker-allocation-category-offset+))
+             (local-allocations (aref allocations category))
+             (local-pointers (aref pointers category)))
+        (loop for index below (length local-allocations) do
+          (setf (aref local-pointers index)
+                (cffi:foreign-alloc
+                 :uint8
+                 :count (allocation-size-in-bytes
+                         (aref local-allocations index)))))))))
 
 (defun worker-free (denv)
+  (declare (denv denv))
   (let* ((worker-id (worker-id *worker*))
-         (pointer-vector (aref (denv-worker-pointer-vector denv) worker-id)))
-    (loop for index below (length pointer-vector) do
-      (cffi:foreign-free
-       (shiftf (aref pointer-vector index)
-               (cffi:null-pointer))))))
+         (category (+ worker-id +worker-allocation-category-offset+)))
+    (map nil #'cffi:foreign-free (aref (denv-pointers denv) category))))
+
+(defun worker-execute (denv action)
+  (declare (denv denv) (action action))
+  (worker-synchronize-and-invoke denv (action-copy-invocations action))
+  (worker-synchronize-and-invoke denv (action-work-invocations action)))
+
+(defun worker-synchronize-and-invoke (denv invocations)
+  (declare (denv denv) (list invocations))
+  (barrier)
+  (with-slots (pointers serious-condition) denv
+    (unless serious-condition
+      (handler-case
+          (loop for invocation of-type invocation in invocations do
+            (funcall (invocation-kfn invocation)
+                     (invocation-sources invocation)
+                     (invocation-targets invocation)
+                     denv))
+        (serious-condition (c)
+          (atomics:cas serious-condition nil c))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -228,14 +194,12 @@
 (defun evaluate (denv)
   (with-slots (cenv worker-pointer-vector result-arrays) denv
     ;; Bind all constants.
-    (with-slots (constant-allocations constant-arrays) cenv
+    (with-slots (allocations constant-arrays) cenv
       (loop for array across constant-arrays
-            for allocation across constant-allocations
-            do (with-slots (worker-id color) allocation
-                 (let ((pointer-vector (aref worker-pointer-vector worker-id)))
-                   (assert (cffi:null-pointer-p (aref pointer-vector color)))
-                   (setf (aref pointer-vector color)
-                         (array-storage-pointer array))))))
+            for allocation across (aref allocations +constant-allocation-category+)
+            do (setf (aref (aref worker-pointer-vector +constant-allocation-category+)
+                           (allocation-color allocation))
+                     (array-storage-pointer array))))
     (with-slots (backend schedule) cenv
       (let* ((worker-pool (backend-worker-pool backend))
              (nworkers (worker-pool-size worker-pool))
@@ -254,6 +218,12 @@
              (let ((action (aref actions worker-id)))
                (lambda ()
                  (worker-execute denv action))))))
+        ;; Free all storage.
+        (loop for worker-id below nworkers do
+          (worker-enqueue
+           (worker-pool-worker worker-pool worker-id)
+           (lambda ()
+             (worker-free denv))))
         ;; Signal completion.
         (loop for worker-id below nworkers do
           (worker-enqueue
