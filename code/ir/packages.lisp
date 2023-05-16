@@ -143,6 +143,8 @@
    #:kernel-number
    #:kernel-reuse-potential
    #:kernel-stencils
+   #:kernel-targets
+   #:kernel-sources
    #:stencil-buffer
    #:stencil-input-rank
    #:stencil-output-rank
@@ -236,5 +238,12 @@
    #:check-ir
    #:interpret-kernel
    #:translate-blueprint
+   #:target-function
+   #:source-function
+   #:unpack-function
+   #:unpack-values-type
+   #:store-function
+   #:load-function
+   #:unpack-array
    #:compute-program-buffer-coloring
    #:reuse-optimizing-transformation))

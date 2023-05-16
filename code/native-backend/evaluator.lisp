@@ -144,11 +144,39 @@
       (handler-case
           (loop for invocation of-type invocation in invocations do
             (funcall (invocation-kfn invocation)
-                     (invocation-sources invocation)
+                     (invocation-kernel invocation)
+                     (invocation-iteration-space invocation)
                      (invocation-targets invocation)
+                     (invocation-sources invocation)
                      denv))
         (serious-condition (c)
           (atomics:cas serious-condition nil c))))))
+
+(defmethod target-function
+    ((backend backend))
+  'svref)
+
+(defmethod source-function
+    ((backend backend))
+  'svref)
+
+(defmethod unpack-function
+    ((backend backend)
+     (ntype typo:ntype)
+     (rank integer))
+  'native-backend-unpack)
+
+(defun native-backend-unpack (layout denv)
+  (declare (layout layout) (denv denv))
+  (let* ((storage (layout-storage layout))
+         (allocation (storage-allocation storage))
+         (category (allocation-category allocation))
+         (color  (allocation-color allocation))
+         (pointers (denv-pointers denv))
+         (pointer (aref (aref )
+                        )))
+    (values
+     )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

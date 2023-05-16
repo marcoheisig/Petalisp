@@ -91,15 +91,46 @@
                           (compile-cache (ir-backend-compile-cache ir-backend)))
                       (or (gethash blueprint compile-cache)
                           (setf (gethash blueprint compile-cache)
-                                (compile nil (translate-blueprint blueprint))))))
+                                (compile nil (translate-blueprint ir-backend blueprint))))))
                    (:interpreted
                     #'interpret-kernel))))))
 
 (defun execute-node (node)
   (let ((kernel (node-kernel node)))
-    (funcall (node-fn node) kernel (kernel-iteration-space kernel)))
+    (funcall (node-fn node)
+             kernel
+             (kernel-iteration-space kernel)
+             (kernel-targets kernel)
+             (kernel-sources kernel)
+             nil))
   (loop for other-node in (node-users node) do
     (with-accessors ((dependencies node-dependencies)) other-node
       (setf dependencies (remove node dependencies))
       (when (null dependencies)
         (pushnew other-node *worklist*)))))
+
+(defmethod target-function ((ir-backend ir-backend))
+  'ir-backend-array)
+
+(defmethod source-function ((ir-backend ir-backend))
+  'ir-backend-array)
+
+(defun ir-backend-array (alist index)
+  (declare (list alist))
+  (buffer-storage (car (nth index alist))))
+
+(defmethod unpack-function
+    ((ir-backend ir-backend)
+     (ntype typo:ntype)
+     (rank integer))
+  'unpack-array)
+
+(defmethod store-function
+    ((ir-backend ir-backend)
+     (ntype typo:ntype))
+  '(setf row-major-aref))
+
+(defmethod load-function
+    ((ir-backend ir-backend)
+     (ntype typo:ntype))
+  'row-major-aref)

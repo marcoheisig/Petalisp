@@ -30,7 +30,7 @@
   (alexandria:ensure-gethash
    blueprint
    (backend-compile-cache backend)
-   (compile nil (translate-blueprint blueprint))))
+   (compile nil (translate-blueprint backend blueprint))))
 
 (defmethod delete-backend
     ((backend backend))

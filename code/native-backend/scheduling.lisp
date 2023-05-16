@@ -6,6 +6,7 @@
             (:predicate invocationp)
             (:constructor make-invocation))
   (kfn nil :type function :read-only t)
+  (kernel nil :type kernel :read-only t)
   (iteration-space nil :type shape :read-only t)
   (targets nil :type (simple-array layout (*)))
   (sources nil :type (simple-array layout (*))))
@@ -50,7 +51,7 @@
                      (adjust-array weights (array-total-size sources)
                                    :fill-pointer (fill-pointer sources))
                      (fill weights 0)
-                     (loop for writer across writers do
+                     (loop for writer in writers do
                        (let ((niterations (shape-size (kernel-shard-iteration-space writer))))
                          (loop for source in (kernel-shard-sources writer) do
                            (incf (aref weights (position source sources))
@@ -84,7 +85,7 @@
      (worker-pool-size (backend-worker-pool backend)))))
 
 (defun compute-copy-invocations (buffer-shards backend)
-  (declare (simple-vector buffer-shards))
+  (declare (vector buffer-shards))
   (let ((copy-invocations '()))
     (flet ((collect-copy-invocation (from to)
              (declare (buffer-shard from to))
@@ -94,6 +95,7 @@
                       (buffer-shard-shape to))))
                (push
                 (make-invocation
+                 :kernel (make-kernel :iteration-space iteration-space)
                  :iteration-space iteration-space
                  :sources (vector from)
                  :targets (vector to)
@@ -134,6 +136,7 @@
   (loop for kernel-shard across kernel-shards
         collect
         (make-invocation
+         :kernel (kernel-shard-kernel kernel-shard)
          :iteration-space (kernel-shard-iteration-space kernel-shard)
          :sources (map 'vector #'buffer-shard-layout (kernel-shard-sources kernel-shard))
          :targets (map 'vector #'buffer-shard-layout (kernel-shard-targets kernel-shard))

@@ -12,6 +12,48 @@
 ;;; wraps it in suitable bindings such that the variables described by some
 ;;; proxies are defined.
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Customization
+
+(defgeneric target-function (client)
+  (:documentation
+   "Returns the name of a function that will be invoked with the values of the
+.targets. kernel parameter and an index, and that returns the target with that
+index."))
+
+(defgeneric source-function (client)
+  (:documentation
+   "Returns the name of a function that will be invoked with the
+.sources. kernel parameter and an index, and that returns the source with that
+index."))
+
+(defgeneric unpack-function (client ntype rank)
+  (:documentation
+   "Returns the name of a function for unpacking a storage object and environment
+into a base, an offset, and as many strides as the supplied RANK."))
+
+(defgeneric unpack-values-type (client ntype rank)
+  (:documentation
+   "Returns the values type of the unpack function when applied to some source and
+environment.")
+  (:method (client ntype rank)
+    `(values t fixnum ,@(loop repeat rank collect '(and unsigned-byte fixnum)))))
+
+(defgeneric store-function (client ntype)
+  (:documentation
+   "Returns the name of a function for storing an object of the supplied ntype at
+some base and index."))
+
+(defgeneric load-function (client ntype)
+  (:documentation
+   "Returns the name of a function for loading an object of the supplied ntype
+from some base and index."))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Proxies
+
 (defstruct proxy
   ;; The index of the innermost loop that the proxy depends on.  The level
   ;; of a proxy that doesn't depend on any loop has a level of zero.
@@ -60,6 +102,32 @@
              :level (1+ index)
              :values (vector (gensym "INDEX")))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Memory References
+
+(defstruct memref
+  ;; The ntype of each element being referenced.
+  (ntype nil :type typo:ntype)
+  ;; The rank of the storage being referenced.
+  (rank nil :type rank)
+  ;; The proxy for the base of this memory region.
+  (base-proxy nil :type proxy)
+  ;; The proxy for the offset of this memory region.
+  (offset-proxy nil :type proxy)
+  ;; A vector of one proxy for each axis of the memory region.
+  (stride-proxies nil :type (simple-array proxy (*)))
+  ;; A vector of one proxy for each transformation into the reference.
+  (index-proxies nil :type (simple-array proxy (*))))
+
+(defun memref-stride-proxy (memref axis)
+  (declare (memref memref))
+  (aref (memref-stride-proxies memref) axis))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Translation
+
 ;; A vector filled with instruction blueprints, which are later replaced by
 ;; proxies.
 (defvar *instructions*)
@@ -70,66 +138,56 @@
 ;; A vector of proxies - one for the index of each loop.
 (defvar *index-proxies*)
 
-;; A vector of proxies - one for each array being written to.
-(defvar *target-array-proxies*)
+;; A vector with the memref corresponding to each target.
+(defvar *target-memrefs*)
 
-;; A vector of proxies - one for each array being read from.
-(defvar *source-array-proxies*)
+;; A vector with the memref corresponding to each source.
+(defvar *source-memrefs*)
 
-;; A vector of vectors of proxies - one vector of proxies for each target
-;; array.
-(defvar *target-stride-proxies-vector*)
+;; Count the number of call instructions whose operator is :ANY (meaning the
+;; function is not hard-coded, but supplied from the outside).
+(defvar *function-counter*)
 
-;; A vector of vectors of proxies - one vector of proxies for each source
-;; array.
-(defvar *source-stride-proxies-vector*)
+(defun next-function-index ()
+  (prog1 *function-counter*
+    (incf *function-counter*)))
 
-;; A vector of vectors of proxies - one vector of proxies for each target
-;; array.
-(defvar *target-index-proxies-vector*)
+;; An object that is supplied as a first argument to several generic
+;; translation functions, so that users can define more specialized methods.
+(defvar *client*)
 
-;; A vector of vectors of proxies - one vector of proxies for each source
-;; array.
-(defvar *source-index-proxies-vector*)
-
-(defun translate-blueprint (blueprint)
+(defun translate-blueprint (client blueprint)
   (trivia:ematch (ucons:tree-from-utree blueprint)
     ((list* iteration-space targets sources instructions)
      (let* ((rank (length iteration-space))
+            (*client* client)
             (*index-proxies* (make-index-proxy-vector rank))
             (*rproxies-vector* (make-array (1+ rank) :initial-element '()))
-            (*instructions* (coerce instructions 'simple-vector)))
-       (multiple-value-bind (wrap-in-loop-vector)
-           (translate-iteration-space iteration-space)
-         (multiple-value-bind (*target-array-proxies*
-                               *target-stride-proxies-vector*
-                               *target-index-proxies-vector*)
-             (translate-array-info targets :targets)
-           (multiple-value-bind (*source-array-proxies*
-                                 *source-stride-proxies-vector*
-                                 *source-index-proxies-vector*)
-               (translate-array-info sources :sources)
-             ;; Now convert instructions to proxies.
-             (loop for instruction across *instructions*
-                   for instruction-number from 0
-                   do (setf (svref *instructions* instruction-number)
-                            (translate-instruction instruction-number)))
-             ;; Finally, convert the proxies of each level to suitable
-             ;; bindings and apply the loop wrappers.
-             `(lambda (.kernel. .iteration-space. &optional (.buffer-storage. #'buffer-storage))
-                (declare (ignorable .iteration-space.))
-                (declare (kernel .kernel.))
-                (declare (function .buffer-storage.))
-                (with-unsafe-optimizations
-                  (let ((.instructions. (kernel-instruction-vector .kernel.)))
-                    (declare (ignorable .instructions.))
-                    ,(let ((body '(values)))
-                       (loop for axis from rank downto 0 do
-                         (let ((proxies (reverse (aref *rproxies-vector* axis))))
-                           (setf body `(bind ,@(mapcar #'proxy-binding proxies)
-                                         (() ,body (values)))))
-                         (setf body (funcall (aref wrap-in-loop-vector axis) body)))
-                       body)))))))))))
+            (*instructions* (coerce instructions 'simple-vector))
+            (*target-memrefs* (translate-memrefs targets :targets))
+            (*source-memrefs* (translate-memrefs sources :sources))
+            (*function-counter* 0)
+            (wrap-in-loop-vector (translate-iteration-space iteration-space)))
+       ;; Translate all instructions.
+       (loop for instruction across *instructions*
+             for instruction-number from 0
+             do (setf (svref *instructions* instruction-number)
+                      (translate-instruction instruction-number)))
+       ;; Convert the proxies of each level to suitable bindings and apply the
+       ;; loop wrappers.
+       `(lambda (.kernel. .iteration-space. .targets. .sources. .environment.
+                 &aux (.instructions. (kernel-instruction-vector .kernel.)))
+          (declare (kernel .kernel.))
+          (declare (shape .iteration-space.))
+          (declare (ignorable .kernel. .iteration-space. .targets. .sources. .instructions. .environment.))
+          (with-unsafe-optimizations
+            ,(let ((body '(values)))
+               (loop for axis from rank downto 0 do
+                 (let ((proxies (reverse (aref *rproxies-vector* axis))))
+                   (setf body `(bind ,@(mapcar #'proxy-binding proxies)
+                                 (() ,body (values)))))
+                 (setf body (funcall (aref wrap-in-loop-vector axis) body)))
+               body)))))))
 
 (defun meta-funcall (number-of-values operator-proxy &rest argument-proxies)
   (let* ((level (reduce #'max (list* operator-proxy argument-proxies) :key #'proxy-level))
@@ -227,25 +285,27 @@
               collect
               (proxy-ref (aref *instructions* instruction-number) value-n))))
       ((list* :load array-number transformation-number offsets)
-       (meta-funcall
-        1
-        (constant-proxy 'row-major-aref)
-        (svref *source-array-proxies* array-number)
-        (let* ((stride-proxies (aref *source-stride-proxies-vector* array-number))
-               (index-proxy (aref (aref *source-index-proxies-vector* array-number)
-                                  transformation-number)))
-          (apply #'meta-index-+
-                   index-proxy
-                   (loop for offset in offsets
-                         for stride-proxy across stride-proxies
-                         collect (meta-index-* stride-proxy (constant-proxy offset)))))))
+       (with-slots (ntype rank base-proxy stride-proxies index-proxies)
+           (aref *source-memrefs* array-number)
+         (meta-funcall
+          1
+          (constant-proxy (load-function *client* ntype))
+          base-proxy
+          (apply
+           #'meta-index-+
+           (aref index-proxies transformation-number)
+           (loop for offset in offsets
+                 for stride-proxy across stride-proxies
+                 collect (meta-index-* stride-proxy (constant-proxy offset)))))))
       ((list :store (list value-n instruction-number) array-number transformation-number)
-       (meta-funcall
-        0
-        (constant-proxy '(setf row-major-aref))
-        (proxy-ref (aref *instructions* instruction-number) value-n)
-        (svref *target-array-proxies* array-number)
-        (aref (aref *target-index-proxies-vector* array-number) transformation-number)))
+       (with-slots (ntype rank base-proxy stride-proxies index-proxies)
+           (aref *target-memrefs* array-number)
+         (meta-funcall
+          0
+          (constant-proxy (store-function *client* ntype))
+          (proxy-ref (aref *instructions* instruction-number) value-n)
+          base-proxy
+          (aref index-proxies transformation-number))))
       ((list :iref (list permutation scaling))
        (let* ((instruction
                 (proxy-value
@@ -327,118 +387,109 @@
                                   :do ,form))))))
     (values wrap-in-loop-vector)))
 
-(defun translate-array-info (array-info kind)
-  (let* ((n (length array-info))
-         (array-proxies (make-array n))
-         (stride-proxies-vector (make-array n))
-         (index-proxies-vector (make-array n))
-         (entries-proxy
-           (ensure-proxy
-            :number-of-values n
-            :name "ENTRY"
-            :expr
-            `(values-list
-              ,(ecase kind
-                 (:sources `(kernel-sources .kernel.))
-                 (:targets `(kernel-targets .kernel.)))))))
-    ;; Loop over each array.
-    (loop
-      for (ntype . list-of-irefs) in array-info
-      for array-index from 0 below n
-      for entry-proxy = (proxy-ref entries-proxy array-index)
-      do (let* ((buffer-proxy (ensure-proxy
-                               :expr `(first ,(proxy-value entry-proxy))
-                               :name "BUFFER"))
-                (element-type (typo:ntype-type-specifier ntype))
-                (array-proxy (ensure-proxy
-                              :name (ecase kind (:sources "SRC") (:targets "DST"))
-                              :expr `(funcall .buffer-storage. ,(proxy-value buffer-proxy))
-                              :type `(values (simple-array ,element-type) &optional)))
-                (n-refs (length list-of-irefs))
-                (ref-type (ecase kind (:sources 'stencil) (:targets 'store-instruction)))
-                (refs-proxy (ensure-proxy
-                             :name (ecase kind (:sources "STENCIL") (:targets "STORE"))
-                             :number-of-values n-refs
-                             :expr `(values-list (rest ,(proxy-value entry-proxy)))
-                             :type `(values ,@(loop repeat n-refs collect ref-type) &optional)))
-                (rank (length (first list-of-irefs)))
-                (stride-proxies (make-array rank))
-                (index-proxies (make-array n-refs)))
-           (setf (svref array-proxies array-index) array-proxy)
-           (setf (svref stride-proxies-vector array-index) stride-proxies)
-           (setf (svref index-proxies-vector array-index) index-proxies)
-           ;; Bind the array's strides.
-           (unless (zerop rank)
-             (setf (svref stride-proxies (1- rank))
-                   (constant-proxy 1))
-             ;; The strides of all previous axes are the product of the
-             ;; stride of the previous axis and the size of that axis.
-             (loop for axis from (- rank 2) downto 0
-                   for expr = `(array-dimension ,(proxy-value array-proxy) ,(1+ axis))
-                   do (setf (svref stride-proxies axis)
-                            (meta-index-*
-                             (ensure-proxy :expr expr :name "DIM")
-                             (svref stride-proxies (1+ axis))))))
-           ;; Loop over each reference into that array.
-           (loop
-             for ref-index from 0 below n-refs
-             for irefs in list-of-irefs
-             do (let* ((ref-proxy (proxy-ref refs-proxy ref-index))
-                       (ref-value (proxy-value ref-proxy)))
-                  (multiple-value-bind (offsets-proxy scalings-proxy)
-                      (ecase kind
-                        (:sources
-                         (values (ensure-proxy
-                                  :expr `(stencil-center ,ref-value)
-                                  :name "CENTER")
-                                 (ensure-proxy
-                                  :expr `(stencil-scalings ,ref-value)
-                                  :name "SCALINGS")))
-                        (:targets
-                         (let* ((transformation-proxy
-                                  (ensure-proxy
-                                   :expr `(store-instruction-transformation ,ref-value)
-                                   :name "TRANSFORMATION"))
-                                (tr (proxy-value transformation-proxy)))
-                           (values (ensure-proxy
-                                    :expr `(transformation-offsets ,tr)
-                                    :name "OFFSETS")
-                                   (ensure-proxy
-                                    :expr `(transformation-scalings ,tr)
-                                    :name "SCALINGS")))))
-                    (setf (aref index-proxies ref-index)
-                          (apply
-                           #'meta-index-+
-                             ;; Loop over each output index of that reference.
-                           (loop
-                             for (permutation scaling) in irefs
-                             for axis from 0
-                             for stride-proxy across stride-proxies
-                             collect
-                             (meta-index-*
-                              stride-proxy
+(defun translate-memrefs (references kind)
+  (let* ((nmemrefs (length references))
+         (memrefs (make-array nmemrefs)))
+    (loop for reference in references for index below nmemrefs do
+      (setf (aref memrefs index)
+            (translate-memref reference index kind)))
+    memrefs))
+
+(defun translate-memref (reference position kind)
+  (destructuring-bind (ntype . transformation-blueprints) reference
+    (let* ((nstencils (length transformation-blueprints))
+           (stencils-proxy
+             (ensure-proxy
+              :number-of-values nstencils
+              :name "STENCIL"
+              :expr
+              `(values-list
+                (cdr
+                 (nth ,position
+                      ,(ecase kind
+                         (:sources `(kernel-sources .kernel.))
+                         (:targets `(kernel-targets .kernel.))))))))
+           (rank (length (first transformation-blueprints)))
+           (unpack-proxy
+             (ensure-proxy
+              :number-of-values (+ rank 2)
+              :expr `(,(unpack-function *client* ntype rank)
+                      (,(target-function *client*)
+                       ,(ecase kind
+                          (:sources '.sources.)
+                          (:targets '.targets.))
+                       ,position)
+                      .environment.)
+              :type (unpack-values-type *client* ntype rank)))
+           (stride-proxies (make-array rank)))
+      (loop for axis below rank do
+        (setf (svref stride-proxies axis)
+              (proxy-ref unpack-proxy (+ axis 2))))
+      (make-memref
+       :ntype ntype
+       :rank rank
+       :base-proxy (proxy-ref unpack-proxy 0)
+       :offset-proxy (proxy-ref unpack-proxy 1)
+       :stride-proxies stride-proxies
+       :index-proxies
+       (let ((index-proxies (make-array (length transformation-blueprints))))
+         (loop
+           for irefs in transformation-blueprints
+           for index from 0
+           for stencil-proxy = (proxy-ref stencils-proxy index)
+           for stencil = (proxy-value stencil-proxy) do
+             (multiple-value-bind (offsets-proxy scalings-proxy)
+                 (ecase kind
+                   (:sources
+                    (values (ensure-proxy
+                             :expr `(stencil-center ,stencil)
+                             :name "CENTER")
+                            (ensure-proxy
+                             :expr `(stencil-scalings ,stencil)
+                             :name "SCALINGS")))
+                   (:targets
+                    (let* ((transformation-proxy
+                             (ensure-proxy
+                              :expr `(store-instruction-transformation ,stencil)
+                              :name "TRANSFORMATION"))
+                           (tr (proxy-value transformation-proxy)))
+                      (values (ensure-proxy
+                               :expr `(transformation-offsets ,tr)
+                               :name "OFFSETS")
                               (ensure-proxy
-                               :expr `(aref ,(proxy-value offsets-proxy) ,axis)
-                               :name "OFFSET"))
-                             collect
-                             (if (null permutation)
-                                 (constant-proxy 0)
-                                 (meta-index-*
-                                  stride-proxy
-                                  (if (eql scaling :any)
-                                      (ensure-proxy
-                                       :expr `(aref ,(proxy-value scalings-proxy) ,axis)
-                                       :name "SCALING")
-                                      (constant-proxy scaling))
-                                  (svref *index-proxies* permutation)))))))))))
-    (values
-     array-proxies
-     stride-proxies-vector
-     index-proxies-vector)))
+                               :expr `(transformation-scalings ,tr)
+                               :name "SCALINGS")))))
+               (setf (aref index-proxies index)
+                     (apply
+                      #'meta-index-+
+                      (proxy-ref unpack-proxy 1)
+                      ;; Loop over each output index of that reference.
+                      (loop
+                        for (permutation scaling) in irefs
+                        for axis from 0
+                        for stride-proxy across stride-proxies
+                        collect
+                        (meta-index-*
+                         stride-proxy
+                         (ensure-proxy
+                          :expr `(aref ,(proxy-value offsets-proxy) ,axis)
+                          :name "OFFSET"))
+                        collect
+                        (if (null permutation)
+                            (constant-proxy 0)
+                            (meta-index-*
+                             stride-proxy
+                             (if (eql scaling :any)
+                                 (ensure-proxy
+                                  :expr `(aref ,(proxy-value scalings-proxy) ,axis)
+                                  :name "SCALING")
+                                 (constant-proxy scaling))
+                             (svref *index-proxies* permutation))))))))
+         index-proxies)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Auxiliary Macros
+;;; Auxiliary Functions and Macros
 
 (defun index-+ (&rest fixnums)
   (apply #'+ fixnums))
@@ -473,3 +524,25 @@ To preserve sanity, compiler efficiency hints are disabled by default. Use
 WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
   `(without-compiler-notes
     (with-unsafe-optimizations* ,@body)))
+
+(defun unpack-array (array environment)
+  (declare (array array))
+  (declare (ignore environment))
+  (let ((rank (array-rank array)))
+    (macrolet ((adim (axis) `(array-dimension array ,axis)))
+      (case rank
+        (0 (values array 0))
+        (1 (values array 0 1))
+        (2 (values array 0 (adim 1) 1))
+        (3 (values array 0 (* (adim 1) (adim 2)) (adim 2) 1))
+        (4 (values array 0 (* (adim 1) (adim 2) (adim 3)) (* (adim 2) (adim 3)) (adim 3) 1))
+        (otherwise
+         (apply
+          #'values
+          array
+          0
+          (let ((strides '()))
+            (loop for axis from rank downto 1
+                  for stride = 1 then (* stride (array-dimension array axis))
+                  do (push stride strides))
+            strides)))))))

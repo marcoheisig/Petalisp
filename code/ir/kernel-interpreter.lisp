@@ -6,7 +6,8 @@
 ;;; can be used for testing or for executing small kernels for which
 ;;; compilation is not worth it.
 
-(defun interpret-kernel (kernel iteration-space)
+(defun interpret-kernel (kernel iteration-space targets sources environment)
+  (declare (ignore targets sources environment))
   (let* ((instruction-vector (kernel-instruction-vector kernel))
          (offset-vector (make-array (length instruction-vector)))
          (value-vector-length 0))

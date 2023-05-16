@@ -27,7 +27,50 @@
     (alexandria:ensure-gethash
      blueprint
      (xmas-backend-compile-cache xmas-backend)
-     (compile nil (translate-blueprint blueprint)))))
+     (compile nil (translate-blueprint xmas-backend blueprint)))))
+
+(defmethod target-function
+    ((xmas-backend xmas-backend))
+  'xmas-backend-buffer)
+
+(defmethod source-function
+    ((xmas-backend xmas-backend))
+  'xmas-backend-buffer)
+
+(defun xmas-backend-buffer (alist index)
+  (declare (list alist) (unsigned-byte index))
+  (car (nth index alist)))
+
+(defmethod unpack-function
+    ((xmas-backend xmas-backend)
+     (ntype typo:ntype)
+     (rank integer))
+  'xmas-backend-unpack)
+
+(defmethod unpack-values-type
+  ((xmas-backend xmas-backend)
+   (ntype typo:ntype)
+   (rank integer))
+  `(values
+    (simple-array ,(typo:ntype-type-specifier ntype))
+    fixnum
+    ,@(loop repeat rank collect '(and unsigned-byte fixnum))
+    &optional))
+
+(defun xmas-backend-unpack (buffer storage-vector)
+  (unpack-array
+   (svref storage-vector (buffer-number buffer))
+   nil))
+
+(defmethod store-function
+    ((xmas-backend xmas-backend)
+     (ntype typo:ntype))
+  '(setf row-major-aref))
+
+(defmethod load-function
+    ((xmas-backend xmas-backend)
+     (ntype typo:ntype))
+  'row-major-aref)
 
 (defun make-xmas-backend (&key (threads (petalisp.utilities:number-of-cpus)))
   (check-type threads (integer 1))
@@ -324,7 +367,9 @@
             (funcall (subtask-fn subtask)
                      (subtask-kernel subtask)
                      (subtask-iteration-space subtask)
-                     (lambda (buffer) (svref storage-vector (buffer-number buffer)))))
+                     (petalisp.ir:kernel-targets (subtask-kernel subtask))
+                     (petalisp.ir:kernel-sources (subtask-kernel subtask))
+                     storage-vector))
         (serious-condition (c)
           (funcall signal-serious-condition c))))
     ;; Finally, synchronize all workers.

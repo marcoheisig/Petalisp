@@ -8,5 +8,6 @@
    #:petalisp.core
    #:petalisp.ir)
   (:shadow #:petalisp.core #:request #:backend)
+  (:import-from #:petalisp.ir #:readers #:writers #:sources #:targets)
   (:export
    #:make-native-backend))
