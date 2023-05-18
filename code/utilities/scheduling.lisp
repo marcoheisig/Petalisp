@@ -5,8 +5,8 @@
   (:export
    #:node
    #:nodep
-   #:node-predecessors
-   #:node-successors
+   #:node-predecessor-alist
+   #:node-successor-alist
    #:node-depth
    #:node-height
    #:make-graph
@@ -107,12 +107,12 @@
    (graph-object-nodes graph)
    (make-node :object object)))
 
-(defun graph-add-edge (graph from to weight)
-  (declare (graph graph) (node from to))
+(defun graph-add-edge (graph predecessor successor weight)
+  (declare (graph graph) (node predecessor successor))
   (declare (ignore graph))
-  (assert (not (eq from to)))
-  (push (cons from weight) (node-predecessor-alist to))
-  (push (cons to weight) (node-successor-alist from)))
+  (assert (not (eq predecessor successor)))
+  (push (cons predecessor weight) (node-predecessor-alist successor))
+  (push (cons successor weight) (node-successor-alist predecessor)))
 
 (defun graph-compute-node-height (graph)
   (graph-compute-distances

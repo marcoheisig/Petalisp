@@ -23,4 +23,5 @@
    (:file "backend")
    (:file "scheduling")
    (:file "allocation")
-   (:file "evaluator")))
+   (:file "evaluator")
+   (:file "compilation")))

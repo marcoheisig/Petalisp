@@ -47,20 +47,20 @@ arrays that were referenced in the schedule."
              (push-allocation (allocation)
                (declare (allocation allocation))
                (with-slots (size-in-bytes category) allocation
-                 (let ((bucket (1- (integer-length size-in-bytes))))
+                 (let ((bucket (1- (integer-length (1- size-in-bytes)))))
                    (push allocation (aref allocation-lists category bucket)))))
              (pop-allocation (category size-in-bytes)
-               (let ((bucket (1- (integer-length size-in-bytes))))
+               (let ((bucket (1- (integer-length (1- size-in-bytes)))))
                  (or (pop (aref allocation-lists category bucket))
                      (prog1 (make-allocation
-                             :size-in-bytes size-in-bytes
+                             :size-in-bytes (expt 2 (1+ bucket))
                              :category category
                              :color (next-color category))))))
              (next-color (category)
                (prog1 (aref allocation-colors category)
                  (incf (aref allocation-colors category)))))
       ;; Process all constants.
-      (loop for (buffer . lazy-array) in (program-root-buffers program) do
+      (loop for (buffer . lazy-array) in (program-leaf-alist program) do
         (let ((delayed-action (lazy-array-delayed-action lazy-array)))
           (when (delayed-array-p delayed-action)
             (let* ((array (delayed-array-storage delayed-action))
@@ -96,28 +96,30 @@ arrays that were referenced in the schedule."
       ;; is read from.
       (loop for action-vector in schedule do
         (loop for action across action-vector do
-          (loop for invocation in (action-work-invocations action) do
-            (loop for layout across (invocation-sources invocation) do
-              (incf (gethash (layout-storage layout) storage-counter-table 0))))))
+          (unless (not action)
+            (loop for invocation in (action-work-invocations action) do
+              (loop for layout across (invocation-sources invocation) do
+                (incf (gethash (layout-storage layout) storage-counter-table 0)))))))
       ;; Traverse the schedule again, and assign each layout's storage an
       ;; allocation.
       (loop for action-vector in schedule do
         (loop for action across action-vector
               for category from +worker-allocation-category-offset+ do
-                (loop for invocation in (action-work-invocations action) do
-                  ;; Ensure that each target is allocated.
-                  (loop for target-layout across (invocation-targets invocation) do
-                    (let ((storage (layout-storage target-layout)))
-                      (unless (storage-allocation storage)
-                        (storage-bind
-                         storage
-                         (pop-allocation category (storage-size-in-bytes storage))))))
-                  ;; Ensure that sources that are no longer used after this action
-                  ;; are freed.
-                  (loop for source-layout across (invocation-sources invocation) do
-                    (let ((storage (layout-storage source-layout)))
-                      (when (zerop (decf (gethash storage storage-counter-table)))
-                        (push-allocation (storage-allocation storage))))))))
+                (unless (not action)
+                  (loop for invocation in (action-work-invocations action) do
+                    ;; Ensure that each target is allocated.
+                    (loop for target-layout across (invocation-targets invocation) do
+                      (let ((storage (layout-storage target-layout)))
+                        (unless (storage-allocation storage)
+                          (storage-bind
+                           storage
+                           (pop-allocation category (storage-size-in-bytes storage))))))
+                    ;; Ensure that sources that are no longer used after this action
+                    ;; are freed.
+                    (loop for source-layout across (invocation-sources invocation) do
+                      (let ((storage (layout-storage source-layout)))
+                        (when (zerop (decf (gethash storage storage-counter-table)))
+                          (push-allocation (storage-allocation storage)))))))))
       ;; Create and return the result vectors.
       (let* ((allocations (make-array ncategories))
              (nconstants (length reversed-constant-array-list))
@@ -136,6 +138,9 @@ arrays that were referenced in the schedule."
               for constant-array in reversed-constant-array-list
               do (setf (aref constant-arrays index)
                        constant-array))
+        (loop for per-category-allocations across allocations do
+          (loop for allocation across per-category-allocations do
+            (assert (allocationp allocation))))
         (values allocations constant-arrays)))))
 
 (defun buffer-shard-bind (buffer-shard allocation)
@@ -144,12 +149,10 @@ arrays that were referenced in the schedule."
    allocation))
 
 (defun storage-bind (storage allocation)
-  (let* ((size (storage-size storage))
-         (ntype (storage-ntype storage))
-         (bytes (ceiling (* size (typo:ntype-bits ntype)) 8)))
-    (assert (not (storage-allocation storage)))
-    (assert (<= bytes (allocation-size-in-bytes allocation)))
-    (setf (storage-allocation storage) allocation)))
+  (assert (not (storage-allocation storage)))
+  (assert (<= (storage-size-in-bytes storage)
+              (allocation-size-in-bytes allocation)))
+  (setf (storage-allocation storage) allocation))
 
 (defun array-size-in-bytes (array)
   (bytes-from-bits

@@ -127,14 +127,20 @@
 
 (defun worker-free (denv)
   (declare (denv denv))
+  (barrier)
   (let* ((worker-id (worker-id *worker*))
          (category (+ worker-id +worker-allocation-category-offset+)))
     (map nil #'cffi:foreign-free (aref (denv-pointers denv) category))))
 
 (defun worker-execute (denv action)
-  (declare (denv denv) (action action))
-  (worker-synchronize-and-invoke denv (action-copy-invocations action))
-  (worker-synchronize-and-invoke denv (action-work-invocations action)))
+  (declare (denv denv) (type (or null action) action))
+  (if (not action)
+      (progn
+        (worker-synchronize-and-invoke denv '())
+        (worker-synchronize-and-invoke denv '()))
+      (progn
+        (worker-synchronize-and-invoke denv (action-copy-invocations action))
+        (worker-synchronize-and-invoke denv (action-work-invocations action)))))
 
 (defun worker-synchronize-and-invoke (denv invocations)
   (declare (denv denv) (list invocations))
@@ -143,40 +149,17 @@
     (unless serious-condition
       (handler-case
           (loop for invocation of-type invocation in invocations do
-            (funcall (invocation-kfn invocation)
-                     (invocation-kernel invocation)
-                     (invocation-iteration-space invocation)
-                     (invocation-targets invocation)
-                     (invocation-sources invocation)
-                     denv))
+            ;; TODO
+            (unless (empty-shape-p (invocation-iteration-space invocation))
+              (funcall (invocation-kfn invocation)
+                       (invocation-kernel invocation)
+                       (invocation-iteration-space invocation)
+                       (invocation-targets invocation)
+                       (invocation-sources invocation)
+                       denv)))
+        #+(or)
         (serious-condition (c)
           (atomics:cas serious-condition nil c))))))
-
-(defmethod target-function
-    ((backend backend))
-  'svref)
-
-(defmethod source-function
-    ((backend backend))
-  'svref)
-
-(defmethod unpack-function
-    ((backend backend)
-     (ntype typo:ntype)
-     (rank integer))
-  'native-backend-unpack)
-
-(defun native-backend-unpack (layout denv)
-  (declare (layout layout) (denv denv))
-  (let* ((storage (layout-storage layout))
-         (allocation (storage-allocation storage))
-         (category (allocation-category allocation))
-         (color  (allocation-color allocation))
-         (pointers (denv-pointers denv))
-         (pointer (aref (aref )
-                        )))
-    (values
-     )))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -186,7 +169,7 @@
     ((backend backend)
      (unknowns list)
      (lazy-arrays list))
-  (funcall (evaluator-template (length unknowns) (length lazy-arrays))
+  (funcall (evaluator-template (length lazy-arrays) (length unknowns))
            (make-cenv backend unknowns lazy-arrays)))
 
 (let ((cache (make-hash-table)))
@@ -195,13 +178,14 @@
      number-of-arguments
      (alexandria:ensure-gethash number-of-results cache (make-hash-table)))
     (let ((results (result-variables number-of-results))
-          (arguments (result-variables number-of-results)))
+          (arguments (argument-variables number-of-arguments)))
       (compile
        nil
        `(lambda (cenv)
-          (declare (cenv cenv))
-          (let (,@results ,@arguments)
+          (declare (cenv cenv) (optimize (safety 3)))
+          (lambda (,@results ,@arguments)
             (let ((denv (make-denv cenv)))
+              (declare (denv denv))
               ,@(loop for result in results for index from 0
                       collect `(bind-result denv ,result ,index))
               ,@(loop for argument in arguments for index from 0
@@ -209,7 +193,7 @@
               (evaluate denv)
               (values
                ,@(loop for index below number-of-results
-                       collect `(get-result denv))))))))))
+                       collect `(get-result denv ,index))))))))))
 
 (defun result-variables (n)
   (loop for i below n
@@ -220,12 +204,13 @@
         collect (intern (format nil "~A~D" "SRC" i) #.*package*)))
 
 (defun evaluate (denv)
-  (with-slots (cenv worker-pointer-vector result-arrays) denv
+  (declare (denv denv))
+  (with-slots (cenv pointers result-arrays) denv
     ;; Bind all constants.
     (with-slots (allocations constant-arrays) cenv
       (loop for array across constant-arrays
             for allocation across (aref allocations +constant-allocation-category+)
-            do (setf (aref (aref worker-pointer-vector +constant-allocation-category+)
+            do (setf (aref (aref pointers +constant-allocation-category+)
                            (allocation-color allocation))
                      (array-storage-pointer array))))
     (with-slots (backend schedule) cenv
@@ -246,12 +231,6 @@
              (let ((action (aref actions worker-id)))
                (lambda ()
                  (worker-execute denv action))))))
-        ;; Free all storage.
-        (loop for worker-id below nworkers do
-          (worker-enqueue
-           (worker-pool-worker worker-pool worker-id)
-           (lambda ()
-             (worker-free denv))))
         ;; Signal completion.
         (loop for worker-id below nworkers do
           (worker-enqueue
@@ -268,4 +247,6 @@
           (worker-enqueue
            (worker-pool-worker worker-pool worker-id)
            (lambda ()
-             (worker-free denv))))))))
+             (worker-free denv))))
+        ;; Wait for completion.
+        (request-wait request)))))

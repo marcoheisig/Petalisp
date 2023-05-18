@@ -424,7 +424,9 @@ from some base and index."))
            (stride-proxies (make-array rank)))
       (loop for axis below rank do
         (setf (svref stride-proxies axis)
-              (proxy-ref unpack-proxy (+ axis 2))))
+              (if (= axis (1- rank))
+                  (constant-proxy 1)
+                  (proxy-ref unpack-proxy (+ axis 2)))))
       (make-memref
        :ntype ntype
        :rank rank

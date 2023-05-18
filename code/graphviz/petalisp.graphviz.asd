@@ -23,4 +23,5 @@
    (:file "data-flow-graph")
    (:file "ir")
    (:file "class-diagram")
+   (:file "scheduling")
    (:file "view")))

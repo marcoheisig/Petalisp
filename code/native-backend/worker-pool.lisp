@@ -24,6 +24,8 @@
   (workers nil
    :type simple-vector
    :read-only t)
+  ;; A boolean that is set to NIL once the worker pool's threads are deleted.
+  (active t :type boolean)
   ;; The sense of this worker pool's barrier. It switches atomically
   ;; between :A and :B whenever its worker threads run into a barrier.
   (barrier-sense :A
@@ -64,6 +66,13 @@
   ;; the worker.
   (serious-conditions '()
    :type list))
+
+(defmethod print-object ((worker worker) stream)
+  (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
+          (class-name (class-of worker))
+          :id (worker-id worker)
+          :barrier-sense (worker-barrier-sense worker)
+          :serious-conditions (worker-serious-conditions worker)))
 
 (declaim (worker *worker*))
 (defvar *worker*) ; Bound within each worker thread.
@@ -108,6 +117,7 @@
     (catch 'join
       (loop
         (handler-case (loop (funcall (lparallel.queue:pop-queue queue)))
+          #+(or)
           (serious-condition (c)
             (push c (worker-serious-conditions *worker*))))))))
 
@@ -117,14 +127,21 @@
 
 (defun worker-pool-join (worker-pool)
   (declare (worker-pool worker-pool))
-  (loop for id from 0 below (worker-pool-size worker-pool) do
-    (worker-enqueue
-     (worker-pool-worker worker-pool id)
-     (lambda () (throw 'join nil))))
-  (loop for id from 0 below (worker-pool-size worker-pool) do
-    (bordeaux-threads:join-thread
-     (shiftf (worker-thread (worker-pool-worker worker-pool id))
-             nil))))
+  (loop
+    (cond ((not (worker-pool-active worker-pool))
+           (return-from worker-pool-join nil))
+          ((worker-pool-active worker-pool)
+           (when (atomics:cas (worker-pool-active worker-pool) t nil)
+             (loop for id from 0 below (worker-pool-size worker-pool) do
+               (worker-enqueue
+                (worker-pool-worker worker-pool id)
+                (lambda ()
+                  (throw 'join nil))))
+             (loop for id from 0 below (worker-pool-size worker-pool) do
+               (bordeaux-threads:join-thread
+                (shiftf (worker-thread (worker-pool-worker worker-pool id))
+                        nil)))
+             (return-from worker-pool-join t))))))
 
 (let ((lock (bordeaux-threads:make-lock)))
   (defun message (format-string &rest arguments)

@@ -61,7 +61,7 @@
             (:predicate layoutp)
             (:constructor make-layout))
   ;; The index of the first storage element referenced by this layout.
-  (offset 0 :type unsigned-byte :read-only t)
+  (offset 0 :type fixnum :read-only t)
   ;; A vector whose Ith entry is the number of elements to skip when changing
   ;; the Ith index component of an index by one.
   (strides nil :type (simple-array unsigned-byte (*)) :read-only t)
@@ -125,6 +125,7 @@
   (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
           (class-name (class-of buffer-shard))
           :domain (buffer-shard-domain buffer-shard)
+          :shape (buffer-shard-shape buffer-shard)
           :buffer (buffer-shard-buffer buffer-shard)
           :split (buffer-shard-split buffer-shard)))
 
@@ -282,7 +283,7 @@ children.  Useful for debugging."
          (right-padding-vec (make-array rank :initial-element 0)))
     (loop for axis below rank for range in ranges do
       (symbol-macrolet ((left-padding (aref left-padding-vec axis))
-                        (right-padding (aref left-padding-vec axis)))
+                        (right-padding (aref right-padding-vec axis)))
         (block check-axis
           (flet ((give-up ()
                    (setf left-padding nil)
@@ -470,7 +471,7 @@ children.  Useful for debugging."
       (let ((ghostspec (buffer-ghostspec (buffer-shard-buffer buffer-shard))))
         (when (loop for axis below (shape-rank (buffer-shard-domain buffer-shard))
                       thereis (and (ghostspec-left-padding ghostspec axis)
-                                   (ghostspec-left-padding ghostspec axis)))
+                                   (ghostspec-right-padding ghostspec axis)))
           (queues:qpush *buffer-shard-queue* buffer-shard))))
     buffer-shard))
 
@@ -507,7 +508,7 @@ children.  Useful for debugging."
     (program
      &key
        (split-priority 'buffer-shard-bits)
-       (split-min-priority (* 30 1024 8)) ; Aim for L1 cache sized shards.
+       (split-min-priority (* 2 1024 1024 8)) ; Aim for L2 cache sized shards.
        (split-max-redundancy 0.125))
   "Partition all buffers and kernels in the supplied program into shards.
 Returns, as multiple values, a vector mapping each buffer to its corresponding
@@ -632,19 +633,20 @@ return that split.  Otherwise, return NIL."
   (let ((ghostspec (buffer-ghostspec buffer)))
     (make-shape
      (loop for axis from 0
-           for buffer-shard-range in (shape-ranges domain)
+           for domain-range in (shape-ranges domain)
            for buffer-range in (shape-ranges (buffer-shape buffer))
            collect
-           (if (range= buffer-shard-range buffer-range)
+           (if (range= domain-range buffer-range)
                buffer-range
                (let* ((step (range-step buffer-range))
                       (left-padding (ghostspec-left-padding ghostspec axis))
                       (right-padding (ghostspec-right-padding ghostspec axis)))
                  (range
-                  (max (- (range-start buffer-shard-range) (* left-padding step))
+                  (max (- (range-start domain-range) (* left-padding step))
                        (range-start buffer-range))
-                  (min (+ (range-end buffer-shard-range) (* right-padding step))
-                       (range-end buffer-range)))))))))
+                  (min (+ (range-end domain-range) (* right-padding step))
+                       (range-end buffer-range))
+                  step)))))))
 
 (defun find-optimal-buffer-shard-split-axis (buffer-shard)
   "Returns the axis where buffer shard can be split while introducing the minimum
@@ -905,27 +907,21 @@ relates to the supplied transformoid."
                  (let* ((ntype (buffer-ntype buffer))
                         (size (shape-size shape))
                         (storage (make-storage :ntype ntype :size size))
-                        (strides (shape-strides shape)))
-                   (setf layout (make-layout :storage storage :strides strides))
-                   (setf referenced-ancestor buffer-shard))
-                 ;; If there is already an ancestor layout, reuse its storage
-                 ;; and strides and only compute a suitable offset.
-                 (let* ((ancestor-shape (buffer-shard-shape referenced-ancestor))
-                        (ancestor-layout (buffer-shard-layout referenced-ancestor))
-                        (storage (layout-storage ancestor-layout))
-                        (strides (layout-strides ancestor-layout))
+                        (strides (shape-strides shape))
                         (offset
                           (loop for stride across strides
-                                for range1 in (shape-ranges ancestor-shape)
+                                for range1 in (shape-ranges (buffer-shape buffer))
                                 for range2 in (shape-ranges shape)
                                 sum (* stride
                                        (- (range-start range2)
                                           (range-start range1))))))
-                   (setf layout
-                         (make-layout
-                          :offset offset
-                          :strides strides
-                          :storage storage)))))
+                   (setf layout (make-layout
+                                 :storage storage
+                                 :strides strides
+                                 :offset (- offset)))
+                   (setf referenced-ancestor buffer-shard))
+                 ;; If there is already an ancestor layout, reuse it.
+                 (setf layout (buffer-shard-layout referenced-ancestor))))
            ;; If there is a split, descend into each child.
            (when (splitp split)
              (assign-layout (split-left-child split) referenced-ancestor)
@@ -988,11 +984,15 @@ relates to the supplied transformoid."
   (with-slots (buffer parent domain shape readers writers split) buffer-shard
     (assert (subshapep domain shape))
     (dolist (writer writers)
+      (assert (kernel-shard-p writer))
       (assert (member buffer-shard (kernel-shard-targets writer)))
       (check-shard-eventually writer))
+    (assert (= (length writers) (length (remove-duplicates writers))))
     (dolist (reader readers)
+      (assert (kernel-shard-p reader))
       (assert (member buffer-shard (kernel-shard-sources reader)))
       (check-shard-eventually reader))
+    (assert (= (length readers) (length (remove-duplicates readers))))
     (when parent
       (assert (buffer-shard-split parent))
       (with-slots (left-child right-child) (buffer-shard-split parent)

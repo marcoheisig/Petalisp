@@ -19,18 +19,18 @@
     :initform (make-hash-table :test #'eq)
     :reader backend-compile-cache)))
 
+(defmethod initialize-instance :after
+    ((backend backend) &key &allow-other-keys)
+  (trivial-garbage:finalize
+   backend
+   (let ((worker-pool (backend-worker-pool backend)))
+     (lambda ()
+       (worker-pool-join worker-pool)))))
+
 (defun make-native-backend (&key (threads (petalisp.utilities:number-of-cpus)))
   (check-type threads (integer 1))
   (make-instance 'backend
     :worker-pool (make-worker-pool threads)))
-
-(defmethod backend-compile-blueprint
-    ((backend backend)
-     (blueprint t))
-  (alexandria:ensure-gethash
-   blueprint
-   (backend-compile-cache backend)
-   (compile nil (translate-blueprint backend blueprint))))
 
 (defmethod delete-backend
     ((backend backend))
