@@ -66,12 +66,15 @@
   ;; everything went smoothly so far.  Once this slot is set to a non-NIL
   ;; value, workers will just skip the remaining evaluation.
   (serious-condition nil
-   :type (or null condition)))
+   :type (or null condition))
+  (request nil :type request))
 
 (defun make-denv (cenv)
+  (declare (cenv cenv))
   (%make-denv
    :cenv cenv
    :result-arrays (make-array (length (cenv-result-shapes cenv)) :initial-element nil)
+   :request (make-request (worker-pool-size (backend-worker-pool (cenv-backend cenv))))
    :pointers
    (map 'vector
         (lambda (vector)
@@ -109,61 +112,6 @@
     (assert (zerop start))
     (sb-sys:vector-sap
      (sb-ext:array-storage-vector data))))
-
-(defun worker-allocate (denv)
-  (declare (denv denv))
-  (with-slots (cenv pointers) denv
-    (with-slots (allocations) cenv
-      (let* ((worker-id (worker-id *worker*))
-             (category (+ worker-id +worker-allocation-category-offset+))
-             (local-allocations (aref allocations category))
-             (local-pointers (aref pointers category)))
-        #+(or) ;; TODO
-        (message "Allocating ~,2E bytes of memory."
-                 (loop for allocation across local-allocations
-                       sum (allocation-size-in-bytes allocation)))
-        (loop for index below (length local-allocations) do
-          (setf (aref local-pointers index)
-                (cffi:foreign-alloc
-                 :uint8
-                 :count (allocation-size-in-bytes
-                         (aref local-allocations index)))))))))
-
-(defun worker-free (denv)
-  (declare (denv denv))
-  (barrier)
-  (let* ((worker-id (worker-id *worker*))
-         (category (+ worker-id +worker-allocation-category-offset+)))
-    (map nil #'cffi:foreign-free (aref (denv-pointers denv) category))))
-
-(defun worker-execute (denv action)
-  (declare (denv denv) (type (or null action) action))
-  (if (not action)
-      (progn
-        (worker-synchronize-and-invoke denv '())
-        (worker-synchronize-and-invoke denv '()))
-      (progn
-        (worker-synchronize-and-invoke denv (action-copy-invocations action))
-        (worker-synchronize-and-invoke denv (action-work-invocations action)))))
-
-(defun worker-synchronize-and-invoke (denv invocations)
-  (declare (denv denv) (list invocations))
-  (barrier)
-  (with-slots (pointers serious-condition) denv
-    (unless serious-condition
-      (handler-case
-          (loop for invocation of-type invocation in invocations do
-            ;; TODO
-            (unless (empty-shape-p (invocation-iteration-space invocation))
-              (funcall (invocation-kfn invocation)
-                       (invocation-kernel invocation)
-                       (invocation-iteration-space invocation)
-                       (invocation-targets invocation)
-                       (invocation-sources invocation)
-                       denv)))
-        #+(or)
-        (serious-condition (c)
-          (atomics:cas serious-condition nil c))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -209,7 +157,7 @@
 
 (defun evaluate (denv)
   (declare (denv denv))
-  (with-slots (cenv pointers result-arrays) denv
+  (with-slots (cenv pointers request) denv
     ;; Bind all constants.
     (with-slots (allocations constant-arrays) cenv
       (loop for array across constant-arrays
@@ -219,41 +167,73 @@
                      (array-storage-pointer array))))
     (with-slots (backend schedule) cenv
       (let* ((worker-pool (backend-worker-pool backend))
-             (nworkers (worker-pool-size worker-pool))
-             (request (make-request nworkers)))
-        ;; Allocate storage on each worker.
+             (nworkers (worker-pool-size worker-pool)))
+        ;; Distribute the work.
         (loop for worker-id below nworkers do
           (worker-enqueue
            (worker-pool-worker worker-pool worker-id)
-           (lambda ()
-             (worker-allocate denv))))
-        ;; Execute the schedule.
-        (loop for actions in schedule do
-          (loop for worker-id below nworkers do
-            (worker-enqueue
-             (worker-pool-worker worker-pool worker-id)
-             (let ((action (aref actions worker-id)))
-               (lambda ()
-                 (worker-execute denv action))))))
-        ;; Signal completion.
-        (loop for worker-id below nworkers do
-          (worker-enqueue
-           (worker-pool-worker worker-pool worker-id)
-           (lambda ()
-             (with-slots (cell lock cvar) request
-               (when (zerop (atomics:atomic-decf (car cell)))
-                 (bordeaux-threads:with-lock-held (lock)
-                   #+(or) ;; TODO wait for new version of bordeaux threads.
-                   (bordeaux-threads:condition-broadcast cvar)
-                   (bordeaux-threads:condition-notify cvar)))))))
-        ;; Free storage on each worker.
-        (loop for worker-id below nworkers do
-          (worker-enqueue
-           (worker-pool-worker worker-pool worker-id)
-           (lambda ()
-             (worker-free denv))))
+           (lambda () (worker-evaluate denv))))
         ;; Wait for completion.
         (request-wait request)))))
+
+(defun worker-evaluate (denv)
+  (let* ((worker-id (worker-id *worker*))
+         (category (+ worker-id +worker-allocation-category-offset+)))
+    (with-slots (cenv pointers request) denv
+      (with-slots (allocations schedule) cenv
+        ;; Allocate memory.
+        (let ((local-allocations (aref allocations category))
+              (local-pointers (aref pointers category)))
+          #+(or) ;; TODO
+          (message "Allocating ~,2E bytes of memory."
+                   (loop for allocation across local-allocations
+                         sum (allocation-size-in-bytes allocation)))
+          (loop for index below (length local-allocations) do
+            (setf (aref local-pointers index)
+                  (cffi:foreign-alloc
+                   :uint8
+                   :count (allocation-size-in-bytes
+                           (aref local-allocations index))))))
+        ;; Execute the schedule.
+        (loop for action-vector of-type simple-vector in schedule do
+          (let ((action (aref action-vector worker-id)))
+            (if (not action)
+                (progn
+                  (worker-synchronize-and-invoke denv '())
+                  (worker-synchronize-and-invoke denv '()))
+                (progn
+                  (worker-synchronize-and-invoke denv (action-copy-invocations action))
+                  (worker-synchronize-and-invoke denv (action-work-invocations action))))))
+        ;; Signal completion.
+        (with-slots (cell lock cvar) request
+          (when (zerop (atomics:atomic-decf (car cell)))
+            (bordeaux-threads:with-lock-held (lock)
+              #+(or) ;; TODO wait for new version of bordeaux threads.
+              (bordeaux-threads:condition-broadcast cvar)
+              (bordeaux-threads:condition-notify cvar))))
+        ;; Free memory.
+        (barrier)
+        (map nil #'cffi:foreign-free (aref (denv-pointers denv) category))))))
+
+(defun worker-synchronize-and-invoke (denv invocations)
+  (declare (denv denv) (list invocations))
+  (barrier)
+  (with-slots (pointers serious-condition) denv
+    (unless serious-condition
+      (handler-case
+          (loop for invocation of-type invocation in invocations do
+            ;; TODO
+            (unless (empty-shape-p (invocation-iteration-space invocation))
+              (funcall (invocation-kfn invocation)
+                       (invocation-kernel invocation)
+                       (invocation-iteration-space invocation)
+                       (invocation-targets invocation)
+                       (invocation-sources invocation)
+                       denv)))
+        #+(or)
+        (serious-condition (c)
+          (atomics:cas serious-condition nil c))))))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
