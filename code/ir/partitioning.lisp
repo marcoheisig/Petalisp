@@ -37,40 +37,37 @@
 ;;; kernel shards have good data locality and qualify for later being scheduled
 ;;; on the same worker.
 ;;;
-;;; The final phase of the partitioning is to assign memory layouts to all
-;;; buffer shards that are being referenced by at least one kernel shard.  Each
-;;; layout also has a reference to some storage, which is handed out such that
-;;; each buffer shard that is being referenced and that has an ancestor that is
-;;; also being referenced has the same storage as that ancestor.
+;;; The final phase of the partitioning is to assign storage to all buffer
+;;; shards that are being referenced by at least one kernel shard, such that
+;;; all buffer shards that have an ancestor that is also being referenced share
+;;; the same storage.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Reasoning about Memory Layouts
+;;; Reasoning about Storage
 
 (defstruct (storage
             (:predicate storagep)
             (:constructor make-storage))
-  ;; The ntype of the elements of the storage.
-  (ntype nil :type typo:ntype :read-only t)
-  ;; The number of elements being stored.
-  (size nil :type unsigned-byte :read-only t)
-  ;; An opaque object that encodes how the storage is being allocated.
-  (allocation nil))
-
-(defstruct (layout
-            (:predicate layoutp)
-            (:constructor make-layout))
-  ;; The index of the first storage element referenced by this layout.
+  ;; The index of the first element backed by this storage.
   (offset 0 :type fixnum :read-only t)
   ;; A vector whose Ith entry is the number of elements to skip when changing
   ;; the Ith index component of an index by one.
   (strides nil :type (simple-array unsigned-byte (*)) :read-only t)
-  ;; The storage being accessed.
-  (storage nil :type storage :read-only t))
+  ;; The ntype of the elements of the storage.
+  (ntype nil :type typo:ntype :read-only t)
+  ;; The number of elements being stored.
+  (size nil :type unsigned-byte :read-only t)
+  ;; An alist of (shape . storage) that describes where the ghost layers of
+  ;; this storage can be loaded from.
+  (ghost-layer-alist nil :type list)
+  ;; An opaque object that can be used by the backend that processes the
+  ;; partitioning.
+  (allocation nil))
 
-(defun layout-rank (layout)
-  (declare (layout layout))
-  (length (layout-strides layout)))
+(defun storage-rank (storage)
+  (declare (storage storage))
+  (length (storage-strides storage)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -118,8 +115,8 @@
   ;; The split operation in case this buffer-shard has been split, or NIL, if it
   ;; hasn't been split so far.
   (split nil :type (or null structure-object))
-  ;; The memory layout of the buffer shard.
-  (layout nil :type (or null layout)))
+  ;; The storage assigned to the buffer shard.
+  (storage nil :type (or null storage)))
 
 (defmethod print-object ((buffer-shard buffer-shard) stream)
   (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
@@ -127,12 +124,27 @@
           :domain (buffer-shard-domain buffer-shard)
           :shape (buffer-shard-shape buffer-shard)
           :buffer (buffer-shard-buffer buffer-shard)
-          :split (buffer-shard-split buffer-shard)))
+          :split (buffer-shard-split buffer-shard)
+          :storage (buffer-shard-storage buffer-shard)))
 
 (defun buffer-shard-bits (buffer-shard)
+  "Returns the number of bits of storage required for allocating all elements
+managed by the supplied buffer shard."
   (declare (buffer-shard buffer-shard))
   (* (typo:ntype-bits (buffer-ntype (buffer-shard-buffer buffer-shard)))
      (shape-size (buffer-shard-shape buffer-shard))))
+
+(defun buffer-shard-guardian (buffer-shard)
+  "Returns the buffer shard's oldest ancestor that has the same storage as this
+one.  A buffer shard can be its own guardian.
+
+Signals an error if the storage of the supplied buffer is NIL."
+  (declare (buffer-shard buffer-shard))
+  (assert (buffer-shard-storage buffer-shard))
+  (loop for parent = (buffer-shard-parent buffer-shard)
+        while (and parent (buffer-shard-storage parent))
+        do (setf buffer-shard parent))
+  buffer-shard)
 
 (defstruct (split (:predicate splitp))
   ;; The axis at which the buffer-shard is split.
@@ -164,6 +176,16 @@
 (defun buffer-shard-add-writer (buffer-shard kernel-shard)
   ;; TODO sort
   (push kernel-shard (buffer-shard-writers buffer-shard)))
+
+(defun buffer-shard-maxdepth (buffer-shard)
+  "Returns the length of the longest chain of splits rooted in this buffer
+shard."
+  (declare (buffer-shard buffer-shard))
+  (with-slots (split) buffer-shard
+    (if (not split)
+        0
+        (1+ (max (buffer-shard-maxdepth (split-left-child split))
+                 (buffer-shard-maxdepth (split-right-child split)))))))
 
 (defun make-kernel-shard
     (&key kernel iteration-space targets sources)
@@ -446,6 +468,12 @@ children.  Useful for debugging."
 (declaim (type (real 0 1) *buffer-shard-split-max-redundancy*))
 (defvar *buffer-shard-split-max-redundancy*)
 
+;;; A real number that is the maximum factor by which one half of a split is
+;;; allowed to be larger than the other.  An imbalance of 2 means one half can
+;;; be up to three times as large as the other.
+(declaim (type (real 0) *buffer-shard-split-max-imbalance*))
+(defvar *buffer-shard-split-max-imbalance*)
+
 ;;; A vector for looking up each buffer's ghostspec.
 (defvar *buffer-ghostspec-vector*)
 
@@ -508,8 +536,9 @@ children.  Useful for debugging."
     (program
      &key
        (split-priority 'buffer-shard-bits)
-       (split-min-priority (* 2 1024 1024 8)) ; Aim for L2 cache sized shards.
-       (split-max-redundancy 0.125))
+       (split-min-priority (* 512 1024 8)) ; Aim for 512k chunks
+       (split-max-redundancy 0.125)
+       (split-max-imbalance 1))
   "Partition all buffers and kernels in the supplied program into shards.
 Returns, as multiple values, a vector mapping each buffer to its corresponding
 primogenitor buffer shard, a vector mapping each kernel to its corresponding
@@ -530,6 +559,7 @@ ghost points to interior points for a split."
   (let ((*buffer-shard-split-priority* split-priority)
         (*buffer-shard-split-min-priority* split-min-priority)
         (*buffer-shard-split-max-redundancy* split-max-redundancy)
+        (*buffer-shard-split-max-imbalance* split-max-imbalance)
         (*buffer-shard-queue* (make-buffer-shard-queue))
         (*split-queue* (make-split-queue))
         (*primogenitor-buffer-shard-vector*
@@ -547,7 +577,10 @@ ghost points to interior points for a split."
       ;; propagate the split as a side-effect.
       (loop until (split-queue-emptyp) do
         (propagate-split (split-queue-pop))))
-    (map nil #'assign-layouts *primogenitor-buffer-shard-vector*)
+    ;; Ensure that each referenced buffer shard has an attached storage.
+    (map nil #'assign-storage *primogenitor-buffer-shard-vector*)
+    #+(or)
+    (check-shards)
     (values *primogenitor-buffer-shard-vector* *buffer-ghostspec-vector*)))
 
 (defun attempt-split (buffer-shard axis &optional position)
@@ -592,6 +625,13 @@ return that split.  Otherwise, return NIL."
       ;; Plan the two domains that would result from a split.
       (multiple-value-bind (left-domain right-domain)
           (split-shape (buffer-shard-domain buffer-shard) axis position)
+        ;; Ensure the split is balanced.
+        (when (< (* (shape-size left-domain) (1+ *buffer-shard-split-max-imbalance*))
+                 (shape-size right-domain))
+          (give-up))
+        (when (< (* (shape-size right-domain) (1+ *buffer-shard-split-max-imbalance*))
+                 (shape-size left-domain))
+          (give-up))
         ;; Ensure the split won't introduce too many ghost layers.
         (unless (<= right-padding
                     (* *buffer-shard-split-max-redundancy*
@@ -890,43 +930,64 @@ relates to the supplied transformoid."
     (iterating-instruction
      (destructure-transformoid (instruction-transformation transformoid)))))
 
-(defun assign-layouts (primogenitor-buffer-shard)
+(defun assign-storage (primogenitor-buffer-shard)
   (declare (buffer-shard primogenitor-buffer-shard))
-  (labels
-      ((assign-layout (buffer-shard referenced-ancestor)
-         (declare (buffer-shard buffer-shard)
-                  (type (or null buffer-shard) referenced-ancestor))
-         (with-slots (buffer split domain shape layout) buffer-shard
-           ;; Check whether the buffer shard is being referenced.
-           (when (or (buffer-shard-readers buffer-shard)
-                     (buffer-shard-writers buffer-shard)
-                     (not (interior-buffer-p buffer)))
-             (if (not referenced-ancestor)
-                 ;; If there is no referenced ancestor, create both a new
-                 ;; layout and storage for all the shards's elements.
-                 (let* ((ntype (buffer-ntype buffer))
-                        (size (shape-size shape))
-                        (storage (make-storage :ntype ntype :size size))
-                        (strides (shape-strides shape))
-                        (offset
-                          (loop for stride across strides
-                                for range1 in (shape-ranges (buffer-shape buffer))
-                                for range2 in (shape-ranges shape)
-                                sum (* stride
-                                       (- (range-start range2)
-                                          (range-start range1))))))
-                   (setf layout (make-layout
-                                 :storage storage
-                                 :strides strides
-                                 :offset (- offset)))
-                   (setf referenced-ancestor buffer-shard))
-                 ;; If there is already an ancestor layout, reuse it.
-                 (setf layout (buffer-shard-layout referenced-ancestor))))
-           ;; If there is a split, descend into each child.
-           (when (splitp split)
-             (assign-layout (split-left-child split) referenced-ancestor)
-             (assign-layout (split-right-child split) referenced-ancestor)))))
-    (assign-layout primogenitor-buffer-shard nil)))
+  ;; Set the storage slot of each buffer shard that is being referenced or that
+  ;; has an ancestor that is being referenced.
+  (labels ((assign-recursively (buffer-shard existing-storage)
+             (declare (buffer-shard buffer-shard)
+                      (type (or null storage) existing-storage))
+             (with-slots (buffer split domain shape storage) buffer-shard
+               (if existing-storage
+                   (setf storage existing-storage)
+                   (when (or (buffer-shard-readers buffer-shard)
+                             (buffer-shard-writers buffer-shard)
+                             (not (interior-buffer-p buffer)))
+                     (let* ((ntype (buffer-ntype buffer))
+                            (size (shape-size shape))
+                            (strides (shape-strides shape))
+                            (offset
+                              (loop for stride across strides
+                                    for range1 in (shape-ranges (buffer-shape buffer))
+                                    for range2 in (shape-ranges shape)
+                                    sum (* stride
+                                           (- (range-start range2)
+                                              (range-start range1))))))
+                       (setf storage (make-storage
+                                      :ntype ntype
+                                      :strides strides
+                                      :offset offset
+                                      :size size))
+                       (setf existing-storage storage))))
+               ;; If there is a split, descend into each child.
+               (when (splitp split)
+                 (assign-recursively (split-left-child split) existing-storage)
+                 (assign-recursively (split-right-child split) existing-storage)))))
+    (assign-recursively primogenitor-buffer-shard nil))
+  ;; Determine the ghost layer alist of each newly created storage.
+  (labels ((assign-storage-ghost-layer-alist (buffer-shard)
+             (declare (buffer-shard buffer-shard))
+             (with-slots (buffer split domain shape storage) buffer-shard
+               (if storage
+                   (let ((vicinity (compute-buffer-shard-vicinity buffer-shard))
+                         (rank (shape-rank shape))
+                         (alist '()))
+                     (flet ((maybe-push-ghost-layer (neighbor)
+                              (declare (buffer-shard neighbor))
+                              (when (shape-intersectionp shape (buffer-shard-domain neighbor))
+                                (push
+                                 (cons (shape-intersection shape (buffer-shard-domain neighbor))
+                                       (buffer-shard-storage neighbor))
+                                 alist))))
+                       (loop for axis below rank do
+                         (mapc #'maybe-push-ghost-layer (vicinity-left-neighbors vicinity axis))
+                         (mapc #'maybe-push-ghost-layer (vicinity-right-neighbors vicinity axis))))
+                     (setf (storage-ghost-layer-alist storage)
+                           alist))
+                   (when split
+                     (assign-storage-ghost-layer-alist (split-left-child split))
+                     (assign-storage-ghost-layer-alist (split-right-child split)))))))
+    (assign-storage-ghost-layer-alist primogenitor-buffer-shard)))
 
 (defun shape-strides (shape)
   (declare (shape shape))

@@ -118,6 +118,10 @@
              (category (+ worker-id +worker-allocation-category-offset+))
              (local-allocations (aref allocations category))
              (local-pointers (aref pointers category)))
+        #+(or) ;; TODO
+        (message "Allocating ~,2E bytes of memory."
+                 (loop for allocation across local-allocations
+                       sum (allocation-size-in-bytes allocation)))
         (loop for index below (length local-allocations) do
           (setf (aref local-pointers index)
                 (cffi:foreign-alloc
@@ -250,3 +254,106 @@
              (worker-free denv))))
         ;; Wait for completion.
         (request-wait request)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Sanity Checks
+
+(defstruct (simulated-memory
+            (:constructor make-simulated-memory (allocation)))
+  (allocation nil :type allocation :read-only t)
+  ;; A hash table, mapping from indices to generations.
+  (table (make-hash-table :test #'equal) :type hash-table)
+  ;; The current generation.  Incremented by one whenever the access pattern
+  ;; switches from reads to writes.
+  (generation 0 :type unsigned-byte)
+  ;; Whether the memory is currently being written to, or read from.
+  (mode :w :type (member :r :w)))
+
+(defun simulated-memory-read-index (simulated-memory index)
+  (declare (simulated-memory simulated-memory) (list index))
+  (with-slots (table generation mode) simulated-memory
+    (when (eq mode :w) (setf mode :r))
+    (multiple-value-bind (value presentp) (gethash index table)
+      (unless presentp
+        (error "Reference to uninitialized memory."))
+      (unless (= value generation)
+        (error "Reference to memory from an earlier generation.")))))
+
+(defun simulated-memory-read-shape (simulated-memory shape)
+  (declare (simulated-memory simulated-memory) (shape shape))
+  (map-shape
+   (lambda (index)
+     (simulated-memory-read-index simulated-memory index))
+   shape))
+
+(defun simulated-memory-write-index (simulated-memory index)
+  (declare (simulated-memory simulated-memory) (list index))
+  (with-slots (allocation table generation mode) simulated-memory
+    (when (eq mode :r) (setf mode :w) (incf generation))
+    (multiple-value-bind (value presentp) (gethash index table)
+      (when presentp
+        (unless (< value generation)
+          (error "Two consecutive writes to the same memory location.")))
+      (setf (gethash index table) generation))))
+
+(defun simulated-memory-write-shape (simulated-memory shape)
+  (declare (simulated-memory simulated-memory) (shape shape))
+  (map-shape
+   (lambda (index)
+     (simulated-memory-write-index simulated-memory index))
+   shape))
+
+(defun check-cenv (cenv)
+  (declare (cenv cenv) (optimize (debug 3) (safety 3)))
+  (with-slots (schedule result-shapes argument-shapes constant-arrays allocations) cenv
+    (let ((memory-table (make-hash-table :test #'eq)))
+      (labels
+          ((simulated-memory (allocation)
+             (alexandria:ensure-gethash
+              allocation
+              memory-table
+              (make-simulated-memory allocation)))
+           (invoke (invocation)
+             (with-slots (kernel iteration-space sources targets) invocation
+               (loop for source across sources for (buffer . stencils) in (kernel-sources kernel) do
+                 (loop for stencil in stencils do
+                   (loop for load-instruction in (stencil-load-instructions stencil) do
+                     (simulated-memory-read-shape
+                      (simulated-memory (storage-allocation source))
+                      (transform-shape iteration-space (load-instruction-transformation load-instruction))))))
+               (loop for target across targets for (buffer . store-instructions) in (kernel-targets kernel) do
+                 (loop for store-instruction in store-instructions do
+                   (simulated-memory-write-shape
+                    (simulated-memory (storage-allocation target))
+                    (transform-shape iteration-space (store-instruction-transformation store-instruction))))))))
+        ;; Write all constants.
+        (loop for allocation across (aref allocations +constant-allocation-category+) do
+          (assert (= (allocation-category allocation) +constant-allocation-category+))
+          (simulated-memory-write-shape
+           (simulated-memory allocation)
+           (array-shape (aref constant-arrays (allocation-color allocation)))))
+        ;; Write all arguments.
+        (loop for allocation across (aref allocations +argument-allocation-category+) do
+          (assert (= (allocation-category allocation) +argument-allocation-category+))
+          (simulated-memory-write-shape
+           (simulated-memory allocation)
+           (aref argument-shapes (allocation-color allocation))))
+        ;; Process the schedule.
+        (loop for actions in schedule for step from 0 do
+          (format t "~&Checking step ~D.~%" step)
+          ;; Process all ghost layer copies.
+          (loop for action across actions for category from +worker-allocation-category-offset+ do
+            (unless (not action)
+              (mapc #'invoke (action-copy-invocations action))))
+          ;; Process all work items.
+          (loop for action across actions for category from +worker-allocation-category-offset+ do
+            (unless (not action)
+              (mapc #'invoke (action-work-invocations action)))))
+        ;; Check all results.
+        (loop for allocation across (aref allocations +result-allocation-category+) do
+          (assert (= (allocation-category allocation) +result-allocation-category+))
+          (simulated-memory-read-shape
+           (simulated-memory allocation)
+           (aref result-shapes (allocation-color allocation))))))
+    cenv))

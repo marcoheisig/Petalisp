@@ -186,15 +186,13 @@
    ;; Partitioning
    #:storage
    #:storagep
+   #:storage-offset
+   #:storage-strides
    #:storage-ntype
    #:storage-size
+   #:storage-rank
+   #:storage-ghost-layer-alist
    #:storage-allocation
-   #:layout
-   #:layoutp
-   #:layout-offset
-   #:layout-strides
-   #:layout-storage
-   #:layout-rank
    #:kernel-shard
    #:kernel-shard-p
    #:kernel-shard-kernel
@@ -212,7 +210,8 @@
    #:buffer-shard-writers
    #:buffer-shard-split
    #:buffer-shard-bits
-   #:buffer-shard-layout
+   #:buffer-shard-storage
+   #:buffer-shard-maxdepth
    #:split
    #:splitp
    #:split-parent

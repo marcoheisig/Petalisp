@@ -42,7 +42,11 @@ arrays that were referenced in the schedule."
          (allocation-lists (make-array (list ncategories nbuckets) :initial-element '()))
          (allocation-colors (make-array ncategories :initial-element 0))
          (storage-counter-table (make-hash-table)))
-    (labels ((buffer-primogenitor-buffer-shard (buffer)
+    (labels ((incf-storage-counter (storage)
+               (incf (gethash storage storage-counter-table 0)))
+             (decf-storage-counter (storage)
+               (decf (gethash storage storage-counter-table)))
+             (buffer-primogenitor-buffer-shard (buffer)
                (aref primogenitor-buffer-shard-vector (buffer-number buffer)))
              (push-allocation (allocation)
                (declare (allocation allocation))
@@ -97,29 +101,40 @@ arrays that were referenced in the schedule."
       (loop for action-vector in schedule do
         (loop for action across action-vector do
           (unless (not action)
+            (loop for invocation in (action-copy-invocations action) do
+              (loop for storage across (invocation-sources invocation) do
+                (incf-storage-counter storage)))
             (loop for invocation in (action-work-invocations action) do
-              (loop for layout across (invocation-sources invocation) do
-                (incf (gethash (layout-storage layout) storage-counter-table 0)))))))
-      ;; Traverse the schedule again, and assign each layout's storage an
-      ;; allocation.
+              (loop for storage across (invocation-sources invocation) do
+                (incf-storage-counter storage))))))
+      ;; Traverse the schedule again, and assign each storage an allocation.
       (loop for action-vector in schedule do
-        (loop for action across action-vector
-              for category from +worker-allocation-category-offset+ do
-                (unless (not action)
-                  (loop for invocation in (action-work-invocations action) do
-                    ;; Ensure that each target is allocated.
-                    (loop for target-layout across (invocation-targets invocation) do
-                      (let ((storage (layout-storage target-layout)))
-                        (unless (storage-allocation storage)
-                          (storage-bind
-                           storage
-                           (pop-allocation category (storage-size-in-bytes storage))))))
-                    ;; Ensure that sources that are no longer used after this action
-                    ;; are freed.
-                    (loop for source-layout across (invocation-sources invocation) do
-                      (let ((storage (layout-storage source-layout)))
-                        (when (zerop (decf (gethash storage storage-counter-table)))
-                          (push-allocation (storage-allocation storage)))))))))
+        ;; Free memory that becomes available after copying the ghost layers.
+        (loop for action across action-vector for category from +worker-allocation-category-offset+ do
+          (unless (not action)
+            (loop for invocation in (action-copy-invocations action) do
+              (loop for storage across (invocation-sources invocation) do
+                (when (zerop (decf-storage-counter storage))
+                  (push-allocation (storage-allocation storage)))))))
+        ;; Ensure that each target of each action is allocated.
+        (loop for action across action-vector for category from +worker-allocation-category-offset+ do
+          (unless (not action)
+            (loop for invocation in (action-work-invocations action) do
+              (loop for storage across (invocation-targets invocation) do
+                (unless (storage-allocation storage)
+                  (let ((allocation (pop-allocation category (storage-size-in-bytes storage))))
+                    (storage-bind storage allocation)
+                    (when (zerop (gethash storage storage-counter-table 0))
+                      #+(or)(break "~A ~A" storage allocation) ;; TODO
+                      (push-allocation allocation))))))))
+        ;; Ensure that sources that are no longer used after this action are
+        ;; freed.
+        (loop for action across action-vector for category from +worker-allocation-category-offset+ do
+          (unless (not action)
+            (loop for invocation in (action-work-invocations action) do
+              (loop for storage across (invocation-sources invocation) do
+                (when (zerop (decf-storage-counter storage))
+                  (push-allocation (storage-allocation storage))))))))
       ;; Create and return the result vectors.
       (let* ((allocations (make-array ncategories))
              (nconstants (length reversed-constant-array-list))
@@ -144,9 +159,7 @@ arrays that were referenced in the schedule."
         (values allocations constant-arrays)))))
 
 (defun buffer-shard-bind (buffer-shard allocation)
-  (storage-bind
-   (layout-storage (buffer-shard-layout buffer-shard))
-   allocation))
+  (storage-bind (buffer-shard-storage buffer-shard) allocation))
 
 (defun storage-bind (storage allocation)
   (assert (not (storage-allocation storage)))

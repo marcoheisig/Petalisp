@@ -40,11 +40,12 @@
     ((graph scheduling-graph)
      (node petalisp.scheduling:node))
   (let ((action (petalisp.scheduling::node-object node)))
-    `(("depth" . ,(stringify (petalisp.scheduling:node-depth node)))
-      ("height" . ,(stringify (petalisp.scheduling:node-height node)))
-      ("copies" . ,(stringify
+    `(("copies" . ,(stringify
                     (mapcar #'petalisp.native-backend::invocation-iteration-space
-                            (petalisp.native-backend::action-copy-invocations action)))))))
+                            (petalisp.native-backend::action-copy-invocations action))))
+      ("work" . ,(stringify
+                    (mapcar #'petalisp.native-backend::invocation-iteration-space
+                            (petalisp.native-backend::action-work-invocations action)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

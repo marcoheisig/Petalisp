@@ -2,191 +2,60 @@
 
 (in-package #:petalisp.native-backend)
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Invocations
+
 (defstruct (invocation
             (:predicate invocationp)
             (:constructor make-invocation))
   (kfn nil :type function :read-only t)
   (kernel nil :type kernel :read-only t)
   (iteration-space nil :type shape :read-only t)
-  (targets nil :type (simple-array layout (*)))
-  (sources nil :type (simple-array layout (*))))
+  (targets nil :type (simple-array storage (*)))
+  (sources nil :type (simple-array storage (*))))
 
-(defstruct (action
-            (:predicate actionp)
-            (:constructor make-action))
-  (copy-invocations (alexandria:required-argument :copies)
-   :type list
-   :read-only t)
-  (work-invocations (alexandria:required-argument :calls)
-   :type list
-   :read-only t))
+(defun make-work-invocation (kernel-shard backend)
+  (declare (kernel-shard kernel-shard) (backend backend))
+  (make-invocation
+   :kernel (kernel-shard-kernel kernel-shard)
+   :iteration-space (kernel-shard-iteration-space kernel-shard)
+   :sources (map 'vector #'buffer-shard-storage (kernel-shard-sources kernel-shard))
+   :targets (map 'vector #'buffer-shard-storage (kernel-shard-targets kernel-shard))
+   :kfn (backend-compile-blueprint
+         backend
+         (kernel-blueprint (kernel-shard-kernel kernel-shard)))))
 
-(defun compute-schedule (primogenitor-buffer-shard-vector backend)
-  (let (;; In order to avoid processing the same buffer shard twice, we keep
-        ;; track of scanned buffer shards in a hash table.  The values of that
-        ;; table are lists of actions writing into that buffer shard.
-        (table (make-hash-table :test #'eq))
-        ;; The goal of this function is to turn all the supplied buffer shards
-        ;; into a dependency graph of actions, which can then be passed to the
-        ;; scheduler utility.
-        (graph (petalisp.scheduling:make-graph))
-        ;; In order to avoid consing, we collect the writers, targets, sources,
-        ;; and weights in adjustable arrays with fill pointers.  These arrays
-        ;; are filled and cleared once for each action that is being created.
-        (writers (make-array 8 :adjustable t :fill-pointer 0))
-        (targets (make-array 4 :adjustable t :fill-pointer 0))
-        (sources (make-array 16 :adjustable t :fill-pointer 0))
-        (weights (make-array 16 :adjustable t :fill-pointer 0))
-        (vicinities (make-array 16 :adjustable t :fill-pointer 0)))
-    (labels
-        ((process-buffer-shard (buffer-shard)
-           (declare (buffer-shard buffer-shard))
-           (cond ((and (null (buffer-shard-writers buffer-shard))
-                       (null (buffer-shard-readers buffer-shard)))
-                  (let ((split (buffer-shard-split buffer-shard)))
-                    (assert split)
-                    (process-buffer-shard (split-left-child split))
-                    (process-buffer-shard (split-right-child split))))
-                 ((null (buffer-shard-writers buffer-shard))
-                  (assert (leaf-buffer-p (buffer-shard-buffer buffer-shard))))
-                 (t (ensure-actions buffer-shard))))
-         (ensure-actions (buffer-shard)
-           (declare (buffer-shard buffer-shard))
-           (multiple-value-bind (actions presentp)
-               (gethash buffer-shard table)
-             (when presentp (return-from ensure-actions actions)))
-           ;; Determine all targets, writers, and sources relating directly
-           ;; to this node.  Turn them into an action.
-           (scan-target buffer-shard)
-           ;; Compute the neighbor relationships of all sources.
-           (adjust-array vicinities (array-total-size sources) :fill-pointer (fill-pointer sources))
-           (map-into vicinities #'compute-buffer-shard-vicinity sources)
-           (let ((action
-                   (make-action
-                    :copy-invocations (compute-copy-invocations sources vicinities backend)
-                    :work-invocations (compute-work-invocations writers backend))))
-             ;; Set the actions of each target.
-             (loop for target across targets do
-               (setf (gethash target table)
-                     (list* action (child-actions target))))
-             ;; Turn the action into a graph node, and create edges to each
-             ;; action of each source.
-             (let ((node (petalisp.scheduling:graph-ensure-node graph action)))
-               ;; Each edge has a weight that is the number of kernel
-               ;; iterations loading from it.
-               (adjust-array weights (array-total-size sources) :fill-pointer (fill-pointer sources))
-               (fill weights 0)
-               (loop for writer in (buffer-shard-writers buffer-shard) do
-                 (let ((niterations (shape-size (kernel-shard-iteration-space writer))))
-                   (loop for source in (kernel-shard-sources writer) do
-                     (incf (aref weights (position source sources))
-                           niterations))))
-               ;; Add one edge for each action of each source and its vicinity.
-               (loop
-                 ;; TODO Improve weights.
-                 for source across sources
-                 for weight across weights
-                 for vicinity across vicinities do
-                   (loop for other-action in (gethash source table) do
-                     (let ((other-node (petalisp.scheduling:graph-ensure-node graph other-action)))
-                       (petalisp.scheduling:graph-add-edge graph other-node node weight)))
-                   (loop for axis below (shape-rank (buffer-shard-shape source)) do
-                     (loop for neighbor in (vicinity-left-neighbors vicinity axis) do
-                       (loop for other-action in (gethash neighbor table) do
-                         (let ((other-node (petalisp.scheduling:graph-ensure-node graph other-action)))
-                           (petalisp.scheduling:graph-add-edge graph other-node node 1))))
-                     (loop for neighbor in (vicinity-right-neighbors vicinity axis) do
-                       (loop for other-action in (gethash neighbor table) do
-                         (let ((other-node (petalisp.scheduling:graph-ensure-node graph other-action)))
-                           (petalisp.scheduling:graph-add-edge graph other-node node 1))))))
-               ;; Cleanup.
-               (setf (fill-pointer writers) 0)
-               (setf (fill-pointer targets) 0)
-               (setf (fill-pointer sources) 0)
-               (setf (fill-pointer weights) 0)
-               (setf (fill-pointer vicinities) 0)
-               (gethash buffer-shard table))))
-         (child-actions (buffer-shard)
-           (declare (buffer-shard buffer-shard))
-           (let ((split (buffer-shard-split buffer-shard)))
-             (if (not split)
-                 '()
-                 (append
-                  (ensure-actions (split-left-child split))
-                  (ensure-actions (split-right-child split))))))
-         (scan-target (target)
-           (unless (find target targets)
-             (vector-push-extend target targets)
-             (map nil #'scan-writer (buffer-shard-writers target))))
-         (scan-source (source)
-           (unless (find source sources)
-             (vector-push-extend source sources)))
-         (scan-writer (writer)
-           (unless (find writer writers)
-             (vector-push-extend writer writers)
-             (map nil #'scan-target (kernel-shard-targets writer))
-             (map nil #'scan-source (kernel-shard-sources writer)))))
-      ;; We exploit that buffer numbers are handed out so that a traversal of a
-      ;; program's buffers in ascending order of numbers respects all data
-      ;; dependencies.
-      (map nil #'process-buffer-shard primogenitor-buffer-shard-vector))
-    #+(or)
-    (petalisp.graphviz:view
-     (alexandria:hash-table-values
-      (petalisp.scheduling::graph-object-nodes graph)))
-    (petalisp.scheduling:graph-parallel-depth-first-schedule
-     graph
-     (worker-pool-size (backend-worker-pool backend)))))
-
-(defun compute-copy-invocations (buffer-shards vicinities backend)
-  (declare (vector buffer-shards))
-  (let ((copy-invocations '()))
-    (flet ((collect-copy-invocation (source target)
-             (declare (buffer-shard source target))
-             (let* ((source-buffer (buffer-shard-buffer source))
-                    (target-buffer (buffer-shard-buffer target))
-                    (iteration-space
-                      (shape-intersection
-                       (buffer-shard-domain source)
-                       (buffer-shard-shape target)))
-                    (rank (shape-rank iteration-space))
-                    (lt (identity-transformation rank))
-                    (st (identity-transformation rank))
-                    (load (petalisp.ir::%make-load-instruction source-buffer lt))
-                    (store (petalisp.ir::%make-store-instruction (cons 0 load) target-buffer st)))
-               (unless (empty-shape-p iteration-space)
-                 (push
-                  (make-invocation
-                   :kernel (make-kernel
-                            :iteration-space iteration-space
-                            :sources `((,source-buffer ,(make-stencil (list load))))
-                            :targets `((,target-buffer ,store)))
-                   :iteration-space iteration-space
-                   :sources (vector (buffer-shard-layout source))
-                   :targets (vector (buffer-shard-layout target))
-                   :kfn (backend-compile-blueprint
-                         backend
-                         (make-copy-blueprint iteration-space source target)))
-                  copy-invocations)))))
-      (loop for buffer-shard across buffer-shards
-            for vicinity across vicinities
-            do (let ((rank (shape-rank (buffer-shard-shape buffer-shard))))
-                 (loop for axis below rank do
-                   (loop for neighbor in (vicinity-left-neighbors vicinity axis) do
-                     (collect-copy-invocation neighbor buffer-shard))
-                   (loop for neighbor in (vicinity-right-neighbors vicinity axis) do
-                     (collect-copy-invocation neighbor buffer-shard))))))
-    copy-invocations))
+(defun make-copy-invocation (iteration-space target source backend)
+  (declare (shape iteration-space) (storage target source) (backend backend))
+  (let* ((rank (shape-rank iteration-space))
+         (ntype (storage-ntype source))
+         (dummy-transformation (identity-transformation rank))
+         (dummy-buffer (petalisp.ir:make-buffer
+                        :depth 0
+                        :shape iteration-space
+                        :ntype ntype))
+         (load (petalisp.ir::%make-load-instruction dummy-buffer dummy-transformation))
+         (store (petalisp.ir::%make-store-instruction (cons 0 load) dummy-buffer dummy-transformation)))
+    (make-invocation
+     :kernel (make-kernel
+              :iteration-space iteration-space
+              :sources `((,dummy-buffer ,(make-stencil (list load))))
+              :targets `((,dummy-buffer ,store)))
+     :iteration-space iteration-space
+     :targets (vector target)
+     :sources (vector source)
+     :kfn (backend-compile-blueprint
+           backend
+           (make-copy-blueprint iteration-space source target)))))
 
 (defun make-copy-blueprint (iteration-space source target)
-  (declare (shape iteration-space) (buffer-shard source target))
-  (let* ((source-layout (buffer-shard-layout source))
-         (target-layout (buffer-shard-layout target))
-         (rank (layout-rank source-layout))
-         (ntype (storage-ntype (layout-storage source-layout)))
+  (declare (shape iteration-space) (storage source target))
+  (let* ((rank (storage-rank source))
+         (ntype (storage-ntype source))
          (offsets (make-list rank :initial-element 0)))
-    (assert (= (layout-rank target-layout) rank))
-    (assert (typo:ntype= (storage-ntype (layout-storage target-layout)) ntype))
+    (assert (= (storage-rank target) rank))
+    (assert (typo:ntype= (storage-ntype target) ntype))
     (ucons:ulist
      ;; Iteration space.
      (iteration-space-blueprint iteration-space)
@@ -201,15 +70,133 @@
      ;; Store.
      (ucons:ulist :store (ucons:ulist 0 0) 0 0))))
 
-(defun compute-work-invocations (kernel-shards backend)
-  (declare (vector kernel-shards))
-  (loop for kernel-shard across kernel-shards
-        collect
-        (make-invocation
-         :kernel (kernel-shard-kernel kernel-shard)
-         :iteration-space (kernel-shard-iteration-space kernel-shard)
-         :sources (map 'vector #'buffer-shard-layout (kernel-shard-sources kernel-shard))
-         :targets (map 'vector #'buffer-shard-layout (kernel-shard-targets kernel-shard))
-         :kfn (backend-compile-blueprint
-               backend
-               (kernel-blueprint (kernel-shard-kernel kernel-shard))))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;; Actions
+
+(defstruct (action
+            (:predicate actionp)
+            (:constructor make-action))
+  (copy-invocations '() :type list)
+  (work-invocations '() :type list))
+
+;;; A hash table from storage to actions defining the values in the interior of
+;;; that storage.
+(defvar *storage-action-table*)
+
+(defun storage-action (storage default)
+  (declare (storage storage) (type (or null action) default))
+  (alexandria:ensure-gethash
+   storage
+   *storage-action-table*
+   (or default (make-action))))
+
+(defun merge-actions (action1 action2)
+  (declare (action action1 action2))
+  (multiple-value-bind (old new)
+      (if (<= (length (action-work-invocations action1))
+              (length (action-work-invocations action2)))
+          (values action1 action2)
+          (values action2 action1))
+    (loop for invocation in (action-work-invocations old) do
+      (loop for target across (invocation-targets invocation) do
+        (setf (gethash target *storage-action-table*) new)))
+    (setf (action-work-invocations new)
+          (append (action-work-invocations old)
+                  (action-work-invocations new)))
+    new))
+
+(defun ensure-kernel-shard-invocation (kernel-shard backend)
+  (declare (kernel-shard kernel-shard))
+  (let ((action nil))
+    ;; Ensure that all targets of the worker have the same action.
+    (loop for target in (kernel-shard-targets kernel-shard) do
+      (let ((target-action (storage-action (buffer-shard-storage target) action)))
+        (cond ((not action)
+               (setf action target-action))
+              ((not (eq action target-action))
+               (merge-actions action target-action)))))
+    ;; Add this kernel shard's work invocation if it isn't already present.
+    (or (find-if
+         (lambda (invocation)
+           (declare (invocation invocation))
+           (and (eq (invocation-kernel invocation)
+                    (kernel-shard-kernel kernel-shard))
+                (eq (invocation-iteration-space invocation)
+                    (kernel-shard-iteration-space kernel-shard))))
+         (action-work-invocations action))
+        (let ((invocation (make-work-invocation kernel-shard backend)))
+          (push invocation (action-work-invocations action))
+          invocation))))
+
+(defun ensure-actions (buffer-shard backend)
+  (declare (buffer-shard buffer-shard))
+  (loop for writer in (buffer-shard-writers buffer-shard) do
+    (ensure-kernel-shard-invocation writer backend))
+  (let ((split (buffer-shard-split buffer-shard)))
+    (when split
+      (ensure-actions (split-left-child split) backend)
+      (ensure-actions (split-right-child split) backend))))
+
+(defun compute-schedule (primogenitor-buffer-shard-vector backend)
+  (let ((*storage-action-table* (make-hash-table :test #'eq))
+        (graph (petalisp.scheduling:make-graph)))
+    ;; Create all actions.
+    (loop for primogenitor-buffer-shard across primogenitor-buffer-shard-vector do
+      (ensure-actions primogenitor-buffer-shard backend))
+    ;; Turn each action into a dependency graph node and create edges for each
+    ;; other action it depends on.
+    (maphash
+     (lambda (storage action)
+       (declare (ignore storage) (action action))
+       (multiple-value-bind (node presentp)
+           (petalisp.scheduling:graph-ensure-node graph action)
+         (when (not presentp)
+           (loop for invocation in (action-work-invocations action) do
+             (loop for source across (invocation-sources invocation) do
+               (multiple-value-bind (action presentp)
+                   (gethash source *storage-action-table*)
+                 ;; Skip the storage of leaf buffer shards.
+                 (when presentp
+                   ;; Add one dependency to the action computing this source's
+                   ;; interior.
+                   (petalisp.scheduling:graph-add-edge
+                    graph
+                    (petalisp.scheduling:graph-ensure-node graph action)
+                    node
+                    (shape-size (invocation-iteration-space invocation)))
+                   ;; Add dependencies to all actions that compute the values of
+                   ;; this source's ghost layers.
+                   (loop for (shape . storage) in (storage-ghost-layer-alist source) do
+                     (multiple-value-bind (other-action presentp)
+                         (gethash storage *storage-action-table*)
+                       (when presentp
+                         (petalisp.scheduling:graph-add-edge
+                          graph
+                          (petalisp.scheduling:graph-ensure-node graph other-action)
+                          node
+                          (shape-size shape))))))))))))
+     *storage-action-table*)
+    ;; Create the schedule.
+    (let ((schedule
+            (petalisp.scheduling:graph-parallel-depth-first-schedule
+             graph
+             (worker-pool-size (backend-worker-pool backend)))))
+      ;; Have the first action that touches a particular piece of storage copy
+      ;; over all its ghost layers.  This storage action table is destroyed in
+      ;; this process.
+      (loop for action-vector in schedule do
+        (loop for action across action-vector do
+          (when (actionp action)
+            (loop for invocation in (action-work-invocations action) do
+              (loop for storage across (invocation-sources invocation) do
+                (when (nth-value 1 (gethash storage *storage-action-table*))
+                  (remhash storage *storage-action-table*)
+                  (loop for (iteration-space . neighbor-storage) in (storage-ghost-layer-alist storage) do
+                    (push (make-copy-invocation iteration-space storage neighbor-storage backend)
+                          (action-copy-invocations action)))))))))
+      #+(or)
+      (let ((nodes (alexandria:hash-table-values (petalisp.scheduling::graph-object-nodes graph))))
+        (when (< (length nodes) 1000)
+          (petalisp.graphviz:view nodes)))
+      schedule)))

@@ -101,6 +101,8 @@
   (object-nodes (make-hash-table) :type hash-table))
 
 (defun graph-ensure-node (graph object)
+  "Returns the graph node corresponding to the supplied object, and as a secondary
+return value, whether that node was already present in the graph."
   (declare (graph graph))
   (alexandria:ensure-gethash
    object
@@ -108,6 +110,7 @@
    (make-node :object object)))
 
 (defun graph-add-edge (graph predecessor successor weight)
+  "Add a new, weighted edge between the two supplied graph nodes."
   (declare (graph graph) (node predecessor successor))
   (declare (ignore graph))
   (assert (not (eq predecessor successor)))
@@ -254,8 +257,8 @@ improve data locality."
               ;; The workers that will pick work from the node stack.
               (worker-stack (make-array p :initial-element nil :fill-pointer 0)))
           (declare (unsigned-byte current-nodes ensuing-nodes))
-          (loop until (zerop (pdfs-queue-size pdfs-queue)) do
-            ;; Fill one node vector.
+          (loop until (and (zerop (pdfs-queue-size pdfs-queue)) (zerop current-nodes)) do
+            ;; Attempt to grab one node for each worker.
             (loop until (= (+ current-nodes (length node-stack)) p) do
               (when (zerop (pdfs-queue-size pdfs-queue))
                 ;; If control reaches this point, there aren't enough nodes
@@ -263,11 +266,13 @@ improve data locality."
                 ;; However, we can still try to steal some nodes from the
                 ;; ensuing node vector.  This will ruin their affinity, but
                 ;; scheduling them earlier will make up for that.
-                (loop for index below p until (zerop ensuing-nodes) do
-                  (when (nodep (aref ensuing-node-vector index))
-                    (vector-push (shiftf (aref ensuing-node-vector index) nil) node-stack)
-                    (decf ensuing-nodes)
-                    (incf current-nodes)))
+                (loop for index below p
+                      repeat (- p current-nodes (length node-stack))
+                      until (zerop ensuing-nodes)
+                      do (when (nodep (aref ensuing-node-vector index))
+                           (vector-push (shiftf (aref ensuing-node-vector index) nil) node-stack)
+                           (decf ensuing-nodes)
+                           (incf current-nodes)))
                 (loop-finish))
               ;; Pick one node from the queue and place it either in a location
               ;; it has affinity to, or in the node stack.
@@ -294,29 +299,26 @@ improve data locality."
                          (aref worker-stack (random end)))))
             ;; Use nodes from the node stack to fill workers that don't have
             ;; anything to do, yet.
+            (assert (<= (length node-stack) (length worker-stack)))
             (loop for worker across worker-stack
                   for node across node-stack
                   do (setf (node-affinity node) worker)
                      (setf (aref current-node-vector worker) node)
                      (incf current-nodes))
-            (setf (fill-pointer worker-stack) 0)
-            (setf (fill-pointer node-stack) 0)
             ;; Mark all nodes in the current node vector as completed.
             (loop for elt across current-node-vector do
-              (when (nodep elt)
+              (unless (not elt)
                 (loop for (successor . weight) in (node-successor-alist elt) do
                   (when (zerop (decf (node-counter successor)))
                     (pdfs-queue-push pdfs-queue successor)))))
             ;; Prepare the stage for the next iteration
+            (setf (fill-pointer worker-stack) 0)
+            (setf (fill-pointer node-stack) 0)
             (shiftf current-nodes ensuing-nodes 0)
             (collect-node-vector
              (shiftf current-node-vector
                      ensuing-node-vector
-                     (make-array p :initial-element nil))))
-          ;; If there are still some nodes left in the node vector after the last
-          ;; iteration, add that node vector to the schedule, too.
-          (unless (zerop current-nodes)
-            (collect-node-vector current-node-vector))))
+                     (make-array p :initial-element nil))))))
       (steps))))
 
 #+(or) ;; Usage example:
