@@ -311,16 +311,19 @@ from some base and index."))
                 (proxy-value
                  (ensure-proxy
                   :expr `(aref .instructions. ,instruction-number)
-                  :name "IREF")))
+                  :name "IREF"
+                  :type '(values instruction &optional))))
               (transformation
                 (proxy-value
                  (ensure-proxy
                   :expr `(iref-instruction-transformation ,instruction)
-                  :name "TRANSFORMATION")))
+                  :name "TRANSFORMATION"
+                  :type '(values transformation &optional))))
               (offset-proxy
                 (ensure-proxy
                  :expr `(aref (transformation-offsets ,transformation) 0)
-                 :name "OFFSET")))
+                 :name "OFFSET"
+                 :type '(values fixnum &optional))))
          (if (not permutation)
              offset-proxy
              (meta-index-+
@@ -329,7 +332,8 @@ from some base and index."))
                (if (eql scaling :any)
                    (ensure-proxy
                     :expr `(aref (transformation-scalings ,transformation) 0)
-                    :name "SCALING")
+                    :name "SCALING"
+                    :type '(values fixnum &optional))
                    (constant-proxy scaling)))
               offset-proxy)))))))
 
@@ -374,9 +378,9 @@ from some base and index."))
           for axis from 0
           do (let* ((index (proxy-value (aref *index-proxies* axis)))
                     (range (proxy-value ranges-proxy axis))
-                    (start (proxy-value (ensure-proxy :expr `(range-start ,range) :name "START")))
-                    (step (proxy-value (ensure-proxy :expr `(range-step ,range) :name "STEP")))
-                    (end (proxy-value (ensure-proxy :expr `(range-end ,range) :name "END"))))
+                    (start (proxy-value (ensure-proxy :expr `(range-start ,range) :name "START" :type '(values fixnum &optional))))
+                    (step (proxy-value (ensure-proxy :expr `(range-step ,range) :name "STEP" :type '(values fixnum &optional))))
+                    (end (proxy-value (ensure-proxy :expr `(range-end ,range) :name "END" :type '(values fixnum &optional)))))
                (setf (svref wrap-in-loop-vector (1+ axis))
                      (if (eql info :contiguous)
                          (lambda (form)
