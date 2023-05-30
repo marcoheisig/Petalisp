@@ -1,58 +1,16 @@
 ;;;; © 2016-2023 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package #:petalisp.ir)
+(in-package #:petalisp.codegen)
 
-;;; The code in this file handles the translation of a blueprint to the
-;;; s-expression of a function with two arguments - a kernel with the
-;;; supplied blueprint and the iteration space to be executed.
-;;;
-;;; The translation uses two concepts - proxies and wrappers.  A proxy
-;;; describes the values that would be produced if the kernel would execute
-;;; a certain expression.  A wrapper is a function that takes a form and
-;;; wraps it in suitable bindings such that the variables described by some
-;;; proxies are defined.
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Customization
-
-(defgeneric target-function (client)
-  (:documentation
-   "Returns the name of a function that will be invoked with the values of the
-.targets. kernel parameter and an index, and that returns the target with that
-index."))
-
-(defgeneric source-function (client)
-  (:documentation
-   "Returns the name of a function that will be invoked with the
-.sources. kernel parameter and an index, and that returns the source with that
-index."))
-
-(defgeneric unpack-function (client ntype rank)
-  (:documentation
-   "Returns the name of a function for unpacking a storage object and environment
-into a base, an offset, and as many strides as the supplied RANK."))
-
-(defgeneric unpack-values-type (client ntype rank)
-  (:documentation
-   "Returns the values type of the unpack function when applied to some source and
-environment.")
-  (:method (client ntype rank)
-    `(values t fixnum ,@(loop repeat rank collect '(and unsigned-byte fixnum)))))
-
-(defgeneric store-function (client ntype)
-  (:documentation
-   "Returns the name of a function for storing an object of the supplied ntype at
-some base and index."))
-
-(defgeneric load-function (client ntype)
-  (:documentation
-   "Returns the name of a function for loading an object of the supplied ntype
-from some base and index."))
+;;; The code in this file handles the translation of a blueprint to a compiled
+;;; kernel.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Proxies
+;;;
+;;; A proxy describes the values that would be produced if the kernel would
+;;; execute a certain expression.
 
 (defstruct proxy
   ;; The index of the innermost loop that the proxy depends on.  The level
@@ -105,6 +63,9 @@ from some base and index."))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Memory References
+;;;
+;;; A memory reference tracks all proxies and metadata related to a particular
+;;; source or target.
 
 (defstruct memref
   ;; The ntype of each element being referenced.
@@ -180,7 +141,7 @@ from some base and index."))
           (declare (kernel .kernel.))
           (declare (shape .iteration-space.))
           (declare (ignorable .kernel. .iteration-space. .targets. .sources. .instructions. .environment.))
-          (with-unsafe-optimizations
+          (with-unsafe-optimization
             ,(let ((body '(values)))
                (loop for axis from rank downto 0 do
                  (let ((proxies (reverse (aref *rproxies-vector* axis))))
@@ -237,8 +198,8 @@ from some base and index."))
       (setf (svref vector index)
             (gensym string)))))
 
-(defun meta-index-+ (&rest argument-proxies)
-  (let ((fn (constant-proxy 'index-+))
+(defun meta-index+ (&rest argument-proxies)
+  (let ((fn (constant-proxy 'index+))
         (zero (constant-proxy 0)))
     (trivia:match (remove 0 argument-proxies :key #'proxy-value)
       ((list) zero)
@@ -249,8 +210,8 @@ from some base and index."))
           (meta-funcall 1 fn a b))
         (stable-sort (copy-list proxies) #'< :key #'proxy-level))))))
 
-(defun meta-index-* (&rest argument-proxies)
-  (let ((fn (constant-proxy 'index-*))
+(defun meta-index* (&rest argument-proxies)
+  (let ((fn (constant-proxy 'index*))
         (zero (constant-proxy 0))
         (one (constant-proxy 1)))
     (if (member 0 argument-proxies :key #'proxy-value)
@@ -292,11 +253,11 @@ from some base and index."))
           (constant-proxy (load-function *client* ntype))
           base-proxy
           (apply
-           #'meta-index-+
+           #'meta-index+
            (aref index-proxies transformation-number)
            (loop for offset in offsets
                  for stride-proxy across stride-proxies
-                 collect (meta-index-* stride-proxy (constant-proxy offset)))))))
+                 collect (meta-index* stride-proxy (constant-proxy offset)))))))
       ((list :store (list value-n instruction-number) array-number transformation-number)
        (with-slots (ntype rank base-proxy stride-proxies index-proxies)
            (aref *target-memrefs* array-number)
@@ -326,8 +287,8 @@ from some base and index."))
                  :type '(values fixnum &optional))))
          (if (not permutation)
              offset-proxy
-             (meta-index-+
-              (meta-index-*
+             (meta-index+
+              (meta-index*
                (aref *index-proxies* permutation)
                (if (eql scaling :any)
                    (ensure-proxy
@@ -415,16 +376,18 @@ from some base and index."))
                          (:targets `(kernel-targets .kernel.))))))))
            (rank (length (first transformation-blueprints)))
            (unpack-proxy
-             (ensure-proxy
-              :number-of-values (+ rank 2)
-              :expr `(,(unpack-function *client* ntype rank)
-                      (,(target-function *client*)
-                       ,(ecase kind
-                          (:sources '.sources.)
-                          (:targets '.targets.))
-                       ,position)
-                      .environment.)
-              :type (unpack-values-type *client* ntype rank)))
+             (multiple-value-bind (fn type)
+                 (unpack-function *client* ntype rank)
+               (ensure-proxy
+                :number-of-values (+ rank 2)
+                :expr `(,fn
+                        (,(target-function *client*)
+                         ,(ecase kind
+                            (:sources '.sources.)
+                            (:targets '.targets.))
+                         ,position)
+                        .environment.)
+                :type type)))
            (stride-proxies (make-array rank)))
       (loop for axis below rank do
         (setf (svref stride-proxies axis)
@@ -467,7 +430,7 @@ from some base and index."))
                                :name "SCALINGS")))))
                (setf (aref index-proxies index)
                      (apply
-                      #'meta-index-+
+                      #'meta-index+
                       (proxy-ref unpack-proxy 1)
                       ;; Loop over each output index of that reference.
                       (loop
@@ -475,7 +438,7 @@ from some base and index."))
                         for axis from 0
                         for stride-proxy across stride-proxies
                         collect
-                        (meta-index-*
+                        (meta-index*
                          stride-proxy
                          (ensure-proxy
                           :expr `(aref ,(proxy-value offsets-proxy) ,axis)
@@ -483,7 +446,7 @@ from some base and index."))
                         collect
                         (if (null permutation)
                             (constant-proxy 0)
-                            (meta-index-*
+                            (meta-index*
                              stride-proxy
                              (if (eql scaling :any)
                                  (ensure-proxy
@@ -492,63 +455,3 @@ from some base and index."))
                                  (constant-proxy scaling))
                              (svref *index-proxies* permutation))))))))
          index-proxies)))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Auxiliary Functions and Macros
-
-(defun index-+ (&rest fixnums)
-  (apply #'+ fixnums))
-
-(defun index-* (&rest fixnums)
-  (apply #'* fixnums))
-
-(define-compiler-macro index-+ (&rest forms)
-  `(the fixnum
-        (+ ,@(loop for form in forms collect `(the fixnum ,form)))))
-
-(define-compiler-macro index-* (&rest forms)
-  `(the fixnum
-        (* ,@(loop for form in forms collect `(the fixnum ,form)))))
-
-(defmacro without-compiler-notes (&body body)
-  "Suppress all compiler notes arising during the compilation of BODY."
-  `(locally
-       #+sbcl (declare (sb-ext:muffle-conditions sb-ext:compiler-note))
-       ,@body))
-
-(defmacro with-unsafe-optimizations* (&body body)
-  "Optimize the heck out of BODY. Use with caution!"
-  (let ((settings '((speed 3) (space 0) (debug 0) (safety 0) (compilation-speed 0))))
-    `(locally (declare (optimize ,@settings))
-       ,@body)))
-
-(defmacro with-unsafe-optimizations (&body body)
-  "Optimize the heck out of BODY. Use with caution!
-
-To preserve sanity, compiler efficiency hints are disabled by default. Use
-WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
-  `(without-compiler-notes
-    (with-unsafe-optimizations* ,@body)))
-
-(defun unpack-array (array environment)
-  (declare (array array))
-  (declare (ignore environment))
-  (let ((rank (array-rank array)))
-    (macrolet ((adim (axis) `(array-dimension array ,axis)))
-      (case rank
-        (0 (values array 0))
-        (1 (values array 0 1))
-        (2 (values array 0 (adim 1) 1))
-        (3 (values array 0 (* (adim 1) (adim 2)) (adim 2) 1))
-        (4 (values array 0 (* (adim 1) (adim 2) (adim 3)) (* (adim 2) (adim 3)) (adim 3) 1))
-        (otherwise
-         (apply
-          #'values
-          array
-          0
-          (let ((strides '()))
-            (loop for axis from rank downto 1
-                  for stride = 1 then (* stride (array-dimension array axis))
-                  do (push stride strides))
-            strides)))))))

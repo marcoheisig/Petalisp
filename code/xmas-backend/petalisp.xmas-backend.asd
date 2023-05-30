@@ -12,6 +12,7 @@
    "petalisp.utilities"
    "petalisp.core"
    "petalisp.ir"
+   "petalisp.codegen"
    "typo")
 
   :serial t

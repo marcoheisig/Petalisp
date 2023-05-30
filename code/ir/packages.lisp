@@ -129,9 +129,6 @@
    #:buffer-number-of-stores
    #:buffer-reuse-potential
    #:kernel-iteration-space
-   #:kernel-blueprint
-   #:iteration-space-blueprint
-   #:transformation-blueprint
    #:kernel-instruction-vector
    #:kernel-number-of-inputs
    #:kernel-number-of-outputs
@@ -155,11 +152,15 @@
    #:instruction-number
    #:instruction-inputs
    #:instruction-transformation
+   #:instruction-number-of-values
    #:iref-instruction-transformation
    #:call-instruction-fnrecord
    #:call-instruction-function
+   #:call-instruction-number-of-values
+   #:call-instruction-inputs
    #:store-instruction-buffer
    #:store-instruction-transformation
+   #:store-instruction-input
    #:load-instruction-buffer
    #:load-instruction-transformation
 
@@ -233,16 +234,6 @@
    #:make-array-from-shape-and-ntype
    #:ensure-array-buffer-compatibility
    #:ensure-array-shape-ntype-compatibility
-   #:make-ir-backend
    #:check-ir
-   #:interpret-kernel
-   #:translate-blueprint
-   #:target-function
-   #:source-function
-   #:unpack-function
-   #:unpack-values-type
-   #:store-function
-   #:load-function
-   #:unpack-array
    #:compute-program-buffer-coloring
    #:reuse-optimizing-transformation))

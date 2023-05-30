@@ -1,6 +1,6 @@
 ;;;; © 2016-2023 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package #:petalisp.ir)
+(in-package #:petalisp.codegen)
 
 ;;; In this file we define a simple kernel interpreter.  The interpreter
 ;;; can be used for testing or for executing small kernels for which

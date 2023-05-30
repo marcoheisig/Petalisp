@@ -10,6 +10,8 @@
    "trivial-macroexpand-all"
    "petalisp.utilities"
    "petalisp.core"
+   "petalisp.ir"
+   "petalisp.codegen"
    "petalisp.xmas-backend")
 
   :in-order-to ((test-op (test-op "petalisp.test-suite")))

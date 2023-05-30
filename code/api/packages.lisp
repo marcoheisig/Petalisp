@@ -173,7 +173,7 @@
    #:move-axis-to-front
    #:with-lazy-arrays)
 
-  (:shadowing-import-from :petalisp.ir #:make-ir-backend)
+  (:shadowing-import-from :petalisp.codegen #:make-ir-backend)
   (:shadowing-import-from :petalisp.xmas-backend #:make-xmas-backend))
 
 (defpackage #:petalisp-user

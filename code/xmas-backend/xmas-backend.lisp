@@ -2,7 +2,7 @@
 
 (in-package #:petalisp.xmas-backend)
 
-(defclass xmas-backend (backend)
+(defclass xmas-backend (backend compile-cache-mixin lisp-compiler-mixin)
   ((%memory-pool
     :initform (make-memory-pool)
     :initarg :memory-pool
@@ -22,20 +22,17 @@
   (worker-pool-size
    (xmas-backend-worker-pool xmas-backend)))
 
-(defun compile-kernel (kernel xmas-backend)
-  (let ((blueprint (kernel-blueprint kernel)))
-    (alexandria:ensure-gethash
-     blueprint
-     (xmas-backend-compile-cache xmas-backend)
-     (compile nil (translate-blueprint xmas-backend blueprint)))))
-
 (defmethod target-function
     ((xmas-backend xmas-backend))
-  'xmas-backend-buffer)
+  (values
+   'xmas-backend-buffer
+   '(values buffer &optional)))
 
 (defmethod source-function
     ((xmas-backend xmas-backend))
-  'xmas-backend-buffer)
+  (values
+   'xmas-backend-buffer
+   '(values buffer &optional)))
 
 (defun xmas-backend-buffer (alist index)
   (declare (list alist) (unsigned-byte index))
@@ -45,17 +42,13 @@
     ((xmas-backend xmas-backend)
      (ntype typo:ntype)
      (rank integer))
-  'xmas-backend-unpack)
-
-(defmethod unpack-values-type
-  ((xmas-backend xmas-backend)
-   (ntype typo:ntype)
-   (rank integer))
-  `(values
-    (simple-array ,(typo:ntype-type-specifier ntype))
-    fixnum
-    ,@(loop repeat rank collect '(and unsigned-byte fixnum))
-    &optional))
+  (values
+   'xmas-backend-unpack
+   `(values
+     (simple-array ,(typo:ntype-type-specifier ntype))
+     fixnum
+     ,@(loop repeat rank collect '(and unsigned-byte fixnum))
+     &optional)))
 
 (defun xmas-backend-unpack (buffer storage-vector)
   (unpack-array
@@ -300,7 +293,7 @@
             (do-buffer-inputs (kernel buffer)
               (unless (member kernel scheduled-kernels)
                 (push kernel scheduled-kernels)
-                (let ((fn (compile-kernel kernel xmas-backend))
+                (let ((fn (compile-kernel xmas-backend kernel))
                       (cost-per-element (petalisp.ir::kernel-highest-instruction-number kernel)))
                   (map-partitioned-iteration-space
                    (lambda (iteration-space)

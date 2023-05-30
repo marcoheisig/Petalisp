@@ -1,6 +1,6 @@
 ;;;; © 2016-2023 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
 
-(in-package #:petalisp.ir)
+(in-package #:petalisp.codegen)
 
 ;;; The IR backend converts its supplied arrays to an equivalent IR graph,
 ;;; binds each buffer to a Lisp array, and directly interprets each kernel
@@ -52,7 +52,6 @@
     ((ir-backend ir-backend)
      (lazy-arrays list))
   (let* ((program (program-from-lazy-arrays lazy-arrays))
-         (buffer-shards (partition-program program))
          (*nodes* (make-hash-table :test #'eq))
          (*worklist* '()))
     (map-buffers-and-kernels

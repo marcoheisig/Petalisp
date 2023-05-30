@@ -6,6 +6,7 @@
   (:use
    #:common-lisp
    #:petalisp.core
-   #:petalisp.ir)
+   #:petalisp.ir
+   #:petalisp.codegen)
   (:export
    #:make-xmas-backend))
