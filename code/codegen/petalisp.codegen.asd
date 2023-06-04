@@ -9,17 +9,21 @@
    "petalisp.utilities"
    "petalisp.core"
    "petalisp.ir"
-   "trivia")
+   "trivia"
+   "trivial-macroexpand-all")
 
   :serial t
   :components
   ((:file "packages")
-   (:file "utilities")
+   (:file "indexing")
+   (:file "load-foreign-code")
    (:file "generic-functions")
    (:file "blueprint")
+   (:file "bpinfo")
    (:file "compile-cache")
    (:file "lisp-compiler")
    (:file "lisp-interpreter")
+   (:file "cpp-from-lisp")
    (:file "cpp-compiler")
    (:file "cuda-compiler")
    (:file "mixins")

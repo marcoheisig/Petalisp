@@ -130,7 +130,7 @@
    #:buffer-reuse-potential
    #:kernel-iteration-space
    #:kernel-instruction-vector
-   #:kernel-number-of-inputs
+   #:kernel-number-of-ienputs
    #:kernel-number-of-outputs
    #:kernel-number-of-loads
    #:kernel-number-of-stores

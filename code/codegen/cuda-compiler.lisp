@@ -14,13 +14,13 @@
                  collect (format nil "int64_t end~D" axis)
                  collect (format nil "int64_t step~D" axis))
            (loop for (ntype irefs) in *dst-array-info* for axis from 0
-                 for type = (ntype-c-type ntype)
+                 for type = (ntype-cpp-info ntype)
                  for rank = (length irefs)
                  collect (format nil "~A* __restrict dst~D" type axis)
                  collect (format nil "uint64_t dst~Dskip" axis)
                  append (loop for index below (1- rank) collect (format nil "uint64_t dst~Ds~D" axis index)))
            (loop for (ntype irefs) in *src-array-info* for axis from 0
-                 for type = (ntype-c-type ntype)
+                 for type = (ntype-cpp-info ntype)
                  for rank = (length irefs)
                  collect (format nil "const ~A* __restrict src~D" type axis)
                  collect (format nil "uint64_t src~Dskip" axis)
@@ -80,13 +80,13 @@
                  collect (format nil "end~D" axis)
                  collect (format nil "step~D" axis))
            (loop for (ntype irefs) in *dst-array-info* for axis from 0
-                 for type = (ntype-c-type ntype)
+                 for type = (ntype-cpp-info ntype)
                  for rank = (length irefs)
                  collect (format nil "dst~D" axis)
                  collect (format nil "dst~Dskip" axis)
                  append (loop for index below (1- rank) collect (format nil "dst~Ds~D" axis index)))
            (loop for (ntype irefs) in *src-array-info* for axis from 0
-                 for type = (ntype-c-type ntype)
+                 for type = (ntype-cpp-info ntype)
                  for rank = (length irefs)
                  collect (format nil "src~D" axis)
                  collect (format nil "src~Dskip" axis)

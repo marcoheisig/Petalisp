@@ -100,7 +100,7 @@
      (unless (= 1 number-of-values)
        (error "Cannot (yet) create C++ kernels containing multiple valued functions."))
      (multiple-value-bind (type name kind)
-         (decode-operator operator)
+         (function-cpp-info operator)
        (let ((input-numbers (mapcar #'second inputs)))
          (ecase kind
            (:infix
@@ -132,7 +132,7 @@
              (format stream " + src~Ds~D * ~D" buffer-number axis offset))))
      (format stream ";~%")
      (format stream "    ~A ~A = src~D[index~D];~%"
-             (ntype-c-type (first (nth buffer-number *src-array-info*)))
+             (ntype-cpp-info (first (nth buffer-number *src-array-info*)))
              target-variable
              buffer-number
              *index-counter*)
@@ -141,7 +141,7 @@
                target-variable
                buffer-number
                (type-format-string
-                (ntype-c-type
+                (ntype-cpp-info
                  (first (nth buffer-number *src-array-info*))))
                *index-counter*
                target-variable))
@@ -200,7 +200,7 @@
   ;; Declare the variables for each array data pointer and the
   ;; corresponding skips and strides.
   (loop for (ntype ref) in *dst-array-info* for axis from 0 do
-    (let ((type (ntype-c-type ntype))
+    (let ((type (ntype-cpp-info ntype))
           (rank (length ref)))
       (format stream "  ~A* __restrict dst~D; uint64_t dst~Dskip;~@[ uint64_t ~{dst~Ds~D~^, ~};~]~%"
               type axis axis
@@ -208,7 +208,7 @@
                     collect axis
                     collect index))))
   (loop for (ntype ref) in *src-array-info* for axis from 0 do
-    (let ((type (ntype-c-type ntype))
+    (let ((type (ntype-cpp-info ntype))
           (rank (length ref)))
       (format stream "  ~A* __restrict src~D; uint64_t src~Dskip;~@[ uint64_t ~{src~Ds~D~^, ~};~]~%"
               type axis axis
@@ -250,7 +250,7 @@
   ;; Unpack all StarPU buffers.
   (let ((buffer-number -1))
     (loop for (ntype ref) in *dst-array-info* for index from 0 do
-      (let ((type (ntype-c-type ntype))
+      (let ((type (ntype-cpp-info ntype))
             (rank (length ref)))
         (incf buffer-number)
         (case rank
@@ -270,7 +270,7 @@
            (format stream "  dst~Ds0 = STARPU_BLOCK_GET_LDZ(buffers[~D]);~%"
                    index buffer-number)))))
     (loop for (ntype ref) in *src-array-info* for index from 0 do
-      (let ((type (ntype-c-type ntype))
+      (let ((type (ntype-cpp-info ntype))
             (rank (length ref)))
         (incf buffer-number)
         (case rank
@@ -317,169 +317,18 @@
     (format stream "  printf(\"Done executing ~A\\n\");~%" name)
     (format stream "  fflush(NULL);~%")))
 
-(defun ntype-c-type (ntype)
-  (typo:ntype-subtypecase ntype
-    (short-float "float")
-    (single-float "float")
-    (double-float "double")
-    (long-float "double")
-    ((unsigned-byte 8) "uint8_t")
-    ((unsigned-byte 16) "uint16_t")
-    ((unsigned-byte 32) "uint32_t")
-    ((unsigned-byte 64) "uint64_t")
-    ((signed-byte 8) "int8_t")
-    ((signed-byte 16) "int16_t")
-    ((signed-byte 32) "int32_t")
-    ((signed-byte 64) "int64_t")
-    (t (error "Cannot create C++ kernels operating on values of type ~S."
-              (typo:ntype-type-specifier ntype)))))
-
 (defun type-format-string (type)
   (trivia:ematch type
     ("float" "%g")
     ("double" "%g")))
 
-(defparameter *operator-table*
-  (alexandria:alist-hash-table
-   '(;; coerce
-     (typo:coerce-to-short-float "float" "(float)" :prefix)
-     (typo:coerce-to-single-float "float" "(float)" :prefix)
-     (typo:coerce-to-double-float "double" "(double)" :prefix)
-     (typo:coerce-to-long-float "double" "(double)" :prefix)
-     ;; short-float
-     (typo:two-arg-short-float+ "float" "+" :infix)
-     (typo:two-arg-short-float- "float" "-" :infix)
-     (typo:two-arg-short-float* "float" "*" :infix)
-     (typo:two-arg-short-float/ "float" "/" :infix)
-     (typo:two-arg-short-float-max "float" "fmax" :prefix)
-     (typo:two-arg-short-float-min "float" "fmin" :prefix)
-     (typo:short-float-abs "float" "fabs" :prefix)
-     (typo:short-float-from-single-float "float" "(float)" :prefix)
-     (typo:short-float-from-double-float "float" "(float)" :prefix)
-     (typo:short-float-from-long-float "float" "(float)" :prefix)
-     (typo:short-float-cos "float" "cos" :prefix)
-     (typo:short-float-exp "float" "exp" :prefix)
-     (typo:short-float-ln "float" "ln" :prefix)
-     (typo:short-float-sin "float" "sin" :prefix)
-     (typo:short-float-sqrt "float" "sqrt" :prefix)
-     (typo:short-float-tan "float" "tan" :prefix)
-     (typo:one-arg-short-float- "float" "-" :prefix)
-     ;; single-float
-     (typo:two-arg-single-float+ "float" "+" :infix)
-     (typo:two-arg-single-float- "float" "-" :infix)
-     (typo:two-arg-single-float* "float" "*" :infix)
-     (typo:two-arg-single-float/ "float" "/" :infix)
-     (typo:two-arg-single-float-max "float" "fmax" :prefix)
-     (typo:two-arg-single-float-min "float" "fmin" :prefix)
-     (typo:single-float-abs "float" "fabs" :prefix)
-     (typo:single-float-from-short-float "float" "(float)" :prefix)
-     (typo:single-float-from-double-float "float" "(float)" :prefix)
-     (typo:single-float-from-long-float "float" "(float)" :prefix)
-     (typo:single-float-cos "float" "cos" :prefix)
-     (typo:single-float-exp "float" "exp" :prefix)
-     (typo:single-float-ln "float" "ln" :prefix)
-     (typo:single-float-sin "float" "sin" :prefix)
-     (typo:single-float-sqrt "float" "sqrt" :prefix)
-     (typo:single-float-tan "float" "tan" :prefix)
-     (typo:one-arg-single-float- "float" "-" :prefix)
-     ;; double-float
-     (typo:two-arg-double-float+ "double" "+" :infix)
-     (typo:two-arg-double-float- "double" "-" :infix)
-     (typo:two-arg-double-float* "double" "*" :infix)
-     (typo:two-arg-double-float/ "double" "/" :infix)
-     (typo:two-arg-double-float-max "double" "fmax" :prefix)
-     (typo:two-arg-double-float-min "double" "fmin" :prefix)
-     (typo:double-float-abs "double" "fabs" :prefix)
-     (typo:double-float-from-short-float "double" "(double)" :prefix)
-     (typo:double-float-from-single-float "double" "(double)" :prefix)
-     (typo:double-float-from-long-float "double" "(double)" :prefix)
-     (typo:double-float-cos "double" "cos" :prefix)
-     (typo:double-float-exp "double" "exp" :prefix)
-     (typo:double-float-ln "double" "ln" :prefix)
-     (typo:double-float-sin "double" "sin" :prefix)
-     (typo:double-float-sqrt "double" "sqrt" :prefix)
-     (typo:double-float-tan "double" "tan" :prefix)
-     (typo:one-arg-double-float- "double" "-" :prefix)
-     ;; long-float
-     (typo:two-arg-long-float+ "double" "+" :infix)
-     (typo:two-arg-long-float- "double" "-" :infix)
-     (typo:two-arg-long-float* "double" "*" :infix)
-     (typo:two-arg-long-float/ "double" "/" :infix)
-     (typo:two-arg-long-float-max "double" "fmax" :prefix)
-     (typo:two-arg-long-float-min "double" "fmin" :prefix)
-     (typo:long-float-abs "double" "fabs" :prefix)
-     (typo:long-float-from-short-float "double" "(double)" :prefix)
-     (typo:long-float-from-single-float "double" "(double)" :prefix)
-     (typo:long-float-from-double-float "double" "(double)" :prefix)
-     (typo:long-float-cos "double" "cos" :prefix)
-     (typo:long-float-exp "double" "exp" :prefix)
-     (typo:long-float-ln "double" "ln" :prefix)
-     (typo:long-float-sin "double" "sin" :prefix)
-     (typo:long-float-sqrt "double" "sqrt" :prefix)
-     (typo:long-float-tan "double" "tan" :prefix)
-     (typo:one-arg-long-float- "double" "-" :prefix))))
-
-(defun blueprint-cpp-translatable-p (blueprint)
-  (ucons:do-ulist (instruction-blueprint (ucons:unthcdr 3 blueprint) t)
-    (trivia:match instruction-blueprint
-      ((ucons:ulist* :call 1 function-name _)
-       (when (or (eq function-name :any)
-                 (not (gethash function-name *operator-table*)))
-         (return-from blueprint-cpp-translatable-p nil))))))
-
-(defun decode-operator (operator)
-  (values-list
-   (or (gethash operator *operator-table*)
-       (error "Cannot create C++ kernels containing ~S operators." operator))))
-
-(defun pkg-config (lib-name &rest options)
-  (values
-   (split-sequence:split-sequence
-    #\space
-    (uiop:run-program
-     (list* "pkg-config" lib-name options)
-     :output '(:string :stripped t)))))
-
-(defun load-foreign-code
-    (source-code
-     &key
-       (compiler "cc")
-       (language "c++")
-       (standard "c++14")
-       (flags '()))
-  (declare (string source-code compiler language standard)
-           (list flags))
-  (uiop:with-temporary-file (:pathname library :type "so" :keep t)
-    :close-stream
-    (let* ((command
-             (append
-              (list compiler "-shared" "-x" language (format nil "-std=~A" standard))
-              flags
-              (list "-o" (uiop:native-namestring library) "-")))
-           (process-info (uiop:launch-program
-                          command
-                          :input :stream
-                          :error-output :stream))
-           (input (uiop:process-info-input process-info))
-           (error-output  (uiop:process-info-error-output process-info)))
-      (unwind-protect (princ source-code input)
-        (close input))
-      (unless (zerop (uiop:wait-process process-info))
-        (error "Error while compiling a shared library:~%~A~%~A"
-               (with-output-to-string (stream)
-                 (loop for string in command do
-                   (write-string string stream)
-                   (write-char #\space stream)))
-               (alexandria:read-stream-content-into-string error-output))))
-    (cffi:load-foreign-library library)))
-
 (defun write-blueprint-cpp (name stream)
   (when *emit-verbose-code*
     (format stream "#include <stdio.h>~%"))
   (format stream "#include <math.h>~%")
-  (format stream "#include <starpu.h>~%")
   (format stream "extern \"C\" {~%")
-  (format stream "void ~A (void *buffers[], void *args) {~%" name)
+  #+(or)
+  (format stream "void ~A (~{~A ~A~^, ~}) {~%" name argument-alist)
   (write-prologue name stream)
   ;; Loop over the iteration space.
   (loop for axis from 0 for range-info in *iteration-space-info* do

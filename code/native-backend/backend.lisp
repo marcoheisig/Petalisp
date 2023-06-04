@@ -4,20 +4,13 @@
 
 (defgeneric backend-worker-pool (backend))
 
-(defgeneric backend-compile-cache (backend))
-
-(defgeneric backend-compile-blueprint (backend blueprint))
-
-(defclass backend (petalisp.core:backend)
+(defclass backend
+    (petalisp.core:backend compile-cache-mixin lisp-compiler-mixin)
   ((%worker-pool
     :initform (alexandria:required-argument :worker-pool)
     :initarg :worker-pool
     :type worker-pool
-    :reader backend-worker-pool)
-   (%compile-cache
-    :initarg :compile-cache
-    :initform (make-hash-table :test #'eq)
-    :reader backend-compile-cache)))
+    :reader backend-worker-pool)))
 
 (defmethod initialize-instance :after
     ((backend backend) &key &allow-other-keys)

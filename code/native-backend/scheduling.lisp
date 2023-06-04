@@ -22,9 +22,7 @@
    :iteration-space (kernel-shard-iteration-space kernel-shard)
    :sources (map 'vector #'buffer-shard-storage (kernel-shard-sources kernel-shard))
    :targets (map 'vector #'buffer-shard-storage (kernel-shard-targets kernel-shard))
-   :kfn (backend-compile-blueprint
-         backend
-         (kernel-blueprint (kernel-shard-kernel kernel-shard)))))
+   :kfn (compile-kernel backend (kernel-shard-kernel kernel-shard))))
 
 (defun make-copy-invocation (iteration-space target source backend)
   (declare (shape iteration-space) (storage target source) (backend backend))
@@ -45,7 +43,7 @@
      :iteration-space iteration-space
      :targets (vector target)
      :sources (vector source)
-     :kfn (backend-compile-blueprint
+     :kfn (compile-blueprint
            backend
            (make-copy-blueprint iteration-space source target)))))
 

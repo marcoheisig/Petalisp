@@ -90,7 +90,7 @@
                           (compile-cache (ir-backend-compile-cache ir-backend)))
                       (or (gethash blueprint compile-cache)
                           (setf (gethash blueprint compile-cache)
-                                (compile nil (translate-blueprint ir-backend blueprint))))))
+                                (compile nil (lisp-translate-blueprint ir-backend blueprint))))))
                    (:interpreted
                     #'interpret-kernel))))))
 

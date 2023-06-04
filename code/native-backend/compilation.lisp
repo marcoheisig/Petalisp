@@ -2,27 +2,33 @@
 
 (in-package #:petalisp.native-backend)
 
-(defmethod backend-compile-blueprint
-    ((backend backend)
-     (blueprint t))
-  (alexandria:ensure-gethash
-   blueprint
-   (backend-compile-cache backend)
-   (compile nil (translate-blueprint backend blueprint))))
-
 (defmethod target-function
     ((backend backend))
-  'svref)
+  (values
+   'svref
+   '(values storage &optional)))
 
 (defmethod source-function
     ((backend backend))
-  'svref)
+  (values
+   'svref
+   '(values storage &optional)))
 
 (defmethod unpack-function
     ((backend backend)
      (ntype typo:ntype)
      (rank integer))
-  'native-backend-unpack)
+  (values
+   'native-backend-unpack
+   `(values
+     cffi:foreign-pointer
+     fixnum
+     ,@(loop for axis below rank
+             collect
+             (if (= axis (1- rank))
+                 '(eql 1)
+                 'index))
+     &optional)))
 
 (defun native-backend-unpack (storage denv)
   (declare (storage storage) (denv denv))
@@ -43,16 +49,6 @@
         (4 (values pointer offset (stride 0) (stride 1) (stride 2) (stride 3)))
         (5 (values pointer offset (stride 0) (stride 1) (stride 2) (stride 3) (stride 4)))
         (otherwise (apply #'values pointer offset (coerce strides 'list)))))))
-
-(defmethod unpack-values-type
-    ((backend backend)
-     (ntype typo:ntype)
-     (rank integer))
-  `(values
-    cffi:foreign-pointer
-    fixnum
-    ,@(loop repeat rank collect '(and unsigned-byte fixnum))
-    &optional))
 
 (defmethod store-function
     ((backend backend)
@@ -79,14 +75,14 @@
              `(progn
                 (declaim (inline ,name))
                 (defun ,name (pointer offset)
-                  (declare (cffi:foreign-pointer pointer) (fixnum offset))
+                  (declare (cffi:foreign-pointer pointer) (index offset))
                   (the ,element-type
-                       (,sap-ref pointer (petalisp.ir::index-* offset ,scaling))))
+                       (,sap-ref pointer (index* offset ,scaling))))
                 (declaim (inline (setf ,name)))
                 (defun (setf ,name) (value pointer offset)
                   (declare (type ,element-type value))
-                  (declare (cffi:foreign-pointer pointer) (fixnum offset))
-                  (setf (,sap-ref pointer (petalisp.ir::index-* offset ,scaling))
+                  (declare (cffi:foreign-pointer pointer) (index offset))
+                  (setf (,sap-ref pointer (index* offset ,scaling))
                         value)))))
   (def f64-memref sb-sys:sap-ref-double double-float 8)
   (def f32-memref sb-sys:sap-ref-single single-float 4)

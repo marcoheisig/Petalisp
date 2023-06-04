@@ -14,15 +14,6 @@
    #:document-function)
 
   (:export
-   ;; utilities.lisp
-   #:index+
-   #:index*
-   #:without-compiler-notes
-   #:with-unsafe-optimization
-   #:with-unsafe-optimization*
-   #:with-debug-optimization
-   #:unpack-array
-
    ;; blueprint.lisp
    #:kernel-blueprint
    #:iteration-space-blueprint
@@ -44,5 +35,16 @@
    #:lisp-or-cpp-compiler-mixin
    #:cpp-compiler-mixin
    #:cuda-compiler-mixin
+
+   ;; lisp-compiler.lisp
+   #:index
+   #:index+
+   #:index*
+   #:without-compiler-notes
+   #:with-unsafe-optimization
+   #:with-unsafe-optimization*
+   #:with-debug-optimization
+   #:unpack-array
+   #:make-kernel-lambda
 
    #:make-ir-backend))

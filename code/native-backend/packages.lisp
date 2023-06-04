@@ -6,7 +6,8 @@
   (:use
    #:common-lisp
    #:petalisp.core
-   #:petalisp.ir)
+   #:petalisp.ir
+   #:petalisp.codegen)
   (:shadow #:petalisp.core #:request #:backend)
   (:import-from #:petalisp.ir #:readers #:writers #:sources #:targets)
   (:export
