@@ -5,7 +5,7 @@
 (defgeneric backend-worker-pool (backend))
 
 (defclass backend
-    (petalisp.core:backend compile-cache-mixin lisp-compiler-mixin)
+    (petalisp.core:backend compile-cache-mixin lisp-plus-cpp-compiler-mixin)
   ((%worker-pool
     :initform (alexandria:required-argument :worker-pool)
     :initarg :worker-pool

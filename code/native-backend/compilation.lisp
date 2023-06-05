@@ -22,7 +22,7 @@
    'native-backend-unpack
    `(values
      cffi:foreign-pointer
-     fixnum
+     index
      ,@(loop for axis below rank
              collect
              (if (= axis (1- rank))

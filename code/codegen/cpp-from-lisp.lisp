@@ -4,7 +4,10 @@
 
 (defparameter *function-cpp-info-table*
   (alexandria:alist-hash-table
-   '(;; coerce
+   '(;; indexing
+     (index+ "int64_t" "+" :infix)
+     (index* "int64_t" "*" :infix)
+     ;; coerce
      (typo:coerce-to-short-float "float" "(float)" :prefix)
      (typo:coerce-to-single-float "float" "(float)" :prefix)
      (typo:coerce-to-double-float "double" "(double)" :prefix)

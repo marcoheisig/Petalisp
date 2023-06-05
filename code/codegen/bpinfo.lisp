@@ -129,9 +129,13 @@
   ;; One bpvalue for each argument referenced by the instruction.
   (arguments #() :type (simple-array bpvalue (*)) :read-only t))
 
+(defun bpcall-argument (bpcall &optional (position 0))
+  (declare (bpcall bpcall))
+  (svref (bpcall-arguments bpcall) position))
+
 (defun bpcall-value (bpcall &optional (value-n 0))
   (declare (bpcall bpcall))
-  (svref (bpcall-arguments bpcall) value-n))
+  (svref (bpcall-values bpcall) value-n))
 
 (defstruct (bpload
             (:predicate bploadp)
@@ -258,12 +262,17 @@
 
 (defun compute-bprange (range-spec axis)
   (make-bprange
-   :start (make-bpvariable :ntype *index-ntype* :name (bpname "START~D" axis))
-   :end (make-bpvariable :ntype *index-ntype* :name (bpname "END~D" axis))
-   :step
-   (ecase range-spec
-     (:contiguous (make-bpconstant 1))
-     (:strided (make-bpvariable :ntype *index-ntype* :name (bpname "STEP~D" axis))))))
+   :start (make-bpvariable
+           :name (bpname "START~D" axis)
+           :ntype *index-ntype*)
+   :end (make-bpvariable
+         :name (bpname "END~D" axis)
+         :ntype *index-ntype*)
+   :step (ecase range-spec
+           (:contiguous (make-bpconstant 1))
+           (:strided (make-bpvariable
+                      :name (bpname "STEP~D" axis)
+                      :ntype *index-ntype*)))))
 
 (defun compute-bpinfo-indices ()
   (map 'vector #'compute-bpinfo-index
@@ -287,13 +296,17 @@
   (destructuring-bind (ntype . transformations) spec
     (let* ((rank (length (first transformations)))
            (base (make-bpvariable :name (bpname "~A~DBASE" prefix number)))
-           (start (make-bpvariable :name (bpname "~A~DSTART" prefix number)))
+           (start (make-bpvariable
+                   :name (bpname "~A~DSTART" prefix number)
+                   :ntype *index-ntype*))
            (strides
              (map 'vector
                    (lambda (axis)
                      (if (= axis (1- rank))
                          (make-bpconstant 1)
-                         (make-bpvariable :name (bpname "~A~DS~D" prefix number axis))))
+                         (make-bpvariable
+                          :name (bpname "~A~DS~D" prefix number axis)
+                          :ntype *index-ntype*)))
                    (alexandria:iota rank)))
            (stencils
              (map 'vector
@@ -314,7 +327,9 @@
          (offsets
            (map 'vector
                  (lambda (pos)
-                   (make-bpvariable :name (bpname "~A~DSTENCIL~DO~D" prefix number index pos)))
+                   (make-bpvariable
+                    :name (bpname "~A~DR~DO~D" prefix number index pos)
+                    :ntype *index-ntype*))
                  (alexandria:iota rank)))
          (scalings
            (map 'vector
@@ -322,7 +337,9 @@
                    (destructuring-bind (permutation scaling) iref
                      (declare (ignore permutation))
                      (if (eq scaling :any)
-                         (make-bpvariable :name (bpname "~A~DSTENCIL~DS~D" prefix number index pos))
+                         (make-bpvariable
+                          :name (bpname "~A~DR~DS~D" prefix number index pos)
+                          :ntype *index-ntype*)
                          (make-bpconstant scaling))))
                  irefs
                  (alexandria:iota rank))))

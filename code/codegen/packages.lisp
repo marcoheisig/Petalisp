@@ -32,7 +32,7 @@
    #:compile-cache-mixin
    #:lisp-interpreter-mixin
    #:lisp-compiler-mixin
-   #:lisp-or-cpp-compiler-mixin
+   #:lisp-plus-cpp-compiler-mixin
    #:cpp-compiler-mixin
    #:cuda-compiler-mixin
 

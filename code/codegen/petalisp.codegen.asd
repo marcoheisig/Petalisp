@@ -25,6 +25,6 @@
    (:file "lisp-interpreter")
    (:file "cpp-from-lisp")
    (:file "cpp-compiler")
-   (:file "cuda-compiler")
+   ;;(:file "cuda-compiler")
    (:file "mixins")
    (:file "ir-backend")))
