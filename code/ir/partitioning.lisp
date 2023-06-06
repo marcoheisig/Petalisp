@@ -281,13 +281,21 @@ children.  Useful for debugging."
 (defstruct (ghostspec
             (:predicate ghostspecp)
             (:constructor make-ghostspec))
+  ;; The buffer for which this ghostspec was computed.
+  (buffer nil :type buffer :read-only t)
   ;; A vector with one entry per axis, denoting how many layers must be copied
   ;; on the left of the right child of a split buffer-shard.  An entry of NIL
   ;; means there is no way to split that axis.
   (left-padding-vec nil :type simple-vector :read-only t)
   ;; A vector with the same semantics as the left padding, except that it
   ;; denotes the number of layers on the right of the left child.
-  (right-padding-vec nil :type simple-vector :read-only t))
+  (right-padding-vec nil :type simple-vector :read-only t)
+  ;; A multidimensional bit array with the same rank as the ghostspec's buffer.
+  ;; It has dimension three in each axis where the padding vectors are
+  ;; non-NIL. The three entries in such an axis are whether there are any reads
+  ;; from ghost memory that is fully below the buffer's index space, fully
+  ;; within, or fully above.
+  (pattern nil :type (simple-array bit) :read-only t))
 
 (defun ghostspec-left-padding (ghostspec axis)
   (svref (ghostspec-left-padding-vec ghostspec) axis))
@@ -345,9 +353,31 @@ children.  Useful for debugging."
                                (maxf right-padding delta))
                               ((minusp delta)
                                (maxf left-padding (- delta))))))))))))))
-    (make-ghostspec
-     :left-padding-vec left-padding-vec
-     :right-padding-vec right-padding-vec)))
+    ;; Now compute the ghost pattern.
+    (let* ((dims (loop for left-padding across left-padding-vec
+                       for right-padding across right-padding-vec
+                       collect (if (or left-padding right-padding) 3 1)))
+           (pattern (make-array dims :element-type 'bit :initial-element 0)))
+      ;; Iterate over all load instructions and add them to the pattern.
+      (do-buffer-outputs (kernel buffer)
+        (dolist (stencil (kernel-stencils kernel buffer))
+          (do-stencil-load-instructions (load-instruction stencil)
+            (let* ((transformation (load-instruction-transformation load-instruction))
+                   (subscripts
+                     (loop for offset across (transformation-offsets transformation)
+                           for center across (stencil-center stencil)
+                           for left-padding across left-padding-vec
+                           for right-padding across right-padding-vec
+                           collect (cond ((not (or right-padding left-padding)) 0)
+                                         ((minusp (- offset center)) 0)
+                                         ((zerop (- offset center)) 1)
+                                         ((plusp (- offset center)) 2)))))
+              (setf (apply #'aref pattern subscripts) 1)))))
+      (make-ghostspec
+       :buffer buffer
+       :left-padding-vec left-padding-vec
+       :right-padding-vec right-padding-vec
+       :pattern pattern))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -579,6 +609,8 @@ ghost points to interior points for a split."
         (propagate-split (split-queue-pop))))
     ;; Ensure that each referenced buffer shard has an attached storage.
     (map nil #'assign-storage *primogenitor-buffer-shard-vector*)
+    ;; Ensure that each storage has its ghost alist set.
+    (map nil #'assign-storage-ghost-layer-alist *primogenitor-buffer-shard-vector*)
     #+(or)
     (check-shards)
     (values *primogenitor-buffer-shard-vector* *buffer-ghostspec-vector*)))
@@ -963,31 +995,62 @@ relates to the supplied transformoid."
                (when (splitp split)
                  (assign-recursively (split-left-child split) existing-storage)
                  (assign-recursively (split-right-child split) existing-storage)))))
-    (assign-recursively primogenitor-buffer-shard nil))
-  ;; Determine the ghost layer alist of each newly created storage.
-  (labels ((assign-storage-ghost-layer-alist (buffer-shard)
-             (declare (buffer-shard buffer-shard))
-             (with-slots (buffer split domain shape storage) buffer-shard
-               (if storage
-                   (let ((vicinity (compute-buffer-shard-vicinity buffer-shard))
-                         (rank (shape-rank shape))
-                         (alist '()))
-                     (flet ((maybe-push-ghost-layer (neighbor)
-                              (declare (buffer-shard neighbor))
-                              (when (shape-intersectionp shape (buffer-shard-domain neighbor))
-                                (push
-                                 (cons (shape-intersection shape (buffer-shard-domain neighbor))
-                                       (buffer-shard-storage neighbor))
-                                 alist))))
-                       (loop for axis below rank do
-                         (mapc #'maybe-push-ghost-layer (vicinity-left-neighbors vicinity axis))
-                         (mapc #'maybe-push-ghost-layer (vicinity-right-neighbors vicinity axis))))
-                     (setf (storage-ghost-layer-alist storage)
-                           alist))
-                   (when split
-                     (assign-storage-ghost-layer-alist (split-left-child split))
-                     (assign-storage-ghost-layer-alist (split-right-child split)))))))
-    (assign-storage-ghost-layer-alist primogenitor-buffer-shard)))
+    (assign-recursively primogenitor-buffer-shard nil)))
+
+(defun assign-storage-ghost-layer-alist (buffer-shard)
+  (declare (buffer-shard buffer-shard))
+  (with-slots (buffer split domain shape storage) buffer-shard
+    (if storage
+        (let* ((vicinity (compute-buffer-shard-vicinity buffer-shard))
+               (ghostspec (buffer-ghostspec (buffer-shard-buffer buffer-shard)))
+               (pattern (ghostspec-pattern ghostspec))
+               (rank (shape-rank shape))
+               (alist '()))
+          (flet ((maybe-push-ghost-layer (neighbor)
+                   (declare (buffer-shard neighbor))
+                   (when (shape-intersectionp shape (buffer-shard-domain neighbor))
+                     (let* ((space (shape-intersection shape (buffer-shard-domain neighbor)))
+                            (storage (buffer-shard-storage neighbor))
+                            (subscripts (make-list rank)))
+                       (labels
+                           ((scan-pattern (shard-ranges neighbor-ranges subscripts-tail axis)
+                              (flet ((scan-subscript (subscript)
+                                       (setf (first subscripts-tail) subscript)
+                                       (scan-pattern
+                                        (rest shard-ranges)
+                                        (rest neighbor-ranges)
+                                        (rest subscripts-tail)
+                                        (1+ axis))))
+                                (cond ((= axis rank)
+                                       (when (= 1 (apply #'aref pattern subscripts))
+                                         (push (cons space storage) alist)
+                                         (return-from maybe-push-ghost-layer)))
+                                      ((= 1 (array-dimension pattern axis))
+                                       (scan-subscript 0))
+                                      (t
+                                       (let ((shard-range (first shard-ranges))
+                                             (neighbor-range (first neighbor-ranges)))
+                                         (when (< (range-last neighbor-range)
+                                                  (range-start shard-range))
+                                           (scan-subscript 0))
+                                         (when (range-intersectionp shard-range neighbor-range)
+                                           (scan-subscript 1))
+                                         (when (< (range-last shard-range)
+                                                  (range-start neighbor-range))
+                                           (scan-subscript 2))))))))
+                         (scan-pattern
+                          (shape-ranges (buffer-shard-domain buffer-shard))
+                          (shape-ranges space)
+                          subscripts
+                          0))))))
+            (loop for axis below rank do
+              (mapc #'maybe-push-ghost-layer (vicinity-left-neighbors vicinity axis))
+              (mapc #'maybe-push-ghost-layer (vicinity-right-neighbors vicinity axis))))
+          (setf (storage-ghost-layer-alist storage)
+                alist))
+        (when split
+          (assign-storage-ghost-layer-alist (split-left-child split))
+          (assign-storage-ghost-layer-alist (split-right-child split))))))
 
 (defun shape-strides (shape)
   (declare (shape shape))
