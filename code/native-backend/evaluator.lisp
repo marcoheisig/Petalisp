@@ -74,7 +74,7 @@
   (%make-denv
    :cenv cenv
    :result-arrays (make-array (length (cenv-result-shapes cenv)) :initial-element nil)
-   :request (make-request (worker-pool-size (backend-worker-pool (cenv-backend cenv))))
+   :request (make-request)
    :pointers
    (map 'vector
         (lambda (vector)
@@ -107,11 +107,14 @@
               (array-storage-pointer argument))))))
 
 (defun array-storage-pointer (array)
+  #+sbcl
   (sb-kernel:with-array-data ((data array) (start) (end))
     (declare (ignore end))
     (assert (zerop start))
-    (sb-sys:vector-sap
-     (sb-ext:array-storage-vector data))))
+    (static-vectors:static-vector-pointer
+     (sb-ext:array-storage-vector data)))
+  #-sbcl
+  (error "Not implemented yet."))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -205,14 +208,15 @@
                   (worker-synchronize-and-invoke denv (action-copy-invocations action))
                   (worker-synchronize-and-invoke denv (action-work-invocations action))))))
         ;; Signal completion.
-        (with-slots (cell lock cvar) request
-          (when (zerop (atomics:atomic-decf (car cell)))
+        (barrier)
+        (when (zerop worker-id)
+          (with-slots (lock cvar done) request
             (bordeaux-threads:with-lock-held (lock)
+              (setf done t)
               #+(or) ;; TODO wait for new version of bordeaux threads.
               (bordeaux-threads:condition-broadcast cvar)
               (bordeaux-threads:condition-notify cvar))))
         ;; Free memory.
-        (barrier)
         (map nil #'cffi:foreign-free (aref (denv-pointers denv) category))))))
 
 (defun worker-synchronize-and-invoke (denv invocations)

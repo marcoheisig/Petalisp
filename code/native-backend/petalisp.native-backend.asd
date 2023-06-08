@@ -14,6 +14,7 @@
    "petalisp.core"
    "petalisp.ir"
    "petalisp.codegen"
+   "static-vectors"
    "typo")
 
   :serial t

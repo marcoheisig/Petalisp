@@ -15,7 +15,11 @@
    (%xmas-backend
     :reader xmas-backend
     :initform
-    (petalisp.xmas-backend:make-xmas-backend))))
+    (petalisp.xmas-backend:make-xmas-backend))
+   (%native-backend
+    :reader native-backend
+    :initform
+    (petalisp.native-backend:make-native-backend))))
 
 (defun make-testing-backend ()
   (make-instance 'testing-backend))
@@ -26,7 +30,8 @@
   (with-accessors ((reference-backend reference-backend)
                    (ir-backend-interpreted ir-backend-interpreted)
                    (ir-backend-compiled ir-backend-compiled)
-                   (xmas-backend xmas-backend)) testing-backend
+                   (xmas-backend xmas-backend)
+                   (native-backend native-backend)) testing-backend
     (let ((reference-solutions
             (backend-compute reference-backend data-structures))
           (ir-backend-interpreted-solutions
@@ -34,10 +39,13 @@
           (ir-backend-compiled-solutions
             (backend-compute ir-backend-compiled data-structures))
           (xmas-backend-solutions
-            (backend-compute xmas-backend data-structures)))
+            (backend-compute xmas-backend data-structures))
+          (native-backend-solutions
+            (backend-compute native-backend data-structures)))
       (compare-solutions reference-solutions ir-backend-interpreted-solutions)
       (compare-solutions reference-solutions ir-backend-compiled-solutions)
       (compare-solutions reference-solutions xmas-backend-solutions)
+      (compare-solutions reference-solutions native-backend-solutions)
       reference-solutions)))
 
 (defun compare-solutions (solutions1 solutions2)
@@ -49,6 +57,8 @@
   (delete-backend (reference-backend testing-backend))
   (delete-backend (ir-backend-interpreted testing-backend))
   (delete-backend (ir-backend-compiled testing-backend))
+  (delete-backend (xmas-backend testing-backend))
+  (delete-backend (native-backend testing-backend))
   (call-next-method))
 
 (defun call-with-testing-backend (thunk)

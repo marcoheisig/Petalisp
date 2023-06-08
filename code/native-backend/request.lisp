@@ -5,22 +5,20 @@
 (defstruct (request
             (:predicate %requestp)
             (:copier nil)
-            (:constructor make-request
-             (countdown &aux (cell (list countdown)))))
-  (cell nil :type cons :read-only t)
+            (:constructor make-request))
   (lock (bordeaux-threads:make-lock) :read-only t)
-  (cvar (bordeaux-threads:make-condition-variable) :read-only t))
+  (cvar (bordeaux-threads:make-condition-variable) :read-only t)
+  (done nil :type boolean))
 
 (defmethod requestp ((request request))
   t)
 
 (defmethod request-wait ((request request))
-  (with-slots (cell lock cvar) request
-    (unless (zerop (car cell))
+  (with-slots (lock cvar done) request
+    (unless done
       (bordeaux-threads:with-lock-held (lock)
-        (loop until (zerop (car cell)) do
+        (loop until done do
           (bordeaux-threads:condition-wait cvar lock))))))
 
 (defmethod request-completedp ((request request))
-  (with-slots (cell) request
-    (zerop (car cell))))
+  (request-done request))

@@ -51,10 +51,10 @@ arrays that were referenced in the schedule."
              (push-allocation (allocation)
                (declare (allocation allocation))
                (with-slots (size-in-bytes category) allocation
-                 (let ((bucket (1- (integer-length (1- size-in-bytes)))))
+                 (let ((bucket (max 0 (1- (integer-length (1- size-in-bytes))))))
                    (push allocation (aref allocation-lists category bucket)))))
              (pop-allocation (category size-in-bytes)
-               (let ((bucket (1- (integer-length (1- size-in-bytes)))))
+               (let ((bucket (max 0 (1- (integer-length (1- size-in-bytes))))))
                  (or (pop (aref allocation-lists category bucket))
                      (prog1 (make-allocation
                              :size-in-bytes (expt 2 (1+ bucket))
@@ -170,23 +170,35 @@ arrays that were referenced in the schedule."
 (defun array-size-in-bytes (array)
   (bytes-from-bits
    (* (array-total-size array)
+      #+sbcl
       (sb-vm::simple-array-widetag->bits-per-elt
-       (sb-vm::array-underlying-widetag array)))))
+       (sb-vm::array-underlying-widetag array))
+      #-sbcl
+      (ntype-bits-per-element
+       (typo:array-element-ntype array)))))
 
 (defun buffer-size-in-bytes (buffer)
   (bytes-from-bits
    (* (buffer-size buffer)
-      (typo:ntype-bits (buffer-ntype buffer)))))
+      (ntype-bits-per-element
+       (buffer-ntype buffer)))))
 
 (defun lazy-array-size-in-bytes (lazy-array)
   (bytes-from-bits
    (* (lazy-array-size lazy-array)
-      (typo:ntype-bits (lazy-array-ntype lazy-array)))))
+      (ntype-bits-per-element
+       (lazy-array-ntype lazy-array)))))
 
 (defun storage-size-in-bytes (storage)
   (bytes-from-bits
    (* (storage-size storage)
-      (typo:ntype-bits (storage-ntype storage)))))
+      (ntype-bits-per-element
+       (storage-ntype storage)))))
 
 (defun bytes-from-bits (bits)
   (values (ceiling bits 8)))
+
+(defun ntype-bits-per-element (ntype)
+  (declare (typo:ntype ntype))
+  (petalisp.utilities:clp2
+   (typo:ntype-bits ntype)))

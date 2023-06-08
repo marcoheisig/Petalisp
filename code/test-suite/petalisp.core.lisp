@@ -63,6 +63,45 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; Array Element Types
+
+(define-test array-element-test
+  (loop for (element-type e1 e2)
+          in '((single-float 1f0 2f0)
+               (double-float 1d0 2d0)
+               (bit 0 1)
+               ((unsigned-byte 2) 1 2)
+               ((unsigned-byte 4) 1 2)
+               ((unsigned-byte 8) 1 2)
+               ((unsigned-byte 16) 1 2)
+               ((unsigned-byte 32) 1 2)
+               ((unsigned-byte 64) 1 2)
+               ((signed-byte 8) 1 2)
+               ((signed-byte 16) 1 2)
+               ((signed-byte 32) 1 2)
+               ((signed-byte 64) 1 2)
+               (fixnum 1 2)
+               ((complex single-float) #.(complex 1f0 2f0) #.(complex 3f0 4f0))
+               ((complex double-float) #.(complex 1d0 2d0) #.(complex 3d0 4d0))
+               (function #'identity #'constantly)
+               (symbol 'identity 'constantly)
+               (cons '(1) '(2))
+               (base-char #\a #\b)
+               (character #\a #\b)
+               (t 1 2))
+        do (let ((a1 (make-array 100 :element-type element-type :initial-element e1))
+                 (a2 (make-array 100 :element-type element-type :initial-element e2)))
+             (compute
+              (lazy-fuse
+               (lazy-reshape a1 (~ 0 200 2))
+               (lazy-reshape a2 (~ 0 200 2) (transform i to (1+ i)))))
+             (compute
+              (lazy-fuse
+               (lazy-reshape e1 0 (~ 0 200 2))
+               (lazy-reshape e2 0 (~ 1 200 2)))))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; Networks and Automatic Differentiation
 
 (define-test network-test

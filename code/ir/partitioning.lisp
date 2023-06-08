@@ -131,8 +131,10 @@
   "Returns the number of bits of storage required for allocating all elements
 managed by the supplied buffer shard."
   (declare (buffer-shard buffer-shard))
-  (* (typo:ntype-bits (buffer-ntype (buffer-shard-buffer buffer-shard)))
-     (shape-size (buffer-shard-shape buffer-shard))))
+  (* (shape-size (buffer-shard-shape buffer-shard))
+     (petalisp.utilities:clp2
+      (typo:ntype-bits
+       (buffer-ntype (buffer-shard-buffer buffer-shard))))))
 
 (defun buffer-shard-guardian (buffer-shard)
   "Returns the buffer shard's oldest ancestor that has the same storage as this

@@ -87,12 +87,16 @@
             (loop for offset across (bpstencil-offsets bpstencil)
                   for scaling across (bpstencil-scalings bpstencil)
                   do (maybe-collect offset)
-                  do (maybe-collect scaling))))))
+                  do (maybe-collect scaling)))))
+      (loop for bpinstruction across (bpinfo-instructions bpinfo) do
+        (when (typep bpinstruction 'bpiref)
+          (maybe-collect (bpiref-offset bpinstruction))
+          (maybe-collect (bpiref-scaling bpinstruction)))))
     (reverse rargs)))
 
 (defun cpp-write-defun (bpinfo name arguments stream)
   (terpri stream)
-  (format stream "#include <math.h>~%")
+  (format stream "#include <tgmath.h>~%")
   (format stream "extern \"C\" {~%")
   (format stream "void ~A(~{~A ~A~^, ~}) {~%"
           name
