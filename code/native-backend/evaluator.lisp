@@ -107,13 +107,16 @@
               (array-storage-pointer argument))))))
 
 (defun array-storage-pointer (array)
+  #+ccl
+  (multiple-value-bind (vector offset)
+      (ccl::array-data-and-offset array)
+    (ccl::%vect-data-to-macptr vector (ccl:%int-to-ptr offset)))
   #+sbcl
   (sb-kernel:with-array-data ((data array) (start) (end))
     (declare (ignore end))
     (assert (zerop start))
-    (static-vectors:static-vector-pointer
-     (sb-ext:array-storage-vector data)))
-  #-sbcl
+    (static-vectors:static-vector-pointer data))
+  #-(or ccl sbcl)
   (error "Not implemented yet."))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

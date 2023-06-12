@@ -173,8 +173,11 @@
   (defgetter obj-memref (pointer offset)
     #+sbcl (sb-kernel:%make-lisp-obj
             (sb-sys:sap-ref-word pointer (index* 8 offset)))
-    #-sbcl (error "Not implemented yet."))
+    #-(or sbcl)
+    (error "Not implemented yet."))
   (defsetter obj-memref (value pointer offset)
+    #+ccl (ccl::%setf-macptr-to-object (cffi:mem-aptr :pointer offset) value)
     #+sbcl (setf (sb-sys:sap-ref-word pointer (index* 8 offset))
                  (sb-kernel:get-lisp-obj-address value))
-    #-sbcl (error "Not implemented yet.")))
+    #-(or ccl sbcl)
+    (error "Not implemented yet.")))

@@ -128,7 +128,7 @@
   (values-ntype (alexandria:required-argument :values-ntype)
    :type typo:values-ntype
    :read-only t)
-  (refbits 0 :type unsigned-byte))
+  (refbits 0 :type #-ccl unsigned-byte #+ccl t))
 
 (declaim (inline make-delayed-multiple-value-map))
 (defun make-delayed-multiple-value-map (&key fnrecord inputs values-ntype (refbits 0))
