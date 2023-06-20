@@ -21,7 +21,9 @@
   (values
    'native-backend-unpack
    `(values
-     cffi:foreign-pointer
+     ,(if (ntype-unboxed-p ntype)
+          'cffi:foreign-pointer
+          'simple-vector)
      index
      ,@(loop for axis below rank
              collect
@@ -79,7 +81,7 @@
     ((complex double-float) 'c128-memref)
     (t
      (if (>= (typo:ntype-bits ntype) 64)
-         'obj-memref
+         'svref
          (error "Don't know how to load objects of type ~S."
                 (typo:ntype-type-specifier ntype))))))
 
@@ -169,16 +171,4 @@
   (defsetter character-memref (value pointer offset)
     (declare (character value))
     (setf (cffi:mem-aref pointer :uint32 offset)
-          (char-code value)))
-  ;; Boxed Objects
-  (defgetter obj-memref (pointer offset)
-    #+sbcl (sb-kernel:%make-lisp-obj
-            (sb-sys:sap-ref-word pointer (index* 8 offset)))
-    #-(or sbcl)
-    (error "Not implemented yet."))
-  (defsetter obj-memref (value pointer offset)
-    #+ccl (ccl::%setf-macptr-to-object (cffi:mem-aptr :pointer offset) value)
-    #+sbcl (setf (sb-sys:sap-ref-word pointer (index* 8 offset))
-                 (sb-kernel:get-lisp-obj-address value))
-    #-(or ccl sbcl)
-    (error "Not implemented yet.")))
+          (char-code value))))

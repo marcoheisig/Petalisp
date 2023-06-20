@@ -17,6 +17,9 @@
   ;;
   ;; N - The allocation is allocated by the worker whose id is N-3.
   (category nil :type unsigned-byte)
+  ;; Whether the allocation manages elements that are unboxed and don't have to
+  ;; be tracked by the GC.
+  (unboxed nil :type boolean)
   ;; An unsigned integer that is chosen such that, for a particular schedule,
   ;; all allocations with the same size and color can share one memory region.
   (color nil :type unsigned-byte :read-only t))
@@ -39,7 +42,8 @@ arrays that were referenced in the schedule."
          (ncategories (+ nworkers +worker-allocation-category-offset+))
          (nbuckets 40)
          (reversed-constant-array-list '())
-         (allocation-lists (make-array (list ncategories nbuckets) :initial-element '()))
+         (unboxed-allocation-lists (make-array (list ncategories nbuckets) :initial-element '()))
+         (boxed-allocation-lists (make-array (list ncategories nbuckets) :initial-element '()))
          (allocation-colors (make-array ncategories :initial-element 0))
          (storage-counter-table (make-hash-table)))
     (labels ((incf-storage-counter (storage)
@@ -50,15 +54,21 @@ arrays that were referenced in the schedule."
                (aref primogenitor-buffer-shard-vector (buffer-number buffer)))
              (push-allocation (allocation)
                (declare (allocation allocation))
-               (with-slots (size-in-bytes category) allocation
+               (with-slots (size-in-bytes category unboxed) allocation
                  (let ((bucket (max 0 (1- (integer-length (1- size-in-bytes))))))
-                   (push allocation (aref allocation-lists category bucket)))))
-             (pop-allocation (category size-in-bytes)
-               (let ((bucket (max 0 (1- (integer-length (1- size-in-bytes))))))
+                   (if unboxed
+                       (push allocation (aref unboxed-allocation-lists category bucket))
+                       (push allocation (aref boxed-allocation-lists category bucket))))))
+             (pop-allocation (category storage)
+               (let* ((size-in-bytes (storage-size-in-bytes storage))
+                      (bucket (max 0 (1- (integer-length (1- size-in-bytes)))))
+                      (unboxed (ntype-unboxed-p (storage-ntype storage)))
+                      (allocation-lists (if unboxed unboxed-allocation-lists boxed-allocation-lists)))
                  (or (pop (aref allocation-lists category bucket))
                      (prog1 (make-allocation
                              :size-in-bytes (expt 2 (1+ bucket))
                              :category category
+                             :unboxed unboxed
                              :color (next-color category))))))
              (next-color (category)
                (prog1 (aref allocation-colors category)
@@ -72,6 +82,7 @@ arrays that were referenced in the schedule."
                      (make-allocation
                       :size-in-bytes (array-size-in-bytes array)
                       :category +constant-allocation-category+
+                      :unboxed (eq (array-element-type array) 't)
                       :color (next-color +constant-allocation-category+))))
               (buffer-shard-bind (buffer-primogenitor-buffer-shard buffer) allocation)
               (push array reversed-constant-array-list)
@@ -82,6 +93,7 @@ arrays that were referenced in the schedule."
                 (make-allocation
                  :size-in-bytes (buffer-size-in-bytes root-buffer)
                  :category +result-allocation-category+
+                 :unboxed (ntype-unboxed-p (buffer-ntype root-buffer))
                  :color (next-color +result-allocation-category+))))
           (buffer-shard-bind (buffer-primogenitor-buffer-shard root-buffer) allocation)
           (push-allocation allocation)))
@@ -92,6 +104,7 @@ arrays that were referenced in the schedule."
                  (make-allocation
                   :size-in-bytes (lazy-array-size-in-bytes unknown)
                   :category +argument-allocation-category+
+                  :unboxed (ntype-unboxed-p (lazy-array-ntype unknown))
                   :color (next-color +argument-allocation-category+))))
           (when entry
             (buffer-shard-bind (buffer-primogenitor-buffer-shard (car entry)) allocation))
@@ -122,7 +135,7 @@ arrays that were referenced in the schedule."
             (loop for invocation in (action-work-invocations action) do
               (loop for storage across (invocation-targets invocation) do
                 (unless (storage-allocation storage)
-                  (let ((allocation (pop-allocation category (storage-size-in-bytes storage))))
+                  (let ((allocation (pop-allocation category storage)))
                     (storage-bind storage allocation)
                     (when (zerop (gethash storage storage-counter-table 0))
                       #+(or)(break "~A ~A" storage allocation) ;; TODO
@@ -143,7 +156,11 @@ arrays that were referenced in the schedule."
           (let* ((ncolors (aref allocation-colors category))
                  (vector (make-array ncolors)))
             (loop for bucket below nbuckets do
-              (loop for allocation in (aref allocation-lists category bucket) do
+              (loop for allocation in (aref unboxed-allocation-lists category bucket) do
+                (assert (= (allocation-category allocation) category))
+                (setf (aref vector (allocation-color allocation))
+                      allocation))
+              (loop for allocation in (aref boxed-allocation-lists category bucket) do
                 (assert (= (allocation-category allocation) category))
                 (setf (aref vector (allocation-color allocation))
                       allocation)))
@@ -166,6 +183,11 @@ arrays that were referenced in the schedule."
   (assert (<= (storage-size-in-bytes storage)
               (allocation-size-in-bytes allocation)))
   (setf (storage-allocation storage) allocation))
+
+(defun ntype-unboxed-p (ntype)
+  (not (typo:ntype=
+        (typo:upgraded-array-element-ntype ntype)
+        (typo:universal-ntype))))
 
 (defun array-size-in-bytes (array)
   (bytes-from-bits
@@ -202,3 +224,17 @@ arrays that were referenced in the schedule."
   (declare (typo:ntype ntype))
   (petalisp.utilities:clp2
    (typo:ntype-bits ntype)))
+
+(defun allocate-memory (allocation)
+  (declare (allocation allocation))
+  (if (allocation-unboxed allocation)
+      (cffi:foreign-alloc
+       :uint8
+       :count (allocation-size-in-bytes allocation))
+      (make-array (allocation-size-in-bytes allocation))))
+
+(defun free-memory (allocation memory)
+  (declare (allocation allocation))
+  (if (allocation-unboxed allocation)
+      (cffi:foreign-free memory)
+      (values)))

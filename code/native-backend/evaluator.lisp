@@ -63,7 +63,7 @@
    :type (simple-array array (*))
    :read-only t)
   ;; A vector of vectors with the same structure as the cenv's allocations,
-  ;; which contains the pointer to memory corresponding to each allocation.
+  ;; which contains the memory corresponding to each allocation.
   (pointers nil
    :type (simple-array simple-vector (*))
    :read-only t)
@@ -83,7 +83,7 @@
    :pointers
    (map 'vector
         (lambda (vector)
-          (make-array (length vector) :initial-element (cffi:null-pointer)))
+          (make-array (length vector) :initial-element nil))
         (cenv-allocations cenv))))
 
 (defun bind-result (denv result index)
@@ -112,17 +112,16 @@
               (array-storage-pointer argument))))))
 
 (defun array-storage-pointer (array)
-  #+ccl
-  (multiple-value-bind (vector offset)
-      (ccl::array-data-and-offset array)
-    (ccl::%vect-data-to-macptr vector (ccl:%int-to-ptr offset)))
-  #+sbcl
-  (sb-kernel:with-array-data ((data array) (start) (end))
-    (declare (ignore end))
-    (assert (zerop start))
-    (static-vectors:static-vector-pointer data))
-  #-(or ccl sbcl)
-  (error "Not implemented yet."))
+  (let ((vector
+          #+sbcl (sb-vm::array-storage-vector array)
+          #+ccl (multiple-value-bind (vector offset)
+                    (ccl::array-data-and-offset array)
+                  (assert (zerop offset))
+                  vector)
+          #-(or sbcl ccl) (error "Not implemented yet.")))
+    (if (eq (array-element-type array) 't)
+        vector
+        (static-vectors:static-vector-pointer vector))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -201,10 +200,7 @@
                          sum (allocation-size-in-bytes allocation)))
           (loop for index below (length local-allocations) do
             (setf (aref local-pointers index)
-                  (cffi:foreign-alloc
-                   :uint8
-                   :count (allocation-size-in-bytes
-                           (aref local-allocations index))))))
+                  (allocate-memory (aref local-allocations index)))))
         ;; Execute the schedule.
         (loop for action-vector of-type simple-vector in schedule do
           (let ((action (aref action-vector worker-id)))
@@ -225,7 +221,13 @@
               (bordeaux-threads:condition-broadcast cvar)
               (bordeaux-threads:condition-notify cvar))))
         ;; Free memory.
-        (map nil #'cffi:foreign-free (aref (denv-pointers denv) category))))))
+        (let ((local-allocations (aref allocations category))
+              (local-pointers (aref pointers category)))
+          (loop for index below (length local-allocations) do
+            (setf (aref local-pointers index)
+                  (free-memory
+                   (aref local-allocations index)
+                   (aref local-pointers index)))))))))
 
 (defun worker-synchronize-and-invoke (denv invocations)
   (declare (denv denv) (list invocations))
