@@ -29,20 +29,25 @@
   (allocations nil :type (simple-array simple-vector (*)) :read-only t))
 
 (defun make-cenv (backend unknowns lazy-arrays)
-  (let* ((program (program-from-lazy-arrays lazy-arrays))
-         (primogenitor-buffer-shard-vector (partition-program program))
+  (let* ((debug (backend-debug-flag backend))
+         (program (program-from-lazy-arrays lazy-arrays :debug debug))
+         (primogenitor-buffer-shard-vector (partition-program program :debug debug))
          (schedule (compute-schedule primogenitor-buffer-shard-vector backend)))
     (multiple-value-bind (allocations constant-arrays)
         (compute-allocations schedule primogenitor-buffer-shard-vector unknowns backend)
-      (%make-cenv
-       :backend backend
-       :schedule schedule
-       :result-shapes (map 'vector #'buffer-shape (program-root-buffers program))
-       :result-ntypes (map 'vector #'buffer-ntype (program-root-buffers program))
-       :argument-shapes (map 'vector #'lazy-array-shape unknowns)
-       :argument-ntypes (map 'vector #'lazy-array-ntype unknowns)
-       :constant-arrays constant-arrays
-       :allocations allocations))))
+      (let ((cenv
+              (%make-cenv
+               :backend backend
+               :schedule schedule
+               :result-shapes (map 'vector #'buffer-shape (program-root-buffers program))
+               :result-ntypes (map 'vector #'buffer-ntype (program-root-buffers program))
+               :argument-shapes (map 'vector #'lazy-array-shape unknowns)
+               :argument-ntypes (map 'vector #'lazy-array-ntype unknowns)
+               :constant-arrays constant-arrays
+               :allocations allocations)))
+        (when (backend-debug-flag backend)
+          (check-cenv cenv))
+        cenv))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

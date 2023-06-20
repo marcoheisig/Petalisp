@@ -32,6 +32,7 @@
 
 (defun native-backend-unpack (storage denv)
   (declare (storage storage) (denv denv))
+  (declare (optimize (speed 3) (safety 0)))
   (let* ((offset (- (storage-offset storage)))
          (strides (storage-strides storage))
          (allocation (storage-allocation storage))

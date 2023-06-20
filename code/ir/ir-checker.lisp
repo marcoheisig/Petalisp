@@ -12,7 +12,7 @@
   (unless (gethash node *ir-checker-table*)
     (push node *ir-checker-worklist*)))
 
-(defun check-ir (&rest nodes)
+(defun check-ir (nodes)
   (let ((*ir-checker-table* (make-hash-table :test #'eq))
         (*ir-checker-worklist* nodes))
     (loop until (null *ir-checker-worklist*)

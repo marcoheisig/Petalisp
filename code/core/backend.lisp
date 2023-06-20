@@ -57,6 +57,15 @@ different shape or element type as the corresponding result or unknown."))
    "Returns a REQUEST object that can be used to wait until all of the
 supplied LAZY-ARRAYS have been computed."))
 
+(defgeneric backend-debug-flag (backend)
+  (:documentation
+   "Returns whether the supplied backend runs in debug mode, where it trades
+performance for ease of debugging."))
+
+(defgeneric (setf backend-debug-flag) (value backend)
+  (:documentation
+   "Set the backend's debug flag to true or false."))
+
 ;;; REQUEST
 
 (defgeneric requestp (object)
@@ -78,7 +87,11 @@ already been computed."))
 ;;; Classes
 
 (defclass backend ()
-  ())
+  ((%debug-flag
+    :initarg :debug
+    :accessor backend-debug-flag
+    :type boolean
+    :initform nil)))
 
 (defclass deleted-backend ()
   ())

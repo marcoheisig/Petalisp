@@ -184,9 +184,9 @@
 ;;;
 ;;; IR Conversion
 
-(defun ir-from-lazy-arrays (lazy-arrays &key (kernel-size-threshold 32))
+(defun ir-from-lazy-arrays (lazy-arrays &key (kernel-size-threshold 32) (debug nil))
   (let ((*ir-converter* (make-ir-converter :kernel-size-threshold kernel-size-threshold))
-        (root-buffers '()))
+        (reversed-root-buffers '()))
     ;; Create and grow one dendrite for each root array.
     (loop for lazy-array in lazy-arrays do
       (let* ((cluster (make-cluster lazy-array))
@@ -197,7 +197,7 @@
                       :ntype (typo:ntype-primitive-ntype
                               (lazy-array-ntype lazy-array))))
              (dendrite (make-dendrite cluster shape (list buffer))))
-        (push buffer root-buffers)
+        (push buffer reversed-root-buffers)
         (grow-dendrite dendrite lazy-array)))
     ;; Successively convert all clusters.
     (loop until (ir-converter-empty-p *ir-converter*)
@@ -220,14 +220,20 @@
     ;; interior buffers, and ensure that each kernel has an instruction
     ;; vector, and that each instruction has a number that is an index into
     ;; that vector.
-    (finalize-ir (nreverse root-buffers))))
+    (let ((root-buffers (nreverse reversed-root-buffers)))
+      (when debug (check-ir root-buffers))
+      (finalize-ir root-buffers)
+      root-buffers)))
 
-(defun program-from-lazy-arrays (lazy-arrays &key (kernel-size-threshold 32))
+(defun program-from-lazy-arrays (lazy-arrays &key (kernel-size-threshold 32) (debug nil))
   (if (null lazy-arrays)
       (error "Cannot create empty IR programs.")
       (buffer-program
        (first
-        (ir-from-lazy-arrays lazy-arrays :kernel-size-threshold kernel-size-threshold)))))
+        (ir-from-lazy-arrays
+         lazy-arrays
+         :kernel-size-threshold kernel-size-threshold
+         :debug debug)))))
 
 (defun finalize-ir (root-buffers)
   (ensure-tasks root-buffers)

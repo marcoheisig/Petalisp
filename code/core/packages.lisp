@@ -204,6 +204,7 @@
    #:backend-compute
    #:backend-compute-asynchronously
    #:backend-evaluator
+   #:backend-debug-flag
    #:compute
    #:compute-list-of-arrays
    #:compute-asynchronously

@@ -570,7 +570,8 @@ children.  Useful for debugging."
        (split-priority 'buffer-shard-bits)
        (split-min-priority (* 512 1024 8)) ; Aim for 512k chunks
        (split-max-redundancy 0.125)
-       (split-max-imbalance 1))
+       (split-max-imbalance 1)
+       (debug nil))
   "Partition all buffers and kernels in the supplied program into shards.
 Returns, as multiple values, a vector mapping each buffer to its corresponding
 primogenitor buffer shard, a vector mapping each kernel to its corresponding
@@ -613,8 +614,7 @@ ghost points to interior points for a split."
     (map nil #'assign-storage *primogenitor-buffer-shard-vector*)
     ;; Ensure that each storage has its ghost alist set.
     (map nil #'assign-storage-ghost-layer-alist *primogenitor-buffer-shard-vector*)
-    #+(or)
-    (check-shards)
+    (when debug (check-shards))
     (values *primogenitor-buffer-shard-vector* *buffer-ghostspec-vector*)))
 
 (defun attempt-split (buffer-shard axis &optional position)
