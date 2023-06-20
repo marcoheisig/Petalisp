@@ -47,4 +47,7 @@
    #:unpack-array
    #:make-kernel-lambda
 
+   ;; load-foreign-code.lisp
+   #:load-foreign-code
+
    #:make-ir-backend))

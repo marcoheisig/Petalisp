@@ -21,6 +21,7 @@
   :components
   ((:file "packages")
    (:file "request")
+   (:file "pinning")
    (:file "worker-pool")
    (:file "backend")
    (:file "scheduling")

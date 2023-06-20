@@ -110,6 +110,8 @@
 
 ;;; The entry function for each new worker thread.
 (defun worker-loop ()
+  ;; Pin the worker thread.
+  (pin-current-thread (worker-id *worker*))
   ;; Wait until all other threads have been started, too.
   (barrier)
   ;; Process thunks until the worker is told to stop.
