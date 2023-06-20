@@ -39,6 +39,7 @@
    (:file "shape-syntax" :depends-on ("packages"))
    (:file "transform" :depends-on ("packages"))
    (:file "with-lazy-arrays" :depends-on ("packages"))
+   (:file "with-backend" :depends-on ("packages"))
    (:file "documentation"
     :depends-on
     ("differentiator"
@@ -60,4 +61,5 @@
      "packages"
      "shape-syntax"
      "transform"
-     "with-lazy-arrays"))))
+     "with-lazy-arrays"
+     "with-backend"))))
