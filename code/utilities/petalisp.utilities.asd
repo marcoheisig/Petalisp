@@ -22,4 +22,5 @@
    (:file "number-of-cpus")
    (:file "graph-coloring")
    (:file "karmarkar-karp")
-   (:file "scheduling")))
+   (:file "scheduling")
+   (:file "with-pinned-objects")))

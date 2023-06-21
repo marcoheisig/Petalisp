@@ -146,16 +146,17 @@
        `(lambda (cenv)
           (declare (cenv cenv) (optimize (safety 3)))
           (lambda (,@results ,@arguments)
-            (let ((denv (make-denv cenv)))
-              (declare (denv denv))
-              ,@(loop for result in results for index from 0
-                      collect `(bind-result denv ,result ,index))
-              ,@(loop for argument in arguments for index from 0
-                      collect `(bind-argument denv ,argument ,index))
-              (evaluate denv)
-              (values
-               ,@(loop for index below number-of-results
-                       collect `(get-result denv ,index))))))))))
+            (petalisp.utilities:with-pinned-objects (,@results ,@arguments)
+              (let ((denv (make-denv cenv)))
+                (declare (denv denv))
+                ,@(loop for result in results for index from 0
+                        collect `(bind-result denv ,result ,index))
+                ,@(loop for argument in arguments for index from 0
+                        collect `(bind-argument denv ,argument ,index))
+                (evaluate denv)
+                (values
+                 ,@(loop for index below number-of-results
+                         collect `(get-result denv ,index)))))))))))
 
 (defun result-variables (n)
   (loop for i below n
@@ -170,21 +171,22 @@
   (with-slots (cenv pointers request) denv
     ;; Bind all constants.
     (with-slots (allocations constant-arrays) cenv
-      (loop for array across constant-arrays
-            for allocation across (aref allocations +constant-allocation-category+)
-            do (setf (aref (aref pointers +constant-allocation-category+)
-                           (allocation-color allocation))
-                     (array-storage-pointer array))))
-    (with-slots (backend schedule) cenv
-      (let* ((worker-pool (backend-worker-pool backend))
-             (nworkers (worker-pool-size worker-pool)))
-        ;; Distribute the work.
-        (loop for worker-id below nworkers do
-          (worker-enqueue
-           (worker-pool-worker worker-pool worker-id)
-           (lambda () (worker-evaluate denv))))
-        ;; Wait for completion.
-        (request-wait request)))))
+      (petalisp.utilities:with-pinned-objects* constant-arrays
+        (loop for array across constant-arrays
+              for allocation across (aref allocations +constant-allocation-category+)
+              do (setf (aref (aref pointers +constant-allocation-category+)
+                             (allocation-color allocation))
+                       (array-storage-pointer array))))
+      (with-slots (backend schedule) cenv
+        (let* ((worker-pool (backend-worker-pool backend))
+               (nworkers (worker-pool-size worker-pool)))
+          ;; Distribute the work.
+          (loop for worker-id below nworkers do
+            (worker-enqueue
+             (worker-pool-worker worker-pool worker-id)
+             (lambda () (worker-evaluate denv))))
+          ;; Wait for completion.
+          (request-wait request))))))
 
 (defun worker-evaluate (denv)
   (let* ((worker-id (worker-id *worker*))

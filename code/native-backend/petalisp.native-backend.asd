@@ -21,7 +21,7 @@
   :components
   ((:file "packages")
    (:file "request")
-   (:file "pinning")
+   (:file "pin-current-thread")
    (:file "worker-pool")
    (:file "backend")
    (:file "scheduling")
