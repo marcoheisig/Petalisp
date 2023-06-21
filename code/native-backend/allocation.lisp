@@ -192,10 +192,6 @@ arrays that were referenced in the schedule."
 (defun array-size-in-bytes (array)
   (bytes-from-bits
    (* (array-total-size array)
-      #+sbcl
-      (sb-vm::simple-array-widetag->bits-per-elt
-       (sb-vm::array-underlying-widetag array))
-      #-sbcl
       (ntype-bits-per-element
        (typo:array-element-ntype array)))))
 
