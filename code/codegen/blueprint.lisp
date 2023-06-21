@@ -29,28 +29,32 @@
 ;;;
 ;;; <input> := [<value-n> <instruction-number>]
 
+(defvar *small-kernel-p* nil
+  "Whether a kernel is so small that there is no need including every detail in its
+blueprint.")
+
 (defun kernel-blueprint (kernel)
   "Returns a utree that represents all information necessary to generate a
 high-performance implementation of KERNEL.  Identical blueprints are EQ,
 which makes them ideal for caching."
-  (ucons:ulist*
-   (iteration-space-blueprint (kernel-iteration-space kernel))
-   (target-blueprints (kernel-targets kernel))
-   (source-blueprints (kernel-sources kernel))
-   (instruction-blueprints kernel)))
+  (let ((*small-kernel-p* (<= (shape-size (kernel-iteration-space kernel)) 64)))
+    (ucons:ulist*
+     (iteration-space-blueprint (kernel-iteration-space kernel))
+     (target-blueprints (kernel-targets kernel))
+     (source-blueprints (kernel-sources kernel))
+     (instruction-blueprints kernel))))
 
 (defun iteration-space-blueprint (iteration-space)
   (ranges-blueprint (shape-ranges iteration-space)))
 
 (defun ranges-blueprint (ranges)
-  (if (null ranges)
-      '()
-      (ucons:ucons
-       (if (or (= 0 (range-size (first ranges)))
-               (= 1 (range-step (first ranges))))
-           :contiguous
-           :strided)
-       (ranges-blueprint (rest ranges)))))
+  (cond ((null ranges)
+         '())
+        ((and (= 1 (range-step (first ranges)))
+              (not *small-kernel-p*))
+         (ucons:ulist* :contiguous (ranges-blueprint (rest ranges))))
+        (t
+         (ucons:ulist* :strided (ranges-blueprint (rest ranges))))))
 
 (defun target-blueprints (targets)
   (if (null targets)
@@ -107,10 +111,12 @@ which makes them ideal for caching."
       (ucons:upush
        (ucons:ulist
         (aref output-mask index)
-        (let ((scaling (aref scalings index)))
-          (case scaling
-            ((0 1 2 4 8 16 32) scaling)
-            (otherwise :any))))
+        (if *small-kernel-p*
+            :any
+            (let ((scaling (aref scalings index)))
+              (case scaling
+                ((0 1 2 4 8 16 32) scaling)
+                (otherwise :any)))))
        result))
     result))
 
@@ -181,7 +187,8 @@ which makes them ideal for caching."
 
 (defun fnrecord-blueprint (fnrecord)
   (let ((name (typo:fnrecord-name fnrecord)))
-    (if (typep name 'typo:function-name)
+    (if (and (typep name 'typo:function-name)
+             (not *small-kernel-p*))
         name
         :any)))
 

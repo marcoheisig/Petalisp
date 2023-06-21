@@ -5,7 +5,7 @@
 (defun run-tests (&rest tests)
   (with-test-harness
     (with-testing-backend
-      (mapc #'funcall (alexandria:shuffle tests))))
+      (mapc #'funcall (alexandria:shuffle (copy-list tests)))))
   (values))
 
 (defun run-petalisp-test-suite ()
