@@ -22,6 +22,7 @@
   (argument-shapes nil :type (simple-array shape (*)) :read-only t)
   (argument-ntypes nil :type (simple-array typo:ntype (*)) :read-only t)
   (constant-arrays nil :type (simple-array array (*)) :read-only t)
+  (constant-storage-vectors nil :type (simple-array vector (*)) :read-only t)
   ;; A vector with three more entries than there are workers in the backend.
   ;; The first three entries are a vector of constant allocations, a vector of
   ;; result allocations, and a vector of argument allocations.  The remaining
@@ -44,6 +45,7 @@
                :argument-shapes (map 'vector #'lazy-array-shape unknowns)
                :argument-ntypes (map 'vector #'lazy-array-ntype unknowns)
                :constant-arrays constant-arrays
+               :constant-storage-vectors (map 'vector #'array-storage-vector constant-arrays)
                :allocations allocations)))
         (when (backend-debug-flag backend)
           (check-cenv cenv))
@@ -86,21 +88,28 @@
           (make-array (length vector) :initial-element nil))
         (cenv-allocations cenv))))
 
+(defun ensure-result (cenv index result)
+  (with-slots (result-shapes result-ntypes allocations) cenv
+    (let ((shape (aref result-shapes index))
+          (ntype (aref result-ntypes index)))
+      (if (not result)
+          (make-array-from-shape-and-ntype shape ntype)
+          (ensure-array-shape-ntype-compatibility result shape ntype)))))
+
 (defun bind-result (denv result index)
-  (with-slots (cenv result-arrays pointers) denv
-    (with-slots (result-shapes result-ntypes allocations) cenv
-      (let ((shape (aref result-shapes index))
-            (ntype (aref result-ntypes index)))
-        (if (not result)
-            (setf result (make-array-from-shape-and-ntype shape ntype))
-            (ensure-array-shape-ntype-compatibility result shape ntype))
-        (setf (aref result-arrays index) result)
-        (setf (aref (aref pointers +result-allocation-category+) index)
-              (array-storage-pointer result))))))
+  (with-slots (result-arrays pointers) denv
+    (setf (aref result-arrays index) result)
+    (setf (aref (aref pointers +result-allocation-category+) index)
+          (array-storage-pointer result))))
 
 (defun get-result (denv index)
   (declare (denv denv))
-  (aref (denv-result-arrays denv) index))
+  (let ((result (aref (denv-result-arrays denv) index)))
+    (unless (eq (array-element-type result) 't)
+      (assert (cffi:pointer-eq
+               (aref (aref (denv-pointers denv) +result-allocation-category+) index)
+               (array-storage-pointer result))))
+    result))
 
 (defun bind-argument (denv argument index)
   (with-slots (cenv pointers) denv
@@ -111,15 +120,17 @@
         (setf (aref (aref pointers +argument-allocation-category+) index)
               (array-storage-pointer argument))))))
 
-(defun array-storage-pointer (array)
-  (let ((vector
-          #+sbcl (sb-vm::array-storage-vector array)
-          #+ccl (multiple-value-bind (vector offset)
+(defun array-storage-vector (array)
+  #+sbcl (sb-ext:array-storage-vector array)
+  #+ccl (multiple-value-bind (vector offset)
                     (ccl::array-data-and-offset array)
                   (assert (zerop offset))
-                  vector)
-          #-(or sbcl ccl) (error "Not implemented yet.")))
-    (if (eq (array-element-type array) 't)
+          vector)
+  #-(or sbcl ccl) (error "Not implemented yet."))
+
+(defun array-storage-pointer (array)
+  (let ((vector (array-storage-vector array)))
+    (if (simple-vector-p vector)
         vector
         (static-vectors:static-vector-pointer vector))))
 
@@ -140,23 +151,32 @@
      number-of-arguments
      (alexandria:ensure-gethash number-of-results cache (make-hash-table)))
     (let ((results (result-variables number-of-results))
-          (arguments (argument-variables number-of-arguments)))
+          (arguments (argument-variables number-of-arguments))
+          ;; [ar]sv is short for [argument|result] storage vector.
+          (rsvs (loop repeat number-of-results collect (gensym "RSV")))
+          (asvs (loop repeat number-of-arguments collect (gensym "ASV"))))
       (compile
        nil
        `(lambda (cenv)
           (declare (cenv cenv) (optimize (safety 3)))
           (lambda (,@results ,@arguments)
-            (petalisp.utilities:with-pinned-objects (,@results ,@arguments)
-              (let ((denv (make-denv cenv)))
-                (declare (denv denv))
-                ,@(loop for result in results for index from 0
-                        collect `(bind-result denv ,result ,index))
-                ,@(loop for argument in arguments for index from 0
-                        collect `(bind-argument denv ,argument ,index))
-                (evaluate denv)
-                (values
-                 ,@(loop for index below number-of-results
-                         collect `(get-result denv ,index)))))))))))
+            ;; Shadow each result whose value is NIL with a suitable array.
+            (let ,(loop for result in results for index from 0
+                        collect `(,result (ensure-result cenv ,index ,result)))
+              (let ,(loop for array in (append results arguments)
+                          for vector in (append rsvs asvs)
+                          collect `(,vector (array-storage-vector ,array)))
+                (petalisp.utilities:with-pinned-objects (,@rsvs ,@asvs)
+                  (let ((denv (make-denv cenv)))
+                    (declare (denv denv))
+                    ,@(loop for result in results for index from 0
+                            collect `(bind-result denv ,result ,index))
+                    ,@(loop for argument in arguments for index from 0
+                            collect `(bind-argument denv ,argument ,index))
+                    (evaluate denv)
+                    (values
+                     ,@(loop for index below number-of-results
+                             collect `(get-result denv ,index)))))))))))))
 
 (defun result-variables (n)
   (loop for i below n
@@ -169,9 +189,9 @@
 (defun evaluate (denv)
   (declare (denv denv))
   (with-slots (cenv pointers request) denv
-    ;; Bind all constants.
-    (with-slots (allocations constant-arrays) cenv
-      (petalisp.utilities:with-pinned-objects* constant-arrays
+    (with-slots (allocations constant-arrays constant-storage-vectors) cenv
+      ;; Pin and bind all constants.
+      (petalisp.utilities:with-pinned-objects* constant-storage-vectors
         (loop for array across constant-arrays
               for allocation across (aref allocations +constant-allocation-category+)
               do (setf (aref (aref pointers +constant-allocation-category+)
