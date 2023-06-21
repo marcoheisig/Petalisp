@@ -166,17 +166,18 @@
               (let ,(loop for array in (append results arguments)
                           for vector in (append rsvs asvs)
                           collect `(,vector (array-storage-vector ,array)))
-                (petalisp.utilities:with-pinned-objects (,@rsvs ,@asvs)
-                  (let ((denv (make-denv cenv)))
-                    (declare (denv denv))
-                    ,@(loop for result in results for index from 0
-                            collect `(bind-result denv ,result ,index))
-                    ,@(loop for argument in arguments for index from 0
-                            collect `(bind-argument denv ,argument ,index))
-                    (evaluate denv)
-                    (values
-                     ,@(loop for index below number-of-results
-                             collect `(get-result denv ,index)))))))))))))
+                (without-compiler-notes
+                  (petalisp.utilities:with-pinned-objects (,@rsvs ,@asvs)
+                    (let ((denv (make-denv cenv)))
+                      (declare (denv denv))
+                      ,@(loop for result in results for index from 0
+                              collect `(bind-result denv ,result ,index))
+                      ,@(loop for argument in arguments for index from 0
+                              collect `(bind-argument denv ,argument ,index))
+                      (evaluate denv)
+                      (values
+                       ,@(loop for index below number-of-results
+                               collect `(get-result denv ,index))))))))))))))
 
 (defun result-variables (n)
   (loop for i below n
