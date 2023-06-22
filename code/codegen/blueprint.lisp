@@ -187,8 +187,7 @@ which makes them ideal for caching."
 
 (defun fnrecord-blueprint (fnrecord)
   (let ((name (typo:fnrecord-name fnrecord)))
-    (if (and (typep name 'typo:function-name)
-             (not *small-kernel-p*))
+    (if (typep name 'typo:function-name)
         name
         :any)))
 

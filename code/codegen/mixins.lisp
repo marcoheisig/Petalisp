@@ -41,7 +41,8 @@
 
 (defmethod compile-blueprint ((client lisp-plus-cpp-compiler-mixin) blueprint)
   (if (blueprint-cpp-translatable-p blueprint)
-      (cpp-compile-blueprint client blueprint)
+      (handler-case (cpp-compile-blueprint client blueprint)
+        (error () (lisp-compile-blueprint client blueprint)))
       (lisp-compile-blueprint client blueprint)))
 
 (defclass cpp-compiler-mixin ()

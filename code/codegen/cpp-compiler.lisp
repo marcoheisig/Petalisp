@@ -18,7 +18,7 @@
 (defun bpvalue-cpp-type (bpvalue)
   (let ((ntype (bpvalue-ntype bpvalue)))
     (if (typo:ntype= ntype (typo:universal-ntype))
-        "void*"
+        "void* __restrict__"
         (ntype-cpp-info ntype))))
 
 (defun bpvalue-cffi-type (bpvalue)
@@ -42,24 +42,23 @@
   (let* ((bpinfo (blueprint-bpinfo blueprint))
          (arguments (bpinfo-cpp-arguments bpinfo))
          (name (format nil "PETALISP_CPP_KERNEL_~X" (random most-positive-fixnum))))
-    (make-kernel-lambda
-     client
-     bpinfo
-     `(let ((.foreign-library.
-              (load-time-value
-               (load-foreign-code
-                ,(with-output-to-string (stream)
-                   (cpp-write-defun bpinfo name arguments stream))
-                :flags '("-O3" "-march=native" "-fPIC")))))
-        (declare (ignore .foreign-library.))
-        (cffi:foreign-funcall
-         ,name
-         ,@(loop for argument in arguments
-                 collect (bpvalue-cffi-type argument)
-                 collect (bpvariable-name argument)))))))
+    (values
+     (make-kernel-lambda
+      client
+      bpinfo
+      `(cffi:foreign-funcall
+        ,name
+        ,@(loop for argument in arguments
+                collect (bpvalue-cffi-type argument)
+                collect (bpvariable-name argument))))
+     (with-output-to-string (stream)
+       (cpp-write-defun bpinfo name arguments stream)))))
 
 (defun cpp-compile-blueprint (client blueprint)
-  (compile nil (cpp-translate-blueprint client blueprint)))
+  (multiple-value-bind (kernel-lambda c-code)
+      (cpp-translate-blueprint client blueprint)
+    (load-foreign-code c-code :flags '("-O3" "-march=native" "-fPIC"))
+    (compile nil kernel-lambda)))
 
 (defun bpinfo-cpp-arguments (bpinfo)
   (let ((rargs '()))

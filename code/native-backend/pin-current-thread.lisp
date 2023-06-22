@@ -2,14 +2,8 @@
 
 (in-package #:petalisp.native-backend)
 
-#+(or windows)
-(defun pin-current-thread (cpu-number)
-  (declare (ignore cpu-number))
-  (values))
-
-#-(or windows)
-(let* ((code
-         "
+(defparameter *pin-current-thread-code*
+  "
 #include <errno.h>
 #include <sched.h>
 #include <pthread.h>
@@ -26,10 +20,16 @@ int petalisp_native_backend_pin_current_thread(int core_id) {
 
     pthread_t current_thread = pthread_self();
     return pthread_setaffinity_np(current_thread, sizeof(cpu_set_t), &cpuset);
-}
-}
+}}")
 
-         "))
-  (load-foreign-code code)
-  (defun pin-current-thread (cpu-number)
-    (cffi:foreign-funcall "petalisp_native_backend_pin_current_thread" :int cpu-number)))
+(defparameter *pin-current-thread-library*
+  (ignore-errors
+   (load-foreign-code *pin-current-thread-code*)))
+
+(defun pin-current-thread (cpu-number)
+  "Ensure that the current thread will only run on the specified CPU.  Returns
+whether the pinning was successful."
+  (declare (type unsigned-byte cpu-number))
+  (when *pin-current-thread-library*
+    (zerop
+     (cffi:foreign-funcall "petalisp_native_backend_pin_current_thread" :int cpu-number :int))))
