@@ -800,7 +800,8 @@
              (range-size range)
              axis
              (array-dimension array axis))))
-  (unless (typo:ntype= (typo:array-element-ntype array) ntype)
+  (unless (typo:ntype= (typo:array-element-ntype array)
+                       (typo:upgraded-array-element-ntype ntype))
     (error "Not an array of type ~S: ~S"
            (array-element-type array)
            array))
