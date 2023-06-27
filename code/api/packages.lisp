@@ -99,6 +99,7 @@
    #:map-shape
    #:shape-contains
    #:shrink-shape
+   #:split-shape
    #:enlarge-shape
    #:shape-subseq
    #:shape-prefix
