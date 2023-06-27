@@ -174,11 +174,12 @@
    #:with-lazy-arrays)
 
   (:shadowing-import-from :petalisp.codegen #:make-ir-backend)
-  (:shadowing-import-from :petalisp.xmas-backend #:make-xmas-backend))
+  (:shadowing-import-from :petalisp.xmas-backend #:make-xmas-backend)
+  (:shadowing-import-from :petalisp.native-backend #:make-native-backend))
 
 (defpackage #:petalisp-user
   (:use #:common-lisp #:petalisp))
 
 (in-package #:petalisp.api)
 
-(defvar *backend* (make-xmas-backend))
+(defvar *backend* (make-native-backend))
