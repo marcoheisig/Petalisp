@@ -69,11 +69,11 @@
   (pointers nil
    :type (simple-array simple-vector (*))
    :read-only t)
-  ;; The serious condition that was signaled during evaluation, or NIL if
+  ;; Any serious condition that was signaled during evaluation, or NIL if
   ;; everything went smoothly so far.  Once this slot is set to a non-NIL
   ;; value, workers will just skip the remaining evaluation.
-  (serious-condition nil
-   :type (or null condition))
+  (serious-conditions nil
+   :type list)
   (request nil :type request))
 
 (defun make-denv (cenv)
@@ -136,6 +136,20 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
+;;; Conditions
+
+(define-condition evaluation-failure (error)
+  ((%serious-conditions
+    :initarg :serious-conditions
+    :initform (alexandria:required-argument :serious-conditions)
+    :reader serious-conditions))
+  (:report
+   (lambda (condition stream)
+     (format stream "~&Evaluation failed with the following serious conditions:~{~%~% ~A~}"
+             (serious-conditions condition)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
 ;;; Evaluator
 
 (defmethod backend-evaluator
@@ -188,7 +202,7 @@
 
 (defun evaluate (denv)
   (declare (denv denv))
-  (with-slots (cenv pointers request) denv
+  (with-slots (cenv pointers request serious-conditions) denv
     (with-slots (allocations constant-arrays constant-storage-vectors) cenv
       ;; Pin and bind all constants.
       (petalisp.utilities:with-pinned-objects* constant-storage-vectors
@@ -206,7 +220,10 @@
              (worker-pool-worker worker-pool worker-id)
              (lambda () (worker-evaluate denv))))
           ;; Wait for completion.
-          (request-wait request))))))
+          (request-wait request)
+          ;; Check whether there were any serious conditions.
+          (unless (null serious-conditions)
+            (error 'evaluation-failure :serious-conditions serious-conditions)))))))
 
 (defun worker-evaluate (denv)
   (let* ((worker-id (worker-id *worker*))
@@ -254,21 +271,19 @@
 (defun worker-synchronize-and-invoke (denv invocations)
   (declare (denv denv) (list invocations))
   (barrier)
-  (with-slots (pointers serious-condition) denv
-    (unless serious-condition
-      (handler-case
-          (loop for invocation of-type invocation in invocations do
-            ;; TODO
-            (unless (empty-shape-p (invocation-iteration-space invocation))
-              (funcall (invocation-kfn invocation)
-                       (invocation-kernel invocation)
-                       (invocation-iteration-space invocation)
-                       (invocation-targets invocation)
-                       (invocation-sources invocation)
-                       denv)))
-        #+(or)
-        (serious-condition (c)
-          (atomics:cas serious-condition nil c))))))
+  (when (null (denv-serious-conditions denv))
+    (handler-case
+        (loop for invocation of-type invocation in invocations do
+          ;; TODO
+          (unless (empty-shape-p (invocation-iteration-space invocation))
+            (funcall (invocation-kfn invocation)
+                     (invocation-kernel invocation)
+                     (invocation-iteration-space invocation)
+                     (invocation-targets invocation)
+                     (invocation-sources invocation)
+                     denv)))
+      (serious-condition (serious-condition)
+        (atomics:atomic-push serious-condition (denv-serious-conditions denv))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
