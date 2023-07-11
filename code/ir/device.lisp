@@ -38,36 +38,6 @@
 ;;;
 ;;; Classes.
 
-(defclass device ()
-  (;; The name of the device, e.g., "AMD FX(tm)-8150"
-   (%name
-    :initarg :name
-    :initform (alexandria:required-argument :name)
-    :reader device-name
-    :type string)
-   ;; The memory hierarchy accessed by that device.
-   (%memory
-    :initarg :memory
-    :initform (alexandria:required-argument :memory)
-    :reader device-memory
-    :type memory)
-   (%number-of-cores
-    :initarg :number-of-cores
-    :reader device-number-of-cores
-    :type (and (integer 1) fixnum))))
-
-(defclass core ()
-  ((%name
-    :initarg :name
-    :initform (alexandria:required-argument :name)
-    :reader core-name
-    :type string)
-   (%memory
-    :initarg :memory
-    :initform (alexandria:required-argument :memory)
-    :reader core-memory
-    :type memory)))
-
 (defclass memory ()
   (;; The name of the memory, e.g., "L1" or "RAM"
    (%name
@@ -130,6 +100,36 @@
     :initform nil
     :reader memory-parent-bandwidth
     :type (or null unsigned-byte))))
+
+(defclass core ()
+  ((%name
+    :initarg :name
+    :initform (alexandria:required-argument :name)
+    :reader core-name
+    :type string)
+   (%memory
+    :initarg :memory
+    :initform (alexandria:required-argument :memory)
+    :reader core-memory
+    :type memory)))
+
+(defclass device ()
+  (;; The name of the device, e.g., "AMD FX(tm)-8150"
+   (%name
+    :initarg :name
+    :initform (alexandria:required-argument :name)
+    :reader device-name
+    :type string)
+   ;; The memory hierarchy accessed by that device.
+   (%memory
+    :initarg :memory
+    :initform (alexandria:required-argument :memory)
+    :reader device-memory
+    :type memory)
+   (%cores
+    :initarg :cores
+    :reader device-cores
+    :type (vector core))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -232,7 +232,7 @@
     (make-instance 'device
       :name (or (machine-type) "fallback-host-device")
       :cores cores
-      :main-memory ram)))
+      :memory ram)))
 
 (defun linux-host-device ()
   (let* ((ram (make-instance 'memory
@@ -256,7 +256,8 @@
          ;; Records of the form (id level cache).
          (caches '()))
     (make-instance 'device
-      :main-memory ram
+      :name (concatenate 'string (machine-instance) " " (machine-version))
+      :memory ram
       :cores
       (labels ((cache-level (cache-dir)
                  (parse-integer
