@@ -356,21 +356,23 @@ two values, which are two shapes resulting from the split."
 
 (document-function transform
   "Returns a transformation that maps the supplied inputs to the supplied outputs.
-The input forms and the output forms are separated by the symbol
-PETALISP:TO.
 
-Each input can either be a symbol, an integer, or a list whose first
-element is a symbol and whose second element is a form that evaluates
-either to an integer or to NIL.  The symbol is the name under which the
-value of that input can be referenced in one of the outputs.  Other value
-is the input constraint of the transformation in that axis.
+The supplied forms describe the inputs and outputs of the transformation.
+Inputs and outputs are separated by the symbol PETALISP:TO.
+
+Each input can either be a symbol, an integer, or a list whose first element is
+a symbol and whose second element is a form that evaluates either to an integer
+or to NIL.  The symbol is the name under which the value of that input can be
+referenced in one of the outputs.  Any integer value is interpreted as an input
+constraint of the transformation in that axis.
 
 Each output is a form that may reference up to one of the input variables.
 The output form is evaluated repeatedly in a context where the referenced
 input variable is bound to an integer to determine the coefficients for the
-linear mapping from the referenced input to the output.  Signals an error
-if the output form returns anything other than an integer, or if the
-mapping is not linear."
+linear mapping from the referenced input to the output.
+
+Signals an error if any output form references more than one input, returns
+anything other than an integer, or describes a mapping that is not linear."
   (transform i to (+ i 1))
   (transform i to (+ (+ i 1) 5))
   (transform 1 2 3 to)
@@ -428,7 +430,7 @@ input index component indicated by the corresponding output mask entry
 after it is multiplied with the corresponding scaling.")
 
 (document-function transformation-invertiblep
-  "Returns whether a supplied object is an invertible transformation."
+  "Returns whether the supplied object is an invertible transformation."
   (transformation-invertiblep (transform i j to j i))
   (transformation-invertiblep (transform i j to i)))
 
@@ -609,12 +611,11 @@ selection, move, or broadcasting of values, depending on whether the
 designated shape has fewer, equal, or more elements than the active axes of
 the current lazy array.
 
-More precisely, the processing maintains a lazy array L that is initialized
-to the result of applying LAZY-ARRAY constructor to the supplied first
-argument, a number of active ranges K that initialized to the rank of L,
-and updates L and K for each modifier while maintaining the invariant that
-K is less than or equal to the rank of L.  The rules for updating L and K
-are as follows:
+More precisely, the processing maintains a lazy array L that is initialized to
+the result of applying LAZY-ARRAY constructor to the supplied first argument, a
+number of active ranges K that initialized to the rank of L.  For each
+modifier, L and K are updated while maintaining the invariant that K is less
+than or equal to the rank of L.  The rules for updating L and K are as follows:
 
 1. If the modifier is a non-negative integer N, compare it with the number
    of active ranges K.  If N is less than or equal to K, set K to N and
@@ -744,9 +745,9 @@ shape."
 
 (document-function lazy-index-components
   "Returns a lazy array containing the index components of the designated
-shape in the supplied axis.  If the first argument is not a shape, the
-function SHAPE-DESIGNATOR—SHAPE is used to convert it a shape.  If no axis
-is not supplied, it defaults to zero."
+shape in the supplied axis.  If the first argument is not a shape, the function
+SHAPE-DESIGNATOR-SHAPE is used to convert it a shape.  If no axis is not
+supplied, it defaults to zero."
   (compute (lazy-index-components (~ 9)))
   (compute (lazy-index-components (~ 0 4 2 ~ 1 5 2) 0))
   (compute (lazy-index-components (~ 0 4 2 ~ 1 5 2) 1))
@@ -801,9 +802,9 @@ that axis."
 
 (document-function lazy-stack
   "Returns a lazy array whose contents are the supplied arrays, stacked next
-to each other along the specified AXIS such that along this axis, the
-leftmost array will have the lowest indices, and the rightmost array will
-have the highest indices.
+to each other along the specified AXIS such that the leftmost array will have
+the lowest index components, and the rightmost array will have the highest
+index components.
 
 The supplied arrays must all have the same rank, and also the same ranges
 in all but the one axis that is being stacked along.  The range of the
