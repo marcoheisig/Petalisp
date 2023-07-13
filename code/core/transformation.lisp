@@ -97,7 +97,7 @@
 
 (defgeneric inflate-transformation (transformation n))
 
-(defgeneric transform-sequence (sequence transformation)
+(defgeneric transform-index (sequence transformation)
   (:argument-precedence-order transformation sequence))
 
 (defgeneric transform-shape (shape transformation)
@@ -426,9 +426,9 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; TRANSFORM-SEQUENCE
+;;; TRANSFORM-INDEX
 
-(defmethod transform-sequence :before
+(defmethod transform-index :before
     ((sequence sequence)
      (transformation transformation))
   (unless (= (length sequence) (transformation-input-rank transformation))
@@ -437,7 +437,7 @@
            sequence (length sequence)
            transformation (transformation-input-rank transformation))))
 
-(defmethod transform-sequence :before
+(defmethod transform-index :before
     ((sequence sequence)
      (transformation hairy-transformation))
   (map nil (lambda (constraint element)
@@ -450,12 +450,12 @@
        (transformation-input-mask transformation)
        sequence))
 
-(defmethod transform-sequence
+(defmethod transform-index
     ((sequence sequence)
      (transformation identity-transformation))
   sequence)
 
-(defmethod transform-sequence
+(defmethod transform-index
     ((list list)
      (transformation hairy-transformation))
   (let ((result '()))
@@ -476,7 +476,7 @@
       (map-transformation-outputs #'push-output-expression transformation)
       (nreverse result))))
 
-(defmethod transform-sequence
+(defmethod transform-index
     ((vector vector)
      (transformation hairy-transformation))
   (let* ((output-rank (transformation-output-rank transformation))

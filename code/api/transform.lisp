@@ -24,7 +24,7 @@
                        collect (transformation-input-symbol input-index)
                      else
                        collect input-constraint))
-             (outputs (transform-sequence inputs transformation)))
+             (outputs (transform-index inputs transformation)))
         (princ `(transform ,@inputs to ,@outputs) stream))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

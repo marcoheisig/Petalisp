@@ -48,19 +48,19 @@
                 (with-accessors ((transformation iref-instruction-transformation)) instruction
                   (setf (svref value-vector offset)
                         (first
-                         (transform-sequence index transformation)))))
+                         (transform-index index transformation)))))
                (load-instruction
                 (with-accessors ((transformation load-instruction-transformation)
                                  (buffer load-instruction-buffer)) instruction
                   (let ((array (buffer-storage buffer)))
                     (setf (svref value-vector offset)
-                          (apply #'aref array (transform-sequence index transformation))))))
+                          (apply #'aref array (transform-index index transformation))))))
                (store-instruction
                 (with-accessors ((transformation store-instruction-transformation)
                                  (buffer store-instruction-buffer)
                                  (input store-instruction-input)) instruction
                   (let ((array (buffer-storage buffer)))
-                    (setf (apply #'aref array (transform-sequence index transformation))
+                    (setf (apply #'aref array (transform-index index transformation))
                           (input-value input)))))))
            (input-value (input)
              (destructuring-bind (value-n . instruction) input

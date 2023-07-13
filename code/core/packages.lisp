@@ -85,7 +85,7 @@
    ;; Transformations
    #:transformation
    #:transformationp
-   #:transform-sequence
+   #:transform-index
    #:transform-shape
    #:transform-axis
    #:identity-transformation-p

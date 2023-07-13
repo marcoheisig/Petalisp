@@ -40,6 +40,8 @@
     (make-hash-table :test #'equal))
    (delayed-action-value (lazy-array-delayed-action lazy-array) index)))
 
+(defgeneric delayed-action-value (delayed-action index))
+
 (defmethod delayed-action-value
     ((delayed-map delayed-map) index)
   (apply (typo:fnrecord-function (delayed-map-fnrecord delayed-map))
@@ -68,7 +70,7 @@
     ((delayed-reshape delayed-reshape) index)
   (lazy-array-value
    (delayed-reshape-input delayed-reshape)
-   (transform-sequence index (delayed-reshape-transformation delayed-reshape))))
+   (transform-index index (delayed-reshape-transformation delayed-reshape))))
 
 (defmethod delayed-action-value
     ((delayed-fuse delayed-fuse) index)
@@ -88,7 +90,7 @@
 
 (defmethod delayed-action-value
     ((delayed-nop delayed-nop) index)
-  (error "A delayed NOP should never be executed."))
+  (values))
 
 (defmethod delayed-action-value
     ((delayed-unknown delayed-unknown) index)

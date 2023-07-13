@@ -40,7 +40,7 @@
    #:lazy-stack
    #:transform
    #:to
-   #:transform-sequence
+   #:transform-index
    #:transform-shape
    #:transform-axis
    #:transform-lazy-array
