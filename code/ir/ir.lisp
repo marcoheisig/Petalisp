@@ -5,6 +5,9 @@
 (defstruct (program
             (:predicate programp)
             (:constructor make-program))
+  "A program is the largest organizational unit in the Petalisp intermediate
+representation, and fully describes the semantics of a particular graph of lazy
+arrays."
   ;; This program's unique task with zero predecessors.
   (initial-task nil)
   ;; This program's unique task that has zero successors.
@@ -27,18 +30,18 @@
   (declare (program program))
   (length (program-task-vector program)))
 
-;;; A task is a collection of kernels that fully define a set of buffers.
-;;; The rules for task membership are:
-;;;
-;;; 1. All kernels writing to a buffer B with task T have task T.
-;;;
-;;; 2. All buffers written to by a kernel K with task T have task T.
-;;;
-;;; 3. A buffer that is used by a kernel in T and that depends on a buffer
-;;;    in T is also in T.
 (defstruct (task
             (:predicate taskp)
             (:constructor make-task))
+  "A task is a collection of kernels that fully define a set of buffers.
+The rules for task membership are:
+
+1. All kernels writing to a buffer B with task T have task T.
+
+2. All buffers written to by a kernel K with task T have task T.
+
+3. A buffer that is used by a kernel in T and that depends on a buffer
+   in T is also in T."
   (program '() :type program)
   ;; The tasks that must be completed before this task can run.
   (predecessors '() :type list)
@@ -52,13 +55,11 @@
   ;; the number of tasks in the program.
   (number 0 :type (and unsigned-byte fixnum)))
 
-;;; A buffer represents a set of memory locations big enough to hold one
-;;; element of type ELEMENT-TYPE for each index of the buffer's shape.
-;;; Each buffer is written to by zero or more kernels and read from zero or
-;;; more kernels.
 (defstruct (buffer
             (:predicate bufferp)
             (:constructor make-buffer))
+  "A buffer is a mapping from indices of a particular shape to memory locations of
+the same type."
   ;; The shape of this buffer.
   (shape nil :type shape)
   ;; The type code of all elements stored in this buffer.
@@ -106,11 +107,11 @@
   (* (typo:ntype-bits (buffer-ntype buffer))
      (shape-size (buffer-shape buffer))))
 
-;;; A kernel represents a computation that, for each element in its
-;;; iteration space, reads from some buffers and writes to some buffers.
 (defstruct (kernel
             (:predicate kernelp)
             (:constructor make-kernel))
+  "A kernel represents a computation that, for each element in its
+iteration space, reads from some buffers and writes to some buffers."
   (iteration-space nil :type shape)
   ;; An alist whose keys are buffers, and whose values are stencils reading
   ;; from that buffer.
@@ -134,37 +135,40 @@
   (declare (kernel kernel))
   (task-program (kernel-task kernel)))
 
-;;; The behavior of a kernel is described by its iteration space and its
-;;; instructions.  The instructions form a DAG, whose leaves are load
-;;; instructions or references to iteration variables, and whose roots are
-;;; store instructions.
-;;;
-;;; The instruction number of an instruction is an integer that is unique
-;;; among all instructions of the current kernel.  Instruction numbers are
-;;; handed out in depth first order of instruction dependencies, such that
-;;; the roots (store instructions) have the highest numbers and that the
-;;; leaf nodes (load and iref instructions) have the lowest numbers.  After
-;;; modifications to the instruction graph, the numbers have to be
-;;; recomputed.
-;;;
-;;; Each instruction input is a cons cell, whose cdr is another
-;;; instruction, and whose car is an integer denoting which of the multiple
-;;; values of the cdr is being referenced.
 (defstruct (instruction
             (:predicate instructionp)
             (:copier nil)
             (:constructor nil))
+  "Instructions describe the behavior of a particular kernel.  All the
+instructions within one kernel form a directed acyclic graph whose leaves are
+load instructions or references to the iteration space, and whose roots are
+store instructions.
+
+The instruction number of an instruction is an integer that is unique among all
+instructions of the surrounding kernel.  Instruction numbers are handed out in
+depth first order of instruction dependencies, such that the roots (store
+instructions) have the highest numbers and that the leaf nodes (load and iref
+instructions) have the lowest numbers.
+
+Each instruction input is a cons cell, whose cdr is another instruction, and
+whose car is an integer denoting which of the multiple values of the cdr is
+being referenced."
   (inputs '() :type list)
   ;; A number that is unique among all instructions of this kernel.
   (number 0 :type (and unsigned-byte fixnum)))
 
-;;; A call instruction represents the application of a function to a set of
-;;; values that are the result of other instructions.
 (defstruct (call-instruction
             (:include instruction)
             (:predicate call-instruction-p)
             (:copier nil)
             (:constructor make-call-instruction (number-of-values fnrecord inputs)))
+  "A call instruction represents the application of a function some arguments.
+A call instruction consists of a function description from the type inference
+library Typo called an fnrecord, an integer that specifies the number of values
+produced by the call instruction, and a list of inputs.  The values of a call
+instruction are obtained by applying the fnrecord's function to the values of
+each of the call instruction's inputs.  If the function application produces
+less values than specified, the missing values are set to NIL."
   (fnrecord nil :type typo:fnrecord)
   (number-of-values nil :type (integer 0 (#.multiple-values-limit))))
 
@@ -172,37 +176,39 @@
   (typo:fnrecord-function
    (call-instruction-fnrecord call-instruction)))
 
-;;; We call an instruction an iterating instruction, if its behavior
-;;; directly depends on the current element of the iteration space.
 (defstruct (iterating-instruction
             (:include instruction)
             (:predicate iterating-instruction-p)
             (:copier nil)
             (:constructor nil)
             (:conc-name instruction-))
+  "The class of all instructions whose behavior directly depends on the
+current position in the surrounding iteration space."
   (transformation nil :type transformation))
 
-;;; An iref instruction represents an access to elements of the iteration
-;;; space itself.  Its transformation is a mapping from the iteration space
-;;; to a rank one space.  Its value is the single integer that is the
-;;; result of applying the transformation to the current iteration space.
 (defstruct (iref-instruction
             (:include iterating-instruction)
             (:predicate iref-instruction-p)
             (:copier nil)
             (:constructor make-iref-instruction
-                (transformation))))
+                (transformation)))
+  "An iref instruction represents an access to elements of the iteration
+space itself.  Each iref instruction contains a transformation that maps each
+index of the iteration space to an index of rank one.  Its value is the single
+index component of that rank one index.  An iref instruction has zero inputs.")
 
-;;; A load instruction represents a read from main memory.  It returns a
-;;; single value --- the entry of the buffer storage at the location
-;;; specified by the current element of the iteration space and the load's
-;;; transformation.
+
 (defstruct (load-instruction
             (:include iterating-instruction)
             (:predicate load-instruction-p)
             (:copier nil)
             (:constructor %make-load-instruction
                 (buffer transformation)))
+  "A load instruction represents a read from main memory.  Each load instruction
+consists of a buffer that is being read from, and a transformation that maps
+each index of the iteration space to a position in that buffer.  A load
+instruction has zero inputs, and produces a single output that is the value
+that has been loaded."
   (buffer nil :type buffer))
 
 ;;; A stencil is a set of load instructions that all have the same buffer,
@@ -324,16 +330,16 @@
     (push load-instruction (alexandria:assoc-value (buffer-readers buffer) kernel))
     load-instruction))
 
-;;; A store instruction represents a write to main memory.  It stores its
-;;; one and only input at the entry of the buffer storage specified by the
-;;; current element of the iteration space and the store instruction's
-;;; transformation.  A store instruction returns zero values.
 (defstruct (store-instruction
             (:include iterating-instruction)
             (:predicate store-instruction-p)
             (:copier nil)
             (:constructor %make-store-instruction
                 (inputs buffer transformation)))
+  "A store instruction represents a write to memory.  Each store instruction
+consists of a buffer that is being written to, a transformation that maps each
+index in the iteration space to a location in that buffer, and a single input
+that is the value to be written.  A store instruction returns zero values."
   (buffer nil :type buffer))
 
 (defun make-store-instruction (kernel input buffer transformation)

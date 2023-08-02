@@ -469,6 +469,10 @@ at most DELTA."
   "Returns a single transformation that is equivalent to consecutive
 invocations of the supplied transformations in right-to-left order."
   (compose-transformations
+   (transform i to (/ i 2))
+   (transform i to (+ i 2))
+   (transform i to (* i 4)))
+  (compose-transformations
    (transform i to (* 2 (1+ i)))
    (transform i to (1- (/ i 2))))
   (compose-transformations

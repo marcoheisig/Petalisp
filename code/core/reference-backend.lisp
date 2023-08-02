@@ -1,11 +1,4 @@
-;;;; © 2016-2023 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
-
 (in-package #:petalisp.core)
-
-;;; The purpose of the reference backend is to compute reference solutions
-;;; for automated testing. It is totally acceptable that this
-;;; implementation is slow or eagerly consing, as long as it is obviously
-;;; correct.
 
 (defclass reference-backend (backend)
   ())
@@ -95,13 +88,6 @@
 (defmethod delayed-action-value
     ((delayed-unknown delayed-unknown) index)
   (error "Attempt to evaluate a graph that contains unknowns."))
-
-(defmethod delayed-action-value
-    ((delayed-wait delayed-wait) index)
-  (wait (delayed-wait-request delayed-wait))
-  (delayed-action-value
-   (delayed-wait-delayed-action delayed-wait)
-   index))
 
 (defmethod delayed-action-value
     ((delayed-failure delayed-failure) index)
