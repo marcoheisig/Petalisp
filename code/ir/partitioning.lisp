@@ -189,6 +189,28 @@ shard."
         (1+ (max (buffer-shard-maxdepth (split-left-child split))
                  (buffer-shard-maxdepth (split-right-child split)))))))
 
+(defun buffer-shard-path (buffer-shard)
+  "Returns a list with one boolean for each ancestor of the supplied
+buffer shard, that describes how to reach that buffer shard starting from its
+primogenitor.  An entry of T means the path descends into the left child, and
+a value of NIL means the path descends into the right child."
+  (declare (buffer-shard buffer-shard))
+  (labels ((climb-upwards (buffer-shard path)
+             (let ((parent (buffer-shard-parent buffer-shard)))
+               (if (not parent)
+                   path
+                   (let* ((split (buffer-shard-split parent))
+                          (direction (eq buffer-shard (split-left-child split))))
+                     (climb-upwards parent (cons direction path)))))))
+    (climb-upwards buffer-shard '())))
+
+(defun buffer-shard-primogenitor (buffer-shard)
+  "Returns the topmost ancestor of the supplied buffer shard."
+  (if (not (buffer-shard-parent buffer-shard))
+      buffer-shard
+      (buffer-shard-primogenitor
+       (buffer-shard-parent buffer-shard))))
+
 (defun make-kernel-shard
     (&key kernel iteration-space targets sources)
   "Returns a new kernel shard from the supplied keyword arguments.  Ensure that
@@ -344,7 +366,7 @@ children.  Useful for debugging."
               ;; layers is introduced.
               (do-buffer-outputs (kernel buffer)
                 (let ((p :initial) (s :initial) (c :initial))
-                  (dolist (stencil (kernel-stencils kernel buffer))
+                  (dolist (stencil (kernel-load-stencils kernel buffer))
                     (update p (aref (stencil-output-mask stencil) axis))
                     (update s (aref (stencil-scalings stencil) axis))
                     (update c (aref (stencil-center stencil) axis))
@@ -362,7 +384,7 @@ children.  Useful for debugging."
            (pattern (make-array dims :element-type 'bit :initial-element 0)))
       ;; Iterate over all load instructions and add them to the pattern.
       (do-buffer-outputs (kernel buffer)
-        (dolist (stencil (kernel-stencils kernel buffer))
+        (dolist (stencil (kernel-load-stencils kernel buffer))
           (do-stencil-instructions (load-instruction stencil)
             (let* ((transformation (load-instruction-transformation load-instruction))
                    (subscripts
@@ -971,7 +993,7 @@ relates to the supplied transformoid."
   (labels ((assign-recursively (buffer-shard existing-storage)
              (declare (buffer-shard buffer-shard)
                       (type (or null storage) existing-storage))
-             (with-slots (buffer split domain shape storage) buffer-shard
+             (with-slots (buffer split shape storage) buffer-shard
                (if existing-storage
                    (setf storage existing-storage)
                    (when (or (buffer-shard-readers buffer-shard)

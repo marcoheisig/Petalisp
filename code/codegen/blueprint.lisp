@@ -40,8 +40,8 @@ which makes them ideal for caching."
   (let ((*small-kernel-p* (<= (shape-size (kernel-iteration-space kernel)) 64)))
     (ucons:ulist*
      (iteration-space-blueprint (kernel-iteration-space kernel))
-     (target-blueprints (kernel-targets kernel))
-     (source-blueprints (kernel-sources kernel))
+     (buffer-stencils-alist-blueprint (kernel-targets kernel))
+     (buffer-stencils-alist-blueprint (kernel-sources kernel))
      (instruction-blueprints kernel))))
 
 (defun iteration-space-blueprint (iteration-space)
@@ -56,51 +56,25 @@ which makes them ideal for caching."
         (t
          (ucons:ulist* :strided (ranges-blueprint (rest ranges))))))
 
-(defun target-blueprints (targets)
-  (if (null targets)
-      '()
-      (ucons:ucons
-       (target-blueprint (first targets))
-       (target-blueprints (rest targets)))))
+(defun buffer-stencils-alist-blueprint (alist)
+  (trivia:ematch alist
+    ((list) '())
+    ((list* (list* buffer stencils) rest)
+     (ucons:ulist*
+      (ucons:ulist*
+       (buffer-ntype buffer)
+       (stencils-blueprint stencils))
+      (buffer-stencils-alist-blueprint rest)))))
 
-(defun target-blueprint (target)
-  (destructuring-bind (buffer . store-instructions) target
-    (ucons:ulist*
-     (buffer-ntype buffer)
-     (labels ((transformations (store-instructions)
-                (if (null store-instructions)
-                    '()
-                    (ucons:ucons
-                     (transformation-blueprint
-                      (store-instruction-transformation
-                       (first store-instructions)))
-                     (transformations
-                      (rest store-instructions))))))
-       (transformations store-instructions)))))
-
-(defun source-blueprints (sources)
-  (if (null sources)
-      '()
-      (ucons:ucons
-       (source-blueprint (first sources))
-       (source-blueprints (rest sources)))))
-
-(defun source-blueprint (source)
-  (destructuring-bind (buffer . stencils) source
-    (ucons:ulist*
-     (buffer-ntype buffer)
-     (labels ((transformations (stencils)
-                (if (null stencils)
-                    '()
-                    (ucons:ucons
-                     (transformation-blueprint
-                      (load-instruction-transformation
-                       (first
-                        (stencil-instructions
-                         (first stencils)))))
-                     (transformations
-                      (rest stencils))))))
-       (transformations stencils)))))
+(defun stencils-blueprint (stencils)
+  (trivia:ematch stencils
+    ((list) '())
+    ((list* stencil more-stencils)
+     (ucons:ucons
+      (transformation-blueprint
+       (instruction-transformation
+        (first (stencil-instructions stencil))))
+      (stencils-blueprint more-stencils)))))
 
 (defun transformation-blueprint (transformation)
   (let* ((output-rank (transformation-output-rank transformation))
@@ -150,32 +124,41 @@ which makes them ideal for caching."
     (when (eq buffer (load-instruction-buffer load-instruction))
       (loop for stencil in stencils for stencil-number from 0 do
         (when (member load-instruction (stencil-instructions stencil))
-          (let ((center (stencil-center stencil))
-                (offsets (transformation-offsets (load-instruction-transformation load-instruction)))
-                (tail '()))
-            (loop for index from (1- (stencil-output-rank stencil)) downto 0 do
-              (ucons:upush
-               (- (aref offsets index)
-                  (aref center index))
-               tail))
-            (return-from instruction-blueprint
-              (ucons:ulist* :load buffer-number stencil-number tail)))))))
-  (error "Invalid load instruction: ~S" load-instruction))
+          (return-from instruction-blueprint
+            (ucons:ulist*
+             :load
+             buffer-number
+             stencil-number
+             (stencil-instruction-offsets stencil load-instruction)))))))
+  (error "Malformed load instruction: ~S" load-instruction))
 
 (defmethod instruction-blueprint
     ((store-instruction store-instruction)
      (kernel kernel))
-  (loop for (buffer . store-instructions) in (kernel-targets kernel) for buffer-number from 0 do
+  (loop for (buffer . stencils) in (kernel-targets kernel) for buffer-number from 0 do
     (when (eq buffer (store-instruction-buffer store-instruction))
-      (loop for other-store in store-instructions for store-number from 0 do
-        (when (eq other-store store-instruction)
+      (loop for stencil in stencils for stencil-number from 0 do
+        (when (member store-instruction (stencil-instructions stencil))
           (return-from instruction-blueprint
-            (ucons:ulist
+            (ucons:ulist*
              :store
              (value-blueprint (first (instruction-inputs store-instruction)))
              buffer-number
-             store-number))))))
-  (error "Invalid store instruction: ~S" store-instruction))
+             stencil-number
+             (stencil-instruction-offsets stencil store-instruction)))))))
+  (error "Malformed store instruction: ~S" store-instruction))
+
+(defun stencil-instruction-offsets (stencil instruction)
+  (declare (stencil stencil) (load-or-store-instruction instruction))
+  (let ((center (stencil-center stencil))
+        (offsets (transformation-offsets (instruction-transformation instruction)))
+        (result '()))
+    (loop for index from (1- (stencil-output-rank stencil)) downto 0 do
+      (ucons:upush
+       (- (aref offsets index)
+          (aref center index))
+       result))
+    result))
 
 (defmethod instruction-blueprint
     ((iref-instruction iref-instruction)

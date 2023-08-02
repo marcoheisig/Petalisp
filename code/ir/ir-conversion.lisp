@@ -1035,16 +1035,17 @@
          (*instruction-table* (make-hash-table :test #'eq))
          (iteration-space (kernel-iteration-space kernel))
          (substitute-kernel (make-kernel :iteration-space iteration-space)))
-    (loop for (buffer . store-instructions) in (kernel-targets kernel) do
-      (loop for store-instruction in store-instructions do
-        (let* ((input (store-instruction-input store-instruction))
-               (buffer (store-instruction-buffer store-instruction))
-               (transformation (identity-transformation (shape-rank iteration-space))))
-          (make-store-instruction
-           substitute-kernel
-           (clone-reference (car input) (cdr input) substitute-kernel transformation)
-           buffer
-           (store-instruction-transformation store-instruction)))))
+    (loop for (buffer . stencils) in (kernel-targets kernel) do
+      (loop for stencil in stencils do
+        (loop for store-instruction in (stencil-instructions stencil) do
+          (let* ((input (store-instruction-input store-instruction))
+                 (buffer (store-instruction-buffer store-instruction))
+                 (transformation (identity-transformation (shape-rank iteration-space))))
+            (make-store-instruction
+             substitute-kernel
+             (clone-reference (car input) (cdr input) substitute-kernel transformation)
+             buffer
+             (store-instruction-transformation store-instruction))))))
     (values
      substitute-kernel
      (+ (hash-table-count *instruction-table*)
@@ -1101,22 +1102,23 @@
         ;; by a clone of the matching store instruction.
         (let ((reader-shape (transform-shape (kernel-iteration-space kernel) transformation)))
           (do-buffer-inputs (writer buffer)
-            (loop for (store-buffer . store-instructions) in (kernel-targets writer) do
+            (loop for (store-buffer . stencils) in (kernel-targets writer) do
               (when (eq store-buffer buffer)
-                (loop for store-instruction in store-instructions do
-                  (when (subshapep
-                         reader-shape
-                         (transform-shape (kernel-iteration-space writer)
-                                          (store-instruction-transformation store-instruction)))
-                    (let* ((input (store-instruction-input store-instruction))
-                           (transformation
-                             (compose-transformations
-                              (invert-transformation
-                               (store-instruction-transformation store-instruction))
-                              transformation))
-                           (*instruction-table* (ensure-instruction-table writer transformation)))
-                      (return-from clone-reference
-                        (clone-reference (car input) (cdr input) kernel transformation))))))))
+                (loop for stencil in stencils do
+                  (loop for store-instruction in (stencil-instructions stencil) do
+                    (when (subshapep
+                           reader-shape
+                           (transform-shape (kernel-iteration-space writer)
+                                            (store-instruction-transformation store-instruction)))
+                      (let* ((input (store-instruction-input store-instruction))
+                             (transformation
+                               (compose-transformations
+                                (invert-transformation
+                                 (store-instruction-transformation store-instruction))
+                                transformation))
+                             (*instruction-table* (ensure-instruction-table writer transformation)))
+                        (return-from clone-reference
+                          (clone-reference (car input) (cdr input) kernel transformation)))))))))
           (error "Invalid prune:~%~S" *prune*))
         ;; If the buffer is not to be pruned, simply create a new load
         ;; instruction and register it with the kernel and the buffer.

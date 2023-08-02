@@ -121,6 +121,7 @@
   `(("shape" . ,(stringify (petalisp.ir:buffer-shape buffer)))
     ("type" . ,(stringify (typo:ntype-type-specifier (petalisp.ir:buffer-ntype buffer))))
     ("depth" . ,(stringify (petalisp.ir:buffer-depth buffer)))
+    ("number" . ,(stringify (petalisp.ir:buffer-number buffer)))
     ("reuse-potential" . ,(stringify (petalisp.ir:buffer-reuse-potential buffer)))
     ("storage" . ,(stringify (type-of (petalisp.ir:buffer-storage buffer))))))
 
@@ -135,6 +136,7 @@
     ((graph ir-graph)
      (kernel petalisp.ir:kernel))
   `(("iteration-space" . ,(stringify (petalisp.ir:kernel-iteration-space kernel)))
+    ("number" . ,(stringify (petalisp.ir:kernel-number kernel)))
     ("reuse-potential" . ,(stringify (petalisp.ir:kernel-reuse-potential kernel)))
     ,@(let ((instructions '()))
         (petalisp.ir:map-kernel-instructions

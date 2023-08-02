@@ -19,7 +19,7 @@
    (%native-backend
     :reader native-backend
     :initform
-    (petalisp.native-backend:make-native-backend))))
+    (petalisp.native-backend:make-native-backend :debug t))))
 
 (defun make-testing-backend ()
   (make-instance 'testing-backend))

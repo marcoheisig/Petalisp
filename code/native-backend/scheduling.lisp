@@ -34,39 +34,23 @@
                         :shape iteration-space
                         :ntype ntype))
          (load (petalisp.ir::%make-load-instruction dummy-buffer dummy-transformation))
-         (store (petalisp.ir::%make-store-instruction (cons 0 load) dummy-buffer dummy-transformation)))
+         (store (petalisp.ir::%make-store-instruction `((0 . ,load)) dummy-buffer dummy-transformation))
+         (kernel
+           (make-kernel
+            :iteration-space iteration-space
+            :instruction-vector (vector load store)
+            :sources `((,dummy-buffer ,(stencil-from-instruction load)))
+            :targets `((,dummy-buffer ,(stencil-from-instruction store))))))
+    (setf (instruction-number load) 0)
+    (setf (instruction-number store) 1)
     (make-invocation
-     :kernel (make-kernel
-              :iteration-space iteration-space
-              :sources `((,dummy-buffer ,(make-stencil (list load))))
-              :targets `((,dummy-buffer ,store)))
+     :kernel kernel
      :iteration-space iteration-space
      :targets (vector target)
      :sources (vector source)
      :kfn (compile-blueprint
            backend
-           (make-copy-blueprint iteration-space source target)))))
-
-(defun make-copy-blueprint (iteration-space source target)
-  (declare (shape iteration-space) (storage source target))
-  (let* ((rank (storage-rank source))
-         (ntype (storage-ntype source))
-         (offsets (make-list rank :initial-element 0)))
-    (assert (= (storage-rank target) rank))
-    (assert (typo:ntype= (storage-ntype target) ntype))
-    (ucons:ulist
-     ;; Iteration space.
-     (iteration-space-blueprint iteration-space)
-     ;; Targets.
-     (ucons:ulist
-      (ucons:ulist ntype (transformation-blueprint (identity-transformation rank))))
-     ;; Sources.
-     (ucons:ulist
-      (ucons:ulist ntype (transformation-blueprint (identity-transformation rank))))
-     ;; Load.
-     (apply #'ucons:ulist :load 0 0 offsets)
-     ;; Store.
-     (ucons:ulist :store (ucons:ulist 0 0) 0 0))))
+           (kernel-blueprint kernel)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

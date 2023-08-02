@@ -116,8 +116,8 @@ iteration space, reads from some buffers and writes to some buffers."
   ;; An alist whose keys are buffers, and whose values are stencils reading
   ;; from that buffer.
   (sources '() :type list)
-  ;; An alist whose keys are buffers, and whose values are all store
-  ;; instructions referencing that buffer.
+  ;; An alist whose keys are buffers, and whose values are stencils writing
+  ;; into that buffer.
   (targets '() :type list)
   ;; A vector of instructions of the kernel, in top-to-bottom order.
   (instruction-vector #() :type simple-vector)
@@ -307,8 +307,14 @@ all the supplied load or store instructions."
     (transformation-scalings
      (instruction-transformation instruction))))
 
-(defun kernel-stencils (kernel buffer)
+(defun kernel-load-stencils (kernel buffer)
   (let ((entry (assoc buffer (kernel-sources kernel))))
+    (etypecase entry
+      (null '())
+      (cons (cdr entry)))))
+
+(defun kernel-store-stencils (kernel buffer)
+  (let ((entry (assoc buffer (kernel-targets kernel))))
     (etypecase entry
       (null '())
       (cons (cdr entry)))))
@@ -360,7 +366,16 @@ all the supplied load or store instructions."
 
 (defun make-store-instruction (kernel input buffer transformation)
   (let ((store-instruction (%make-store-instruction (list input) buffer transformation)))
-    (push store-instruction (alexandria:assoc-value (kernel-targets kernel) buffer))
+    ;; Either add the store instruction to an existing stencil, or create a new
+    ;; stencil containing that instruction and add it to the kernel.
+    (block add-store-instruction-to-kernel
+      (symbol-macrolet ((stencils (alexandria:assoc-value (kernel-targets kernel) buffer)))
+        (dolist (stencil stencils)
+          (when (maybe-add-to-stencil store-instruction stencil)
+            (return-from add-store-instruction-to-kernel)))
+        (push (stencil-from-instruction store-instruction)
+              stencils)))
+    ;; Add the store instruction to the buffer it writes to, too.
     (push store-instruction (alexandria:assoc-value (buffer-writers buffer) kernel))
     store-instruction))
 
@@ -526,6 +541,8 @@ all the supplied load or store instructions."
 (defun map-kernel-stencils (function kernel)
   (declare (function function)
            (kernel kernel))
+  (loop for (nil . stencils) in (kernel-targets kernel) do
+    (mapc function stencils))
   (loop for (nil . stencils) in (kernel-sources kernel) do
     (mapc function stencils))
   kernel)
@@ -544,9 +561,10 @@ all the supplied load or store instructions."
 (defun map-kernel-store-instructions (function kernel)
   (declare (function function)
            (kernel kernel))
-  (loop for (nil . store-instructions) in (kernel-targets kernel) do
-    (loop for store-instruction in store-instructions do
-      (funcall function store-instruction)))
+  (loop for (nil . stencils) in (kernel-targets kernel) do
+    (loop for stencil in stencils do
+      (loop for store-instruction in (stencil-instructions stencil) do
+        (funcall function store-instruction))))
   kernel)
 
 (declaim (inline map-instruction-inputs))
@@ -876,8 +894,8 @@ all the supplied load or store instructions."
               (test (differs-exactly-at output-axis))
               (alist '()))
           (unless (null input-axis)
-            (dolist (load-instruction (stencil-instructions stencil))
-              (let* ((transformation (load-instruction-transformation load-instruction))
+            (dolist (instruction (stencil-instructions stencil))
+              (let* ((transformation (instruction-transformation instruction))
                      (offsets (transformation-offsets transformation))
                      (entry (assoc offsets alist :test test)))
                 (if (not entry)
@@ -891,7 +909,7 @@ all the supplied load or store instructions."
   (let* ((rank (shape-rank (buffer-shape buffer)))
          (result (make-array rank :initial-element 0)))
     (do-buffer-outputs (kernel buffer result)
-      (dolist (stencil (kernel-stencils kernel buffer))
+      (dolist (stencil (kernel-load-stencils kernel buffer))
         (dotimes (output-axis rank)
           (let ((input-axis (aref (stencil-output-mask stencil) output-axis))
                 (test (differs-exactly-at output-axis))

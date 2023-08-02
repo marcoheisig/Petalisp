@@ -4,10 +4,10 @@
 
 (defun harmonized-element-type (&rest arrays)
   (labels ((harmonize (ntype1 ntype2)
-             (if (or (typo:ntype-subtypepc2 ntype1 (typo:type-specifier-ntype 'number))
-                     (typo:ntype-subtypepc2 ntype2 (typo:type-specifier-ntype 'number)))
-                 (typo:ntype-union ntype1 ntype2)
-                 (typo:ntype-contagion ntype1 ntype2))))
+             (if (and (typo:ntype-subtypep ntype1 (typo:type-specifier-ntype 'number))
+                      (typo:ntype-subtypep ntype2 (typo:type-specifier-ntype 'number)))
+                 (typo:ntype-contagion ntype1 ntype2)
+                 (typo:ntype-union ntype1 ntype2))))
     (if (null arrays)
         'nil
         (typo:ntype-type-specifier

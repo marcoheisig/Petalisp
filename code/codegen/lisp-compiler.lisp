@@ -150,7 +150,7 @@ WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
                         for index from 0
                         collect
                         (mksym "~A~DSTENCIL~D" prefix number index)))))
-         (stencil-bindings (bpmemrefs stencil-vars offsets-fn scalings-fn)
+         (stencil-bindings (bpmemrefs stencil-vars)
            (loop for bpmemref across bpmemrefs
                  for vars in stencil-vars
                  append
@@ -158,8 +158,8 @@ WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
                        for bpstencil across (bpmemref-stencils bpmemref)
                        for offsets-var = (mksym "~AOFFSETS" (symbol-name stencil-var))
                        for scalings-var = (mksym "~ASCALINGS" (symbol-name stencil-var))
-                       collect `(,offsets-var (,offsets-fn ,stencil-var))
-                       collect `(,scalings-var (,scalings-fn ,stencil-var))
+                       collect `(,offsets-var (stencil-center ,stencil-var))
+                       collect `(,scalings-var (stencil-scalings ,stencil-var))
                        append
                        (loop for bpoffset across (bpstencil-offsets bpstencil)
                              for bpscaling across (bpstencil-scalings bpstencil)
@@ -204,10 +204,8 @@ WITH-UNSAFE-OPTIMIZATIONS* to see these hints."
                     when (bpvariablep (bprange-step bprange))
                       collect `(,(bpvariable-name (bprange-step bprange))
                                 (the index (range-step ,range-var))))
-              (stencil-bindings (bpinfo-targets bpinfo) target-stencil-vars
-                                'store-instruction-offsets 'store-instruction-scalings)
-              (stencil-bindings (bpinfo-sources bpinfo) source-stencil-vars
-                                'stencil-center 'stencil-scalings)
+              (stencil-bindings (bpinfo-targets bpinfo) target-stencil-vars)
+              (stencil-bindings (bpinfo-sources bpinfo) source-stencil-vars)
               (loop for bpinstruction across (bpinfo-instructions bpinfo)
                     for instruction-number from 0
                     append

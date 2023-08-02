@@ -290,6 +290,8 @@
 ;;;
 ;;; Sanity Checks
 
+(defvar *simulator-step*)
+
 (defstruct (simulated-memory
             (:constructor make-simulated-memory (allocation)))
   (allocation nil :type allocation :read-only t)
@@ -306,10 +308,12 @@
   (with-slots (table generation mode) simulated-memory
     (when (eq mode :w) (setf mode :r))
     (multiple-value-bind (value presentp) (gethash index table)
-      (unless presentp
-        (error "Reference to uninitialized memory."))
-      (unless (= value generation)
-        (error "Reference to memory from an earlier generation.")))))
+      (if (not presentp)
+          (error "Step ~D: Read from uninitialized memory at index ~A."
+                 *simulator-step* index)
+          (unless (<= value generation)
+            (error "Step ~D: Read from wrongly initialized memory at index ~A."
+                   *simulator-step* index))))))
 
 (defun simulated-memory-read-shape (simulated-memory shape)
   (declare (simulated-memory simulated-memory) (shape shape))
@@ -325,7 +329,8 @@
     (multiple-value-bind (value presentp) (gethash index table)
       (when presentp
         (unless (< value generation)
-          (error "Two consecutive writes to the same memory location.")))
+          (error "Two consecutive writes in step ~D to index ~A."
+                 *simulator-step* index)))
       (setf (gethash index table) generation))))
 
 (defun simulated-memory-write-shape (simulated-memory shape)
@@ -335,10 +340,31 @@
      (simulated-memory-write-index simulated-memory index))
    shape))
 
-(defun check-cenv (cenv)
+(defun simulate-storage-reference (storage shape)
+  (let* ((offset (storage-offset storage))
+         (strides (storage-strides storage))
+         (size (storage-size storage)))
+    (assert (= (shape-rank shape) (length strides)))
+    (map-shape
+     (lambda (index)
+       (let ((position
+               (-
+                (loop for index-component in index
+                      for stride across strides
+                      sum (* index-component stride))
+                offset)))
+         (assert (<= 0 position))
+         (unless  (< position size)
+           (error "~@<In step ~D, the index ~S references the position ~D ~
+                   of an allocation with only ~D elements.~:@>"
+                  *simulator-step* index position size))))
+     shape)))
+
+(defun simulate-cenv-evaluation (cenv)
   (declare (cenv cenv) (optimize (debug 3) (safety 3)))
   (with-slots (schedule result-shapes argument-shapes constant-arrays allocations) cenv
-    (let ((memory-table (make-hash-table :test #'eq)))
+    (let ((memory-table (make-hash-table :test #'eq))
+          (*simulator-step* -1))
       (labels
           ((simulated-memory (allocation)
              (alexandria:ensure-gethash
@@ -350,14 +376,19 @@
                (loop for source across sources for (buffer . stencils) in (kernel-sources kernel) do
                  (loop for stencil in stencils do
                    (loop for load-instruction in (stencil-instructions stencil) do
-                     (simulated-memory-read-shape
-                      (simulated-memory (storage-allocation source))
-                      (transform-shape iteration-space (load-instruction-transformation load-instruction))))))
-               (loop for target across targets for (buffer . store-instructions) in (kernel-targets kernel) do
-                 (loop for store-instruction in store-instructions do
-                   (simulated-memory-write-shape
-                    (simulated-memory (storage-allocation target))
-                    (transform-shape iteration-space (store-instruction-transformation store-instruction))))))))
+                     (let* ((transformation (load-instruction-transformation load-instruction))
+                            (shape (transform-shape iteration-space transformation))
+                            (memory (simulated-memory (storage-allocation source))))
+                       (simulate-storage-reference source shape)
+                       (simulated-memory-read-shape memory shape)))))
+               (loop for target across targets for (buffer . stencils) in (kernel-targets kernel) do
+                 (loop for stencil in stencils do
+                   (loop for store-instruction in (stencil-instructions stencil) do
+                     (let* ((transformation (store-instruction-transformation store-instruction))
+                            (shape (transform-shape iteration-space transformation))
+                            (memory (simulated-memory (storage-allocation target))))
+                       (simulate-storage-reference target shape)
+                       (simulated-memory-write-shape memory shape))))))))
         ;; Write all constants.
         (loop for allocation across (aref allocations +constant-allocation-category+) do
           (assert (= (allocation-category allocation) +constant-allocation-category+))
@@ -372,13 +403,13 @@
            (aref argument-shapes (allocation-color allocation))))
         ;; Process the schedule.
         (loop for actions in schedule for step from 0 do
-          (format t "~&Checking step ~D.~%" step)
+          (setf *simulator-step* step)
           ;; Process all ghost layer copies.
-          (loop for action across actions for category from +worker-allocation-category-offset+ do
+          (loop for action across actions do
             (unless (not action)
               (mapc #'invoke (action-copy-invocations action))))
           ;; Process all work items.
-          (loop for action across actions for category from +worker-allocation-category-offset+ do
+          (loop for action across actions do
             (unless (not action)
               (mapc #'invoke (action-work-invocations action)))))
         ;; Check all results.
@@ -388,3 +419,6 @@
            (simulated-memory allocation)
            (aref result-shapes (allocation-color allocation))))))
     cenv))
+
+(defun check-cenv (cenv)
+  (simulate-cenv-evaluation cenv))

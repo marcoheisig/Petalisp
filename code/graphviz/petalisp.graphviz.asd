@@ -22,6 +22,7 @@
    (:file "petalisp")
    (:file "data-flow-graph")
    (:file "ir")
+   (:file "partitioning")
    (:file "class-diagram")
    (:file "scheduling")
    (:file "view")))

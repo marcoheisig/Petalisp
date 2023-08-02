@@ -25,6 +25,7 @@
    #:stencil
    #:instruction
    #:iterating-instruction
+   #:load-or-store-instruction
    #:call-instruction
    #:load-instruction
    #:store-instruction
@@ -42,6 +43,7 @@
    #:instructionp
    #:call-instruction-p
    #:iterating-instruction-p
+   #:load-or-store-instruction-p
    #:iref-instruction-p
    #:load-instruction-p
    #:store-instruction-p
@@ -52,7 +54,7 @@
    #:make-kernel
    #:make-buffer
    #:make-stencil
-   #:stencil-from-load-instruction
+   #:stencil-from-instruction
 
    ;; Mapping
    #:map-program-tasks
@@ -139,7 +141,8 @@
    #:kernel-program
    #:kernel-number
    #:kernel-reuse-potential
-   #:kernel-stencils
+   #:kernel-load-stencils
+   #:kernel-store-stencils
    #:kernel-targets
    #:kernel-sources
    #:stencil-buffer
@@ -213,6 +216,8 @@
    #:buffer-shard-bits
    #:buffer-shard-storage
    #:buffer-shard-maxdepth
+   #:buffer-shard-path
+   #:buffer-shard-primogenitor
    #:split
    #:splitp
    #:split-parent

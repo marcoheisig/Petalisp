@@ -145,12 +145,13 @@
   (declare (optimize (debug 3) (safety 3)))
   ;; Ensure that all load instructions are wired correctly.
   (loop for (buffer . stencils) in (kernel-sources kernel) do
+    (check-ir-node-eventually buffer)
     (loop for stencil in stencils do
       (let ((load-instructions (stencil-instructions stencil)))
-        (check-ir-node-eventually buffer)
         (assert (null (duplicates load-instructions)))
         (loop for load-instruction in load-instructions do
           (check-ir-node-eventually load-instruction)
+          (assert (load-instruction-p load-instruction))
           (assert (eq (load-instruction-buffer load-instruction) buffer))
           (loop for offset across (transformation-offsets (load-instruction-transformation load-instruction))
                 for center across (stencil-center stencil)
@@ -159,13 +160,21 @@
                                (* (range-step range) *stencil-max-radius*))))
           (check-reverse-link load-instruction buffer #'map-buffer-load-instructions)))))
   ;; Ensure that all store instructions are wired correctly.
-  (loop for (buffer . store-instructions) in (kernel-targets kernel) do
+  (loop for (buffer . stencils) in (kernel-targets kernel) do
     (check-ir-node-eventually buffer)
-    (assert (null (duplicates store-instructions)))
-    (loop for store-instruction in store-instructions do
-      (check-ir-node-eventually store-instruction)
-      (assert (eq (store-instruction-buffer store-instruction) buffer))
-      (check-reverse-link store-instruction buffer #'map-buffer-store-instructions)))
+    (loop for stencil in stencils do
+      (let ((store-instructions (stencil-instructions stencil)))
+        (assert (null (duplicates store-instructions)))
+        (loop for store-instruction in store-instructions do
+          (check-ir-node-eventually store-instruction)
+          (assert (store-instruction-p store-instruction))
+          (assert (eq (store-instruction-buffer store-instruction) buffer))
+          (loop for offset across (transformation-offsets (store-instruction-transformation store-instruction))
+                for center across (stencil-center stencil)
+                for range in (shape-ranges (buffer-shape buffer))
+                do (assert (<= (abs (- center offset))
+                               (* (range-step range) *stencil-max-radius*))))
+          (check-reverse-link store-instruction buffer #'map-buffer-store-instructions)))))
   ;; Ensure that the kernel's task is well formed (if it is defined).
   (when (taskp (kernel-task kernel))
     (check-reverse-link kernel (kernel-task kernel) #'map-task-kernels)
