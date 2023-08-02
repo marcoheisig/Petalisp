@@ -96,7 +96,7 @@ which makes them ideal for caching."
                      (transformation-blueprint
                       (load-instruction-transformation
                        (first
-                        (stencil-load-instructions
+                        (stencil-instructions
                          (first stencils)))))
                      (transformations
                       (rest stencils))))))
@@ -149,7 +149,7 @@ which makes them ideal for caching."
   (loop for (buffer . stencils) in (kernel-sources kernel) for buffer-number from 0 do
     (when (eq buffer (load-instruction-buffer load-instruction))
       (loop for stencil in stencils for stencil-number from 0 do
-        (when (member load-instruction (stencil-load-instructions stencil))
+        (when (member load-instruction (stencil-instructions stencil))
           (let ((center (stencil-center stencil))
                 (offsets (transformation-offsets (load-instruction-transformation load-instruction)))
                 (tail '()))

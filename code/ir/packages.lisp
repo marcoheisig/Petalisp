@@ -75,7 +75,7 @@
    #:map-kernel-outputs
    #:map-kernel-stencils
    #:map-kernel-instructions
-   #:map-stencil-load-instructions
+   #:map-stencil-instructions
    #:map-instruction-inputs
    #:map-program-buffer-groups
 
@@ -93,10 +93,10 @@
    #:do-buffer-store-instructions
    #:do-kernel-inputs
    #:do-kernel-outputs
-   #:do-kernel-stencils
+   #:do-kernel-load-stencils
    #:do-kernel-load-instructions
    #:do-kernel-store-instructions
-   #:do-stencil-load-instructions
+   #:do-stencil-instructions
    #:do-instruction-inputs
    #:do-kernel-instructions
    #:do-program-buffer-groups
@@ -148,7 +148,7 @@
    #:stencil-output-mask
    #:stencil-scalings
    #:stencil-center
-   #:stencil-load-instructions
+   #:stencil-instructions
    #:instruction-number
    #:instruction-inputs
    #:instruction-transformation

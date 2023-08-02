@@ -146,7 +146,7 @@
   ;; Ensure that all load instructions are wired correctly.
   (loop for (buffer . stencils) in (kernel-sources kernel) do
     (loop for stencil in stencils do
-      (let ((load-instructions (stencil-load-instructions stencil)))
+      (let ((load-instructions (stencil-instructions stencil)))
         (check-ir-node-eventually buffer)
         (assert (null (duplicates load-instructions)))
         (loop for load-instruction in load-instructions do

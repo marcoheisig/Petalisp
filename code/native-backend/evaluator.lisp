@@ -349,7 +349,7 @@
              (with-slots (kernel iteration-space sources targets) invocation
                (loop for source across sources for (buffer . stencils) in (kernel-sources kernel) do
                  (loop for stencil in stencils do
-                   (loop for load-instruction in (stencil-load-instructions stencil) do
+                   (loop for load-instruction in (stencil-instructions stencil) do
                      (simulated-memory-read-shape
                       (simulated-memory (storage-allocation source))
                       (transform-shape iteration-space (load-instruction-transformation load-instruction))))))

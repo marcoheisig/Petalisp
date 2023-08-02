@@ -348,7 +348,7 @@ children.  Useful for debugging."
                     (update p (aref (stencil-output-mask stencil) axis))
                     (update s (aref (stencil-scalings stencil) axis))
                     (update c (aref (stencil-center stencil) axis))
-                    (do-stencil-load-instructions (load-instruction stencil)
+                    (do-stencil-instructions (load-instruction stencil)
                       (let* ((transformation (load-instruction-transformation load-instruction))
                              (delta (- (aref (transformation-offsets transformation) axis) c)))
                         (cond ((plusp delta)
@@ -363,7 +363,7 @@ children.  Useful for debugging."
       ;; Iterate over all load instructions and add them to the pattern.
       (do-buffer-outputs (kernel buffer)
         (dolist (stencil (kernel-stencils kernel buffer))
-          (do-stencil-load-instructions (load-instruction stencil)
+          (do-stencil-instructions (load-instruction stencil)
             (let* ((transformation (load-instruction-transformation load-instruction))
                    (subscripts
                      (loop for offset across (transformation-offsets transformation)
