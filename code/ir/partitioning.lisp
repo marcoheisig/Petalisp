@@ -625,8 +625,9 @@ ghost points to interior points for a split."
     (map nil #'buffer-shard-queue-maybe-push *primogenitor-buffer-shard-vector*)
     ;; Split buffer shards until the queue is empty.
     (loop until (buffer-shard-queue-emptyp) for buffer-shard = (buffer-shard-queue-pop) do
-      ;; TODO use binary search to find the optimal split position.
-      (attempt-split buffer-shard (find-optimal-buffer-shard-split-axis buffer-shard))
+      (let* ((axis (find-optimal-buffer-shard-split-axis buffer-shard))
+             (position (find-optimal-buffer-shard-split-position buffer-shard axis)))
+        (attempt-split buffer-shard axis position))
       ;; For each split that hasn't been propagated yet, compute the
       ;; kernel-shards of its left and right child, which happens to
       ;; propagate the split as a side-effect.
@@ -639,7 +640,7 @@ ghost points to interior points for a split."
     (when debug (check-shards))
     (values *primogenitor-buffer-shard-vector* *buffer-ghostspec-vector*)))
 
-(defun attempt-split (buffer-shard axis &optional position)
+(defun attempt-split (buffer-shard axis position)
   "Attempt to split buffer shard at the supplied axis and position.  If the split
 could be introduced successfully, or if an equivalent split already existed,
 return that split.  Otherwise, return NIL."
@@ -765,6 +766,24 @@ lowest axis."
             (when (< number-of-ghost-points minimum-number-of-ghost-points)
               (setf minimum-number-of-ghost-points number-of-ghost-points)
               (setf best-axis axis))))))))
+
+(defun find-optimal-buffer-shard-split-position (buffer-shard axis)
+  "Returns the position where buffer should be split such that both halves have
+similar size, but also such that recursive splitting results in shards that all
+have approximately the same split priority.  The result of this function is a
+split position that is at most 1/6 away from the middle of the of the buffer
+shard's range in the supplied axis."
+  (when (integerp axis)
+    (let* ((shape (buffer-shard-shape buffer-shard))
+           (range (shape-range shape axis))
+           (start (range-start range))
+           (step (range-step range))
+           (size (range-size range))
+           (parts (max 1 (floor (buffer-shard-split-priority buffer-shard)
+                                *buffer-shard-split-min-priority*))))
+      (if (< size 2)
+          nil
+          (+ start (* step (* (round size parts) (floor parts 2))))))))
 
 (defun propagate-split (split)
   (let* ((parent (split-parent split))
