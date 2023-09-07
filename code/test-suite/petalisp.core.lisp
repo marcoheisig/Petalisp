@@ -59,7 +59,8 @@
     (test-range-pair (range 0 2) (range 1))
     (test-range-pair (range 0 99) (range 1 100))
     (test-range-pair (range 0 99 2) (range 3 100))
-    (test-range-pair (range 0 50 3) (range 55 100 5))))
+    (test-range-pair (range 0 50 3) (range 55 100 5))
+    (test-range-pair (range 10 50 2) (range 5 50 6))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

@@ -292,12 +292,12 @@ range R1 that has been peeled off."
 
 (document-function subdivide-shapes
   "Returns a list of cons cells whose CAR is a shape and whose CDR is an
-integer.  Each shape is a proper subshape of one or more of the supplied
-shapes and their fusion covers all supplied shapes.  The bits of each
-integer, when viewed in two's complement, encode which of the supplied
+integer.  Each shape is a proper subshape of one or more of the supplied shapes
+and the fusion of all these shapes covers all the supplied shapes.  The bits of
+each integer, when viewed in two's complement, encode which of the supplied
 shapes are supersets of the corresponding resulting shape."
-  (subdivide-shapes (list (~ 1 3 ~ 1 3) (~ 1 2 ~ 1 2)))
-  (subdivide-shapes (list (~ 1 10) (~ 2 20))))
+  (subdivide-shapes (list (~ 1 10) (~ 2 20)))
+  (subdivide-shapes (list (~ 1 3 ~ 1 3) (~ 1 2 ~ 1 2))))
 
 (document-function shape-subseq
   "Returns the shape consisting of all ranges of the supplied shape in the
