@@ -56,7 +56,7 @@
   ;; The thread that has its *worker* special variable bound to this worker
   ;; object.
   (thread nil
-   :type (or bordeaux-threads:thread null))
+   :type (or bordeaux-threads-2:thread null))
   ;; A queue of thunks that are scheduled for execution on this worker.
   (queue (lparallel.queue:make-queue))
   ;; The sense of the barrier as last observed by this worker.
@@ -102,11 +102,11 @@
 
 (defun start-worker (worker)
   (setf (worker-thread worker)
-        (bordeaux-threads:make-thread
+        (bordeaux-threads-2:make-thread
          #'worker-loop
          :name (format nil "Worker Thread ~D" (worker-id worker))
          :initial-bindings
-         (list* `(*worker* . ,worker) bordeaux-threads:*default-special-bindings*))))
+         (list* `(*worker* . ,worker) bordeaux-threads-2:*default-special-bindings*))))
 
 ;;; The entry function for each new worker thread.
 (defun worker-loop ()
@@ -140,14 +140,14 @@
                 (lambda ()
                   (throw 'join nil))))
              (loop for id from 0 below (worker-pool-size worker-pool) do
-               (bordeaux-threads:join-thread
+               (bordeaux-threads-2:join-thread
                 (shiftf (worker-thread (worker-pool-worker worker-pool id))
                         nil)))
              (return-from worker-pool-join t))))))
 
-(let ((lock (bordeaux-threads:make-lock)))
+(let ((lock (bordeaux-threads-2:make-lock)))
   (defun message (format-string &rest arguments)
-    (bordeaux-threads:with-lock-held (lock)
+    (bordeaux-threads-2:with-lock-held (lock)
       (format *trace-output* "~&Worker ~D: " (worker-id *worker*))
       (apply #'format *trace-output* format-string arguments)
       (finish-output))))

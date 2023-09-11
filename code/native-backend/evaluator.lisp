@@ -254,11 +254,9 @@
         (barrier)
         (when (zerop worker-id)
           (with-slots (lock cvar done) request
-            (bordeaux-threads:with-lock-held (lock)
+            (bordeaux-threads-2:with-lock-held (lock)
               (setf done t)
-              #+(or) ;; TODO wait for new version of bordeaux threads.
-              (bordeaux-threads:condition-broadcast cvar)
-              (bordeaux-threads:condition-notify cvar))))
+              (bordeaux-threads-2:condition-broadcast cvar))))
         ;; Free memory.
         (let ((local-allocations (aref allocations category))
               (local-pointers (aref pointers category)))

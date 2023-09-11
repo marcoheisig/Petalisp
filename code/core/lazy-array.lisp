@@ -474,4 +474,4 @@ trivial in the sense of TRIVIAL-LAZY-ARRAY-P.")
 
 ;;; This lock must be held when mutating lazy array delayed actions.
 (defvar *lazy-array-lock*
-  (bordeaux-threads:make-recursive-lock "Petalisp Lazy Array Lock"))
+  (bordeaux-threads-2:make-recursive-lock :name "Petalisp Lazy Array Lock"))

@@ -323,7 +323,7 @@
     (setf schedule (nreverse schedule))
     (lambda (xmas-backend storage-vector)
       (let* ((worker-pool (xmas-backend-worker-pool xmas-backend))
-             (semaphore (bordeaux-threads:make-semaphore))
+             (semaphore (bordeaux-threads-2:make-semaphore))
              (serious-condition nil))
         (loop for index below number-of-threads do
           (worker-enqueue
@@ -335,14 +335,14 @@
               (lambda () serious-condition)
               (lambda (c)
                 (setf serious-condition c)
-                (bordeaux-threads:signal-semaphore semaphore))))))
+                (bordeaux-threads-2:signal-semaphore semaphore))))))
         ;; It is enough to have worker zero signal completion, because we
         ;; emit a barrier after each step.
         (worker-enqueue
          (worker-pool-worker worker-pool 0)
          (lambda ()
-           (bordeaux-threads:signal-semaphore semaphore)))
-        (bordeaux-threads:wait-on-semaphore semaphore)
+           (bordeaux-threads-2:signal-semaphore semaphore)))
+        (bordeaux-threads-2:wait-on-semaphore semaphore)
         (when serious-condition (error serious-condition))
         (values-list
          (loop for root-buffer in root-buffers

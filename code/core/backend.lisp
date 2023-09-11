@@ -256,7 +256,7 @@ already been computed."))
     ;; and overwrite the original delayed action with that of the projected
     ;; one.  This way we avoid recomputing the same lazy array over and
     ;; over again.
-    (bordeaux-threads:with-recursive-lock-held (*lazy-array-lock*)
+    (bordeaux-threads-2:with-recursive-lock-held (*lazy-array-lock*)
       (loop for lazy-array in lazy-arrays
             for transformation in transformations
             for collapsed-lazy-array in collapsed-lazy-arrays
