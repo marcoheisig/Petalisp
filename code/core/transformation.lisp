@@ -30,18 +30,18 @@
   ;; To make the representation of transformations unambiguous, an output
   ;; mask entry must never reference an input that has an input constraint.
   (output-mask nil :type simple-vector :read-only t)
-  ;; The scalings are a simple vector with as many entries as the output
-  ;; rank of the transformation.  Each entry is an integer representing how
-  ;; the input denoted by the corresponding entry in the output mask is to
-  ;; be scaled.
+  ;; The scalings are a simple vector with as many entries as the output rank
+  ;; of the transformation.  Each entry is a rational number, representing how
+  ;; the input denoted by the corresponding entry in the output mask is to be
+  ;; scaled.
   ;;
   ;; To make the representation of transformations unambiguous, the scaling
   ;; value must be zero if the corresponding output mask entry is NIL.
   (scalings nil :type simple-vector :read-only t)
-  ;; The offsets are a simple vector with as many entries as the output
-  ;; rank of the transformation.  Each entry is an integer representing how
-  ;; the input denoted by the corresponding entry in the output mask is to
-  ;; be shifted after scaling it.
+  ;; The offsets are a simple vector with as many entries as the output rank of
+  ;; the transformation.  Each entry is a rational number, representing how the
+  ;; input denoted by the corresponding entry in the output mask is to be
+  ;; shifted after scaling it.
   (offsets nil :type simple-vector :read-only t)
   ;; The INVERSE slot is used both to track whether a transformation is
   ;; invertible, and to cache that inverse.

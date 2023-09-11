@@ -295,7 +295,7 @@ range R1 that has been peeled off."
 integer.  Each shape is a proper subshape of one or more of the supplied shapes
 and the fusion of all these shapes covers all the supplied shapes.  The bits of
 each integer, when viewed in two's complement, encode which of the supplied
-shapes are supersets of the corresponding resulting shape."
+shapes are supersets of that particular resulting shape."
   (subdivide-shapes (list (~ 1 10) (~ 2 20)))
   (subdivide-shapes (list (~ 1 3 ~ 1 3) (~ 1 2 ~ 1 2))))
 

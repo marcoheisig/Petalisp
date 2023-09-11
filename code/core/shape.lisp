@@ -243,17 +243,29 @@
 ;;; Subdivide
 
 (defun subdivide-shapes (shapes)
-  (reduce #'subdivide-aux
+  (reduce #'subdivide-fragments
           (loop for shape in shapes
                 for bitmask = 1 then (ash bitmask 1)
                 collect (cons shape bitmask))
           :initial-value '()))
 
-;; A fragment is a cons whose car is a shape and whose cdr is the
-;; corresponding bitmask. This function takes a list of fragments whose
-;; shapes are disjoint and a new fragment, and returns a list of disjoint
-;; fragments that partition both the old fragments and the new fragment.
-(defun subdivide-aux (old-fragments new-fragment)
+;;; A fragment is a cons whose car is a shape and whose cdr is the
+;;; corresponding bitmask.
+
+(defun subdivide-fragments (old-fragments new-fragment)
+  "Takes a list of fragments whose shapes are disjoint, and one new
+fragment, and returns a list of disjoint fragments that partition both the old
+fragments and the new fragment. The resulting list consists of three parts:
+
+1. For each old fragment that has an intersection with the new fragment, a
+   fragment whose shape is that intersection, and whose mask is the LOGIOR of
+   the mask of the old fragment and the mask of the new fragment.
+
+2. For each old fragment, all elements of the fragment difference list of that
+   fragment with the new fragment.
+
+3. Fragments that, together, form the difference from the new fragment minus
+   all the intersections from the first step."
   (let ((intersections
           (loop for old-fragment in old-fragments
                 append (fragment-intersections old-fragment new-fragment))))
