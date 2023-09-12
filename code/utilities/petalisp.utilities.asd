@@ -4,7 +4,6 @@
 
   :depends-on
   ("alexandria"
-   "atomics"
    "bordeaux-threads"
    "queues.priority-queue"
    "trivia"

@@ -31,7 +31,7 @@
   ;; lazy array has a refcount of one, we know that each of its elements is
   ;; only accessed at most once, and we can usually optimize it away during
   ;; IR conversion.
-  (refcount 0
+  (refcount 0 ;; TODO Make thread-safe, or abandon the refcount altogether.
    :type (and unsigned-byte fixnum)
    :read-only nil)
   ;; The delayed action of a lazy array describes how its elements can be
@@ -123,12 +123,15 @@
 (defstruct (delayed-multiple-value-map
             (:include delayed-map)
             (:constructor %make-delayed-multiple-value-map))
-  ;; An unsigned integer whose Kth bit indicates that the Kth value of the
-  ;; multiple value map is being referenced.
   (values-ntype (alexandria:required-argument :values-ntype)
    :type typo:values-ntype
    :read-only t)
-  (refbits 0 :type #-ccl unsigned-byte #+ccl t))
+  ;; An unsigned integer whose Kth bit indicates that the Kth value of the
+  ;; multiple value map is being referenced.
+  (refbits 0 :type unsigned-byte)
+  ;; A lock that has to be held when manipulating the refbits.
+  (refbits-lock (bordeaux-threads-2:make-lock :name "Refbits Lock")
+   :type bordeaux-threads-2:lock))
 
 (declaim (inline make-delayed-multiple-value-map))
 (defun make-delayed-multiple-value-map (&key fnrecord inputs values-ntype (refbits 0))
@@ -156,10 +159,9 @@
     (unless (typep delayed-action 'delayed-multiple-value-map)
       (error "Can only take the Nth value of multiple value maps."))
     (incf (lazy-array-refcount input))
-    (atomics:atomic-update
-     (delayed-multiple-value-map-refbits delayed-action)
-     (lambda (refbits)
-       (logior refbits (ash 1 number))))
+    (with-slots (refbits refbits-lock) delayed-action
+      (bordeaux-threads-2:with-lock-held (refbits-lock)
+        (setf refbits (logior refbits (ash 1 number)))))
     (%make-delayed-nth-value
      :number number
      :input input)))

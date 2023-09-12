@@ -74,6 +74,8 @@
   ;; value, workers will just skip the remaining evaluation.
   (serious-conditions nil
    :type list)
+  (serious-condition-lock (bordeaux-threads-2:make-lock :name "Denv Serious Condition Lock")
+   :type bordeaux-threads-2:lock)
   (request nil :type request))
 
 (defun make-denv (cenv)
@@ -281,7 +283,8 @@
                      (invocation-sources invocation)
                      denv)))
       (serious-condition (serious-condition)
-        (atomics:atomic-push serious-condition (denv-serious-conditions denv))))))
+        (bordeaux-threads-2:with-lock-held ((denv-serious-condition-lock denv))
+          (push serious-condition (denv-serious-conditions denv)))))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

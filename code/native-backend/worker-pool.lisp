@@ -2,14 +2,6 @@
 
 (in-package #:petalisp.native-backend)
 
-;;; A type such that struct slots with that type can be modified via
-;;; atomics:atomic-incf.
-(deftype atomic-counter ()
-  #+(or ecl mezzano) 'fixnum
-  #+sbcl 'sb-ext:word
-  #+ccl 't
-  #-(or ecl mezzano sbcl ccl) 'integer)
-
 (deftype worker-id ()
   `(and unsigned-byte fixnum))
 
@@ -19,19 +11,25 @@
             (:constructor %make-worker-pool
                 (size &aux
                         (workers (make-array size :initial-element nil))
-                        (barrier-countdown size))))
+                        (barrier-countdown
+                         (bordeaux-threads-2:make-atomic-integer :value size)))))
   ;; The vector of workers.
   (workers nil
    :type simple-vector
    :read-only t)
-  ;; A boolean that is set to NIL once the worker pool's threads are deleted.
-  (active t :type boolean)
+  ;; An atomic integer that is decremented when the worker pool is shut down.
+  (liveness (bordeaux-threads-2:make-atomic-integer :value 1))
   ;; The sense of this worker pool's barrier. It switches atomically
   ;; between :A and :B whenever its worker threads run into a barrier.
   (barrier-sense :A
    :type (member :A :B))
-  (barrier-countdown 0
-   :type atomic-counter))
+  (barrier-countdown nil))
+
+(defun worker-pool-active (worker-pool)
+  (declare (worker-pool worker-pool))
+  (plusp
+   (bordeaux-threads-2:atomic-integer-value
+    (worker-pool-liveness worker-pool))))
 
 (defun worker-pool-size (worker-pool)
   (length (worker-pool-workers worker-pool)))
@@ -85,8 +83,9 @@
     (with-accessors ((size worker-pool-size)
                      (countdown worker-pool-barrier-countdown)
                      (global-sense worker-pool-barrier-sense)) worker-pool
-      (if (zerop (atomics:atomic-decf countdown))
-          (setf countdown size global-sense local-sense)
+      (if (zerop (bordeaux-threads-2:atomic-integer-decf countdown))
+          (setf (bordeaux-threads-2:atomic-integer-value countdown) size
+                global-sense local-sense)
           (loop until (eq local-sense global-sense)))
       (ecase local-sense
         (:A (setf local-sense :B))
@@ -129,21 +128,18 @@
 
 (defun worker-pool-join (worker-pool)
   (declare (worker-pool worker-pool))
-  (loop
-    (cond ((not (worker-pool-active worker-pool))
-           (return-from worker-pool-join nil))
-          ((worker-pool-active worker-pool)
-           (when (atomics:cas (worker-pool-active worker-pool) t nil)
-             (loop for id from 0 below (worker-pool-size worker-pool) do
-               (worker-enqueue
-                (worker-pool-worker worker-pool id)
-                (lambda ()
-                  (throw 'join nil))))
-             (loop for id from 0 below (worker-pool-size worker-pool) do
-               (bordeaux-threads-2:join-thread
-                (shiftf (worker-thread (worker-pool-worker worker-pool id))
-                        nil)))
-             (return-from worker-pool-join t))))))
+  (loop while (worker-pool-active worker-pool) do
+    (when (bordeaux-threads-2:atomic-integer-compare-and-swap (worker-pool-liveness worker-pool) 1 0)
+      (loop for id from 0 below (worker-pool-size worker-pool) do
+        (worker-enqueue
+         (worker-pool-worker worker-pool id)
+         (lambda ()
+           (throw 'join nil))))
+      (loop for id from 0 below (worker-pool-size worker-pool) do
+        (bordeaux-threads-2:join-thread
+         (shiftf (worker-thread (worker-pool-worker worker-pool id))
+                 nil)))
+      (return-from worker-pool-join t))))
 
 (let ((lock (bordeaux-threads-2:make-lock)))
   (defun message (format-string &rest arguments)

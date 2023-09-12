@@ -2,14 +2,6 @@
 
 (in-package #:petalisp.xmas-backend)
 
-;;; A type such that struct slots with that type can be modified via
-;;; atomics:atomic-incf.
-(deftype atomic-counter ()
-  #+(or ecl mezzano) 'fixnum
-  #+sbcl 'sb-ext:word
-  #+ccl 't
-  #-(or ecl mezzano sbcl ccl) 'integer)
-
 (deftype worker-id ()
   `(and unsigned-byte fixnum))
 
@@ -19,7 +11,8 @@
             (:constructor %make-worker-pool
                 (size &aux
                         (workers (make-array size :initial-element nil))
-                        (barrier-countdown size))))
+                        (barrier-countdown
+                         (bordeaux-threads-2:make-atomic-integer :value size)))))
   ;; The vector of workers.
   (workers nil
    :type simple-vector
@@ -28,8 +21,7 @@
   ;; between :A and :B whenever its worker threads run into a barrier.
   (barrier-sense :A
    :type (member :A :B))
-  (barrier-countdown 0
-   :type atomic-counter))
+  (barrier-countdown nil))
 
 (defun worker-pool-size (worker-pool)
   (length (worker-pool-workers worker-pool)))
@@ -76,8 +68,9 @@
     (with-accessors ((size worker-pool-size)
                      (countdown worker-pool-barrier-countdown)
                      (global-sense worker-pool-barrier-sense)) worker-pool
-      (if (zerop (atomics:atomic-decf countdown))
-          (setf countdown size global-sense local-sense)
+      (if (zerop (bordeaux-threads-2:atomic-integer-decf countdown))
+          (setf (bordeaux-threads-2:atomic-integer-value countdown) size
+                global-sense local-sense)
           (loop until (eq local-sense global-sense)))
       (ecase local-sense
         (:A (setf local-sense :B))
