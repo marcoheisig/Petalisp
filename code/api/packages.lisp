@@ -56,7 +56,7 @@
    #:with-backend
    #:make-reference-backend
    #:make-ir-backend
-   #:make-xmas-backend
+   #:make-native-backend
 
    ;; Re-exports from petalisp.core
 
@@ -175,7 +175,6 @@
    #:with-lazy-arrays)
 
   (:shadowing-import-from :petalisp.codegen #:make-ir-backend)
-  (:shadowing-import-from :petalisp.xmas-backend #:make-xmas-backend)
   (:shadowing-import-from :petalisp.native-backend #:make-native-backend))
 
 (defpackage #:petalisp-user

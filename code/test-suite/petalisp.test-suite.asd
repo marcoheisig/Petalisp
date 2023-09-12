@@ -8,7 +8,8 @@
    "bordeaux-threads"
    "closer-mop"
    "petalisp.examples"
-   "petalisp.xmas-backend")
+   "petalisp.api"
+   "petalisp.native-backend")
 
   :perform
   (test-op (o c) (symbol-call '#:petalisp.test-suite '#:run-petalisp-test-suite))
