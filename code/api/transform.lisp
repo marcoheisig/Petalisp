@@ -46,8 +46,8 @@
           ,(compute-transform-input-mask input-constraints)
           ,output-mask
           ,(compute-transform-output-functions output-variables output-forms)
-          ,(apply #'vector output-variables)
-          ,(apply #'vector output-forms))))))
+          ',(apply #'vector output-variables)
+          ',(apply #'vector output-forms))))))
 
 (defun compute-transform-input-mask (input-constraints)
   (if (every #'constantp input-constraints)

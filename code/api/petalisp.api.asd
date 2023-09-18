@@ -31,6 +31,7 @@
    (:file "lazy-reshape" :depends-on ("shape-syntax" "lazy-change-shape"))
    (:file "lazy-slice" :depends-on ("packages"))
    (:file "lazy-slices" :depends-on ("packages"))
+   (:file "lazy-sort" :depends-on ("lazy-reshape"))
    (:file "lazy-stack" :depends-on ("lazy-overwrite" "lazy-reshape"))
    (:file "network" :depends-on ("lazy" "lazy-reshape"))
    (:file "packages")
@@ -55,6 +56,7 @@
      "reshapers"
      "lazy-slice"
      "lazy-slices"
+     "lazy-sort"
      "lazy-stack"
      "network"
      "packages"

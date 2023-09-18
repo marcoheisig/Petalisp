@@ -804,6 +804,13 @@ that axis."
             (range 0 3 2)
             1)))
 
+(document-function lazy-sort
+  "Returns a lazy array containing the elements of the supplied array, but sorted
+along the first axis with the supplied predicate."
+  (compute (lazy-sort #(1 3 7 5 0 6 4 9 8 2) #'<))
+  (compute (lazy-sort "abracadabra" #'char<))
+  (compute (lazy-sort #2a((9 8 7) (6 5 4) (3 2 1)) #'<)))
+
 (document-function lazy-stack
   "Returns a lazy array whose contents are the supplied arrays, stacked next
 to each other along the specified AXIS such that the leftmost array will have

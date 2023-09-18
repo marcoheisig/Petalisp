@@ -24,4 +24,5 @@
    (:file "generators")
    (:file "run-petalisp-test-suite")
    (:file "petalisp.core")
+   (:file "petalisp.api")
    (:file "petalisp.examples")))

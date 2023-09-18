@@ -37,13 +37,13 @@
    #:lazy-index-components
    #:lazy-slice
    #:lazy-slices
+   #:lazy-sort
    #:lazy-stack
    #:transform
    #:to
    #:transform-index
    #:transform-shape
    #:transform-axis
-   #:transform-lazy-array
    #:compute
    #:compute-list-of-arrays
    #:compute-asynchronously
@@ -63,7 +63,6 @@
    ;; Ranges
    #:range
    #:rangep
-   #:make-range
    #:empty-range
    #:size-one-range-p
    #:split-range
@@ -106,11 +105,10 @@
    #:shape-prefix
    #:shape-suffix
    #:subshapep
-   #:shape-union
+   #:fuse-shapes
    #:subdivide-arrays
    #:subdivide-shapes
    #:array-shape
-   #:define-shape-syntax
    #:shape-table
    #:shape-table-p
    #:make-shape-table
