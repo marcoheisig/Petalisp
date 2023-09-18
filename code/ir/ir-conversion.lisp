@@ -920,14 +920,24 @@
         (readers '())
         (writers '())
         (substitutes '()))
+    ;; Determine all kernels writing to any of the prune's buffers.
+    (loop for buffer in (prune-buffers prune) do
+      (do-buffer-inputs (writer buffer)
+        ;; Abort if a writer is writing to more than one of the prune's
+        ;; buffers.  Without this step, we'd introduce redundant calculations
+        ;; by copying all the instructions of one kernel into multiple other
+        ;; kernels.
+        (unless (member writer writers)
+          (push writer writers)
+          (let ((n-targets 0))
+            (do-kernel-outputs (buffer writer)
+              (when (member buffer (prune-buffers prune))
+                (when (< 1 (incf n-targets))
+                  (return-from maybe-prune))))))))
     ;; Determine all kernels reading from any of the prune's buffers.
     (loop for buffer in (prune-buffers prune) do
       (do-buffer-outputs (reader buffer)
         (pushnew reader readers)))
-    ;; Determine all kernels writing to any of the prune's buffers.
-    (loop for buffer in (prune-buffers prune) do
-      (do-buffer-inputs (writer buffer)
-        (pushnew writer writers)))
     ;; For each reader that is not also a writer, we compute a new kernel
     ;; where any reference to a superfluous buffer is replaced by a copy of
     ;; the kernel writing to the referenced part of the superfluous buffer.
