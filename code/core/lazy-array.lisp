@@ -61,9 +61,22 @@
   (shape-size
    (lazy-array-shape lazy-array)))
 
+(declaim (inline lazy-array-dimension))
+(defun lazy-array-dimension (lazy-array axis)
+  (declare (lazy-array lazy-array) (axis axis))
+  (shape-dimension
+   (lazy-array-shape lazy-array)
+   axis))
+
+(declaim (inline lazy-array-dimensions))
+(defun lazy-array-dimensions (lazy-array)
+  (declare (lazy-array lazy-array))
+  (shape-dimensions
+   (lazy-array-shape lazy-array)))
+
 (declaim (inline lazy-array-range))
 (defun lazy-array-range (lazy-array axis)
-  (declare (lazy-array lazy-array) (rank axis))
+  (declare (lazy-array lazy-array) (axis axis))
   (shape-range (lazy-array-shape lazy-array) axis))
 
 (declaim (inline lazy-array-ranges))

@@ -197,10 +197,12 @@
 (defun shape-dimensions (shape)
   (declare (shape shape))
   (loop for range in (shape-ranges shape)
-        collect (range-size range)
-        unless (empty-range-p range)
-          do (assert (= 0 (range-start range)))
-             (assert (= 1 (range-step range)))))
+        collect (range-size range)))
+
+(defun shape-dimension (shape axis)
+  (declare (shape shape) (axis axis))
+  (range-size
+   (shape-range shape axis)))
 
 (defun array-shape (array)
   (declare (array array))

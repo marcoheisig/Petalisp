@@ -95,6 +95,7 @@
    #:shape-difference-list
    #:shape-intersection
    #:shape-intersectionp
+   #:shape-dimension
    #:shape-dimensions
    #:map-shape
    #:shape-contains
@@ -147,6 +148,8 @@
    #:lazy-array-range
    #:lazy-array-ranges
    #:lazy-array-size
+   #:lazy-array-dimension
+   #:lazy-array-dimensions
    #:make-unknown
 
    ;; Network

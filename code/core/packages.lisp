@@ -52,6 +52,7 @@
    #:shape-rank
    #:shape-range
    #:shape-ranges
+   #:shape-dimension
    #:shape-dimensions
    #:shape-size
    #:shape=
@@ -126,6 +127,8 @@
    #:lazy-array-element-type
    #:lazy-array-rank
    #:lazy-array-size
+   #:lazy-array-dimension
+   #:lazy-array-dimensions
    #:lazy-array-range
    #:lazy-array-ranges
    #:lazy-array-inputs
