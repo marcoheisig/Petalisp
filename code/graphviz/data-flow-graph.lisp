@@ -77,7 +77,13 @@
      (node petalisp.core:lazy-array))
   `(("shape" . ,(stringify (petalisp.core:lazy-array-shape node)))
     ("element-type" . ,(stringify (petalisp.core:lazy-array-element-type node)))
+    ("depth" . ,(stringify (petalisp.core:lazy-array-depth node)))
     ,@(graphviz-node-properties graph (petalisp.core:lazy-array-delayed-action node))))
+
+(defmethod graphviz-node-properties append
+    ((graph data-flow-graph)
+     (delayed-nth-value petalisp.core:delayed-nth-value))
+  `(("value-n" . ,(stringify (petalisp.core:delayed-nth-value-number delayed-nth-value)))))
 
 (defmethod graphviz-node-properties append
     ((graph data-flow-graph)

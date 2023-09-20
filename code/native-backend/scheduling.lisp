@@ -136,15 +136,15 @@
          (when (not presentp)
            (loop for invocation in (action-work-invocations action) do
              (loop for source across (invocation-sources invocation) do
-               (multiple-value-bind (action presentp)
+               (multiple-value-bind (source-action presentp)
                    (gethash source *storage-action-table*)
                  ;; Skip the storage of leaf buffer shards.
-                 (when presentp
+                 (when (and presentp (not (eq source-action action)))
                    ;; Add one dependency to the action computing this source's
                    ;; interior.
                    (petalisp.scheduling:graph-add-edge
                     graph
-                    (petalisp.scheduling:graph-ensure-node graph action)
+                    (petalisp.scheduling:graph-ensure-node graph source-action)
                     node
                     (shape-size (invocation-iteration-space invocation)))
                    ;; Add dependencies to all actions that compute the values of

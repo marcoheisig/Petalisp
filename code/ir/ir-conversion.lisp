@@ -372,6 +372,8 @@
             ;; copying till later.
             (if (instructionp (cdr cons))
                 (loop for other-dendrite in other-dendrites do
+                  (setf (car (dendrite-cons other-dendrite))
+                        (car cons))
                   (setf (cdr (dendrite-cons other-dendrite))
                         (cdr cons)))
                 (push (list* cons (mapcar #'dendrite-cons other-dendrites))

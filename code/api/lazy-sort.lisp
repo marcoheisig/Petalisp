@@ -10,29 +10,26 @@
       (loop for k = p then (ash k -1) while (>= k 1) do
         (let* ((offset (mod k p))
                (divisor (ash p 1))
-               (down (transform i to (- i k)))
-               (up (invert-transformation down))
+               (up (make-transformation :offsets (vector k)))
+               (down (invert-transformation up))
                (updates
                  (mapcan
                   (lambda (upper-shape)
-                    (let ((lower-shape (transform-shape upper-shape down)))
+                    (let* ((lower-shape (transform-shape upper-shape down))
+                           (lower-indices (lazy-index-components lower-shape))
+                           (lower-values (lazy-reshape x 1 lower-shape))
+                           (upper-indices (lazy-reshape (lazy-index-components upper-shape) down))
+                           (upper-values (lazy-reshape x 1 upper-shape down)))
                       (multiple-value-bind (lo hi)
                           (lazy-multiple-value 2
-                           ;; TODO It would be awesome if we could improve Typo
-                           ;; so that it can dive into lambda expressions like
-                           ;; this and infer that both return types are the
-                           ;; union of the types of V1 and V2.
-                           (lambda (i1 v1 i2 v2)
-                             (if (= (floor i1 divisor)
-                                    (floor i2 divisor))
-                                 (if (funcall predicate v1 v2)
-                                     (values v1 v2)
-                                     (values v2 v1))
-                                 (values v1 v2)))
-                           (lazy-index-components lower-shape)
-                           (lazy-reshape x 1 lower-shape)
-                           (lazy-reshape (lazy-index-components upper-shape) down)
-                           (lazy-reshape x 1 upper-shape down))
+                           'typo:cswap
+                           (lazy 'or
+                            (lazy #'/=
+                             (lazy #'floor lower-indices divisor)
+                             (lazy #'floor upper-indices divisor))
+                            (lazy predicate lower-values upper-values))
+                           lower-values
+                           upper-values)
                         (list lo (lazy-reshape hi up)))))
                   (if (< k (1+ (floor (- n offset 1) (* 2 k))))
                       ;; Create shapes with stride 2k.
