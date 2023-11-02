@@ -115,7 +115,7 @@ that range, in ascending order.  Returns the range being mapped over."
 
 (document-function range-intersection
   "Returns the range containing exactly those elements that occur in both
-supplied ranges.."
+supplied ranges."
   (range-intersection (range 1 10) (range 2 20))
   (range-intersection (range 3 14 2) (range 1 14 3)))
 
@@ -137,7 +137,7 @@ integers appearing in RANGE1 but not in RANGE2.")
   "The symbols ~, ~* are self-evaluating.  Their only purpose is to separate
 range designators in the functions named ~, ~*.")
 
-(document-functions (~ ~*)
+(document-function ~
   "Returns a shape whose ranges are derived by processing each occurrence of
 one of the self-evaluating delimiter symbols ~ and ~*, and the arguments
 following such a delimiter up to the next one.  Each such group contributes
@@ -150,12 +150,19 @@ is as follows:
 
 - The ~* delimiter must be followed by any number of ranges that are
   incorporated into the resulting shape as they are."
-  (~*)
   (~ 8)
   (~ 1 10)
   (~ 0 10 2 ~ 0 10 2)
-  (~* (range 1 10) (range 2 9) ~ 42)
   (apply #'~ 1 10 (loop repeat 3 append '(~ 2 6))))
+
+(document-function ~*
+  "Returns a shape whose ranges are derived by processing each occurrence of
+one of the self-evaluating delimiter symbols ~ and ~* in the same manner as the
+function ~."
+  (~*)
+  (~* (range 1 10) (range 2 9) ~ 42)
+  (~* ~ 10)
+  (apply #'~* (make-list 5 :initial-element (range 3))))
 
 (document-type shape
   "A shape is the cartesian product of zero or more ranges.  Shapes can be
@@ -197,10 +204,14 @@ contains."
   (shape-ranges (~ 1 ~ 2 ~ 3))
   (shape-ranges (~ 0 9 ~ 0 9)))
 
+(document-function shape-dimension
+  "Returns the size of the shape's range in a particular axis"
+  (shape-dimension (~ 2 ~ 5) 0)
+  (shape-dimension (~ 2 ~ 5) 1)
+  (shape-dimension (~ 10 30 2) 0))
+
 (document-function shape-dimensions
-  "Return the array dimensions corresponding to a shape.  Signal an error
-if any of the ranges of the shape have a nonzero start or a step size other
-than one."
+  "Returns a list of the sizes of each range of the supplied shape."
   (shape-dimensions (~*))
   (shape-dimensions (~ 0 9))
   (shape-dimensions (~ 1 9))
@@ -580,6 +591,47 @@ Signals an error if some of the sequences supplied as :OUTPUT-MASK,
   "A lazy array encapsulates some information that can be used to compute
 actual Common Lisp arrays.")
 
+(document-function lazy-array-p
+  "Returns whether the supplied object is a lazy array."
+  (lazy-array-p (lazy #'* 21 2))
+  (lazy-array-p 42)
+  (lazy-array-p #2a((1 2) (3 4))))
+
+(document-function lazy-array-shape
+  "Returns the shape of the supplied lazy array.")
+
+(document-function lazy-array-element-type
+  "Returns the element of the supplied lazy array.
+
+The element type is a conservative upper bound on the types of all the elements
+in that lazy array.  It is derived automatically during lazy array
+construction.  When computing a lazy array, the resulting regular array's
+element type is the upgraded array element type of the lazy arrays element
+type.")
+
+(document-function lazy-array-rank
+  "Returns the rank of the supplied lazy array.
+
+The rank of a lazy array is the number of ranges that constitute its shape.")
+
+(document-function lazy-array-size
+  "Returns the number of elements of the supplied lazy array.")
+
+(document-function lazy-array-dimension
+  "Returns the number of elements of the supplied lazy array along a particular
+axis.")
+
+(document-function lazy-array-dimensions
+  "Returns a list that consists of the number of elements of the supplied lazy
+array along each of its axes.")
+
+(document-function lazy-array-range
+  "Returns the range of the supplied lazy array's shape along a particular axis.")
+
+(document-function lazy-array-ranges
+  "Returns the list of all ranges that constitute the supplied lazy array's
+ shape.")
+
 (document-function lazy-array
   "Returns a lazy array that is derived from the supplied object in the
 following way:
@@ -602,7 +654,7 @@ interchangeably in any argument position."
   (lazy-array #(1 2 3))
   (lazy-array 5)
   (lazy-array (lazy-array 5))
-  (lazy-array (make-array 2 :element-type 'double-float :initial-element 0d0)))
+  (lazy-array (make-array 2 :element-type 'bit :initial-element 1)))
 
 (document-function lazy-reshape
   "Returns the lazy array that is obtained by successively reshaping the
@@ -753,9 +805,9 @@ shape in the supplied axis.  If the first argument is not a shape, the function
 SHAPE-DESIGNATOR-SHAPE is used to convert it a shape.  If no axis is not
 supplied, it defaults to zero."
   (compute (lazy-index-components (~ 9)))
-  (compute (lazy-index-components (~ 0 4 2 ~ 1 5 2) 0))
-  (compute (lazy-index-components (~ 0 4 2 ~ 1 5 2) 1))
-  (compute (lazy-index-components #2a((1 2) (3 4))))
+  (compute (lazy-index-components (~ 10 30 2)))
+  (compute (lazy-index-components (~ 4 ~ 4) 0))
+  (compute (lazy-index-components (~ 4 ~ 4) 1))
   (compute (lazy-index-components #2a((1 2) (3 4)) 1)))
 
 (document-function lazy-drop-axes
