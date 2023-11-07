@@ -35,6 +35,7 @@
    #:lazy-multireduce
    #:lazy-reshape
    #:lazy-index-components
+   #:lazy-rearrange
    #:lazy-slice
    #:lazy-slices
    #:lazy-sort
@@ -162,7 +163,6 @@
    #:collapsing-reshaper
    #:peeling-reshaper
    #:permuting-reshaper
-   #:flattening-reshaper
 
    ;; Harmonization
    #:harmonized-element-type

@@ -20,7 +20,7 @@
    (:file "transformation")
    (:file "transformation-constructors")
    (:file "lazy-array")
-   (:file "lazy-ref")
+   (:file "lazy-reshape")
    (:file "lazy-fuse")
    (:file "lazy-map")
    (:file "substitute-lazy-arrays")

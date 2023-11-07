@@ -2,22 +2,22 @@
 
 (in-package #:petalisp.api)
 
-(defun lazy-change-shape (lazy-array shape)
+(defun lazy-rearrange (lazy-array shape)
   (unless (= (lazy-array-size lazy-array)
              (shape-size shape))
-    (error "~@<Shape changes must preserve the number of elements. ~
+    (error "~@<Rearranging must preserve the number of elements. ~
                This call attempts to reshape the array ~S with ~
                ~D elements to the shape ~S with ~D elements.~:@>"
            lazy-array (lazy-array-size lazy-array) shape (shape-size shape)))
   (let ((n1 (normalizing-transformation (lazy-array-shape lazy-array)))
         (n2 (normalizing-transformation shape)))
     (lazy-reshape
-     (lazy-change-shape/normalized
+     (lazy-rearrange/normalized
       (lazy-reshape lazy-array n1)
       (transform-shape shape n2))
      (invert-transformation n2))))
 
-(defun lazy-change-shape/normalized (lazy-array output-shape)
+(defun lazy-rearrange/normalized (lazy-array output-shape)
   ;; As a small, but important optimization, we detect whether a prefix or
   ;; suffix of the ranges of LAZY-ARRAY matches a prefix or suffix of the
   ;; ranges of SHAPE.  If so, they are left unchanged for the entire

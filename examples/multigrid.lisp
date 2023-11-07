@@ -22,21 +22,19 @@
 (defun lazy-sor-2d (u f h omega)
   (with-lazy-arrays (u f h omega)
     (let* ((shape (shape-prefix (lazy-array-shape u) 2))
-           (interior (funcall (peeling-reshaper :layers 1) shape))
-           (h (lazy-reshape h 0 2))
-           (omega (lazy-reshape omega 0 2)))
+           (interior (funcall (peeling-reshaper :layers 1) shape)))
       (lazy-overwrite-and-harmonize
        u
        (lazy #'+
         (lazy #'* (lazy-reshape (lazy #'1- omega) interior)
-                  (lazy-reshape u 2 interior))
+                  (lazy-reshape u interior))
         (lazy #'* omega 1/4
          (lazy #'+
           (lazy-reshape u (transform i j to (1+ i) j) interior)
           (lazy-reshape u (transform i j to (1- i) j) interior)
           (lazy-reshape u (transform i j to i (1+ j)) interior)
           (lazy-reshape u (transform i j to i (1- j)) interior)
-          (lazy-reshape (lazy #'* (lazy #'* h h) f) 2 interior))))))))
+          (lazy-reshape (lazy #'* (lazy #'* h h) f) interior))))))))
 
 (defun lazy-rbgs-2d (u f h)
   (with-lazy-arrays (u f h)
@@ -44,8 +42,7 @@
            (red-1 (funcall (peeling-reshaper :lower-layers '(1 1) :layers 1 :strides 2) shape))
            (red-2 (funcall (peeling-reshaper :lower-layers '(2 2) :layers 1 :strides 2) shape))
            (black-1 (funcall (peeling-reshaper :lower-layers '(1 2) :layers 1 :strides 2) shape))
-           (black-2 (funcall (peeling-reshaper :lower-layers '(2 1) :layers 1 :strides 2) shape))
-           (h (lazy-reshape h 0 2)))
+           (black-2 (funcall (peeling-reshaper :lower-layers '(2 1) :layers 1 :strides 2) shape)))
       (flet ((stencil (space)
                (lazy #'* 1/4
                 (lazy #'+
@@ -53,7 +50,7 @@
                  (lazy-reshape u (transform i j to (1- i) j) space)
                  (lazy-reshape u (transform i j to i (1+ j)) space)
                  (lazy-reshape u (transform i j to i (1- j)) space)
-                 (lazy-reshape (lazy #'* h h f) 2 space)))))
+                 (lazy-reshape (lazy #'* h h f) space)))))
         (lazy-overwrite-and-harmonize
          (lazy-overwrite-and-harmonize u (stencil red-1) (stencil red-2))
          (stencil black-1) (stencil black-2))))))
@@ -64,32 +61,32 @@
                (transform i j to (* 2 i) (* 2 j))))
            (b (lazy #'* 1/2
                (lazy #'+
-                (lazy-reshape a 2
+                (lazy-reshape a
                  (peeling-reshaper :lower-layers '(0 1))
                  (transform i j to i (1- j)))
-                (lazy-reshape a 2
+                (lazy-reshape a
                  (peeling-reshaper :upper-layers '(0 1))
                  (transform i j to i (1+ j))))))
            (c (lazy #'* 1/2
                (lazy #'+
-                (lazy-reshape a 2
+                (lazy-reshape a
                  (peeling-reshaper :lower-layers '(1 0))
                  (transform i j to (1- i) j))
-                (lazy-reshape a 2
+                (lazy-reshape a
                  (peeling-reshaper :upper-layers '(1 0))
                  (transform i j to (1+ i) j)))))
            (d (lazy #'* 1/4
                (lazy #'+
-                (lazy-reshape a 2
+                (lazy-reshape a
                  (peeling-reshaper :lower-layers '(1 1) :upper-layers '(0 0))
                  (transform i j to (1- i) (1- j)))
-                (lazy-reshape a 2
+                (lazy-reshape a
                  (peeling-reshaper :lower-layers '(0 1) :upper-layers '(1 0))
                  (transform i j to (1+ i) (1- j)))
-                (lazy-reshape a 2
+                (lazy-reshape a
                  (peeling-reshaper :lower-layers '(1 0) :upper-layers '(0 1))
                  (transform i j to (1- i) (1+ j)))
-                (lazy-reshape a 2
+                (lazy-reshape a
                  (peeling-reshaper :lower-layers '(0 0) :upper-layers '(1 1))
                  (transform i j to (1+ i) (1+ j)))))))
       (lazy-fuse a b c d))))
@@ -126,11 +123,11 @@
       (lazy-overwrite-and-harmonize
        (lazy-reshape 0 u)
        (lazy #'-
-        (lazy-reshape b 2 interior)
+        (lazy-reshape b interior)
         (lazy #'*
-         (lazy-reshape (lazy #'/ (lazy #'* h h)) 0 2)
+         (lazy-reshape (lazy #'/ (lazy #'* h h)))
          (lazy #'-
-          (lazy-reshape (lazy #'* 4 u) 2 interior)
+          (lazy-reshape (lazy #'* 4 u) interior)
           (lazy-reshape u (transform i j to (1+ i) j) interior)
           (lazy-reshape u (transform i j to (1- i) j) interior)
           (lazy-reshape u (transform i j to i (1+ j)) interior)
@@ -195,7 +192,7 @@
     (format t "---------------------------------~%")
     (loop for iteration from 1 to iterations do
       (let* ((u-new (lazy-f-cycle-2d u f h v1 v2))
-             (u-vec (lazy-reshape (lazy #'1- u) 2 (flattening-reshaper))))
+             (u-vec (lazy #'1- u)))
         (multiple-value-bind (u-new l2-norm max-norm)
             (compute u-new (lazy-l2-norm u-vec) (lazy-max-norm u-vec))
           (setf u u-new)

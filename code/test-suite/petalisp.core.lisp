@@ -98,8 +98,8 @@
                (lazy-reshape a2 (~ 0 200 2) (transform i to (1+ i)))))
              (compute
               (lazy-fuse
-               (lazy-reshape e1 0 (~ 0 200 2))
-               (lazy-reshape e2 0 (~ 1 200 2)))))))
+               (lazy-reshape e1 (~ 0 200 2))
+               (lazy-reshape e2 (~ 1 200 2)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -184,32 +184,8 @@
   (compute (lazy-reshape 4 (~ 5)))
   (compute (lazy-reshape #(1 2 3) (transform i to (- i))) #(3 2 1))
   (compute (lazy-reshape #(1 2 3 4) (~ 1 3)))
-  (compute (lazy-reshape (lazy-index-components (~ 1 10)) (~ 3 ~ 3)))
   (compute (lazy-reshape #2A((1 2) (3 4)) (transform i j to j i)))
-  (compute (lazy-reshape #(1 2 3 4) (~ 1 3) (collapsing-reshaper) (~ 0 2 ~ 0 2)))
-  (alexandria:map-permutations
-   (lambda (shapes)
-     (compute
-      (apply #'lazy-reshape (lazy-index-components (~ 1 101)) shapes)))
-   (list (~ 0 5 ~ 0 5 ~ 0 4)
-         (~ 0 2 ~ 0 5 ~ 0 1 ~ 0 2 ~ 0 5)
-         (~ 1 3 ~ 1 6 ~ 1 3 ~ 1 6)
-         (~ 1 4 2 ~ 1 10 2 ~ 1 4 2 ~ 1 10 2)
-         (~ 100)))
-  (alexandria:map-permutations
-   (lambda (shapes)
-     (compute
-      (apply #'lazy-reshape (lazy-index-components (~ 1 201)) shapes)))
-   (list (~ 0 2 ~ 0 5 ~ 0 5 ~ 0 4)
-         (~ 0 2 ~ 0 2 ~ 0 5 ~ 0 1 ~ 0 2 ~ 0 5)
-         (~ 0 2 ~ 0 100)))
-  (alexandria:map-permutations
-   (lambda (shapes)
-     (compute
-      (apply #'lazy-reshape (lazy-index-components (~ 1 201)) shapes)))
-   (list (~ 0 5 ~ 0 5 ~ 0 4 ~ 0 2)
-         (~ 0 2 ~ 0 5 ~ 0 1 ~ 0 2 ~ 0 5 ~ 0 2)
-         (~ 0 100 ~ 0 2)))
+  (compute (lazy-reshape #(1 2 3 4) (~ 1 3) (collapsing-reshaper 1)))
   (compute
    (lazy-overwrite
     (lazy-reshape #2A((1 2 3) (4 5 6)) (transform i j to (+ 2 i) (+ 3 j)))

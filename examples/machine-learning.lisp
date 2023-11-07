@@ -81,7 +81,7 @@
        #'+
        (lazy #'*
         (lazy-reshape weights (transform m n to n m))
-        (lazy-reshape (flattening-reshaper) (transform n to n 0))))
+        (lazy-rearrange lazy-array (~ (lazy-array-size lazy-array) ~ 1))))
       biases)
      output-shape)))
 
@@ -143,7 +143,7 @@
                         (make-list (- rank d) :initial-element 0)
                         (mapcar #'- offsets)))
                       result-shape))))
-       (collapsing-reshaper)))))
+       (collapsing-reshaper (shape-rank result-shape))))))
 
 (defun make-maxpool-layer (array pooling-factors)
   (let* ((pooling-factors (coerce pooling-factors 'vector))
@@ -169,7 +169,7 @@
                    (lambda (&rest ranges)
                      (lazy-reshape lazy-array (apply ~* ranges)))
                    pooling-ranges))
-     (collapsing-reshaper))))
+     (collapsing-reshaper (lazy-array-rank lazy-array)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -298,7 +298,7 @@
                (compute
                 (lazy-reshape
                  (lazy #'/ batch-data 255.0)
-                 (collapsing-reshaper))))
+                 (collapsing-reshaper 2))))
              (output-data
                (compute
                 (lazy-reshape
@@ -307,7 +307,7 @@
                    (lazy-reshape batch-labels (transform i to i 0))
                    #(0 1 2 3 4 5 6 7 8 9))
                   'single-float)
-                 (collapsing-reshaper)))))
+                 (collapsing-reshaper 1)))))
         (format t "Training batch ~S.~%" batch-range)
         (train network (list output-data)
                :learning-rate 0.02

@@ -137,7 +137,6 @@
    #:lazy-multiple-value-map
    #:lazy-reshape
    #:lazy-ref
-   #:lazy-reshape-using-transformation
    #:lazy-fuse
    #:make-unknown
    #:lazy-unknowns

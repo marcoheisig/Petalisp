@@ -15,8 +15,8 @@
           (multiple-value-bind (blocks rest) (floor (- n j0) (* 2 k))
             (setf x (apply
                      #'lazy-fuse
-                     (lazy-reshape x 1 (~ 0 j0))
-                     (lazy-reshape x 1
+                     (lazy-reshape x (~ 0 j0))
+                     (lazy-reshape x
                       (let ((last (+ j0 (* 2 k blocks))))
                         (if (<= rest k)
                             (~ last n)
@@ -25,9 +25,9 @@
                       (lambda (upper-shape)
                         (let* ((lower-shape (transform-shape upper-shape down))
                                (lower-indices (lazy-index-components lower-shape))
-                               (lower-values (lazy-reshape x 1 lower-shape))
+                               (lower-values (lazy-reshape x lower-shape))
                                (upper-indices (lazy-reshape (lazy-index-components upper-shape) down))
-                               (upper-values (lazy-reshape x 1 upper-shape down)))
+                               (upper-values (lazy-reshape x upper-shape down)))
                           (multiple-value-bind (lo hi)
                               (lazy-multiple-value 2
                                'typo:cswap

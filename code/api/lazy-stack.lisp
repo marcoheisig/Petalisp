@@ -15,7 +15,7 @@
              axis array))
     ;; Check that all supplied arrays have the same rank, and the same
     ;; shape in all but the specified AXIS.
-    (loop for other-lazy-array in more-lazy-arrays for index from 0 do
+    (loop for other-lazy-array in more-lazy-arrays for index from 1 do
       (unless (= (lazy-array-rank other-lazy-array) rank)
         (error "~@<Cannot stack arrays with varying ranks, got ~S and ~S.~:@>"
                array (nth index arrays)))

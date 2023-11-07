@@ -245,7 +245,7 @@
               (lazy #'* 1/2 (lazy-reshape u interior))
               (lazy #'* 1/4 (lazy-reshape u (transform i to (1+ i)) interior))
               (lazy #'* 1/4 (lazy-reshape u (transform i to (1- i)) interior))))
-            (collapsing-reshaper))))
+            (collapsing-reshaper 1))))
       (2 (let* ((selection (lazy-reshape u 2 (peeling-reshaper :strides 2)))
                 (interior (lazy-reshape selection 2 (peeling-reshaper :layers 1))))
            (lazy-reshape
@@ -265,7 +265,7 @@
                (lazy-reshape u (transform i j to (1- i) (1+ j)) interior)
                (lazy-reshape u (transform i j to (1+ i) (1- j)) interior)
                (lazy-reshape u (transform i j to (1- i) (1- j)) interior))))
-            (collapsing-reshaper))))
+            (collapsing-reshaper 2))))
       (3 (let* ((selection (lazy-reshape u 3 (peeling-reshaper :strides 2)))
                 (interior (lazy-reshape selection 3 (peeling-reshaper :layers 1))))
            (lazy-reshape
@@ -303,7 +303,7 @@
                (lazy-reshape u (transform i j k to (1- i) (1+ j) (1- k)) interior)
                (lazy-reshape u (transform i j k to (1- i) (1- j) (1+ k)) interior)
                (lazy-reshape u (transform i j k to (1- i) (1- j) (1- k)) interior))))
-            (collapsing-reshaper)))))))
+            (collapsing-reshaper 3)))))))
 
 (defun residual (u b h)
   (let* ((u (lazy-array u))

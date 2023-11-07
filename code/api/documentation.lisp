@@ -658,73 +658,56 @@ interchangeably in any argument position."
 
 (document-function lazy-reshape
   "Returns the lazy array that is obtained by successively reshaping the
-supplied array with the supplied modifiers in left-to-right order.  There
-are four kinds of modifiers: Integers that express an increase or decrease
-in the number of active axes, transformations that describe a reordering of
-values, functions which are applied to the shape consisting of all active
-axes to obtain additional modifiers, and shape designators that describe a
-selection, move, or broadcasting of values, depending on whether the
-designated shape has fewer, equal, or more elements than the active axes of
-the current lazy array.
+supplied array with the supplied modifiers in left-to-right order.  There are
+three kinds of modifiers: Transformations that describe a reordering of values,
+functions which are applied to the shape of the lazy array to obtain additional
+modifiers, and shape designators that describe a selection, move, or
+broadcasting of values.
 
-More precisely, the processing maintains a lazy array L that is initialized to
-the result of applying LAZY-ARRAY constructor to the supplied first argument, a
-number of active ranges K that initialized to the rank of L.  For each
-modifier, L and K are updated while maintaining the invariant that K is less
-than or equal to the rank of L.  The rules for updating L and K are as follows:
+More precisely, the processing maintains a lazy array that is initialized to
+the result of applying LAZY-ARRAY constructor to the supplied first argument,
+and which is successively updated it with the result of applying one modifier
+at a time according to the following rules:
 
-1. If the modifier is a non-negative integer N, compare it with the number
-   of active ranges K.  If N is less than or equal to K, set K to N and
-   leave L as it is.  Otherwise, if N is larger than K, create a new lazy
-   array with the same contents as L, whose shape starts with N minus K
-   ranges that only contain the integer zero, followed by the ranges of L.
-   Then, set L to that newly created lazy array, and set K to N.
+1. If the modifier is an invertible transformation, reorder the elements of
+   that array according to that transformation.  If the lazy array has lower
+   rank than expected from the transformation, it is broadcast to that rank
+   first.  If the lazy array has higher rank than expected from the
+   transformation, those axes are left as is, and end up being appended to the
+   shape of the resulting lazy array.
 
-2. If the modifier is an invertible transformation with input rank M (which
-   must be less than the number of active ranges K) and output rank N,
-   extend the transformation with trailing identity mappings such that it
-   has an input rank equal to the rank of L.  Create a new lazy array by
-   reordering L with that extended transformation.  Set L to that newly
-   created lazy array, and K to N.
+2. If the modifier is a function, apply it to the shape of the lazy
+   array to obtain a number of new modifiers as multiple values.  Process the
+   new modifiers as if they were supplied instead of this function modifier.
 
-3. If the modifier is a function, apply it to the shape consisting of the
-   first K ranges of L to obtain a number of new modifiers as multiple
-   values.  Process the new modifiers as if they were supplied instead of
-   this function modifier.
+3. If the modifier is a shape designator then each axis of the lazy
+   array is moved, broadcast, or selected-from to match that shape.  If the
+   lazy array has lower rank than the designated shape, it is broadcast to that
+   rank first.  If the lazy array has higher rank than the designated shape,
+   the remaining axes are left as is, and end up being appended to the shape of
+   the resulting lazy array.  For each axis, the mapping from the range of the
+   lazy array to the corresponding range of designated shape is derived as
+   such:
 
-4. If the modifier is a shape designator, compare the designated shape M
-   with the shape S that consists of the first K ranges of L, and chose one
-   of the following rules to update L and K.
+   a) If both the source range and the target range have the same size, then
+      elements of that axis are moved so that they end up on the target range
+      while maintaining the original order.
 
-   a) If the shape M has rank K and denotes a strict subset of S, create a
-      new lazy array whose first N ranges are equal to those of M, whose
-      remaining ranges are equal to the corresponding ones of L, and where
-      each index maps to the same value as L.  Then, set L to that newly
-      created lazy array.
+   b) If the source range has a size of one, then that axis is broadcast to the
+      target range.
 
-   b) If the shape M has the same number of elements as S, create a new
-      lazy array with the same contents and the same lexicographical
-      ordering as L, whose shape consists of the ranges of M followed by
-      all but the first K ranges of L.  Then, set L to that newly created
-      lazy array, and set K to the rank of M.
+   c) If the target range is a proper subset of the source range, select only
+      those elements of that axis that fall within the target range.
 
-   c) If the shape M has more elements than the current shape, create a new
-      lazy array that is a broadcasting reference to L, whose shape
-      consists of the ranges of M, followed by all but the first K ranges
-      of L.  Then, set L to the newly created lazy array, and set K to the
-      rank of M.
-
-The result of this function is the final value of the lazy array L after
-processing all modifiers."
+Returns the lazy array obtained after processing all modifiers."
+  (compute (lazy-reshape #2A((1 2) (3 4)) (transform i j to j i)))
+  (compute (lazy-reshape #(1 2 3 4) (transform i to (- i))))
+  (compute (lazy-reshape #(1 2 3 4) (transform i to (- i)) (~ -2 0)))
+  (compute (lazy-reshape #(1 2 3 4 5 6) (~ 1 5)))
   (compute (lazy-reshape #(1 2 3 4 5 6) (~ 1 5)))
   (compute (lazy-reshape #(1 2 3 4 5 6) (~ 2 ~ 3)))
   (compute (lazy-reshape #(1 2 3 4 5 6) (~ 6 ~ 2)))
-  (compute (lazy-reshape #(1 2 3 4) (transform i to (- i))))
-  (compute (lazy-reshape #(1 2 3 4) (transform i to (- i)) (~ -2 0)))
-  (compute (lazy-reshape #2A((1 2) (3 4)) (transform i j to j i)))
-  (compute (lazy-reshape #2A((1 2) (3 4)) 1 (~ 2 ~ 2)))
-  (compute (lazy-reshape #(1 2 3) 0 1))
-  (compute (lazy-reshape #2A((1 2) (3 4)) (lambda (s) (~ (shape-size s))))))
+  (compute (lazy-reshape #(1 2 3 4 5 6) (lambda (s) (~ 1 (1- (shape-size s)))))))
 
 (document-function lazy-broadcast-list-of-arrays
   "Returns a list of lazy arrays of the same shape, where each lazy array is
@@ -1107,7 +1090,7 @@ operations have been completed.")
   "Returns a type to which all elements of all the supplied lazy arrays can
 be coerced safely.  If the element types of all supplied lazy arrays are
 number types, the resulting type is obtained by the standard rules of
-numeric contagion (CLHS 12.1.4.1 and CLHS 12.1.4.4).  Otherwise, the
+numeric contagion (Common Lisp Hyperspec 12.1.4.1 and 12.1.4.4).  Otherwise, the
 resulting type is one that encompasses the union of the element types of
 all supplied lazy arrays."
   (harmonized-element-type 5 6f0)

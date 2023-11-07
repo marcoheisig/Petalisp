@@ -27,7 +27,7 @@
   (setf x (lazy-array x))
   (trivia:ematch (lazy-array-shape x)
     ((~* _ _)
-     (lazy-reshape x 2 (collapsing-reshaper)))
+     (lazy-reshape x (collapsing-reshaper 2)))
     ((~* range)
      (lazy-reshape x (~ (range-size range) ~ 1)))
     ((~*)
