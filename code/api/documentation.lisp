@@ -974,15 +974,6 @@ that is established by that transformation."
   (compute (lazy-reshape #3A(((1 2 3) (4 5 6)) ((7 8 9) (10 11 12))) (permuting-reshaper 0 2 1)))
   (compute (lazy-reshape #3A(((1 2 3) (4 5 6)) ((7 8 9) (10 11 12))) (permuting-reshaper 2 0 1))))
 
-(document-function flattening-reshaper
-  "Returns a function that can be supplied as a modifier to LAZY-RESHAPE to
-turn any lazy array shape into modifiers that flatten a lazy array of that
-shape.  A flattened lazy array has the same contents as the original one in
-the same lexicographical ordering, but has rank one."
-  (compute (lazy-reshape #2A((1 2) (3 4)) (flattening-reshaper)))
-  (compute (lazy-reshape #3A(((1 2 3) (4 5 6)) ((7 8 9) (10 11 12))) (flattening-reshaper)))
-  (compute (lazy-reshape #3A(((1 2 3) (4 5 6)) ((7 8 9) (10 11 12))) 2 (flattening-reshaper))))
-
 (document-function compute
   "The primary interface for evaluating lazy arrays.  It takes any number of
 arguments that must be lazy arrays or objects that can be converted to lazy
