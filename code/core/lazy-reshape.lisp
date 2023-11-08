@@ -86,7 +86,7 @@ don't have the same rank."
     ;; Determine the input mask.
     (loop for axis below input-rank
           for input-range in input-ranges
-          do (when (size-one-range-p input-range)
+          do (when (range-with-size-one-p input-range)
                (setf (aref input-mask axis)
                      (range-start input-range))))
     ;; Process all axes up OUTPUT-RANK.
@@ -105,7 +105,7 @@ don't have the same rank."
                   (setf (aref scalings axis) a)
                   (setf (aref offsets axis) b)))
                ;; Broadcast.
-               ((size-one-range-p output-range)
+               ((range-with-size-one-p output-range)
                 (setf (aref scalings axis)
                       0)
                 (setf (aref offsets axis)
@@ -184,13 +184,13 @@ of its input is the supplied transformation."
 (defun add-transformation-constraints (shape transformation)
   (if (loop for range in (shape-ranges shape)
             for mask-entry across (transformation-input-mask transformation)
-            never (and (size-one-range-p range)
+            never (and (range-with-size-one-p range)
                        (not mask-entry)))
       transformation
       (let ((input-mask (copy-seq (transformation-input-mask transformation))))
         (loop for range in (shape-ranges shape)
               for index from 0
-              when (size-one-range-p range)
+              when (range-with-size-one-p range)
                 do (setf (aref input-mask index)
                          (range-start range)))
         (compose-transformations

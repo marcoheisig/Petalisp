@@ -14,7 +14,7 @@
 
 (defun lazy-reduce-aux (function n-values inputs)
   (let ((range (shape-range (lazy-array-shape (first inputs)) 0)))
-    (if (size-one-range-p range)
+    (if (range-with-size-one-p range)
         (mapcar (lambda (input) (lazy-drop-axes input 0)) inputs)
         (with-accessors ((start range-start)
                          (end range-end)

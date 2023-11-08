@@ -23,6 +23,10 @@
   (step nil :type (integer 1 *) :read-only t)
   (start nil :type integer :read-only t))
 
+(defun range-emptyp (range)
+  (declare (range range))
+  (empty-range-p range))
+
 (defun empty-range ()
   (load-time-value
    (%make-empty-range)))
@@ -122,8 +126,8 @@
                       (range-end ,it) ,end
                       (range-step ,it) ,step))))
 
-(declaim (inline size-one-range-p))
-(defun size-one-range-p (range)
+(declaim (inline range-with-size-one-p))
+(defun range-with-size-one-p (range)
   (declare (range range))
   (= 1 (range-size range)))
 
@@ -182,7 +186,7 @@
             ;; now either a multiple of step1, or one, if range2 has only a
             ;; single element.
             (cond
-              ((size-one-range-p range2)
+              ((range-with-size-one-p range2)
                ;; First, we pick off the special case where range2 has
                ;; only a single element.
                (range-difference-list--single range1 start2))
@@ -262,7 +266,7 @@
                    (step range-step)
                    (last range-last)
                    (end range-end)) range
-    (cond ((size-one-range-p range)
+    (cond ((range-with-size-one-p range)
            '())
           ((= index start)
            ;; Remove the first element.
@@ -327,7 +331,7 @@
   (declare (range range1 range2))
   (cond ((empty-range-p range1)
          t)
-        ((size-one-range-p range1)
+        ((range-with-size-one-p range1)
          (range-contains range2 (range-start range1)))
         (t
          (with-accessors ((start range-start)
@@ -357,7 +361,7 @@
               (progn (loop for range in ranges
                            unless (empty-range-p range)
                              do (let ((delta (- (range-start range) start)))
-                                  (if (size-one-range-p range)
+                                  (if (range-with-size-one-p range)
                                       (setf step (gcd step delta))
                                       (setf step (gcd step delta (range-step range))))))
                 (range start end step)))))))

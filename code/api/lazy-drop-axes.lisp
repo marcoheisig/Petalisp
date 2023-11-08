@@ -13,7 +13,7 @@
         (error "~@<Invalid axis ~D for array ~S.~:@>"
                axis array))
       (let ((range (nth axis (shape-ranges shape))))
-        (unless (size-one-range-p range)
+        (unless (range-with-size-one-p range)
           (error "~@<Can only drop axes with size one, but the axis ~D ~
                  of the array ~S has a size of ~D.~:@>"
                  axis array (range-size range)))

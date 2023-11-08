@@ -322,7 +322,7 @@ guaranteed to be simple."
         copy)))
 
 (defun lazy-array-from-range (range)
-  (if (size-one-range-p range)
+  (if (range-with-size-one-p range)
       (lazy-ref
        (lazy-array-from-scalar (range-start range))
        (make-shape (list range))

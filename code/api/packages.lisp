@@ -65,7 +65,7 @@
    #:range
    #:rangep
    #:empty-range
-   #:size-one-range-p
+   #:range-with-size-one-p
    #:split-range
    #:map-range
    #:range=

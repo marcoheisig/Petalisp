@@ -216,7 +216,7 @@
              (offsets (make-array rank)))
         (loop for range in ranges
               for index from 0 do
-                (if (size-one-range-p range)
+                (if (range-with-size-one-p range)
                     (let ((value (range-start range)))
                       (setf (aref input-mask index) 0)
                       (setf (aref output-mask index) nil)
@@ -236,7 +236,7 @@
          (ranges (shape-ranges shape))
          (size-one-ranges
            (loop for range in ranges
-                 count (size-one-range-p range))))
+                 count (range-with-size-one-p range))))
     (if (zerop size-one-ranges)
         (identity-transformation rank)
         (let* ((input-rank rank)
@@ -248,7 +248,7 @@
                (output-index 0))
           (loop for range in ranges
                 for input-index from 0 do
-                  (if (size-one-range-p range)
+                  (if (range-with-size-one-p range)
                       (setf (aref input-mask input-index) (range-start range))
                       (progn
                         (setf (aref output-mask output-index) input-index)

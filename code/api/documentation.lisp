@@ -51,11 +51,11 @@ and semantics as the range constructor in the Python programming language."
   (rangep 42)
   (rangep (range 1 3 2)))
 
-(document-function size-one-range-p
+(document-function range-with-size-one-p
   "Returns whether the supplied range has a size of one."
-  (size-one-range-p (range 5))
-  (size-one-range-p (range 5 7 2))
-  (size-one-range-p (range 5 7 3)))
+  (range-with-size-one-p (range 5))
+  (range-with-size-one-p (range 5 7 2))
+  (range-with-size-one-p (range 5 7 3)))
 
 (document-function range-size
   "Returns the number of elements in the supplied range.")

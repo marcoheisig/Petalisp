@@ -22,11 +22,12 @@
    ;; Ranges
    #:range
    #:rangep
+   #:range-emptyp
+   #:range-with-size-one-p
    #:empty-range
    #:empty-range-p
    #:non-empty-range
    #:non-empty-range-p
-   #:size-one-range-p
    #:split-range
    #:map-range
    #:range=

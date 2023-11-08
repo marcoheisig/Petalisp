@@ -40,8 +40,8 @@
      broadcast-shape)))
 
 (defun broadcast-ranges (range-1 range-2)
-  (cond ((size-one-range-p range-2) range-1)
-        ((size-one-range-p range-1) range-2)
+  (cond ((range-with-size-one-p range-2) range-1)
+        ((range-with-size-one-p range-1) range-2)
         ((= (range-size range-1)
             (range-size range-2))
          range-1)
@@ -77,14 +77,14 @@ SOURCE-SHAPE, insert additional axes at POSITION."
     ;; Determine the input mask.
     (loop for axis below input-rank
           for input-range in input-ranges
-          do (when (size-one-range-p input-range)
+          do (when (range-with-size-one-p input-range)
                (setf (aref input-mask axis)
                      (range-start input-range))))
     ;; Process all axes up to POSITION.
     (loop for axis below position
           for input-range in input-ranges
           for output-range in output-ranges
-          do (cond ((size-one-range-p output-range)
+          do (cond ((range-with-size-one-p output-range)
                     (setf (aref scalings axis)
                           0)
                     (setf (aref offsets axis)

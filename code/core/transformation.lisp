@@ -519,7 +519,7 @@
           for index from 0 do
             (when constraint
               (unless (or (empty-range-p range)
-                          (and (size-one-range-p range)
+                          (and (range-with-size-one-p range)
                                (= constraint (range-start range))))
                 (error "~@<The ~:R axis of the shape ~W violates ~
                            the input constraint ~W of the transformation ~W.~:@>"
@@ -546,7 +546,7 @@
                                      (input-step (range-step input-range)))
                      (cond ((empty-range-p input-range)
                             (empty-range))
-                           ((size-one-range-p input-range)
+                           ((range-with-size-one-p input-range)
                             (range (+ (* scaling input-start) offset)
                                    (+ (* scaling input-start) offset 1)))
                            ((plusp scaling)
