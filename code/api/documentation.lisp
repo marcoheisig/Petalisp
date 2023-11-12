@@ -174,12 +174,12 @@ integer tuples (0 1 3), (0 1 7), (0 2 3), (0 2 7).")
   (shapep 42)
   (shapep (~ 1 ~ 2 ~ 3 4)))
 
-(document-function empty-shape-p
+(document-function shape-emptyp
   "Returns whether the supplied object is a shape with zero elements, i.e.,
 has at least one range with size zero."
-  (empty-shape-p (~ 1))
-  (empty-shape-p (~ 0))
-  (shapep (~ 1 ~ 2 ~ 3 3)))
+  (shape-emptyp (~ 1))
+  (shape-emptyp (~ 0))
+  (shape-emptyp (~ 1 ~ 2 ~ 3 3)))
 
 (document-function shape-rank
   "Returns the rank of the supplied shape, i.e., the number of ranges it
@@ -220,20 +220,20 @@ contains."
   (shape-size (~ 1 9 ~ 1 8)))
 
 (document-function shape=
-  "Returns whether two supplied shapes denote the same set of integer tuples."
+  "Returns whether two supplied shapes have the same rank and ranges."
   (shape= (~*) (~*))
   (shape= (~ 42) (~ 42))
   (shape= (~ 1 42) (~ 1 42))
   (shape= (~ 1 42) (~ 2 42)))
 
 (document-function shape<
-  "Returns whether SHAPE1 has less elements than SHAPE2, or, if both shapes
-have the same size, whether SHAPE1 has lower rank than SHAPE2, or, if both
+  "Returns whether SHAPE1 has less elements than SHAPE2, and if both shapes
+have the same size, whether SHAPE1 has lower rank than SHAPE2, and if both
 shapes have the same rank, whether the range of SHAPE1 is smaller than the
 range of SHAPE2 ranges in the lowest axis where both ranges differ in size.
 
-The main use case for this function is to sort sequences of shapes, such
-that they can be accessed in logarithmic time."
+The main use case for this function is to sort sequences of shapes to obtain a
+canonical ordering."
   (shape< (~ 2) (~ 3))
   (shape< (~ 3) (~ 2))
   (shape< (~ 2 ~ 4) (~ 2 ~ 2 ~ 2))
@@ -243,8 +243,8 @@ that they can be accessed in logarithmic time."
 
 (document-function shape-difference-list
   "Computes the difference of two shapes S1 and S2.  Returns a list of
-disjoint subshapes of S1 that describe exactly those integer tuples
-appearing in S1 but not in S2."
+disjoint subshapes of S1 that describe exactly those indices appearing in S1
+but not in S2."
   (shape-difference-list (~ 1 11) (~ 2 10))
   (shape-difference-list (~ 1 11) (~ 4 8))
   (shape-difference-list (~ 1 11) (~ 2 9 2))
@@ -259,7 +259,7 @@ don't have the same rank."
   (shape-intersection (~ 1 6) (~ 6 11)))
 
 (document-function shape-intersectionp
-  "Returns whether two supplied shapes have at least one common element."
+  "Returns whether two supplied shapes have at least one common index."
   (shape-intersectionp (~ 1 6) (~ 6 10))
   (shape-intersectionp (~ 1 5) (~ 6 10)))
 

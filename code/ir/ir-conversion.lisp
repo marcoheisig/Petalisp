@@ -605,11 +605,11 @@
              (loop for input in inputs
                    for intersection = (shape-intersection shape (lazy-array-shape input))
                    collect intersection)))
-      (case (count-if-not #'empty-shape-p intersections)
+      (case (count-if-not #'shape-emptyp intersections)
         (0 (error "Erroneous fusion."))
         ;; If only a single input intersects with the dendrite's shape, we
         ;; can continue growing along that input.
-        (1 (let ((input (nth (position-if-not #'empty-shape-p intersections) inputs)))
+        (1 (let ((input (nth (position-if-not #'shape-emptyp intersections) inputs)))
              (grow-dendrite dendrite input)))
         ;; In case the dendrite's shape intersects with more than one
         ;; input, we project each of these intersections back to the stem
@@ -625,7 +625,7 @@
                 (lazy-array (cluster-lazy-array cluster)))
            (loop for input in inputs
                  for intersection in intersections
-                 unless (empty-shape-p intersection)
+                 unless (shape-emptyp intersection)
                    do (grow-dendrite
                        (make-dendrite
                         cluster

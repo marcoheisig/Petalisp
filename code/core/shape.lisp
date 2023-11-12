@@ -31,8 +31,8 @@
       (incf rank))
     (%make-shape ranges rank size)))
 
-(declaim (inline empty-shape-p))
-(defun empty-shape-p (shape)
+(declaim (inline shape-emptyp))
+(defun shape-emptyp (shape)
   (declare (shape shape))
   (zerop (shape-size shape)))
 
@@ -94,7 +94,7 @@
 (defun shape-difference-list (shape1 shape2)
   (declare (shape shape1 shape2))
   (let ((intersection (shape-intersection shape1 shape2)))
-    (if (empty-shape-p intersection)
+    (if (shape-emptyp intersection)
         (list shape1)
         (let ((intersection-ranges (shape-ranges intersection))
               (result '()))
@@ -125,7 +125,7 @@
 (defun shape-contains (shape index)
   (declare (shape shape)
            (list index))
-  (if (empty-shape-p shape)
+  (if (shape-emptyp shape)
       nil
       (loop for integer in index
             for range in (shape-ranges shape)
@@ -282,7 +282,7 @@ fragments and the new fragment. The resulting list consists of three parts:
   (destructuring-bind (shape1 . mask1) fragment1
     (destructuring-bind (shape2 . mask2) fragment2
       (let ((intersection (shape-intersection shape1 shape2)))
-        (if (empty-shape-p intersection)
+        (if (shape-emptyp intersection)
             '()
             (list (cons intersection (logior mask1 mask2))))))))
 

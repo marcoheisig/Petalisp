@@ -64,6 +64,7 @@
    ;; Ranges
    #:range
    #:rangep
+   #:range-emptyp
    #:empty-range
    #:range-with-size-one-p
    #:split-range
@@ -85,7 +86,7 @@
    #:make-shape
    #:shape
    #:shapep
-   #:empty-shape-p
+   #:shape-emptyp
    #:shape-rank
    #:shape-range
    #:shape-ranges

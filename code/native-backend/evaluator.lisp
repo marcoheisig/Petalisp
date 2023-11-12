@@ -275,7 +275,7 @@
     (handler-case
         (loop for invocation of-type invocation in invocations do
           ;; TODO
-          (unless (empty-shape-p (invocation-iteration-space invocation))
+          (unless (shape-emptyp (invocation-iteration-space invocation))
             (funcall (invocation-kfn invocation)
                      (invocation-kernel invocation)
                      (invocation-iteration-space invocation)

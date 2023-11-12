@@ -48,8 +48,8 @@
    #:axis
    #:shape
    #:shapep
+   #:shape-emptyp
    #:make-shape
-   #:empty-shape-p
    #:shape-rank
    #:shape-range
    #:shape-ranges

@@ -81,7 +81,7 @@
                      :inputs inputs
                      :values-ntype
                      (typo:make-values-ntype required optional rest)))))))
-    (if (empty-shape-p shape)
+    (if (shape-emptyp shape)
         (empty-lazy-arrays n-outputs shape)
         (let ((wrapper (typo:specialize
                         function

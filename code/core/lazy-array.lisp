@@ -349,7 +349,7 @@ guaranteed to be simple."
             (make-list n :initial-element empty-array)))))))
 
 (defun empty-lazy-array (shape)
-  (unless (empty-shape-p shape)
+  (unless (shape-emptyp shape)
     (error "Cannot create an empty array from the non-empty shape ~S."
            shape))
   (make-lazy-array
@@ -430,7 +430,7 @@ guaranteed to be simple."
            (typo:array-element-ntype object)
            (lazy-array-ntype lazy-array))))
     (t
-     (and (empty-shape-p (lazy-array-shape lazy-array))
+     (and (shape-emptyp (lazy-array-shape lazy-array))
           (typo:ntype-subtypep
            (typo:ntype-of object)
            (lazy-array-ntype lazy-array))))))
