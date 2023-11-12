@@ -66,11 +66,30 @@
                   (push (range size) ranges)
                   (parse-recursively rest))
                  ((list* '~* rest)
-                  (loop while (rangep (first rest)) do
-                    (push (pop rest) ranges))
-                  (parse-recursively rest))
+                  (loop for subseq on rest for first = (first subseq) do
+                    (typecase first
+                      (shape-syntax-delimiter
+                       (parse-recursively subseq)
+                       (loop-finish))
+                      (range
+                       (push first ranges))
+                      (list
+                       (dolist (object first)
+                         (unless (rangep object)
+                           (error "~@<Not a range: ~S~:@>"
+                                  object))
+                         (push object ranges)))
+                      (otherwise
+                       (error "~@<Neither range nor list of ranges: ~S~:@>"
+                              first)))))
                  (_
-                  (error "~@<Invalid shape syntax: ~S~:@>" rest)))))
+                  (error "~@<Invalid shape syntax: ~S~:@>" rest))))
+             (gather-ranges (object)
+               (typecase object
+                 (range (push object ranges))
+                 (list (mapc #'gather-ranges object))
+                 (otherwise
+                  ))))
       (parse-recursively syntax))
     (make-shape (nreverse ranges))))
 
@@ -96,11 +115,22 @@
                   (push `(range ,size) patterns)
                   (parse-recursively rest))
                  ((list* '~* rest)
-                  (loop until (or (null rest) (typep (first rest) 'shape-syntax-delimiter)) do
-                    (push (pop rest) patterns))
-                  (parse-recursively rest))
+                  (loop for subseq on rest for first = (first subseq) do
+                    (cond ((typep first 'shape-syntax-delimiter)
+                           (parse-recursively subseq)
+                           (loop-finish))
+                          ((and (listp first)
+                                (eql (first first) 'list))
+                           (dolist (pattern (rest first))
+                             (push pattern patterns)))
+                          (t
+                           (push first patterns)))))
                  (_
                   (error "~@<Invalid shape pattern syntax: ~S~:@>" rest)))))
       (parse-recursively syntax))
     (alexandria:with-gensyms (it)
-      `(trivia:guard1 ,it (shapep ,it) (shape-ranges ,it) (list* ,@patterns _)))))
+      `(trivia:guard1
+        ,it
+        (shapep ,it)
+        (shape-ranges ,it)
+        (list* ,@(reverse patterns) _)))))

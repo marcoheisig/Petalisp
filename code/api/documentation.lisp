@@ -32,14 +32,10 @@ step size.  The sign of the step size gives the direction of the range: If
 the sign is positive, then the exclusive upper bound must be larger than
 the inclusive lower bound or the resulting range is empty.  If the sign is
 negative, the first argument is used as an inclusive upper bound, and the
-second argument is used as an exclusive lower bound.
-
-It is worth mentioning that the range constructor has the exact same name
-and semantics as the range constructor in the Python programming language."
+second argument is used as an exclusive lower bound."
   (range 5)
   (range 5 9)
   (range 5 13 2)
-  (range 5 14 2)
   (range 1 7 -2)
   (range 7 1 -2))
 
@@ -125,8 +121,7 @@ supplied ranges."
   (range-intersectionp (range 0 7 2) (range 1 8 2)))
 
 (document-function range-difference-list
-  "Compute the difference of the two supplied ranges RANGE1 and RANGE2.
-Returns a list of disjoint subranges of RANGE1 that describe exactly those
+  "Returns a list of disjoint subranges of RANGE1 that describe exactly those
 integers appearing in RANGE1 but not in RANGE2.")
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -148,12 +143,12 @@ is as follows:
   then supplied to the RANGE function to construct the single resulting
   range.
 
-- The ~* delimiter must be followed by any number of ranges that are
-  incorporated into the resulting shape as they are."
+- The ~* delimiter must be followed by any number of ranges or lists of ranges
+  that are incorporated into the resulting shape in the order that they appear."
   (~ 8)
   (~ 1 10)
   (~ 0 10 2 ~ 0 10 2)
-  (apply #'~ 1 10 (loop repeat 3 append '(~ 2 6))))
+  (apply #'~ 1 10 '(~ 2 6 ~ 2 6)))
 
 (document-function ~*
   "Returns a shape whose ranges are derived by processing each occurrence of
@@ -162,7 +157,7 @@ function ~."
   (~*)
   (~* (range 1 10) (range 2 9) ~ 42)
   (~* ~ 10)
-  (apply #'~* (make-list 5 :initial-element (range 3))))
+  (~* (make-list 4 :initial-element (range 3))))
 
 (document-type shape
   "A shape is the cartesian product of zero or more ranges.  Shapes can be
