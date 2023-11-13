@@ -272,7 +272,8 @@ tuples of that range, in ascending order."
 
 (document-function shape-contains
   "Returns whether the supplied shape contains the index denoted by the
-supplied list of integers."
+supplied list of integers.  Signals an error if the length of the list of
+integers differs from the shape's rank."
   (shape-contains (~ 1 9) (list 4))
   (shape-contains (~ 1 2 9) (list 4)))
 
@@ -649,7 +650,7 @@ interchangeably in any argument position."
   (lazy-array #(1 2 3))
   (lazy-array 5)
   (lazy-array (lazy-array 5))
-  (lazy-array (make-array 2 :element-type 'bit :initial-element 1)))
+  (lazy-array (make-array 64 :element-type 'bit :initial-element 1)))
 
 (document-function lazy-reshape
   "Returns the lazy array that is obtained by successively reshaping the
@@ -972,19 +973,19 @@ that is established by that transformation."
 (document-function compute
   "The primary interface for evaluating lazy arrays.  It takes any number of
 arguments that must be lazy arrays or objects that can be converted to lazy
-arrays with the function LAZY-ARRAY --- and returns the same number of
-possibly specialized regular arrays with the corresponding contents.  A
-special case is that whenever an array with rank zero would be returned, it
-instead returns the sole element of that array.  The reason for this
-treatment of scalars is that Petalisp treats every object as an array,
-whereas in Common Lisp the rank zero array containing an object and that
-object are distinct entities.  Of those two distinct representations, the
-non-array one is much more intuitive and useful in practice, so this is the
-one being returned.
+arrays with the function LAZY-ARRAY, and returns the same number of possibly
+specialized regular arrays with the corresponding contents.  A special case is
+that whenever an array with rank zero would be returned, it instead returns the
+sole element of that array.  The reason for this treatment of scalars is that
+Petalisp treats every object as an array, whereas in Common Lisp the rank zero
+array containing an object and that object are distinct entities.  Of those two
+distinct representations, the non-array one is much more intuitive and useful
+in practice, so this is the one being returned.
 
-Whenever a shape of any of the supplied arrays is not a valid shape for a
-regular array, that array is collapsed before being computed, i.e., each
-axis is shifted to begin with zero, and divided by the step size.
+Whenever a shape of any of the supplied lazy arrays has as step size other than
+one, or an offset other than zero, that array is collapsed before being
+computed, i.e., each axis is shifted to begin with zero, and divided by the
+step size.
 
 All the heavy lifting in Petalisp happens within this function.  The exact
 details of how it operates aren't important for application programmers,
@@ -993,32 +994,33 @@ The individual steps it performs are:
 
 1. Convert each supplied argument to a lazy array.
 
-2. Collapse each lazy array whose shape isn't equivalent to that of a
-   regular array.
+2. Reshape each lazy array whose so that it has a step size of one and an
+   offset of zero.
 
-3. Determine the dependency graph whose roots are the collapsed lazy
-   arrays, and whose leaves are lazy arrays resulting from a call to
-   LAZY-ARRAY on a regular array or scalar.
+3. Determine the dependency graph whose roots are the collapsed lazy arrays,
+   whose interior nodes are calls to lazy map, lazy reshape, or lazy fuse, and
+   whose leaves are lazy arrays backed by regular arrays or index components of
+   some shape.
 
-4. Optimize the dependency graph, discard all unused parts, and plan a
-   schedule that is fast and has reasonable memory requirements.
+4. Optimize the dependency graph, discard all unused parts, and plan a schedule
+   that is fast and has reasonable memory requirements.
 
-5. Execute the schedule on the available hardware.  Make use of all
-   processing units, accelerators, or even distributed systems where
-   possible. Gather the results in the form of regular arrays.
+5. Execute the schedule on the available hardware.  Make use of all processing
+   units, accelerators, or even distributed systems where possible. Gather the
+   results in the form of regular arrays.
 
 6. Change the internal representation of all the originally supplied lazy
-   arrays such that future calculations involving them directly use the
-   computed results.
+   arrays so that future calculations involving them directly use the computed
+   results.
 
-7. Return the results as multiple values, while replacing any array with
-   rank zero with the single element contained in that array.
+7. Return the results as multiple values, while replacing any array with rank
+   zero with the single element contained in that array.
 
-This function is the workhorse of Petalisp.  A lot of effort went into
-making it not only powerful, but also extremely fast.  The overhead of
-assembling a graph of lazy arrays and passing it to COMPUTE instead of
-invoking an already compiled and optimized imperative program is usually on
-the order of just a few microseconds."
+This function is the workhorse of Petalisp.  A lot of effort went into making
+it not only powerful, but also extremely fast.  The overhead of assembling a
+graph of lazy arrays and passing it to COMPUTE instead of invoking an already
+compiled and optimized imperative program is usually on the order of just a few
+microseconds."
   (compute (lazy-array #(1 2 3)))
   (compute #(1 2 3))
   (compute 5)
@@ -1043,26 +1045,25 @@ asynchronously.  Returns a request object that can be passed to the
 functions WAIT and COMPLETEDP.")
 
 (document-function make-unknown
-  "Returns a lazy array whose contents are not known and consequently cannot be computed.
-Lazy arrays depending on such an array also cannot be computed.  The main
-purpose such unknown lazy arrays is to construct the arguments to the
-EVALUATOR function."
+  "Returns a lazy array with the supplied shape and element type, whose contents
+are not known and consequently cannot be computed.  Lazy arrays depending on
+such an array also cannot be computed.  The main purpose such unknown lazy
+arrays is to construct the arguments to the EVALUATOR function."
   (make-unknown :shape (~ 5 ~ 5))
   (make-unknown :element-type 'double-float))
 
 (document-function evaluator
   "For a supplied list of unknowns of length N and list of LAZY-ARRAYS of length K,
-returns a function with K+N arguments that returns, as multiple values, the
-K array values obtained by computing the supplied arrays after substituting
-the Ith unknown with the supplied argument in position K+I.
+returns a function with K plus N arguments that returns, as multiple values,
+the K array values obtained by computing the supplied arrays after substituting
+the Ith unknown with the supplied argument in position K plus I.  The first K
+arguments of the resulting evaluator function specify which storage to use for
+the results.  A value of NIL indicates that the corresponding result shall be a
+fresh array.  A value that is an array ensures that the result is written to
+that array.
 
-The first N arguments specify which storage to use for the results.  A
-value of NIL indicates that the corresponding result shall be a fresh
-array.  A value that is an array ensures that the result is written to that
-array.
-
-An error is signaled if any of the arguments of an evaluator has a
-different shape or element type as the corresponding result or unknown.")
+An error is signaled if any of the K plus N arguments of an evaluator function
+has a different shape or element type as the corresponding result or unknown.")
 
 (document-function wait
   "Blocks until the requests resulting from some COMPUTE-ASYNCHRONOUSLY operations

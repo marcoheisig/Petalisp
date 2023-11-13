@@ -125,6 +125,7 @@
 (defun shape-contains (shape index)
   (declare (shape shape)
            (list index))
+  (assert (= (shape-rank shape) (length index)))
   (if (shape-emptyp shape)
       nil
       (loop for integer in index
