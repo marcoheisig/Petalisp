@@ -135,7 +135,6 @@
    #:lazy-array-inputs
    #:lazy-array
    #:lazy-map
-   #:lazy-multiple-value-map
    #:lazy-reshape
    #:lazy-ref
    #:lazy-fuse

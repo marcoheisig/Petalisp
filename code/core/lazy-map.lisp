@@ -2,10 +2,7 @@
 
 (in-package #:petalisp.core)
 
-(defun lazy-map (function inputs)
-  (lazy-multiple-value-map 1 function inputs))
-
-(defun lazy-multiple-value-map
+(defun lazy-map
     (n-outputs function inputs
      &aux (shape (if (null inputs)
                      (make-shape '())
