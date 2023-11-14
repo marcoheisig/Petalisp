@@ -705,11 +705,11 @@ Returns the lazy array obtained after processing all modifiers."
   (compute (lazy-reshape #(1 2 3 4 5 6) (~ 6 ~ 2)))
   (compute (lazy-reshape #(1 2 3 4 5 6) (lambda (s) (~ 1 (1- (shape-size s)))))))
 
-(document-function lazy-broadcast-list-of-arrays
-  "Returns a list of lazy arrays of the same shape, where each lazy array is
-a broadcasting reference to the corresponding element of the supplied list
-of arrays.  As a second value, returns the shape of all the resulting lazy
-arrays.  Signals an error if there is no suitable shape to which all the
+(document-function broadcast
+  "Returns a list of lazy arrays that all have the same shape, where each lazy array is
+a broadcasting reference to the corresponding element of the supplied list of
+arrays or scalars.  As a second value, returns the shape of all the resulting
+lazy arrays.  Signals an error if there is no suitable shape to which all the
 supplied arrays can be broadcast.
 
 The resulting shape is constructed according to the following rules:
@@ -717,23 +717,27 @@ The resulting shape is constructed according to the following rules:
 1. The rank of the resulting shape is the maximum of the rank of all the
    supplied arrays.
 
-2. Each range of any of the supplied arrays must either have a size of one,
-   or it must be equal to the range of the resulting shape in the same
-   axis.
+2. Each range of any of the supplied arrays must either have a size of one, in
+   which case it is broadcast to the to the corresponding range of the
+   resulting shape, or it must be equal to the range of the resulting shape in
+   the same axis.
 
-3. In case there is an axis in which all supplied arrays have a range with
-only a single element, the resulting shape uses the range of the first
-supplied array."
-  (lazy-broadcast-list-of-arrays (list #(1 2 3) 5))
-  (apply #'compute (lazy-broadcast-list-of-arrays (list #(1 2 3) 5)))
-  (apply #'compute (lazy-broadcast-list-of-arrays (list #(1 2 3) #(5))))
-  (apply #'compute (lazy-broadcast-list-of-arrays (list #2a((1 2) (3 4)) #(7 8)))))
+3. The missing axes of Lazy arrays that have a lower rank than the resulting
+   shape are broadcast as if they had a range of size one.
+
+4. In case there is an axis in which all supplied arrays have a range with only
+   a single element, the resulting shape uses the range of the leftmost
+   supplied array."
+  (broadcast (list #(1 2 3) 5))
+  (apply #'compute (broadcast (list #(1 2 3) 5)))
+  (apply #'compute (broadcast (list #(1 2 3) #(5))))
+  (apply #'compute (broadcast (list #2a((1 2) (3 4)) #(7 8)))))
 
 (document-function lazy
   "Returns a lazy array whose contents are the results of applying the
 supplied function element-wise to the contents of the remaining argument
 arrays.  If the arguments don't agree in shape, they are first broadcast
-with the function LAZY-BROADCAST-LIST-OF-ARRAYS."
+with the function BROADCAST."
   (compute (lazy #'*))
   (compute (lazy #'+ 2 3))
   (compute (lazy #'+ #(1 2) #(3 4)))
@@ -745,7 +749,7 @@ with the function LAZY-BROADCAST-LIST-OF-ARRAYS."
 supplied argument, whose contents are the results of applying the function
 that is the second supplied argument element-wise to the contents of the
 remaining argument arrays.  If the arguments don't agree in shape, they are
-first broadcast with the function LAZY-BROADCAST-LIST-OF-ARRAYS."
+first broadcast with the function BROADCAST."
   (multiple-value-call #'compute (lazy-multiple-value 0 #'*))
   (multiple-value-call #'compute (lazy-multiple-value 1 #'*))
   (multiple-value-call #'compute (lazy-multiple-value 2 #'*))

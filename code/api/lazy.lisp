@@ -3,4 +3,4 @@
 (in-package #:petalisp.api)
 
 (defun lazy (function &rest arrays)
-  (lazy-map function (lazy-broadcast-list-of-arrays arrays)))
+  (lazy-map function (broadcast arrays)))

@@ -2,30 +2,22 @@
 
 (in-package #:petalisp.api)
 
-(defun lazy-broadcast (&rest arrays)
-  (values-list (lazy-broadcast-list-of-arrays arrays)))
-
-(defun lazy-broadcast-list-of-arrays (list-of-arrays)
+(defun broadcast (list-of-arrays)
   (let* ((lazy-arrays (mapcar #'lazy-array list-of-arrays))
          (shapes (remove-duplicates (mapcar #'lazy-array-shape lazy-arrays) :test #'shape=))
+         (rank (reduce #'max shapes :key #'shape-rank :initial-value 0))
          (broadcast-shape
-           (trivia:match shapes
-             ((list shape)
-              shape)
-             ((list* shapes)
-              (let* ((vector-of-ranges (map 'vector #'shape-ranges shapes))
-                     (number-of-shapes (length vector-of-ranges))
-                     (ranges '()))
-                (loop until (every #'null vector-of-ranges) do
-                  (let ((range nil))
-                    (loop for index below number-of-shapes do
-                      (unless (null (aref vector-of-ranges index))
-                        (let ((other-range (pop (aref vector-of-ranges index))))
-                          (if (null range)
-                              (setf range other-range)
-                              (setf range (broadcast-ranges range other-range))))))
-                    (push range ranges)))
-                (make-shape (nreverse ranges))))))
+           (make-shape
+            (let ((vector-of-ranges (map 'vector #'shape-ranges shapes)))
+              (loop repeat rank
+                    collect
+                    (let ((range nil))
+                      (dotimes (index (length vector-of-ranges) range)
+                        (unless (null (aref vector-of-ranges index))
+                          (let ((other-range (pop (aref vector-of-ranges index))))
+                            (if (null range)
+                                (setf range other-range)
+                                (setf range (broadcast-ranges range other-range)))))))))))
          (alist
            (loop for shape in shapes
                  collect

@@ -3,8 +3,7 @@
 (in-package #:petalisp.api)
 
 (defun lazy-reduce (function &rest arrays)
-  (multiple-value-bind (inputs input-shape)
-      (lazy-broadcast-list-of-arrays arrays)
+  (multiple-value-bind (inputs input-shape) (broadcast arrays)
     (unless (plusp (shape-rank input-shape))
       (error "Cannot reduce arrays with rank zero."))
     (unless (plusp (range-size (shape-range input-shape 0)))

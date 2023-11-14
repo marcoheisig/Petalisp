@@ -24,8 +24,7 @@
   (:export
 
    ;; High-level API
-   #:lazy-broadcast
-   #:lazy-broadcast-list-of-arrays
+   #:broadcast
    #:lazy-drop-axes
    #:lazy-fuse
    #:lazy
