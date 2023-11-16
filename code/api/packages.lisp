@@ -129,6 +129,7 @@
    #:transformation-scalings
    #:transformation-offsets
    #:transformation-invertiblep
+   #:transformation-identityp
    #:make-transformation
    #:identity-transformation
    #:invert-transformation

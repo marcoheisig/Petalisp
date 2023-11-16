@@ -47,7 +47,8 @@
         ;; constant.
         (when (typo:eql-ntype-p ntype)
           (return-from lazy-fuse
-            (lazy-ref (lazy-array-from-scalar (typo:eql-ntype-object ntype))
+            (lazy-ref
+             (lazy-array-from-scalar (typo:eql-ntype-object ntype))
              shape
              (make-transformation
               :input-rank (shape-rank shape)
@@ -88,5 +89,3 @@
          :shape shape
          :ntype ntype
          :depth (1+ (maxdepth lazy-arrays)))))))
-
-

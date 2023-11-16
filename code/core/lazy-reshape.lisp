@@ -143,7 +143,7 @@ of its input is the supplied transformation."
                     (shape relevant-shape)
                     (transformation transformation))
            ;; Optimization: Drop references with no effect.
-           (when (and (identity-transformation-p transformation)
+           (when (and (transformation-identityp transformation)
                       (shape= (lazy-array-shape lazy-array) shape))
              (return-from ref lazy-array))
            ;; Optimization: Compose consecutive lazy reshapes.

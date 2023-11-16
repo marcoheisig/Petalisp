@@ -711,7 +711,7 @@ all the supplied load or store instructions."
 (defun transform-kernel (kernel transformation)
   (declare (kernel kernel)
            (transformation transformation))
-  (unless (identity-transformation-p transformation)
+  (unless (transformation-identityp transformation)
     (setf (kernel-iteration-space kernel)
           (transform-shape (kernel-iteration-space kernel) transformation))
     (let ((inverse (invert-transformation transformation)))

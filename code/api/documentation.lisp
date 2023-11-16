@@ -362,28 +362,24 @@ two values, which are two shapes resulting from the split."
 ;;; Transformations
 
 (document-function transform
-  "Returns a transformation that maps the supplied inputs to the supplied outputs.
-
-The supplied forms describe the inputs and outputs of the transformation.
+  "Returns a transformation from the given inputs to the given outputs.
 Inputs and outputs are separated by the symbol PETALISP:TO.
 
-Each input can either be a symbol, an integer, or a list whose first element is
-a symbol and whose second element is a form that evaluates either to an integer
-or to NIL.  The symbol is the name under which the value of that input can be
-referenced in one of the outputs.  Any integer value is interpreted as an input
-constraint of the transformation in that axis.
+Each input can either be a symbol or an integer.  In case the input is a
+symbol, it is the name under which the value of that input can be referenced in
+one of the outputs.  In case the input is a integer, it denotes an input
+constraint meaning that it is an error to later apply that transformation to an
+index that differs from that constraint in that position.
 
-Each output is a form that may reference up to one of the input variables.
-The output form is evaluated repeatedly in a context where the referenced
-input variable is bound to an integer to determine the coefficients for the
-linear mapping from the referenced input to the output.
-
+Each output is an arbitrary form that may reference up to one of the input
+variables.  This form is then evaluated repeatedly in a context where the
+referenced input variable is bound to a different integer, to determine the
+coefficients for the linear mapping from the referenced input to the output.
 Signals an error if any output form references more than one input, returns
 anything other than an integer, or describes a mapping that is not linear."
   (transform i to (+ i 1))
   (transform i to (+ (+ i 1) 5))
-  (transform 1 2 3 to)
-  (transform to 1 2 3)
+  (transform 1 2 to 3)
   (transform i j to j i))
 
 (document-type transformation
@@ -403,6 +399,11 @@ itself.  An identity transformation is its own inverse.")
   "Returns whether a supplied object is an identity transformation."
   (identity-transformation-p (transform i j to j i))
   (identity-transformation-p (transform i j to i j)))
+
+(document-function transformation-identityp
+  "Returns whether a supplied transformation is an identity transformation."
+  (transformation-identityp (transform i j to j i))
+  (transformation-identityp (transform i j to i j)))
 
 (document-function transformation-input-rank
   "Returns the rank that any shape that can be transformed with this
@@ -487,9 +488,8 @@ invocations of the supplied transformations in right-to-left order."
    (transform i j to (* j 2) (* i 3))))
 
 (document-function invert-transformation
-  "Returns the inverse of the supplied transformation.
-
-An error is signaled if the supplied transformation is not invertible."
+  "Returns the inverse of the supplied transformation, or signals an error if the
+supplied transformation is not invertible."
   (invert-transformation
    (transform i to (+ 2 i)))
   (invert-transformation
@@ -521,6 +521,18 @@ Otherwise, they are traversed in descending order.")
   "Given a transformation mapping from (i1 ... iN) to (j1 ... jM),
 return a transformation mapping from (i0 i1 ... iN iN+1) to
 ((+(* i0 SCALE) OFFSET) j1 ... jM).")
+
+(document-function transform-shape
+  "Returns the shape that results from applying the supplied transformation to
+each index of the supplied shape."
+  (transform-shape (~ 2 ~ 3) (transform i j to j i))
+  (transform-shape (~ 10) (transform i to (1+ (* 2 i)))))
+
+(document-function transform-index
+  "Returns the index that results from applying the supplied transformation to
+the supplied index."
+  (transform-index '(10) (transform i to (+ i 2)))
+  (transform-index '(1 2 3) (transform i j k to j (* 3 i) (1+ k))))
 
 (document-function identity-transformation
   "Returns an identity transformation of the specified rank.")
@@ -669,21 +681,20 @@ at a time according to the following rules:
    that array according to that transformation.  If the lazy array has lower
    rank than expected from the transformation, it is broadcast to that rank
    first.  If the lazy array has higher rank than expected from the
-   transformation, those axes are left as is, and end up being appended to the
-   shape of the resulting lazy array.
+   transformation, those extra axes are left as is, and end up being appended
+   to the shape of the resulting lazy array.
 
 2. If the modifier is a function, apply it to the shape of the lazy
    array to obtain a number of new modifiers as multiple values.  Process the
    new modifiers as if they were supplied instead of this function modifier.
 
-3. If the modifier is a shape designator then each axis of the lazy
-   array is moved, broadcast, or selected-from to match that shape.  If the
-   lazy array has lower rank than the designated shape, it is broadcast to that
-   rank first.  If the lazy array has higher rank than the designated shape,
-   the remaining axes are left as is, and end up being appended to the shape of
-   the resulting lazy array.  For each axis, the mapping from the range of the
-   lazy array to the corresponding range of designated shape is derived as
-   such:
+3. If the modifier is a shape designator then each axis of the lazy array is
+   moved, broadcast, or selected-from to match that shape.  If the lazy array
+   has lower rank than the designated shape, it is broadcast to that rank
+   first.  If the lazy array has higher rank than the designated shape, the
+   remaining axes are left as is, and end up being appended to the shape of the
+   resulting lazy array.  For each axis, the mapping from the range of the lazy
+   array to the corresponding range of designated shape is derived as such:
 
    a) If both the source range and the target range have the same size, then
       elements of that axis are moved so that they end up on the target range
@@ -729,8 +740,8 @@ The resulting shape is constructed according to the following rules:
    a single element, the resulting shape uses the range of the leftmost
    supplied array."
   (broadcast (list #(1 2 3) 5))
+  (broadcast (list #2A((1 2 3)) #2A((4) (5))))
   (apply #'compute (broadcast (list #(1 2 3) 5)))
-  (apply #'compute (broadcast (list #(1 2 3) #(5))))
   (apply #'compute (broadcast (list #2a((1 2) (3 4)) #(7 8)))))
 
 (document-function lazy

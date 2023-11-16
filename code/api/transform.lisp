@@ -78,8 +78,6 @@
      (list (gensym) input))
     ((type symbol)
      (list input nil))
-    ((list (type symbol) _)
-     input)
     (_
      (error "~@<The expression ~S is not a valid transform input.~:@>" input))))
 

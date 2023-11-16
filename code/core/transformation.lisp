@@ -73,8 +73,12 @@
          (ftype (function (rank))
                 identity-transformation))
 
+(defun transformation-identityp (transformation)
+  (declare (transformation transformation))
+  (identity-transformation-p transformation))
+
 (defun transformation-invertiblep (transformation)
-  (or (identity-transformation-p transformation)
+  (or (transformation-identityp transformation)
       (and (transformation-inverse transformation) t)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
