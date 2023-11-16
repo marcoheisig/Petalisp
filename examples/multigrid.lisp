@@ -21,7 +21,7 @@
 
 (defun lazy-sor-2d (u f h omega)
   (with-lazy-arrays (u f h omega)
-    (let* ((shape (shape-prefix (lazy-array-shape u) 2))
+    (let* ((shape (petalisp.core:shape-prefix (lazy-array-shape u) 2))
            (interior (funcall (peeling-reshaper :layers 1) shape)))
       (lazy-overwrite-and-harmonize
        u
@@ -38,7 +38,7 @@
 
 (defun lazy-rbgs-2d (u f h)
   (with-lazy-arrays (u f h)
-    (let* ((shape (shape-prefix (lazy-array-shape u) 2))
+    (let* ((shape (petalisp.core:shape-prefix (lazy-array-shape u) 2))
            (red-1 (funcall (peeling-reshaper :lower-layers '(1 1) :layers 1 :strides 2) shape))
            (red-2 (funcall (peeling-reshaper :lower-layers '(2 2) :layers 1 :strides 2) shape))
            (black-1 (funcall (peeling-reshaper :lower-layers '(1 2) :layers 1 :strides 2) shape))
@@ -93,7 +93,7 @@
 
 (defun lazy-restrict-2d (u)
   (with-lazy-arrays (u)
-    (let* ((shape (shape-prefix (lazy-array-shape u) 2))
+    (let* ((shape (petalisp.core:shape-prefix (lazy-array-shape u) 2))
            (selection (funcall (peeling-reshaper :strides 2) shape))
            (interior (funcall (peeling-reshaper :layers 1) selection)))
       (lazy-reshape
@@ -118,7 +118,7 @@
 
 (defun lazy-residual-2d (u b h)
   (with-lazy-arrays (u b h)
-    (let* ((shape (shape-prefix (lazy-array-shape u) 2))
+    (let* ((shape (petalisp.core:shape-prefix (lazy-array-shape u) 2))
            (interior (funcall (peeling-reshaper :layers 1) shape)))
       (lazy-overwrite-and-harmonize
        (lazy-reshape 0 u)

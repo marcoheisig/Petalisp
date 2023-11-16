@@ -9,8 +9,8 @@
                This call attempts to reshape the array ~S with ~
                ~D elements to the shape ~S with ~D elements.~:@>"
            lazy-array (lazy-array-size lazy-array) shape (shape-size shape)))
-  (let ((n1 (normalizing-transformation (lazy-array-shape lazy-array)))
-        (n2 (normalizing-transformation shape)))
+  (let ((n1 (petalisp.core:normalizing-transformation (lazy-array-shape lazy-array)))
+        (n2 (petalisp.core:normalizing-transformation shape)))
     (lazy-reshape
      (lazy-rearrange/normalized
       (lazy-reshape lazy-array n1)
@@ -109,7 +109,7 @@
      #'lazy-fuse
      (loop for offset below k
            collect
-           (lazy-ref
+           (petalisp.core:lazy-ref
             lazy-array
             (make-shape (append prefix (list (range offset (1+ offset)) range-2) suffix))
             (let ((input-mask (make-array (1+ rank) :initial-element nil))
@@ -141,7 +141,7 @@
      #'lazy-fuse
      (loop for offset below k
            collect
-           (lazy-ref
+           (petalisp.core:lazy-ref
             lazy-array
             (make-shape (append prefix (list range-1 (range offset (1+ offset))) suffix))
             (let ((input-mask (make-array (1+ rank) :initial-element nil))
@@ -176,7 +176,7 @@
      #'lazy-fuse
      (loop for offset below size-1
            collect
-           (lazy-ref
+           (petalisp.core:lazy-ref
             lazy-array
             (make-shape (append prefix (list (range (* offset size-2) (* (1+ offset) size-2))) suffix))
             (let ((input-mask (make-array (1- rank) :initial-element nil))
@@ -209,7 +209,7 @@
      #'lazy-fuse
      (loop for offset below size-2
            collect
-           (lazy-ref
+           (petalisp.core:lazy-ref
             lazy-array
             (make-shape (append prefix (list (range offset (* size-1 size-2) size-2)) suffix))
             (let ((input-mask (make-array (1- rank) :initial-element nil))

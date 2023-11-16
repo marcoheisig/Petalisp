@@ -3,7 +3,21 @@
 (cl:in-package #:common-lisp-user)
 
 (defpackage #:petalisp.core
-  (:use #:common-lisp)
+  (:use #:common-lisp #:petalisp)
+
+  ;; The following symbols have different function definitions in the core and
+  ;; in the public interface.  The core functions expect their arguments to be
+  ;; lazy arrays of a suitable shape, whereas the public functions implicitly
+  ;; coerce their arguments to lazy arrays and apply broadcasting.
+  (:shadow
+   #:lazy-array-shape
+   #:lazy-array-element-type
+   #:lazy-array-rank
+   #:lazy-array-size
+   #:lazy-array-range
+   #:lazy-array-ranges
+   #:lazy-array-dimension
+   #:lazy-array-dimensions)
 
   (:import-from
    #:petalisp.utilities
@@ -17,9 +31,8 @@
    #:document-variable
    #:document-variables)
 
+  ;; Ranges
   (:export
-
-   ;; Ranges
    #:range
    #:rangep
    #:range-emptyp
@@ -41,14 +54,16 @@
    #:range-end
    #:range-size
    #:subrangep
-   #:fuse-ranges
+   #:fuse-ranges)
 
-   ;; Shapes
+  ;; Shapes
+  (:export
    #:rank
    #:axis
    #:shape
    #:shapep
    #:shape-emptyp
+   #:shape-with-size-one-p
    #:make-shape
    #:shape-rank
    #:shape-range
@@ -82,9 +97,10 @@
    #:clear-shape-table
    #:array-shape
    #:array-has-shape-p
-   #:shape-designator-shape
+   #:shape-designator-shape)
 
-   ;; Transformations
+  ;; Transformations
+  (:export
    #:transformation
    #:transformationp
    #:transform-index
@@ -110,14 +126,16 @@
    #:enlarge-transformation
    #:inflate-transformation
    #:map-transformation-inputs
-   #:map-transformation-outputs
+   #:map-transformation-outputs)
 
-   ;; Arrays
+  ;; Arrays
+  (:export
    #:array-value
    #:value-array
-   #:make-rank-zero-array
+   #:make-rank-zero-array)
 
-   ;; Lazy Arrays
+  ;; Lazy Arrays
+  (:export
    #:*lazy-array-lock*
    #:lazy-array
    #:lazy-array-p
@@ -152,9 +170,10 @@
    #:substitute-lazy-arrays
    #:substitute-lazy-array
    #:substitute-delayed-action
-   #:compatible-with-lazy-array-p
+   #:compatible-with-lazy-array-p)
 
-   ;; Delayed Actions
+  ;; Delayed Actions
+  (:export
    #:delayed-action
    #:delayed-action-p
    #:delayed-action-inputs
@@ -196,9 +215,10 @@
    #:delayed-wait-delayed-action
    #:delayed-failure
    #:delayed-failure-p
-   #:delayed-failure-condition
+   #:delayed-failure-condition)
 
-   ;; Backend
+  ;; Backends
+  (:export
    #:*backend*
    #:with-temporary-backend
    #:backend
@@ -219,6 +239,4 @@
    #:requestp
    #:request-wait
    #:request-completedp
-
-   ;; Reference Backend
    #:make-reference-backend))

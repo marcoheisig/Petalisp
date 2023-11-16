@@ -25,7 +25,7 @@
     (values
      (loop for lazy-array in lazy-arrays
            collect
-           (lazy-ref
+           (petalisp.core:lazy-ref
             lazy-array
             broadcast-shape
             (cdr (assoc (lazy-array-shape lazy-array) alist :test #'shape=))))
@@ -47,7 +47,8 @@
   "Returns a transformation that maps every element of TARGET-SHAPE to an
 element of SOURCE-SHAPE.  In case TARGET-SHAPE has a higher rank than
 SOURCE-SHAPE, insert additional axes at POSITION."
-  (declare (shape source-shape target-shape) (rank position))
+  (declare (shape source-shape target-shape)
+           (petalisp.core:rank position))
   ;; The terminology is a bit confusing here because the transformation
   ;; argument of LAZY-REF points "backwards", i.e., from values of the
   ;; target to values of the source.

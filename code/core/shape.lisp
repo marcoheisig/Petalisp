@@ -36,6 +36,11 @@
   (declare (shape shape))
   (zerop (shape-size shape)))
 
+(declaim (inline shape-with-size-one-p))
+(defun shape-with-size-one-p (shape)
+  (declare (shape shape))
+  (= 1 (shape-size shape)))
+
 (defun shape-range (shape axis)
   (declare (shape shape) (rank axis))
   (unless (<= 0 axis (1- (shape-rank shape)))

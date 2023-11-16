@@ -132,11 +132,11 @@
 
 (defmethod input-gradient
     ((lazy-array lazy-array)
-     (delayed-map delayed-map)
+     (delayed-map petalisp.core:delayed-map)
      (output-gradient lazy-array)
      index)
-  (let ((fnrecord (delayed-map-fnrecord delayed-map))
-        (inputs (delayed-map-inputs delayed-map))
+  (let ((fnrecord (petalisp.core:delayed-map-fnrecord delayed-map))
+        (inputs (petalisp.core:delayed-map-inputs delayed-map))
         (shape (lazy-array-shape lazy-array)))
     (coerce-to-ntype
      (lazy #'*
@@ -162,10 +162,10 @@
 
 (defmethod input-gradient
     ((lazy-array lazy-array)
-     (delayed-fuse delayed-fuse)
+     (delayed-fuse petalisp.core:delayed-fuse)
      (output-gradient lazy-array)
      index)
-  (let ((input (nth index (delayed-fuse-inputs delayed-fuse))))
+  (let ((input (nth index (petalisp.core:delayed-fuse-inputs delayed-fuse))))
     (coerce-to-ntype
      (lazy-reshape output-gradient (lazy-array-shape input))
      (lazy-array-ntype input))))
@@ -188,10 +188,10 @@
 
 (defmethod input-gradient
     ((lazy-array lazy-array)
-     (delayed-reshape delayed-reshape)
+     (delayed-reshape petalisp.core:delayed-reshape)
      (output-gradient lazy-array)
      (index (eql 0)))
-  (let ((transformation (delayed-reshape-transformation delayed-reshape)))
+  (let ((transformation (petalisp.core:delayed-reshape-transformation delayed-reshape)))
     (if (transformation-invertiblep transformation)
         (lazy-reshape output-gradient transformation)
         ;; The input gradient of a broadcasting reference is the sum of all

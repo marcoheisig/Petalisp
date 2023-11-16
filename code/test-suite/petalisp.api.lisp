@@ -2,7 +2,7 @@
 
 (in-package #:petalisp.test-suite)
 
-(check-package '#:petalisp.api :skip '(petalisp:to))
+(check-package '#:petalisp :skip '(petalisp:to))
 
 (define-test lazy-rearrange-test
   (flet ((test (initial-shape &rest other-shapes)

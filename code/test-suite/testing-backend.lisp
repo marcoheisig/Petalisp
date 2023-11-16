@@ -20,7 +20,7 @@
 (defun make-testing-backend ()
   (make-instance 'testing-backend))
 
-(defmethod backend-compute
+(defmethod petalisp.core:backend-compute
     ((testing-backend testing-backend)
      (data-structures list))
   (with-accessors ((reference-backend reference-backend)
@@ -28,13 +28,13 @@
                    (ir-backend-compiled ir-backend-compiled)
                    (native-backend native-backend)) testing-backend
     (let ((reference-solutions
-            (backend-compute reference-backend data-structures))
+            (petalisp.core:backend-compute reference-backend data-structures))
           (ir-backend-interpreted-solutions
-            (backend-compute ir-backend-interpreted data-structures))
+            (petalisp.core:backend-compute ir-backend-interpreted data-structures))
           (ir-backend-compiled-solutions
-            (backend-compute ir-backend-compiled data-structures))
+            (petalisp.core:backend-compute ir-backend-compiled data-structures))
           (native-backend-solutions
-            (backend-compute native-backend data-structures)))
+            (petalisp.core:backend-compute native-backend data-structures)))
       (compare-solutions reference-solutions ir-backend-interpreted-solutions)
       (compare-solutions reference-solutions ir-backend-compiled-solutions)
       (compare-solutions reference-solutions native-backend-solutions)
@@ -45,7 +45,7 @@
         for solution2 in solutions2 do
           (is (approximately-equal solution1 solution2))))
 
-(defmethod delete-backend ((testing-backend testing-backend))
+(defmethod petalisp.core:delete-backend ((testing-backend testing-backend))
   (delete-backend (reference-backend testing-backend))
   (delete-backend (ir-backend-interpreted testing-backend))
   (delete-backend (ir-backend-compiled testing-backend))
@@ -66,10 +66,12 @@
 
 (defgeneric approximately-equal (a b))
 
-(defmethod approximately-equal ((a delayed-array) (b delayed-array))
+(defmethod approximately-equal
+    ((a petalisp.core:delayed-array)
+     (b petalisp.core:delayed-array))
   (approximately-equal
-   (delayed-array-storage a)
-   (delayed-array-storage b)))
+   (petalisp.core:delayed-array-storage a)
+   (petalisp.core:delayed-array-storage b)))
 
 (defmethod approximately-equal ((a t) (b t))
   (eql a b))

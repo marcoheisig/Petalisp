@@ -6,13 +6,15 @@
             (:constructor nil)
             (:predicate rangep)
             (:copier nil))
+  "A range denotes a possibly empty set of integers."
   (size nil :type (integer 0 *) :read-only t))
 
 (defstruct (empty-range
             (:include range)
             (:constructor %make-empty-range (&aux (size 0)))
             (:predicate empty-range-p)
-            (:copier nil)))
+            (:copier nil))
+  "An empty range is a range with zero elements.")
 
 (defstruct (non-empty-range
             (:include range)
@@ -20,6 +22,8 @@
             (:constructor make-non-empty-range (start step size))
             (:predicate non-empty-range-p)
             (:copier nil))
+  "A non-empty range denotes a set of integers, starting from a lower bound START,
+by a fixed stride STEP, to an exclusive upper bound END."
   (step nil :type (integer 1 *) :read-only t)
   (start nil :type integer :read-only t))
 

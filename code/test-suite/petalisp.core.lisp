@@ -2,7 +2,7 @@
 
 (in-package #:petalisp.test-suite)
 
-(check-package '#:petalisp.core)
+#+(or) (check-package '#:petalisp.core)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -22,7 +22,7 @@
                  (is (range-with-size-one-p range))
                  (is (not (range-with-size-one-p range))))
              (is (range= range range))
-             (cond ((empty-range-p range)
+             (cond ((range-emptyp range)
                     (is (zerop (range-size range)))
                     (return-from test-range))
                    ((range-with-size-one-p range)
@@ -100,31 +100,6 @@
               (lazy-fuse
                (lazy-reshape e1 (~ 0 200 2))
                (lazy-reshape e2 (~ 1 200 2)))))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;
-;;; Networks and Automatic Differentiation
-
-(define-test network-test
-  (let* ((shape (~ 10))
-         (x1 (make-unknown :shape shape :element-type 'double-float))
-         (x2 (make-unknown :shape shape :element-type 'double-float))
-         (v1 (lazy #'+
-                   (lazy #'coerce (lazy #'log x1) 'double-float)
-                   (lazy #'* x1 x2)
-                   (lazy #'sin x2)))
-         (network
-           (make-network v1))
-         (g1 (make-unknown
-              :shape (lazy-array-shape v1)
-              :element-type (lazy-array-element-type v1)))
-         (gradient-fn (differentiator (list v1) (list g1)))
-         (gradient-network
-           (make-network
-            (funcall gradient-fn x1)
-            (funcall gradient-fn x2))))
-    (call-network network x1 5d0 x2 1d0)
-    (call-network gradient-network x1 1d0 x2 1d0 g1 1d0)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

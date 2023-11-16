@@ -4,8 +4,8 @@
 
 (defun collapsing-reshaper (rank)
   (lambda (shape)
-    (collapsing-transformation
-     (shape-subseq shape 0 rank))))
+    (petalisp.core:collapsing-transformation
+     (petalisp.core:shape-subseq shape 0 rank))))
 
 (defun peeling-reshaper
     (&key

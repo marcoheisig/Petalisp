@@ -19,7 +19,7 @@
               (shape-ranges shape))))
 
 (defun listify-range-for-printing (range)
-  (if (empty-range-p range)
+  (if (range-emptyp range)
       `(~ 0)
       (with-accessors ((start range-start)
                        (end range-end)

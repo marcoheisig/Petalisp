@@ -8,6 +8,7 @@
    "trivia"
    "split-sequence"
    "trivial-macroexpand-all"
+   "petalisp.packages"
    "petalisp.utilities"
    "petalisp.core"
    "petalisp.ir"
@@ -17,16 +18,16 @@
   :in-order-to ((test-op (test-op "petalisp.test-suite")))
 
   :components
-  ((:file "differentiator" :depends-on ("lazy-overwrite" "lazy" "lazy-reduce"))
-   (:file "broadcast")
-   (:file "lazy-rearrange" :depends-on ("shape-syntax"))
-   (:file "lazy-drop-axes")
+  ((:file "broadcast" :depends-on ("packages"))
+   (:file "differentiator" :depends-on ("lazy-overwrite" "lazy" "lazy-reduce"))
+   (:file "lazy-drop-axes" :depends-on ("packages"))
    (:file "lazy-harmonize" :depends-on ("lazy" "lazy-overwrite"))
    (:file "lazy-index-components" :depends-on ("packages"))
    (:file "lazy" :depends-on ("broadcast"))
    (:file "lazy-multiple-value" :depends-on ("broadcast"))
    (:file "lazy-multireduce" :depends-on ("lazy-reduce"))
    (:file "lazy-overwrite" :depends-on ("packages"))
+   (:file "lazy-rearrange" :depends-on ("shape-syntax"))
    (:file "lazy-reduce" :depends-on ("lazy-multiple-value" "lazy-drop-axes" "lazy-stack"))
    (:file "lazy-slice" :depends-on ("packages"))
    (:file "lazy-slices" :depends-on ("packages"))
@@ -38,7 +39,6 @@
    (:file "shape-syntax" :depends-on ("packages"))
    (:file "transform" :depends-on ("packages"))
    (:file "with-lazy-arrays" :depends-on ("packages"))
-   (:file "with-backend" :depends-on ("packages"))
    (:file "documentation"
     :depends-on
     ("differentiator"
@@ -60,5 +60,4 @@
      "packages"
      "shape-syntax"
      "transform"
-     "with-lazy-arrays"
-     "with-backend"))))
+     "with-lazy-arrays"))))

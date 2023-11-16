@@ -7,6 +7,7 @@
    "bordeaux-threads"
    "lparallel"
    "trivia"
+   "petalisp.packages"
    "petalisp.utilities"
    "typo")
 

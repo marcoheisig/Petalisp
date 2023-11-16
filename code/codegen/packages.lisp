@@ -9,6 +9,10 @@
    #:petalisp.ir)
 
   (:import-from
+   #:petalisp
+   #:make-ir-backend)
+
+  (:import-from
    #:petalisp.utilities
    #:document-variable
    #:document-function)

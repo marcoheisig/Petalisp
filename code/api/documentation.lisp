@@ -6,16 +6,6 @@
 ;;;
 ;;; Ranges
 
-(document-type range
-  "A range denotes a possibly empty set of integers.")
-
-(document-type empty-range
-  "An empty range is a range with zero elements.")
-
-(document-type non-empty-range
-  "A non-empty range denotes a set of integers, starting from a lower bound START,
-by a fixed stride STEP, to an exclusive upper bound END.")
-
 (document-function range
   "Returns a new, normalized range from the supplied parameters.
 
@@ -38,9 +28,6 @@ second argument is used as an exclusive lower bound."
   (range 5 13 2)
   (range 1 7 -2)
   (range 7 1 -2))
-
-(document-function empty-range
-  "Returns a range with size zero.")
 
 (document-function rangep
   "Returns whether a supplied object is a range."
@@ -277,20 +264,20 @@ integers differs from the shape's rank."
   (shape-contains (~ 1 9) (list 4))
   (shape-contains (~ 1 2 9) (list 4)))
 
-(document-function shrink-shape
+(document-function petalisp.core:shrink-shape
   "This function expects a single shape with one or more ranges R1 to Rn.
 It returns a shape with the ranges R2 to R1, and, as a second value, the
 range R1 that has been peeled off."
   (shrink-shape (~ 1 10))
   (shrink-shape (~ 1 10 ~ 0 2)))
 
-(document-function enlarge-shape
+(document-function petalisp.core:enlarge-shape
   "For a given shape S and range R, this function returns a shape whose
   first range is R, and whose remaining ranges are those of S."
   (enlarge-shape (~*) (range 1 10))
   (enlarge-shape (~ 1 3) (range 1 4)))
 
-(document-function subdivide-arrays
+(document-function petalisp.core:subdivide-arrays
   "Invoke SUBDIVIDE-SHAPES on the shapes of the supplied ARRAYS."
   (subdivide-arrays (list))
   (subdivide-arrays (list #()))
@@ -306,7 +293,7 @@ shapes are supersets of that particular resulting shape."
   (subdivide-shapes (list (~ 1 10) (~ 2 20)))
   (subdivide-shapes (list (~ 1 3 ~ 1 3) (~ 1 2 ~ 1 2))))
 
-(document-function shape-subseq
+(document-function petalisp.core:shape-subseq
   "Returns the shape consisting of all ranges of the supplied shape in the
 axes interval between the supplied start and end.  If the end argument is
 not supplied, it defaults to the rank of the supplied shape."
@@ -314,14 +301,14 @@ not supplied, it defaults to the rank of the supplied shape."
   (shape-subseq (~ 2 ~ 3 ~ 4) 2)
   (shape-subseq (~ 2 ~ 3 ~ 4) 1 2))
 
-(document-function shape-prefix
+(document-function petalisp.core:shape-prefix
   "Returns the shape that consists of the lower axes of the supplied first
 argument, and whose rank is given by the second argument."
   (shape-prefix (~ 1 ~ 2  ~ 3) 0)
   (shape-prefix (~ 1 ~ 2  ~ 3) 1)
   (shape-prefix (~ 1 ~ 2  ~ 3) 2))
 
-(document-function shape-suffix
+(document-function petalisp.core:shape-suffix
   "Returns the shape that consists of the higher axes of the supplied first
 argument, and whose rank is given by the second argument."
   (shape-suffix (~ 1 ~ 2  ~ 3) 0)
@@ -337,7 +324,7 @@ shapes don't have the same rank."
   (subshapep (~ 0 3) (~ 1 9))
   (subshapep (~ 0 3 ~ 0 3) (~ 0 9 ~ 0 9)))
 
-(document-function array-shape
+(document-function petalisp.core:array-shape
   "Returns the shape of the supplied array.")
 
 (document-function shape-designator-shape
@@ -386,7 +373,7 @@ anything other than an integer, or describes a mapping that is not linear."
   "A transformation with input rank N and output rank M is a mapping
 from lists of length N to lists of rank M.")
 
-(document-type identity-transformation
+(document-type petalisp.core:identity-transformation
   "An identity transformation of rank N maps every list of length N to
 itself.  An identity transformation is its own inverse.")
 
@@ -395,7 +382,7 @@ itself.  An identity transformation is its own inverse.")
   (identity-transformation-p (transform i j to j i))
   (identity-transformation-p (transform i j to i j)))
 
-(document-function identity-transformation-p
+(document-function petalisp.core:identity-transformation-p
   "Returns whether a supplied object is an identity transformation."
   (identity-transformation-p (transform i j to j i))
   (identity-transformation-p (transform i j to i j)))
@@ -451,7 +438,7 @@ after it is multiplied with the corresponding scaling.")
    (transform i j to i j)
    (transform i j to j i)))
 
-(document-function transformation-similar
+(document-function petalisp.core:transformation-similar
   "Returns whether two supplied transformations are similar.  Two
 transformations are similar if they have the same permutation, the same
 inputs constraints, the same scalings, and offsets whose entries differ in
@@ -499,7 +486,7 @@ supplied transformation is not invertible."
   (invert-transformation
    (transform a b to a)))
 
-(document-function map-transformation-inputs
+(document-function petalisp.core:map-transformation-inputs
   "For each input of TRANSFORMATION, invoke FUNCTION with the input index
 and the corresponding input constraint, or null, if there is no input
 constraint for this input.
@@ -507,7 +494,7 @@ constraint for this input.
 If FROM-END is false, the input indices are traversed in ascending order.
 Otherwise, they are traversed in descending order.")
 
-(document-function map-transformation-outputs
+(document-function petalisp.core:map-transformation-outputs
   "For each output of TRANSFORMATION, invoke FUNCTION with the output
 index, input index, the scaling and the offset of that output.
 
@@ -517,7 +504,7 @@ output is constant.
 If FROM-END is false, the output indices are traversed in ascending order.
 Otherwise, they are traversed in descending order.")
 
-(document-function enlarge-transformation
+(document-function petalisp.core:enlarge-transformation
   "Given a transformation mapping from (i1 ... iN) to (j1 ... jM),
 return a transformation mapping from (i0 i1 ... iN iN+1) to
 ((+(* i0 SCALE) OFFSET) j1 ... jM).")
@@ -534,7 +521,7 @@ the supplied index."
   (transform-index '(10) (transform i to (+ i 2)))
   (transform-index '(1 2 3) (transform i j k to j (* 3 i) (1+ k))))
 
-(document-function identity-transformation
+(document-function petalisp.core:identity-transformation
   "Returns an identity transformation of the specified rank.")
 
 (document-function make-transformation
@@ -1042,7 +1029,7 @@ microseconds."
   (compute #0a42)
   (compute #(1 2 3) 5 #0a42))
 
-(document-function compute-list-of-arrays
+(document-function petalisp.core:compute-list-of-arrays
   "Returns a list of computed results - one for each element in the list
 of supplied arrays.
 

@@ -5,8 +5,7 @@
 (defpackage #:petalisp.test-suite
   (:use
    #:common-lisp
-   #:petalisp.core
-   #:petalisp.api
+   #:petalisp
    #:petalisp.examples.iterative-methods
    #:petalisp.examples.linear-algebra)
   (:export

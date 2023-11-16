@@ -3,11 +3,8 @@
 (cl:in-package #:common-lisp-user)
 
 (defpackage #:petalisp.api
-  (:nicknames #:petalisp)
 
-  (:use
-   #:common-lisp
-   #:petalisp.core)
+  (:use #:common-lisp #:petalisp)
 
   (:import-from
    #:petalisp.utilities
@@ -152,12 +149,7 @@
    #:lazy-array-dimensions
    #:make-unknown
 
-   ;; Network
-   #:network
-   #:network-parameters
-   #:network-outputs
-   #:make-network
-   #:call-network
+   ;; Automatic Differentiation
    #:differentiator
 
    ;; Reshapers
@@ -185,3 +177,27 @@
 (in-package #:petalisp.api)
 
 (defvar *backend* (make-native-backend))
+
+(defun lazy-array-shape (object)
+  (petalisp.core:lazy-array-shape (lazy-array object)))
+
+(defun lazy-array-element-type (object)
+  (petalisp.core:lazy-array-element-type (lazy-array object)))
+
+(defun lazy-array-rank (object)
+  (petalisp.core:lazy-array-rank (lazy-array object)))
+
+(defun lazy-array-size (object)
+  (petalisp.core:lazy-array-size (lazy-array object)))
+
+(defun lazy-array-range (object axis)
+  (petalisp.core:lazy-array-range (lazy-array object) axis))
+
+(defun lazy-array-ranges (object)
+  (petalisp.core:lazy-array-ranges (lazy-array object)))
+
+(defun lazy-array-dimension (object axis)
+  (petalisp.core:lazy-array-dimension (lazy-array object) axis))
+
+(defun lazy-array-dimensions (object)
+  (petalisp.core:lazy-array-dimensions (lazy-array object)))

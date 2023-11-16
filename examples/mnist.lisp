@@ -37,10 +37,10 @@
     x)))
 
 (defun softmax (x)
-  (let* ((max (lazy-reduce #'max (move-axis-to-front x 1)))
+  (let* ((max (lazy-reduce #'max (petalisp.api:move-axis-to-front x 1)))
          (totals (lazy #'exp (lazy #'- x (lazy-reshape max (transform i to i 0))))))
     (lazy #'/ totals
-     (lazy-reshape (lazy-reduce #'+ (move-axis-to-front totals 1))
+     (lazy-reshape (lazy-reduce #'+ (lazy-reshape totals (transform i j to j i)))
       (transform i to i 0)))))
 
 (defun sigmoid (x)
@@ -120,11 +120,11 @@
                  a1 a2 yhat dyhat))
           (when (zerop (mod i 100))
             (format t "~&------------- Epoch ~4D --------------~%" i)
-            (format t "W3max ~S~%" (compute (lazy-multireduce (lazy-array-rank W3) #'max W3)))
+            (format t "W3max ~S~%" (compute (petalisp.api:lazy-multireduce (lazy-array-rank W3) #'max W3)))
             #+(or)
             (format t "Predictions:~%~S~%" (compute yhat))
             #+(or)
             (format t "Ground truth:~%~S~%" (compute train-labels))
             (trivial-garbage:gc :full t)
-            (format t "Loss: ~S~%" (compute (lazy-multireduce (lazy-array-rank dyhat) #'+ (lazy #'* dyhat dyhat))))
+            (format t "Loss: ~S~%" (compute (petalisp.api:lazy-multireduce (lazy-array-rank dyhat) #'+ (lazy #'* dyhat dyhat))))
             (format t "~&---------- End of Epoch ~4D ----------~%" i)))))))
