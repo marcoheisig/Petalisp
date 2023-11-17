@@ -11,7 +11,9 @@
     (if (null arrays)
         'nil
         (typo:ntype-type-specifier
-         (reduce #'harmonize arrays :key (alexandria:compose #'lazy-array-ntype #'lazy-array))))))
+         (reduce #'harmonize arrays
+                 :key
+                 (alexandria:compose #'petalisp.core:lazy-array-ntype #'lazy-array))))))
 
 (defun lazy-harmonize (&rest arrays)
   (values-list

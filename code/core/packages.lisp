@@ -5,20 +5,6 @@
 (defpackage #:petalisp.core
   (:use #:common-lisp #:petalisp)
 
-  ;; The following symbols have different function definitions in the core and
-  ;; in the public interface.  The core functions expect their arguments to be
-  ;; lazy arrays of a suitable shape, whereas the public functions implicitly
-  ;; coerce their arguments to lazy arrays and apply broadcasting.
-  (:shadow
-   #:lazy-array-shape
-   #:lazy-array-element-type
-   #:lazy-array-rank
-   #:lazy-array-size
-   #:lazy-array-range
-   #:lazy-array-ranges
-   #:lazy-array-dimension
-   #:lazy-array-dimensions)
-
   (:import-from
    #:petalisp.utilities
    #:document-compiler-macro

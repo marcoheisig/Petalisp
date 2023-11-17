@@ -268,21 +268,21 @@ integers differs from the shape's rank."
   "This function expects a single shape with one or more ranges R1 to Rn.
 It returns a shape with the ranges R2 to R1, and, as a second value, the
 range R1 that has been peeled off."
-  (shrink-shape (~ 1 10))
-  (shrink-shape (~ 1 10 ~ 0 2)))
+  (petalisp.core:shrink-shape (~ 1 10))
+  (petalisp.core:shrink-shape (~ 1 10 ~ 0 2)))
 
 (document-function petalisp.core:enlarge-shape
   "For a given shape S and range R, this function returns a shape whose
   first range is R, and whose remaining ranges are those of S."
-  (enlarge-shape (~*) (range 1 10))
-  (enlarge-shape (~ 1 3) (range 1 4)))
+  (petalisp.core:enlarge-shape (~*) (range 1 10))
+  (petalisp.core:enlarge-shape (~ 1 3) (range 1 4)))
 
 (document-function petalisp.core:subdivide-arrays
   "Invoke SUBDIVIDE-SHAPES on the shapes of the supplied ARRAYS."
-  (subdivide-arrays (list))
-  (subdivide-arrays (list #()))
-  (subdivide-arrays (list #() #()))
-  (subdivide-arrays (list #(1 2 3 4) #(1 2))))
+  (petalisp.core:subdivide-arrays (list))
+  (petalisp.core:subdivide-arrays (list #()))
+  (petalisp.core:subdivide-arrays (list #() #()))
+  (petalisp.core:subdivide-arrays (list #(1 2 3 4) #(1 2))))
 
 (document-function subdivide-shapes
   "Returns a list of cons cells whose CAR is a shape and whose CDR is an
@@ -297,23 +297,23 @@ shapes are supersets of that particular resulting shape."
   "Returns the shape consisting of all ranges of the supplied shape in the
 axes interval between the supplied start and end.  If the end argument is
 not supplied, it defaults to the rank of the supplied shape."
-  (shape-subseq (~ 2 ~ 3 ~ 4) 0)
-  (shape-subseq (~ 2 ~ 3 ~ 4) 2)
-  (shape-subseq (~ 2 ~ 3 ~ 4) 1 2))
+  (petalisp.core:shape-subseq (~ 2 ~ 3 ~ 4) 0)
+  (petalisp.core:shape-subseq (~ 2 ~ 3 ~ 4) 2)
+  (petalisp.core:shape-subseq (~ 2 ~ 3 ~ 4) 1 2))
 
 (document-function petalisp.core:shape-prefix
   "Returns the shape that consists of the lower axes of the supplied first
 argument, and whose rank is given by the second argument."
-  (shape-prefix (~ 1 ~ 2  ~ 3) 0)
-  (shape-prefix (~ 1 ~ 2  ~ 3) 1)
-  (shape-prefix (~ 1 ~ 2  ~ 3) 2))
+  (petalisp.core:shape-prefix (~ 1 ~ 2  ~ 3) 0)
+  (petalisp.core:shape-prefix (~ 1 ~ 2  ~ 3) 1)
+  (petalisp.core:shape-prefix (~ 1 ~ 2  ~ 3) 2))
 
 (document-function petalisp.core:shape-suffix
   "Returns the shape that consists of the higher axes of the supplied first
 argument, and whose rank is given by the second argument."
-  (shape-suffix (~ 1 ~ 2  ~ 3) 0)
-  (shape-suffix (~ 1 ~ 2  ~ 3) 1)
-  (shape-suffix (~ 1 ~ 2  ~ 3) 2))
+  (petalisp.core:shape-suffix (~ 1 ~ 2  ~ 3) 0)
+  (petalisp.core:shape-suffix (~ 1 ~ 2  ~ 3) 1)
+  (petalisp.core:shape-suffix (~ 1 ~ 2  ~ 3) 2))
 
 (document-function subshapep
   "Returns whether all elements of the first supplied shape are also
@@ -379,13 +379,14 @@ itself.  An identity transformation is its own inverse.")
 
 (document-function transformationp
   "Returns whether a supplied object is a transformation."
-  (identity-transformation-p (transform i j to j i))
-  (identity-transformation-p (transform i j to i j)))
+  (transformationp (transform i j to j i))
+  (transformationp (transform i j to i j))
+  (transformationp 42))
 
 (document-function petalisp.core:identity-transformation-p
   "Returns whether a supplied object is an identity transformation."
-  (identity-transformation-p (transform i j to j i))
-  (identity-transformation-p (transform i j to i j)))
+  (petalisp.core:identity-transformation-p (transform i j to j i))
+  (petalisp.core:identity-transformation-p (transform i j to i j)))
 
 (document-function transformation-identityp
   "Returns whether a supplied transformation is an identity transformation."
@@ -443,19 +444,19 @@ after it is multiplied with the corresponding scaling.")
 transformations are similar if they have the same permutation, the same
 inputs constraints, the same scalings, and offsets whose entries differ in
 at most DELTA."
-  (transformation-similar
+  (petalisp.core:transformation-similar
    (transform a to a)
    (transform a to (1+ a))
    0)
-  (transformation-similar
+  (petalisp.core:transformation-similar
    (transform a to a)
    (transform a to (1+ a))
    1)
-  (transformation-similar
+  (petalisp.core:transformation-similar
    (transform i j to (+ j 2) i)
    (transform i j to (- j 1) i)
    2)
-  (transformation-similar
+  (petalisp.core:transformation-similar
    (transform i j to (+ j 2) i)
    (transform i j to (- j 1) i)
    3))
@@ -920,18 +921,6 @@ GRADIENTS must be a sequence of the same length as OUTPUTS, and whose
 elements are either arrays with or symbols that will be used as the name of
 such a parameter.")
 
-(document-type network
-  "A network is an encapsulated data-flow graph that can be invoked with a
-set of inputs and weights to yield several outputs.
-
-Networks can also be differentiated, using the function NETWORK-GRADIENTS.")
-
-(document-function make-network
-  "Creates a network with the supplied inputs and outputs.
-
-An error is signaled of any of the inputs is not of type NETWORK-INPUT, or
-if additional network inputs are reachable from the network outputs.")
-
 (document-function collapsing-reshaper
   "Returns a function that can be supplied as a modifier to LAZY-RESHAPE to
 turn any lazy array shape into modifiers that collapse that shape, such
@@ -1037,9 +1026,9 @@ The computed result of an array or lazy array with rank zero is the one
 element contained in this array.  The computed result of any other array or
 lazy array is an array with the same rank and dimensions.  The computed
 result of any other object is that object itself."
-  (compute-list-of-arrays (list (lazy #'+ 2 #(3 4))))
-  (compute-list-of-arrays (list (lazy-reshape #2a((1 2) (3 4)) (transform i j to j i))))
-  (compute-list-of-arrays (list 2 #0A3 #(4))))
+  (petalisp.core:compute-list-of-arrays (list (lazy #'+ 2 #(3 4))))
+  (petalisp.core:compute-list-of-arrays (list (lazy-reshape #2a((1 2) (3 4)) (transform i j to j i))))
+  (petalisp.core:compute-list-of-arrays (list 2 #0A3 #(4))))
 
 (document-function compute-asynchronously
   "Hints that it would be worthwhile to compute the supplied arrays

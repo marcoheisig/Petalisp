@@ -6,7 +6,7 @@
             (:constructor make-ad-record
                 (lazy-array
                  &aux (input-gradient-caches
-                       (make-array (length (lazy-array-inputs lazy-array))
+                       (make-array (length (petalisp.core:lazy-array-inputs lazy-array))
                                    :initial-element nil))))
             (:copier nil)
             (:predicate nil))
@@ -38,12 +38,12 @@
                (unless (gethash lazy-array table)
                  (setf (gethash lazy-array table)
                        (make-ad-record lazy-array))
-                 (mapc #'ensure-ad-record (lazy-array-inputs lazy-array)))))
+                 (mapc #'ensure-ad-record (petalisp.core:lazy-array-inputs lazy-array)))))
       (mapc #'ensure-ad-record outputs))
     ;; Connect all ad-records.
     (maphash
      (lambda (lazy-array record)
-       (loop for input in (lazy-array-inputs lazy-array)
+       (loop for input in (petalisp.core:lazy-array-inputs lazy-array)
              for input-ad-record = (gethash input table)
              for index from 0 do
                (push (cons index record)
@@ -58,13 +58,13 @@
                      (make-instance 'parameter
                        :name gradient
                        :shape (lazy-array-shape output)
-                       :ntype (lazy-array-ntype output)))
+                       :ntype (petalisp.core:lazy-array-ntype output)))
                     (t
                      (lazy-reshape
                       (lazy 'coerce gradient
                             (typo:ntype-type-specifier
                              (typo:ntype-primitive-ntype
-                              (lazy-array-ntype output))))
+                              (petalisp.core:lazy-array-ntype output))))
                       (lazy-array-shape output))))))
     ;; Return the two differentiating closures.
     (labels ((ad-record (lazy-array)
@@ -102,7 +102,7 @@
           (setf (ad-record-output-gradient-cache ad-record)
                 (apply
                  #'lazy-fuse
-                 (loop for (shape . bitmask) in (subdivide-arrays gradients)
+                 (loop for (shape . bitmask) in (petalisp.core:subdivide-arrays gradients)
                        collect
                        (apply
                         #'lazy #'+
@@ -116,7 +116,7 @@
     (if (not (null cached-value))
         cached-value
         (let* ((lazy-array (ad-record-lazy-array ad-record))
-               (delayed-action (lazy-array-delayed-action lazy-array)))
+               (delayed-action (petalisp.core:lazy-array-delayed-action lazy-array)))
           (setf (ad-record-input-gradient-cache ad-record index)
                 (input-gradient
                  lazy-array delayed-action
@@ -124,7 +124,7 @@
                  index))))))
 
 (defun coerce-to-ntype (lazy-array ntype)
-  (if (typo:ntype= (lazy-array-ntype lazy-array) ntype)
+  (if (typo:ntype= (petalisp.core:lazy-array-ntype lazy-array) ntype)
       lazy-array
       (lazy #'coerce lazy-array (typo:ntype-type-specifier ntype))))
 
@@ -145,7 +145,7 @@
             (typo:fnrecord-function fnrecord)
             inputs
             index
-            :wrapper-ntype #'lazy-array-ntype
+            :wrapper-ntype #'petalisp.core:lazy-array-ntype
             :wrap-constant
             (lambda (constant)
               (lazy-reshape constant shape))
@@ -158,7 +158,7 @@
                  (coerce-to-ntype
                   (apply #'lazy (typo:fnrecord-function fnrecord) inputs)
                   ntype))))))
-     (lazy-array-ntype (nth index inputs)))))
+     (petalisp.core:lazy-array-ntype (nth index inputs)))))
 
 (defmethod input-gradient
     ((lazy-array lazy-array)
@@ -168,7 +168,7 @@
   (let ((input (nth index (petalisp.core:delayed-fuse-inputs delayed-fuse))))
     (coerce-to-ntype
      (lazy-reshape output-gradient (lazy-array-shape input))
-     (lazy-array-ntype input))))
+     (petalisp.core:lazy-array-ntype input))))
 
 (defun move-axis-to-front (array axis)
   (let* ((lazy-array (lazy-array array))

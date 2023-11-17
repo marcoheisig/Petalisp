@@ -33,7 +33,6 @@
    (:file "lazy-slices" :depends-on ("packages"))
    (:file "lazy-sort" :depends-on ("lazy-multiple-value"))
    (:file "lazy-stack" :depends-on ("lazy-overwrite"))
-   (:file "network" :depends-on ("lazy"))
    (:file "packages")
    (:file "reshapers")
    (:file "shape-syntax" :depends-on ("packages"))
@@ -56,7 +55,6 @@
      "lazy-slices"
      "lazy-sort"
      "lazy-stack"
-     "network"
      "packages"
      "shape-syntax"
      "transform"
