@@ -347,25 +347,25 @@ by a fixed stride STEP, to an exclusive upper bound END."
 
 (defun fuse-ranges (&rest ranges)
   (let ((start nil)
-        (end nil))
-    (loop for range in ranges
-          unless (empty-range-p range)
-            do (cond
-                 ((null start)
-                  (setf start (range-start range))
-                  (setf end (range-end range)))
-                 (t
-                  (setf start (min start (range-start range)))
-                  (setf end (max end (range-end range))))))
-    (if (null start)
-        (empty-range)
-        (let ((step (- end start 1)))
-          (if (zerop step)
-              (range start end 1)
-              (progn (loop for range in ranges
-                           unless (empty-range-p range)
-                             do (let ((delta (- (range-start range) start)))
-                                  (if (range-with-size-one-p range)
-                                      (setf step (gcd step delta))
-                                      (setf step (gcd step delta (range-step range))))))
-                (range start end step)))))))
+        (last nil))
+    (loop for range in ranges unless (range-emptyp range) do
+      (cond
+        ((null start)
+         (setf start (range-start range))
+         (setf last (range-last range)))
+        (t
+         (setf start (min start (range-start range)))
+         (setf last (max last (range-last range))))))
+    (cond ((null start)
+           (empty-range))
+          ((= start last)
+           (range start (1+ start)))
+          (t
+           (let ((step (- last start)))
+             (loop for range in ranges
+                   unless (range-emptyp range)
+                     do (let ((delta (- (range-start range) start)))
+                          (if (range-with-size-one-p range)
+                              (setf step (gcd step delta))
+                              (setf step (gcd step delta (range-step range))))))
+             (range start (1+ last) step))))))
