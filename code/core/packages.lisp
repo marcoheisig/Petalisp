@@ -40,7 +40,7 @@
    #:range-end
    #:range-size
    #:subrangep
-   #:fuse-ranges)
+   #:superimpose-ranges)
 
   ;; Shapes
   (:export
@@ -75,6 +75,7 @@
    #:subshapep
    #:split-shape
    #:fuse-shapes
+   #:superimpose-shapes
    #:shape-table
    #:shape-table-p
    #:make-shape-table
@@ -143,6 +144,7 @@
    #:lazy-reshape
    #:lazy-ref
    #:lazy-fuse
+   #:broadcast-for-fusion
    #:make-unknown
    #:lazy-unknowns
    #:lazy-unknown-p

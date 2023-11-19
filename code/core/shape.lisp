@@ -190,15 +190,30 @@
         for range2 in (shape-ranges shape2)
         always (subrangep range1 range2)))
 
-(defun fuse-shapes (shape &rest more-shapes)
-  (declare (shape shape))
-  (let ((rank (shape-rank shape)))
+(defun fuse-shapes (shapes)
+  "Returns a shape that covers all the supplied shapes.  Signals an error if the
+supplied shapes aren't disjoint."
+  (declare (list shapes))
+  (let ((predicted-result (superimpose-shapes shapes)))
+    (dolist (shape shapes)
+      (assert (= (shape-rank predicted-result)
+                 (shape-rank shape))))
+    (assert (= (reduce #'+ shapes :key #'shape-size)
+               (shape-size predicted-result)))
+    predicted-result))
+
+(defun superimpose-shapes (shapes)
+  "Returns a shape that covers all the supplied shapes."
+  (declare (list shapes))
+  (let ((vector-of-ranges (map 'vector #'shape-ranges shapes))
+        (maxrank (reduce #'max shapes :key #'shape-rank :initial-value 0)))
     (make-shape
-     (apply #'mapcar #'fuse-ranges
-            (shape-ranges shape)
-            (loop for other-shape in more-shapes
-                  do (assert (= rank (shape-rank other-shape)))
-                  collect (shape-ranges other-shape))))))
+     (loop repeat maxrank
+           collect
+           (superimpose-ranges
+            (loop for index below (length vector-of-ranges)
+                  when (consp (svref vector-of-ranges index))
+                    collect (pop (svref vector-of-ranges index))))))))
 
 (defun shape-dimensions (shape)
   (declare (shape shape))

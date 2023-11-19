@@ -3,69 +3,53 @@
 (in-package #:petalisp.core)
 
 (defun lazy-fuse (array &rest more-arrays)
-  (let ((first (lazy-array array))
-        (rest (mapcar #'lazy-array more-arrays)))
-    ;; No need to fuse when only a single array is supplied.
-    (when (null rest)
-      (return-from lazy-fuse first))
-    (let ((rank (lazy-array-rank first))
-          (lazy-arrays (list* first rest)))
-      ;; Check that all lazy arrays have the same rank.
-      (dolist (lazy-array rest)
-        (unless (= (lazy-array-rank lazy-array) rank)
-          (error
-           "~@<Can only fuse arrays with ~
-               equal rank. The arrays ~A and ~A ~
-               violate this requirement.~:@>"
-           first lazy-array)))
-      ;; Check that all lazy arrays have a pairwise disjoint shape.
-      (alexandria:map-combinations
-       (lambda (lazy-arrays)
-         (destructuring-bind (lazy-array-1 lazy-array-2) lazy-arrays
-           (when (shape-intersectionp
-                  (lazy-array-shape lazy-array-1)
-                  (lazy-array-shape lazy-array-2))
-             (error "~@<Can only fuse disjoint shapes, ~
-                        but the arrays ~S and the shape ~S have the ~
-                        common subshape ~S.~:@>"
-                    lazy-array-1
-                    lazy-array-2
-                    (shape-intersection
-                     (lazy-array-shape lazy-array-1)
-                     (lazy-array-shape lazy-array-2))))))
-       lazy-arrays :length 2 :copy nil)
-      (let ((shape (apply #'fuse-shapes (mapcar #'lazy-array-shape lazy-arrays)))
-            (ntype (reduce #'typo:ntype-union lazy-arrays :key #'lazy-array-ntype)))
-        ;; Check that the predicted result shape is valid.
-        (unless (= (reduce #'+ lazy-arrays :key #'lazy-array-size)
-                   (shape-size shape))
-          (error "~@<Cannot fuse the arrays ~
-                     ~{~#[~;and ~S~;~S ~:;~S, ~]~}.~:@>"
-                 lazy-arrays))
+  ;; No need to fuse when only a single array is supplied.
+  (when (null more-arrays)
+    (return-from lazy-fuse (lazy-array array)))
+  (let ((arrays (list* array more-arrays)))
+    (multiple-value-bind (lazy-arrays result-shape)
+        (broadcast-for-fusion arrays)
+      ;; Check that all the supplied arrays are pairwise disjoint.
+      (unless (= (shape-size result-shape)
+                 (reduce #'+ lazy-arrays :key #'lazy-array-size))
+        ;; Find out which of the supplied arrays overlap.
+        (loop for lazy-array-1 in lazy-arrays for i from 0 do
+          (loop for lazy-array-2 in lazy-arrays for j below i do
+            (when (shape-intersectionp
+                   (lazy-array-shape lazy-array-1)
+                   (lazy-array-shape lazy-array-2))
+              (error "~@<Can only fuse disjoint shapes, ~
+                       but the arrays ~S and the shape ~S have the ~
+                       common subshape ~S.~:@>"
+                     (nth i arrays)
+                     (nth j arrays)
+                     (shape-intersection
+                      (lazy-array-shape lazy-array-1)
+                      (lazy-array-shape lazy-array-2))))))
+        (error "~@<Failed to identify overlapping shapes.~:@>"))
+      (let ((ntype (reduce #'typo:ntype-union lazy-arrays :key #'lazy-array-ntype)))
         ;; Optimization: If the content of the fusion is predicted to be a
-        ;; constant, we replace the entire fusion by a reference to that
-        ;; constant.
+        ;; constant, we replace the entire fusion by a reference to that constant.
         (when (typo:eql-ntype-p ntype)
           (return-from lazy-fuse
             (lazy-ref
              (lazy-array-from-scalar (typo:eql-ntype-object ntype))
-             shape
+             result-shape
              (make-transformation
-              :input-rank (shape-rank shape)
+              :input-rank (shape-rank result-shape)
               :output-rank 0))))
-        ;; Optimization: If the fusion is equivalent to a broadcasting
-        ;; reference (i.e., when all inputs are lazy reshapes of the same
-        ;; lazy array, and all transformations of those reshapes are
-        ;; similar), we replace the entire fusion by such a broadcasting
-        ;; reference.
-        (when (delayed-reshape-p (lazy-array-delayed-action first))
-          (let* ((delayed-reshape (lazy-array-delayed-action first))
+        ;; Optimization: If the fusion is equivalent to a broadcasting reference
+        ;; (i.e., when all inputs are lazy reshapes of the same lazy array, and all
+        ;; transformations of those reshapes are similar), we replace the entire
+        ;; fusion by such a broadcasting reference.
+        (when (delayed-reshape-p (lazy-array-delayed-action (first lazy-arrays)))
+          (let* ((delayed-reshape (lazy-array-delayed-action (first lazy-arrays)))
                  (first-input (delayed-reshape-input delayed-reshape))
                  (first-transformation (delayed-reshape-transformation delayed-reshape))
                  (first-output-mask (transformation-output-mask first-transformation))
                  (first-scalings (transformation-scalings first-transformation))
                  (first-offsets (transformation-offsets first-transformation)))
-            (when (loop for lazy-array in rest
+            (when (loop for lazy-array in (rest lazy-arrays)
                         for action = (lazy-array-delayed-action lazy-array)
                         always
                         (and (delayed-reshape-p action)
@@ -77,7 +61,7 @@
               (return-from lazy-fuse
                 (lazy-ref
                  first-input
-                 shape
+                 result-shape
                  (make-transformation
                   :input-rank (transformation-input-rank first-transformation)
                   :output-mask first-output-mask
@@ -86,6 +70,30 @@
         ;; Default: Create a lazy array that performs the specified fusion.
         (make-lazy-array
          :delayed-action (make-delayed-fuse :inputs lazy-arrays)
-         :shape shape
+         :shape result-shape
          :ntype ntype
          :depth (1+ (maxdepth lazy-arrays)))))))
+
+(defun broadcast-for-fusion (arrays)
+  "Returns a list of lazy arrays, one for each supplied array, that are all broadcast
+to have the same rank, in a way that is compatible with array fusion.  As a
+second value, returns the shape of the resulting fusion.  Doesn't check whether
+the fusion would be valid."
+  (let* ((arrays (list* arrays))
+         (lazy-arrays (mapcar #'lazy-array arrays))
+         (shapes (mapcar #'lazy-array-shape lazy-arrays))
+         (result-shape (superimpose-shapes shapes))
+         (result-rank (shape-rank result-shape)))
+    (values
+     (loop for lazy-array in lazy-arrays
+           collect
+           (let ((rank (lazy-array-rank lazy-array)))
+             (if (= rank result-rank)
+                 lazy-array
+                 (lazy-reshape
+                  lazy-array
+                  (make-shape
+                   (append
+                    (lazy-array-ranges lazy-array)
+                    (subseq (shape-ranges result-shape) rank)))))))
+     result-shape)))

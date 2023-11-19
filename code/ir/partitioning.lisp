@@ -1130,14 +1130,13 @@ relates to the supplied transformoid."
     (maphash
      (lambda (buffer buffer-shards)
        (assert (shape= (buffer-shape buffer)
-                       (apply #'fuse-shapes
-                              (mapcar #'buffer-shard-domain buffer-shards)))))
+                       (superimpose-shapes
+                        (mapcar #'buffer-shard-domain buffer-shards)))))
      *check-shards-buffer-shards*)
     (maphash
      (lambda (kernel kernel-shards)
        (assert (shape= (kernel-iteration-space kernel)
-                       (apply #'fuse-shapes
-                              (mapcar #'kernel-shard-iteration-space kernel-shards)))))
+                       (fuse-shapes (mapcar #'kernel-shard-iteration-space kernel-shards)))))
      *check-shards-kernel-shards*)))
 
 (defun check-shard-eventually (shard)

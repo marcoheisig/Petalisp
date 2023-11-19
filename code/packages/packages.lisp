@@ -26,7 +26,8 @@
    #:subrangep
    #:range-intersection
    #:range-intersectionp
-   #:range-difference-list)
+   #:range-difference-list
+   #:superimpose-ranges)
 
   ;; Shapes
   (:export
@@ -50,7 +51,7 @@
    #:shape-intersectionp
    #:shape-difference-list
    #:subdivide-shapes
-   #:fuse-shapes
+   #:superimpose-shapes
    #:map-shape
    #:split-shape
    #:shape-contains

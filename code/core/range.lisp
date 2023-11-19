@@ -345,7 +345,9 @@ by a fixed stride STEP, to an exclusive upper bound END."
                 (range-contains range2 last)
                 (range-contains range2 (+ start step)))))))
 
-(defun fuse-ranges (&rest ranges)
+(defun superimpose-ranges (ranges)
+  "Returns a range that covers all the supplied ranges."
+  (declare (list ranges))
   (let ((start nil)
         (last nil))
     (loop for range in ranges unless (range-emptyp range) do

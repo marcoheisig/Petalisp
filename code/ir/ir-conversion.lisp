@@ -554,7 +554,7 @@
         (let ((dshape (dendrite-shape dendrite)))
           (loop for entry in alist do
             (let* ((eshape (car entry))
-                   (cover (fuse-shapes eshape dshape)))
+                   (cover (superimpose-shapes (list eshape dshape))))
               (when (<= (* (shape-size cover) 0.75)
                         (+ (shape-size dshape)
                            (shape-size eshape)))
