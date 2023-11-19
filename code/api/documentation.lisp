@@ -34,6 +34,11 @@ second argument is used as an exclusive lower bound."
   (rangep 42)
   (rangep (range 1 3 2)))
 
+(document-function range-emptyp
+  "Returns whether a supplied range is empty."
+  (range-emptyp (range 0))
+  (range-emptyp (range 1)))
+
 (document-function range-with-size-one-p
   "Returns whether the supplied range has a size of one."
   (range-with-size-one-p (range 5))
@@ -111,6 +116,13 @@ supplied ranges."
   "Returns a list of disjoint subranges of RANGE1 that describe exactly those
 integers appearing in RANGE1 but not in RANGE2.")
 
+(document-function subrangep
+  "Returns whether all elements of the first supplied range are contained in the
+second supplied range."
+  (subrangep (range 0 10 2) (range 0 20 2))
+  (subrangep (range 0) (range 0))
+  (subrangep (range 10) (range 9)))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;; Shapes
@@ -167,6 +179,12 @@ has at least one range with size zero."
   (shape-emptyp (~ 1))
   (shape-emptyp (~ 0))
   (shape-emptyp (~ 1 ~ 2 ~ 3 3)))
+
+(document-function shape-with-size-one-p
+  "Returns whether the supplied shape has a size of one."
+  (shape-with-size-one-p (~*))
+  (shape-with-size-one-p (~ 1))
+  (shape-with-size-one-p (~ 2)))
 
 (document-function shape-rank
   "Returns the rank of the supplied shape, i.e., the number of ranges it
