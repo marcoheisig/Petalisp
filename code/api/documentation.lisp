@@ -810,15 +810,6 @@ supplied, it defaults to zero."
   (compute (lazy-index-components (~ 4 ~ 4) 1))
   (compute (lazy-index-components #2a((1 2) (3 4)) 1)))
 
-(document-function lazy-drop-axes
-  "Returns a lazy array with the same contents as the supplied array, but
-whose shape has all ranges referred to by the supplied axes removed.  All of
-the ranges being referred to must have a size of one."
-  (lazy-drop-axes (lazy-reshape 1 (~ 1 2 ~ 2 3)) 1)
-  (compute (lazy-drop-axes (lazy-reshape 1 (~ 1 2 ~ 2 3)) 1))
-  (compute (lazy-drop-axes (lazy-reshape 1 (~ 1 2 ~ 2 3)) 0 1))
-  (compute (lazy-drop-axes (lazy-reshape 1 (~ 1 2 ~ 2 5)) 0)))
-
 (document-function lazy-slice
   "Returns a lazy array whose rank is one less than the rank of the supplied
 array, and that contains all entries of the supplied array whose index

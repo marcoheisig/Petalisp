@@ -20,14 +20,13 @@
   :components
   ((:file "broadcast" :depends-on ("packages"))
    (:file "differentiator" :depends-on ("lazy-overwrite" "lazy" "lazy-reduce"))
-   (:file "lazy-drop-axes" :depends-on ("packages"))
    (:file "lazy-harmonize" :depends-on ("lazy" "lazy-overwrite"))
    (:file "lazy-index-components" :depends-on ("packages"))
    (:file "lazy" :depends-on ("broadcast"))
    (:file "lazy-multiple-value" :depends-on ("broadcast"))
    (:file "lazy-overwrite" :depends-on ("packages"))
    (:file "lazy-rearrange" :depends-on ("shape-syntax"))
-   (:file "lazy-reduce" :depends-on ("lazy-multiple-value" "lazy-drop-axes" "lazy-stack"))
+   (:file "lazy-reduce" :depends-on ("lazy-multiple-value" "lazy-stack"))
    (:file "lazy-slice" :depends-on ("packages"))
    (:file "lazy-slices" :depends-on ("packages"))
    (:file "lazy-sort" :depends-on ("lazy-multiple-value"))
@@ -41,7 +40,6 @@
     :depends-on
     ("differentiator"
      "broadcast"
-     "lazy-drop-axes"
      "lazy-harmonize"
      "lazy-index-components"
      "lazy"

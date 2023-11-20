@@ -22,7 +22,6 @@
 
    ;; High-level API
    #:broadcast
-   #:lazy-drop-axes
    #:lazy-fuse
    #:lazy
    #:lazy-multiple-value
