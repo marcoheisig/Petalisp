@@ -3,18 +3,28 @@
 (in-package #:petalisp.api)
 
 (defun lazy-reduce (function &rest arrays)
-  (multiple-value-bind (inputs input-shape) (broadcast arrays)
-    (unless (plusp (shape-rank input-shape))
-      (error "Cannot reduce arrays with rank zero."))
-    (unless (plusp (range-size (shape-range input-shape 0)))
-      (error "Cannot reduce along an empty axis."))
-    (values-list
-     (lazy-reduce-aux function (length inputs) inputs))))
+  (let ((n (length arrays)))
+    (multiple-value-bind (lazy-arrays input-shape) (broadcast arrays)
+      (dolist (function (alexandria:ensure-list function))
+        (unless (plusp (shape-rank input-shape))
+          (error "Cannot reduce arrays with rank zero."))
+        (unless (plusp (range-size (shape-range input-shape 0)))
+          (error "Cannot reduce along an empty axis."))
+        (setf lazy-arrays (lazy-reduce-aux function n lazy-arrays))
+        (setf input-shape (lazy-array-shape (first lazy-arrays))))
+      (values-list lazy-arrays))))
 
 (defun lazy-reduce-aux (function n-values inputs)
-  (let ((range (shape-range (lazy-array-shape (first inputs)) 0)))
+  (let ((range (lazy-array-range (first inputs) 0)))
     (if (range-with-size-one-p range)
-        (mapcar (lambda (input) (lazy-drop-axes input 0)) inputs)
+        (let ((drop-first-axis
+                (make-transformation
+                 :input-mask (list (range-start range))
+                 :output-rank 0)))
+          (mapcar
+           (lambda (input)
+             (lazy-reshape input drop-first-axis))
+           inputs))
         (with-accessors ((start range-start)
                          (end range-end)
                          (last range-last)

@@ -25,7 +25,6 @@
    (:file "lazy-index-components" :depends-on ("packages"))
    (:file "lazy" :depends-on ("broadcast"))
    (:file "lazy-multiple-value" :depends-on ("broadcast"))
-   (:file "lazy-multireduce" :depends-on ("lazy-reduce"))
    (:file "lazy-overwrite" :depends-on ("packages"))
    (:file "lazy-rearrange" :depends-on ("shape-syntax"))
    (:file "lazy-reduce" :depends-on ("lazy-multiple-value" "lazy-drop-axes" "lazy-stack"))
@@ -47,7 +46,6 @@
      "lazy-index-components"
      "lazy"
      "lazy-multiple-value"
-     "lazy-multireduce"
      "lazy-overwrite"
      "lazy-reduce"
      "reshapers"

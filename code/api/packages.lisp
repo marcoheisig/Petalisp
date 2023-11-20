@@ -28,7 +28,6 @@
    #:lazy-multiple-value
    #:lazy-overwrite
    #:lazy-reduce
-   #:lazy-multireduce
    #:lazy-reshape
    #:lazy-index-components
    #:lazy-rearrange

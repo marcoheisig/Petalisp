@@ -885,18 +885,16 @@ step sizes in the axis being stacked along."
 
 (document-function lazy-reduce
   "Returns one or more lazy arrays whose contents are the multiple value
-reduction with the supplied function, when applied pairwise to the elements
-of the first axis of each of the supplied arrays.  If the supplied arrays
-don't agree in shape, they are first broadcast with the function
-BROADCAST-ARRAYS.
+reduction with the supplied function, when applied pairwise to the elements of
+the first axis of each of the supplied arrays.  If the supplied arrays don't
+agree in shape, they are first broadcast with the function BROADCAST.
 
-The supplied function F must accept 2k arguments and return k values, where
-k is the number of supplied arrays.  All supplied arrays must have the same
-shape S, which is the cartesian product of some ranges, i.e., S = r_1 x
-... r_n, where each range r_k is a set of integers, e.g., {0, 1, ..., m}.
-Then β returns k arrays of shape s = r_2 x ... x r_n, whose elements are a
-combination of the elements along the first axis of each array according to
-the following rules:
+The supplied function F must accept 2k arguments and return k values, where k
+is the number of supplied arrays.  All supplied arrays must have the same shape
+S, which is the cartesian product of some ranges, i.e., S = r_1 x ... r_n,
+where each range r_k is a set of integers, e.g., {0, 1, ..., m}.  Returns k
+arrays of shape s = r_2 x ... x r_n, whose elements are a combination of the
+elements along the first axis of each array according to the following rules:
 
 1. If the given arrays are empty, return k empty arrays.
 
@@ -909,9 +907,14 @@ the following rules:
    with shape u x s.  Recursively process the lower and the upper halves of
    each array independently to obtain 2k new arrays of shape s.  Finally,
    combine these 2k arrays element-wise with f to obtain k new arrays with
-   all values returned by f. Return these arrays."
-  (compute (lazy-reduce #'+ #(1 2 3 4)))
-  (compute (lazy-reduce #'+ #2a((1 2) (3 4))))
+   all values returned by f.  Return these arrays.
+
+The first argument may also be a list of functions, in which case the supplied
+lazy arrays are first reduced with the first of those functions, the results
+are reduced with the second of those functions, and so on."
+  (compute (lazy-reduce '+ #(1 2 3 4)))
+  (compute (lazy-reduce '+ #2a((1 2) (3 4))))
+  (compute (lazy-reduce '(+ +) #2a((1 2) (3 4))))
   (let ((a #(5 2 7 1 9)))
     (multiple-value-bind (max index)
         (lazy-reduce
@@ -921,15 +924,6 @@ the following rules:
                (values rv ri)))
          a (lazy-index-components a 0))
       (compute max index))))
-
-(document-function lazy-multireduce
-  "Returns the lazy array obtained by repeatedly invoking LAZY-REDUCE as
-often as indicated by the supplied first argument.  The remaining arguments
-are the function to be used for the reduction and a number of lazy arrays
-that are broadcast and reduced along their first axes."
-  (compute (lazy-multireduce 0 #'+ #2a((1 2) (3 4))))
-  (compute (lazy-multireduce 1 #'+ #2a((1 2) (3 4))))
-  (compute (lazy-multireduce 2 #'+ #2a((1 2) (3 4)))))
 
 (document-function differentiator
   "Returns a function that, for each node in a network whose roots are the

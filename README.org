@@ -80,7 +80,6 @@ Put the following code in your initialization file:
 #+begin_src elisp
 (put 'lazy 'common-lisp-indent-function '(1 &rest 1))
 (put 'lazy-reduce 'common-lisp-indent-function '(1 &rest 1))
-(put 'lazy-multireduce 'common-lisp-indent-function '(1 1 &rest 1))
 (put 'lazy-multiple-value 'common-lisp-indent-function '(1 1 &rest 1))
 (put 'lazy-reshape 'common-lisp-indent-function '(1 &rest 1))
 #+end_src
