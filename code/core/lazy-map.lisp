@@ -17,33 +17,29 @@
                  (delayed-multiple-value-map
                   (let* ((values-ntype (delayed-multiple-value-map-values-ntype delayed-action))
                          (ntype (typo:values-ntype-nth-value-ntype n values-ntype)))
-                    (if (typo:eql-ntype-p ntype)
-                        (wrap-constant (typo:eql-ntype-object ntype))
-                        (make-lazy-array
-                         :shape shape
-                         :ntype ntype
-                         :depth (1+ (lazy-array-depth lazy-array))
-                         :delayed-action
-                         (make-delayed-nth-value
-                          :number n
-                          :input lazy-array)))))
+                    (cond ((typo:eql-ntype-p ntype)
+                           (wrap-constant (typo:eql-ntype-object ntype)))
+                          ((eql (delayed-multiple-value-map-fnrecord delayed-action)
+                                (typo:ensure-fnrecord 'values))
+                           (nth n (delayed-multiple-value-map-inputs delayed-action)))
+                          (t
+                           (make-lazy-array
+                            :shape shape
+                            :ntype ntype
+                            :depth (1+ (lazy-array-depth lazy-array))
+                            :delayed-action
+                            (make-delayed-nth-value
+                             :number n
+                             :input lazy-array))))))
                  (otherwise
                   (if (= n 0)
                       lazy-array
                       (wrap-constant nil))))))
            (wrapper-primary-value (lazy-array)
              (wrapper-nth-value 0 lazy-array))
-           (wrapper-nth-value-ntype (n lazy-array)
-             (let ((delayed-action (lazy-array-delayed-action lazy-array)))
-               (typecase delayed-action
-                 (delayed-multiple-value-map
-                  (typo:values-ntype-nth-value-ntype
-                   n
-                   (delayed-multiple-value-map-values-ntype delayed-action)))
-                 (otherwise
-                  (if (= n 0)
-                      (lazy-array-ntype lazy-array)
-                      (typo:ntype-of nil))))))
+           (wrapper-ntype (lazy-array)
+             (lazy-array-ntype
+              (wrapper-primary-value lazy-array)))
            (wrap-constant (constant)
              (lazy-ref
               (lazy-array-from-scalar constant)
@@ -85,7 +81,8 @@
                         inputs
                         :wrap-constant #'wrap-constant
                         :wrap-function #'wrap-function
-                        :wrapper-nth-value-ntype #'wrapper-nth-value-ntype)))
+                        :wrapper-ntype #'wrapper-ntype
+                        :wrapper-nth-value #'wrapper-nth-value)))
           (values-list
            (loop for n below n-outputs
                  collect (wrapper-nth-value n wrapper)))))))
