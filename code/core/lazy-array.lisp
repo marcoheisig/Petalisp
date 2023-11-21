@@ -274,10 +274,11 @@
 ;;; Lazy Array Constructors
 
 (defun lazy-array (object)
-  (typecase object
-    (lazy-array object)
-    (array (lazy-array-from-array object))
-    (t (lazy-array-from-scalar object))))
+  (the (values lazy-array &optional)
+       (typecase object
+         (lazy-array object)
+         (array (lazy-array-from-array object))
+         (t (lazy-array-from-scalar object)))))
 
 (defun lazy-array-from-scalar (object)
   (make-lazy-array
