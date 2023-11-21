@@ -33,4 +33,18 @@
     (let ((vector (coerce (alexandria:iota n) 'vector)))
       (loop repeat n do
         (let ((permutation (alexandria:shuffle (alexandria:copy-array vector))))
-          (is (equalp vector (compute (lazy-sort permutation #'<)))))))))
+          (is (equalp vector (compute (lazy-sort permutation #'<))))))))
+  (let ((strings
+          '("The quick brown fox jumps over the lazy dog."
+            "Sphinx of black quartz, judge my vow."))
+        (list-of-args
+          '((char-lessp)
+            (char-greaterp)
+            (char<)
+            (char>)
+            (< :key char-code)
+            (> :key char-code))))
+    (dolist (string strings)
+      (dolist (args list-of-args)
+        (is (string= (apply #'sort (copy-seq string) args)
+                     (compute (apply #'lazy-sort string args))))))))

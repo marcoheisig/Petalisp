@@ -2,51 +2,101 @@
 
 (in-package #:petalisp.api)
 
-(defun lazy-sort (array predicate)
+(defun lazy-sort (array predicate &key (key 'identity))
   (let* ((x (lazy-array array))
-         (n (lazy-array-dimension x 0)))
-    ;; The algorithm used here is Batcher's odd-even sort.
+         (y (lazy key x)))
+    (when (zerop (lazy-array-rank x))
+      (error "~@<Cannot sort arrays of rank zero.~:@>"))
+    (if (eql x y)
+        (lazy-valuesort x predicate)
+        (lazy-keysort x y predicate))))
+
+(defun lazy-valuesort (x predicate)
+  (let ((i (lazy-index-components x))
+        (n (lazy-array-dimension x 0)))
     (loop for p = 1 then (ash p 1) while (< p n) do
       (loop for k = p then (ash k -1) while (>= k 1) do
         (let* ((up (make-transformation :offsets (vector k)))
                (down (invert-transformation up))
-               (divisor (ash p 1))
-               (j0 (mod k p)))
-          (multiple-value-bind (blocks rest) (floor (- n j0) (* 2 k))
-            (setf x (apply
-                     #'lazy-fuse
-                     (lazy-reshape x (~ 0 j0))
-                     (lazy-reshape x
-                      (let ((last (+ j0 (* 2 k blocks))))
-                        (if (<= rest k)
-                            (~ last n)
-                            (~ (+ last (- rest k)) (+ last k)))))
-                     (mapcan
-                      (lambda (upper-shape)
-                        (let* ((lower-shape (transform-shape upper-shape down))
-                               (lower-indices (lazy-index-components lower-shape))
-                               (lower-values (lazy-reshape x lower-shape))
-                               (upper-indices (lazy-reshape (lazy-index-components upper-shape) down))
-                               (upper-values (lazy-reshape x upper-shape down)))
-                          (multiple-value-bind (lo hi)
-                              (lazy-multiple-value 2
-                               'typo:cswap
-                               (lazy 'or
-                                (lazy #'/=
-                                 (lazy #'floor lower-indices divisor)
-                                 (lazy #'floor upper-indices divisor))
-                                (lazy predicate lower-values upper-values))
-                               lower-values
-                               upper-values)
-                            (list lo (lazy-reshape hi up)))))
-                      (if (< k blocks)
-                          (loop for i from 0 below k
-                                collect
-                                (~ (+ j0 i k) n (* 2 k)))
-                          (loop for j from (+ j0 k) by (* 2 k) below n
-                                collect
-                                (~ j (min (+ j k) n)))))))))))
-    x))
+               (divisor (ash p 1)))
+          (multiple-value-bind (inactive-shapes upper-shapes)
+              (batcher-odd-even-shapes n p k)
+            (let ((xparts '()))
+              (dolist (inactive-shape inactive-shapes)
+                (push (lazy-reshape x inactive-shape) xparts))
+              (dolist (upper-shape upper-shapes)
+                (let* ((lower-shape (transform-shape upper-shape down))
+                       (xlo (lazy-reshape x lower-shape))
+                       (xhi (lazy-reshape x upper-shape down))
+                       (ilo (lazy-reshape i lower-shape))
+                       (ihi (lazy-reshape i upper-shape down)))
+                  (multiple-value-bind (xlo xhi)
+                      (lazy-multiple-value 2 'typo:cswap
+                       (lazy 'or
+                        (lazy #'/=
+                         (lazy #'floor ilo divisor)
+                         (lazy #'floor ihi divisor))
+                        (lazy predicate xlo xhi))
+                       xlo xhi)
+                    (push xlo xparts)
+                    (push (lazy-reshape xhi up) xparts))))
+              (setf x (apply #'lazy-fuse xparts)))))))
+    (values x x)))
+
+(defun lazy-keysort (x y predicate)
+  (let ((i (lazy-index-components x))
+        (n (lazy-array-dimension x 0)))
+    (loop for p = 1 then (ash p 1) while (< p n) do
+      (loop for k = p then (ash k -1) while (>= k 1) do
+        (let* ((up (make-transformation :offsets (vector k)))
+               (down (invert-transformation up))
+               (divisor (ash p 1)))
+          (multiple-value-bind (inactive-shapes upper-shapes)
+              (batcher-odd-even-shapes n p k)
+            (let ((xparts '())
+                  (yparts '()))
+              (dolist (inactive-shape inactive-shapes)
+                (push (lazy-reshape x inactive-shape) xparts)
+                (push (lazy-reshape y inactive-shape) yparts))
+              (dolist (upper-shape upper-shapes)
+                (let* ((lower-shape (transform-shape upper-shape down))
+                       (xlo (lazy-reshape x lower-shape))
+                       (ylo (lazy-reshape y lower-shape))
+                       (xhi (lazy-reshape x upper-shape down))
+                       (yhi (lazy-reshape y upper-shape down))
+                       (ilo (lazy-reshape i lower-shape))
+                       (ihi (lazy-reshape i upper-shape down)))
+                  (multiple-value-bind (xlo ylo xhi yhi)
+                      (lazy-multiple-value 4 'typo:cswap2
+                       (lazy 'or
+                        (lazy #'/=
+                         (lazy #'floor ilo divisor)
+                         (lazy #'floor ihi divisor))
+                        (lazy predicate ylo yhi))
+                       xlo ylo xhi yhi)
+                    (push xlo xparts)
+                    (push ylo yparts)
+                    (push (lazy-reshape xhi up) xparts)
+                    (push (lazy-reshape yhi up) yparts))))
+              (setf x (apply #'lazy-fuse xparts))
+              (setf y (apply #'lazy-fuse yparts)))))))
+    (values x y)))
+
+(defun batcher-odd-even-shapes (n p k)
+  (let ((j0 (mod k p)))
+    (multiple-value-bind (blocks rest) (floor (- n j0) (* 2 k))
+      (values
+       (list
+        (~ 0 j0)
+        (let ((last (+ j0 (* 2 k blocks))))
+          (if (<= rest k)
+              (~ last n)
+              (~ (+ last (- rest k)) (+ last k)))))
+       (if (< k blocks)
+           (loop for i from 0 below k
+                 collect (~ (+ j0 i k) n (* 2 k)))
+           (loop for j from (+ j0 k) by (* 2 k) below n
+                 collect (~ j (min (+ j k) n))))))))
 
 ;;; I'm leaving a naive implementation of Batcher's algorithm here as a
 ;;; comment, because it is the basis of the parallel implementation above.  In
