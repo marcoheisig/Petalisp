@@ -826,8 +826,8 @@ all the supplied load or store instructions."
 (defun ensure-array-shape-ntype-compatibility (array shape ntype)
   (declare (array array) (shape shape) (typo:ntype ntype))
   (unless (= (shape-rank shape) (array-rank array))
-    (error "Expected an array of rank ~D, got~% ~S~%"
-           (array-rank array) array))
+    (error "Expected an array of rank ~D, but got the rank ~D array~% ~S~%"
+           (shape-rank shape) (array-rank array) array))
   (loop for range in (shape-ranges shape) for axis from 0 do
     (assert (= 0 (range-start range)))
     (assert (= 1 (range-step range)))
