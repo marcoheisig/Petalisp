@@ -7,10 +7,11 @@
 !/*/
 !/*/*/
 !/*/*/*/
-# Lisp related files
+# Source Code
 !*.lisp
 !*.asd
-# scripts
 !*.sh
-# NumPy Data (for the machine learning example)
+!*.c
+!*.py
+# NumPy Data
 !*.npy
