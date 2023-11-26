@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 
+import jax
 import jax.numpy as jnp
 import time
 import sys
 
+@jax.jit
 def jacobi(u):
     return u.at[1:-1, 1:-1].set(u[0:-2, 1:-1] + u[2:, 1:-1] + u[1:-1, 0:-2] + u[1:-1, 2:]) * 0.25
 
