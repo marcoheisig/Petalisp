@@ -2,20 +2,30 @@
 
 (in-package #:petalisp.api)
 
-(defun lazy-rearrange (lazy-array shape)
-  (unless (= (lazy-array-size lazy-array)
-             (shape-size shape))
-    (error "~@<Rearranging must preserve the number of elements. ~
-               This call attempts to reshape the array ~S with ~
-               ~D elements to the shape ~S with ~D elements.~:@>"
-           lazy-array (lazy-array-size lazy-array) shape (shape-size shape)))
-  (let ((n1 (petalisp.core:normalizing-transformation (lazy-array-shape lazy-array)))
-        (n2 (petalisp.core:normalizing-transformation shape)))
-    (lazy-reshape
-     (lazy-rearrange/normalized
-      (lazy-reshape lazy-array n1)
-      (transform-shape shape n2))
-     (invert-transformation n2))))
+(defun lazy-rearrange (data n-axes shape)
+  (declare (unsigned-byte n-axes) (shape shape))
+  (with-lazy-arrays (data)
+    (unless (<= n-axes (lazy-array-rank data))
+      (error "~@<Invalid number of axes ~D for an array with rank ~D.~:@>"
+             n-axes
+             (lazy-array-rank data)))
+    (let* ((source-shape (lazy-array-shape data))
+           (target-shape (~* (shape-ranges shape)
+                             (subseq (shape-ranges source-shape) n-axes))))
+      (unless (= (shape-size source-shape)
+                 (shape-size target-shape))
+        (error "~@<Rearranging must preserve the number of elements. ~
+               This call attempts to reshape an array with shape ~S ~
+               and ~D elements to the shape ~S with ~D elements.~:@>"
+               source-shape (shape-size source-shape)
+               target-shape (shape-size target-shape)))
+      (let ((n1 (petalisp.core:normalizing-transformation source-shape))
+            (n2 (petalisp.core:normalizing-transformation target-shape)))
+        (lazy-reshape
+         (lazy-rearrange/normalized
+          (lazy-reshape data n1)
+          (transform-shape target-shape n2))
+         (invert-transformation n2))))))
 
 (defun lazy-rearrange/normalized (lazy-array output-shape)
   ;; As a small, but important optimization, we detect whether a prefix or

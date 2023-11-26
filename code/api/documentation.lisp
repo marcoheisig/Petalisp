@@ -916,6 +916,16 @@ are reduced with the second of those functions, and so on."
          a (lazy-index-components a 0))
       (compute max index))))
 
+(document-function lazy-rearrange
+  "Returns a lazy array with the same contents as the supplied one, but with
+a different shape.  The shape of the result is derived from the supplied number
+of axes and the supplied shape by replacing the specified number of axes of the
+original shape with all ranges of the supplied shape.  Signals an error if the
+original shape and the resulting one differ in size."
+  (compute (lazy-rearrange (lazy-index-components (~ 1 10)) 1 (~ 3 ~ 3)))
+  (compute (lazy-rearrange #2a((1 2) (3 4)) 2 (~ 4)))
+  (compute (lazy-rearrange #2a((1 2) (3 4)) 1 (~ 2 ~ 1))))
+
 (document-function differentiator
   "Returns a function that, for each node in a network whose roots are the
 supplied OUTPUTS will return the gradient at that node.

@@ -10,7 +10,9 @@
             (lambda (shapes)
               (let ((lazy-array (lazy-index-components initial-shape)))
                 (dolist (shape shapes)
-                  (setf lazy-array (lazy-rearrange lazy-array shape)))
+                  (let ((rank (lazy-array-rank lazy-array)))
+                    (setf lazy-array
+                          (lazy-rearrange lazy-array rank shape))))
                 (compute lazy-array)))
             other-shapes)))
     (test (~ 1 101)
