@@ -95,8 +95,9 @@ don't have the same rank."
           for output-range in output-ranges
           do (cond
                ;; Move.
-               ((= (range-size output-range)
-                   (range-size input-range))
+               ((and (= (range-size output-range)
+                        (range-size input-range))
+                     (not (range-emptyp input-range)))
                 (let* ((a (/ (range-step output-range)
                              (range-step input-range)))
                        (b (- (range-start output-range)

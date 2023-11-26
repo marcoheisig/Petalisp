@@ -49,4 +49,4 @@
              (loop for input in inputs
                    for result in results
                    collect
-                   (lazy-stack 0 result (lazy-reshape input rest)))))))))
+                   (lazy-stack (list result (lazy-reshape input rest))))))))))

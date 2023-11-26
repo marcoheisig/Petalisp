@@ -856,23 +856,13 @@ along the first axis with the supplied predicate."
 
 (document-function lazy-stack
   "Returns a lazy array whose contents are the supplied arrays, stacked next
-to each other along the specified AXIS such that the leftmost array will have
+to each other along a particular axis, such that the leftmost array will have
 the lowest index components, and the rightmost array will have the highest
-index components.
-
-The supplied arrays must all have the same rank, and also the same ranges
-in all but the one axis that is being stacked along.  The range of the
-resulting lazy array in that axis that is being stacked along has the same
-start as the leftmost corresponding argument range that is non-empty, a
-size that is the sum of the sizes of all corresponding ranges, and a step
-size is that of the leftmost corresponding argument range that has more
-than one element, or one if there is no such range.  Signals an error if
-multiple arguments have a range with more than one element but differing
-step sizes in the axis being stacked along."
-  (compute (lazy-stack 0 #(1) #(2) #(3)))
-  (compute (lazy-stack 0 #(1 2) #(3 4) #(5 6)))
-  (compute (lazy-stack 0 #2A((1 2) (3 4)) #2A((5 6) (7 8))))
-  (compute (lazy-stack 1 #2A((1 2) (3 4)) #2A((5 6) (7 8)))))
+index.  Keyword arguments can be supplied to specify the axis along which to
+stack, and the start and step of the resulting lazy array in that axis."
+  (compute (lazy-stack (list 1 2 #(3 4))))
+  (compute (lazy-stack (list #2A((1 2) (3 4)) #2A((5 6) (7 8)))))
+  (compute (lazy-stack (list #2A((1 2) (3 4)) #2A((5 6) (7 8))) :axis 1)))
 
 (document-function lazy-reduce
   "Returns one or more lazy arrays whose contents are the multiple value

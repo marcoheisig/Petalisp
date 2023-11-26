@@ -174,7 +174,8 @@
   (with-lazy-arrays (x)
     (lazy #'sqrt
      (lazy-reduce #'+
-      (lazy-stack 0 (lazy-reshape 0 (~ 1)) (lazy #'* x x))))))
+      (lazy-stack
+       (list 0 (lazy #'* x x)))))))
 
 (defun lazy-max-norm (x)
   (with-lazy-arrays (x)
