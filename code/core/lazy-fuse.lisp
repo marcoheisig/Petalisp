@@ -26,7 +26,8 @@
                      (shape-intersection
                       (lazy-array-shape lazy-array-1)
                       (lazy-array-shape lazy-array-2))))))
-        (error "~@<Invalid fusion.~:@>"))
+        (error "~@<Cannot cover the predicted fusion shape ~S with the supplied data.~:@>"
+               result-shape))
       (let ((ntype (reduce #'typo:ntype-union lazy-arrays :key #'lazy-array-ntype)))
         ;; Optimization: If the content of the fusion is predicted to be a
         ;; constant, we replace the entire fusion by a reference to that constant.
