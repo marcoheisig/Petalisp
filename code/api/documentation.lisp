@@ -1098,12 +1098,10 @@ passing them to LAZY-OVERWRITE.")
 
 (document-function with-lazy-arrays
   "Execute the body in an environment where each of the supplied symbols is
-shadowed by the lazy array equivalent of the previous value of that symbol.
-
-An alternative notation can be used to avoid shadowing the original array:
-If any array name is not a symbol but a list of a symbol and a form, the
-symbol is bound to the lazy array equivalent of what's produced by that
-form.
+shadowed by the lazy array equivalent of the previous value of that symbol.  An
+alternative notation can be used to avoid shadowing the original array: If any
+array name is not a symbol but a list of a symbol and a form, the symbol is
+bound to the lazy array equivalent of what's produced by that form.
 
 It is good practice to start each function that expects some of its
 arguments to be lazy arrays to start with a suitable use of this macro."
