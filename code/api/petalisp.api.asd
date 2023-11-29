@@ -25,7 +25,7 @@
    (:file "lazy" :depends-on ("broadcast"))
    (:file "lazy-multiple-value" :depends-on ("broadcast"))
    (:file "lazy-overwrite" :depends-on ("packages"))
-   (:file "lazy-rearrange" :depends-on ("shape-syntax"))
+   (:file "lazy-rearrange" :depends-on ("shape-syntax" "with-lazy-arrays"))
    (:file "lazy-reduce" :depends-on ("lazy-multiple-value" "lazy-stack"))
    (:file "lazy-slice" :depends-on ("packages"))
    (:file "lazy-slices" :depends-on ("packages"))
