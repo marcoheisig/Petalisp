@@ -205,8 +205,9 @@
 (defun from-storage-transformation (shape)
   (if (loop for range in (shape-ranges shape)
             always
-            (and (= 0 (range-start range))
-                 (= 1 (range-step range))))
+            (or (range-emptyp range)
+                (and (= 0 (range-start range))
+                     (= 1 (range-step range)))))
       (identity-transformation (shape-rank shape))
       (let* ((rank (shape-rank shape))
              (ranges (shape-ranges shape))
@@ -216,17 +217,22 @@
              (offsets (make-array rank)))
         (loop for range in ranges
               for index from 0 do
-                (if (range-with-size-one-p range)
-                    (let ((value (range-start range)))
-                      (setf (aref input-mask index) 0)
-                      (setf (aref output-mask index) nil)
-                      (setf (aref scalings index) 0)
-                      (setf (aref offsets index) value))
-                    (progn
-                      (setf (aref input-mask index) nil)
-                      (setf (aref output-mask index) index)
-                      (setf (aref scalings index) (range-step range))
-                      (setf (aref offsets index) (range-start range)))))
+                (cond ((range-emptyp range)
+                       (setf (aref input-mask index) nil)
+                       (setf (aref output-mask index) index)
+                       (setf (aref scalings index) 0)
+                       (setf (aref offsets index) 0))
+                      ((range-with-size-one-p range)
+                       (let ((value (range-start range)))
+                         (setf (aref input-mask index) 0)
+                         (setf (aref output-mask index) nil)
+                         (setf (aref scalings index) 0)
+                         (setf (aref offsets index) value)))
+                      (t
+                       (setf (aref input-mask index) nil)
+                       (setf (aref output-mask index) index)
+                       (setf (aref scalings index) (range-step range))
+                       (setf (aref offsets index) (range-start range)))))
         (%make-hairy-transformation rank rank input-mask output-mask scalings offsets t))))
 
 ;;; Returns an invertible transformation that eliminates all ranges with
