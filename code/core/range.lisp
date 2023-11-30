@@ -96,7 +96,7 @@ by a fixed stride STEP, to an exclusive upper bound END."
     (error "~@<Bad step size 0 for range with start ~d and end ~d~:@>"
            start end))
   (let* ((direction (signum step))
-         (size (1+ (truncate (- end start direction) step))))
+         (size (truncate (- (+ end step) start direction) step)))
     (cond ((<= size 0)
            (empty-range))
           ((= size 1)
