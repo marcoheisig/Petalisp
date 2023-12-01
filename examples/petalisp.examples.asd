@@ -15,7 +15,7 @@
   ((:file "iterative-methods")
    (:file "linear-algebra")
    (:file "wave-equation")
-   (:file "image-processing")
+   (:file "statistics")
    (:module "mnist-data"
     :components
     ((:static-file "test-images.npy")
