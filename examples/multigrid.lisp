@@ -22,7 +22,7 @@
 (defun lazy-sor-2d (u f h omega)
   (with-lazy-arrays (u f h omega)
     (let* ((shape (petalisp.core:shape-prefix (lazy-array-shape u) 2))
-           (interior (funcall (peeling-reshaper :layers 1) shape)))
+           (interior (funcall (peeler 1 1) shape)))
       (lazy-overwrite-and-harmonize
        u
        (lazy #'+
@@ -39,10 +39,10 @@
 (defun lazy-rbgs-2d (u f h)
   (with-lazy-arrays (u f h)
     (let* ((shape (petalisp.core:shape-prefix (lazy-array-shape u) 2))
-           (red-1 (funcall (peeling-reshaper :lower-layers '(1 1) :layers 1 :strides 2) shape))
-           (red-2 (funcall (peeling-reshaper :lower-layers '(2 2) :layers 1 :strides 2) shape))
-           (black-1 (funcall (peeling-reshaper :lower-layers '(1 2) :layers 1 :strides 2) shape))
-           (black-2 (funcall (peeling-reshaper :lower-layers '(2 1) :layers 1 :strides 2) shape)))
+           (red-1 (funcall (peeler '(1 1 2) '(1 1 2)) shape))
+           (red-2 (funcall (peeler '(2 1 2) '(2 1 1)) shape))
+           (black-1 (funcall (peeler '(1 1 2) '(2 1 2)) shape))
+           (black-2 (funcall (peeler '(2 1 2) '(1 1 2)) shape)))
       (flet ((stencil (space)
                (lazy #'* 1/4
                 (lazy #'+
@@ -62,40 +62,40 @@
            (b (lazy #'* 1/2
                (lazy #'+
                 (lazy-reshape a
-                 (peeling-reshaper :lower-layers '(0 1))
+                 (peeler '(0 0) '(1 0))
                  (transform i j to i (1- j)))
                 (lazy-reshape a
-                 (peeling-reshaper :upper-layers '(0 1))
+                 (peeler '(0 0) '(0 1))
                  (transform i j to i (1+ j))))))
            (c (lazy #'* 1/2
                (lazy #'+
                 (lazy-reshape a
-                 (peeling-reshaper :lower-layers '(1 0))
+                 (peeler '(1 0) '(0 0))
                  (transform i j to (1- i) j))
                 (lazy-reshape a
-                 (peeling-reshaper :upper-layers '(1 0))
+                 (peeler '(0 1) '(0 0))
                  (transform i j to (1+ i) j)))))
            (d (lazy #'* 1/4
                (lazy #'+
                 (lazy-reshape a
-                 (peeling-reshaper :lower-layers '(1 1) :upper-layers '(0 0))
+                 (peeler '(1 0) '(1 0))
                  (transform i j to (1- i) (1- j)))
                 (lazy-reshape a
-                 (peeling-reshaper :lower-layers '(0 1) :upper-layers '(1 0))
+                 (peeler '(0 1) '(1 0))
                  (transform i j to (1+ i) (1- j)))
                 (lazy-reshape a
-                 (peeling-reshaper :lower-layers '(1 0) :upper-layers '(0 1))
+                 (peeler '(1 0) '(0 1))
                  (transform i j to (1- i) (1+ j)))
                 (lazy-reshape a
-                 (peeling-reshaper :lower-layers '(0 0) :upper-layers '(1 1))
+                 (peeler '(0 1) '(0 1))
                  (transform i j to (1+ i) (1+ j)))))))
       (lazy-fuse a b c d))))
 
 (defun lazy-restrict-2d (u)
   (with-lazy-arrays (u)
     (let* ((shape (petalisp.core:shape-prefix (lazy-array-shape u) 2))
-           (selection (funcall (peeling-reshaper :strides 2) shape))
-           (interior (funcall (peeling-reshaper :layers 1) selection)))
+           (selection (funcall (peeler '(0 0 2) '(0 0 2)) shape))
+           (interior (funcall (peeler 1 1) selection)))
       (lazy-reshape
        (lazy-overwrite
         (lazy-reshape u 2 selection)
@@ -119,7 +119,7 @@
 (defun lazy-residual-2d (u b h)
   (with-lazy-arrays (u b h)
     (let* ((shape (petalisp.core:shape-prefix (lazy-array-shape u) 2))
-           (interior (funcall (peeling-reshaper :layers 1) shape)))
+           (interior (funcall (peeler 1 1) shape)))
       (lazy-overwrite-and-harmonize
        (lazy-reshape 0 u)
        (lazy #'-
@@ -187,7 +187,7 @@
   (let* ((s (~ ny ~ nx))
          (u (lazy-overwrite-and-harmonize
              (lazy-reshape (coerce 1 element-type) s)
-             (lazy-reshape 0 s (peeling-reshaper :layers 1))))
+             (lazy-reshape 0 s (peeler 1 1))))
          (f (lazy-reshape 0 s)))
     (format t "~&~10@A ~10@A ~10@A~%" "iterations" "l2-norm" "max-norm")
     (format t "---------------------------------~%")

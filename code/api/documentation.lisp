@@ -924,45 +924,44 @@ GRADIENTS must be a sequence of the same length as OUTPUTS, and whose
 elements are either arrays with or symbols that will be used as the name of
 such a parameter.")
 
-(document-function collapsing-reshaper
+(document-function deflater
   "Returns a function that can be supplied as a modifier to LAZY-RESHAPE to
-turn any lazy array shape into modifiers that collapse that shape, such
-that each range therein starts with zero and has a step size of one.")
+move each of the designated axes to have a start of zero and a step size of
+one."
+  (lazy-reshape 5 (~ 3 33 3) (deflater 2)))
 
-(document-function peeling-reshaper
+(document-function peeler
   "Returns a function that can be supplied as modifier to LAZY-RESHAPE to
-turn any lazy array shape into modifiers that select certain interior
-points of that shape.  The nature of this function is determined by the
-four keyword arguments :LAYERS, :LOWER-LAYERS, :UPPER-LAYERS, and :STRIDES.
-Each of these keyword arguments can be a non-negative integer, in which
-case it applies to each axis of the lazy array being reshaped, or it can be
-a sequence of non-negative integers, in which case each element of that
-sequence applies only to the corresponding axis.
+turn any lazy array shape into modifiers that select certain interior points of
+that shape.  The nature of this function is determined by the supplied amount
+specifiers, each of which can either be an unsigned integer, or a list of up to
+three unsigned integers.  The behavior of each amount specifier is as such:
 
-The :LOWER-LAYERS keyword argument describes how many of the lowest
-integers in each range are to be peeled off, and the :UPPER-LAYERS keyword
-argument describes how many of the highest integers in each range are to be
-peeled off.  The :LAYERS keyword argument, which defaults to zero,
-describes the default values for both of the lower and upper layers when
-they aren't specified explicitly.  The :STRIDES keyword argument, which
-defaults to one, denotes a factor for scaling the original step size of
-each range, such that a stride of K means selecting only every Kth element.
+- A single unsigned integers designates the number of elements that are to be
+  peeled off both at the low and the high end of the corresponding range.
 
-The resulting function signals an error if an attempt is made to peel more
-layers from a lazy array than the size of the range in that axis."
-  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (peeling-reshaper :layers 1)))
-  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (peeling-reshaper :lower-layers 1)))
-  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (peeling-reshaper :upper-layers 1)))
-  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (peeling-reshaper :lower-layers '(0 2)))))
+- An empty list means that the corresponding range is not modified.
 
-(document-function permuting-reshaper
-  "Returns a function that can be supplied as a modifier to LAZY-RESHAPE to
-turn any lazy array shape into a permuting transformation.  The supplied
-arguments must be non-negative integers that denote the ordering of axes
-that is established by that transformation."
-  (compute (lazy-reshape #2A((1 2) (3 4)) (permuting-reshaper 1 0)))
-  (compute (lazy-reshape #3A(((1 2 3) (4 5 6)) ((7 8 9) (10 11 12))) (permuting-reshaper 0 2 1)))
-  (compute (lazy-reshape #3A(((1 2 3) (4 5 6)) ((7 8 9) (10 11 12))) (permuting-reshaper 2 0 1))))
+- An list of one unsigned integer is treated as if that integer was supplied
+  instead.
+
+- If the amount specifier is a list of two unsigned integers, the first integer
+  denotes the number of elements that are to be peeled off at the low end of
+  the corresponding range, and the second integer denotes the amount that is to
+  be peeled off of the high end of that range.
+
+- If the amount specifier is a list of three unsigned integers, the fist two
+  are interpreted as the low and the high amount as before, and the third
+  integer denotes a factor with which the step size of the corresponding range
+  is to be scaled.
+
+The resulting function signals an error if it is applied to a shape whose rank
+is less than the number of supplied amount specifiers."
+  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (peeler 1)))
+  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (peeler 1 1)))
+  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (peeler '(1 0))))
+  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (peeler '(0 1))))
+  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (peeler () '(2 0)))))
 
 (document-function compute
   "The primary interface for evaluating lazy arrays.  It takes any number of
@@ -977,7 +976,7 @@ distinct representations, the non-array one is much more intuitive and useful
 in practice, so this is the one being returned.
 
 Whenever a shape of any of the supplied lazy arrays has as step size other than
-one, or an offset other than zero, that array is collapsed before being
+one, or an offset other than zero, that array is deflated before being
 computed, i.e., each axis is shifted to begin with zero, and divided by the
 step size.
 
@@ -991,7 +990,7 @@ The individual steps it performs are:
 2. Reshape each lazy array whose so that it has a step size of one and an
    offset of zero.
 
-3. Determine the dependency graph whose roots are the collapsed lazy arrays,
+3. Determine the dependency graph whose roots are the deflated lazy arrays,
    whose interior nodes are calls to lazy map, lazy reshape, or lazy fuse, and
    whose leaves are lazy arrays backed by regular arrays or index components of
    some shape.

@@ -40,7 +40,7 @@
 (defun lazy-rolling-sum (data window-size)
   (declare (type (integer 1) window-size))
   (with-lazy-arrays (data)
-    (let* ((x (lazy-reshape data (collapsing-reshaper 1)))
+    (let* ((x (lazy-reshape data (deflater 1)))
            (n (lazy-array-dimension data 0))
            (w window-size))
       (cond ((or (<= w 0) (> w n))
@@ -50,24 +50,24 @@
             ((= w 2)
              (lazy #'+
               (lazy-reshape x (~ 0 (1- n)))
-              (lazy-reshape x (~ 1 n) (collapsing-reshaper 1))))
+              (lazy-reshape x (~ 1 n) (deflater 1))))
             ((oddp w)
              (lazy #'+
               (lazy-rolling-sum (lazy-reshape x (~ (1- n))) (1- w))
-              (lazy-reshape x (~ (1- w) n) (collapsing-reshaper 1))))
+              (lazy-reshape x (~ (1- w) n) (deflater 1))))
             ((evenp w)
              (let* ((a (lazy-rolling-sum
                         (lazy #'+
-                         (lazy-reshape x (~ 0 (1- n) 2) (collapsing-reshaper 1))
-                         (lazy-reshape x (~ 1 n 2) (collapsing-reshaper 1)))
+                         (lazy-reshape x (~ 0 (1- n) 2) (deflater 1))
+                         (lazy-reshape x (~ 1 n 2) (deflater 1)))
                         (/ w 2)))
                     (k (- (1+ (- n w)) (lazy-array-dimension a 0)))
                     (b
                       (lazy #'+
                        (lazy #'-
                         (lazy-reshape a (~ k))
-                        (lazy-reshape x (~ 0 (* 2 k) 2) (collapsing-reshaper 1)))
-                       (lazy-reshape x (~ w (+ w (* 2 k)) 2) (collapsing-reshaper 1)))))
+                        (lazy-reshape x (~ 0 (* 2 k) 2) (deflater 1)))
+                       (lazy-reshape x (~ w (+ w (* 2 k)) 2) (deflater 1)))))
                (lazy-fuse
                 (lazy-reshape a (transform i to (* 2 i)))
                 (lazy-reshape b (transform i to (1+ (* 2 i)))))))))))

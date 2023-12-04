@@ -470,7 +470,7 @@ be cheaply converted to an array, or a scalar."
 (defgeneric trivial-lazy-array-p (lazy-array delayed-action)
   (:documentation
    "Returns whether the supplied LAZY-ARRAYS and its DELAYED-ACTION have a
-corresponding collapsed array that can be obtained cheaply.")
+corresponding deflated array that can be obtained cheaply.")
   (:method ((lazy-array lazy-array)
             (delayed-action delayed-action))
     nil)

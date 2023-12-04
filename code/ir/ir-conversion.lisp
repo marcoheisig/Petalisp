@@ -216,7 +216,7 @@
             (setf (cdr other-cons) instruction)))))
     (prune-superfluous-buffers
      (ir-converter-potentially-superfluous-buffers *ir-converter*))
-    ;; Collapse each buffer's shape, remove all ranges with size one from
+    ;; Deflate each buffer's shape, remove all ranges with size one from
     ;; interior buffers, and ensure that each kernel has an instruction
     ;; vector, and that each instruction has a number that is an index into
     ;; that vector.
@@ -250,7 +250,7 @@
              (t1 (reuse-optimizing-transformation reuse-potential))
              (t2 (normalizing-transformation (transform-shape (buffer-shape buffer) t1))))
         (transform-buffer buffer (compose-transformations t2 t1)))
-      (transform-buffer buffer (collapsing-transformation (buffer-shape buffer)))))
+      (transform-buffer buffer (deflating-transformation (buffer-shape buffer)))))
 
 (defun finalize-kernel (kernel)
   (setf (kernel-number kernel)

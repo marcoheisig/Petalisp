@@ -196,7 +196,7 @@
 ;;;
 ;;; Auxiliary Constructors
 
-(defun collapsing-transformation (shape)
+(defun deflating-transformation (shape)
   (invert-transformation
    (from-storage-transformation shape)))
 
@@ -270,5 +270,5 @@
 (defun normalizing-transformation (shape)
   (let* ((f (size-one-range-removing-transformation shape))
          (s (transform-shape shape f))
-         (g (collapsing-transformation s)))
+         (g (deflating-transformation s)))
     (compose-transformations g f)))

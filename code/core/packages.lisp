@@ -108,7 +108,7 @@
    #:transformation=
    #:transformation-similar
    #:compose-transformations
-   #:collapsing-transformation
+   #:deflating-transformation
    #:normalizing-transformation
    #:enlarge-transformation
    #:inflate-transformation

@@ -112,9 +112,8 @@
 
   ;; Reshapers
   (:export
-   #:collapsing-reshaper
-   #:peeling-reshaper
-   #:permuting-reshaper)
+   #:deflater
+   #:peeler)
 
   ;; Automatic Differentiation
   (:export

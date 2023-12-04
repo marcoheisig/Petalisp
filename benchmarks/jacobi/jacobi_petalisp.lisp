@@ -10,7 +10,7 @@
 
 (defun lazy-jacobi (u n)
   (with-lazy-arrays (u)
-    (let ((interior (lazy-reshape u (peeling-reshaper :layers '(1 1)))))
+    (let ((interior (lazy-reshape u (peeler 1 1))))
       (loop repeat n do
         (setf u (lazy-overwrite
                  u

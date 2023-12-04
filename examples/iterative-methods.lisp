@@ -19,44 +19,46 @@
   "Iteratively solve the Poisson equation -Δu = f for a given uniform grid
   with spacing h, using the Jacobi scheme."
   (let* ((u (lazy-array u))
-         (f (lazy-array f))
-         (interior (lazy-reshape u (peeling-reshaper :layers 1))))
+         (f (lazy-array f)))
     (ecase (lazy-array-rank u)
       (1
-       (loop repeat iterations do
-         (setf u (lazy-overwrite
-                  u
-                  (lazy #'* (float 1/2)
-                   (lazy #'+
-                    (lazy-reshape u (transform i to (1+ i)) interior)
-                    (lazy-reshape u (transform i to (1- i)) interior)
-                    (lazy-reshape (lazy #'* (* h h) f) interior))))))
+       (let ((interior (lazy-reshape u (peeler 1))))
+         (loop repeat iterations do
+           (setf u (lazy-overwrite
+                    u
+                    (lazy #'* (float 1/2)
+                     (lazy #'+
+                      (lazy-reshape u (transform i to (1+ i)) interior)
+                      (lazy-reshape u (transform i to (1- i)) interior)
+                      (lazy-reshape (lazy #'* (* h h) f) interior)))))))
        u)
       (2
-       (loop repeat iterations do
-         (setf u (lazy-overwrite
-                  u
-                  (lazy #'* (float 1/4)
-                   (lazy #'+
-                    (lazy-reshape  u (transform i j to (1+ i) j) interior)
-                    (lazy-reshape  u (transform i j to (1- i) j) interior)
-                    (lazy-reshape  u (transform i j to i (1+ j)) interior)
-                    (lazy-reshape  u (transform i j to i (1- j)) interior)
-                    (lazy-reshape (lazy #'* (* h h) f) interior))))))
+       (let ((interior (lazy-reshape u (peeler 1 1))))
+         (loop repeat iterations do
+           (setf u (lazy-overwrite
+                    u
+                    (lazy #'* (float 1/4)
+                     (lazy #'+
+                      (lazy-reshape  u (transform i j to (1+ i) j) interior)
+                      (lazy-reshape  u (transform i j to (1- i) j) interior)
+                      (lazy-reshape  u (transform i j to i (1+ j)) interior)
+                      (lazy-reshape  u (transform i j to i (1- j)) interior)
+                      (lazy-reshape (lazy #'* (* h h) f) interior)))))))
        u)
       (3
-       (loop repeat iterations do
-         (setf u (lazy-overwrite
-                  u
-                  (lazy #'* (float 1/6)
-                   (lazy #'+
-                    (lazy-reshape  u (transform i j k to (1+ i) j k) interior)
-                    (lazy-reshape  u (transform i j k to (1- i) j k) interior)
-                    (lazy-reshape  u (transform i j k to i (1+ j) k) interior)
-                    (lazy-reshape  u (transform i j k to i (1- j) k) interior)
-                    (lazy-reshape  u (transform i j k to i j (1+ k)) interior)
-                    (lazy-reshape  u (transform i j k to i j (1- k)) interior)
-                    (lazy-reshape (lazy #'* (* h h) f) interior))))))
+       (let ((interior (lazy-reshape u (peeler 1 1 1))))
+         (loop repeat iterations do
+           (setf u (lazy-overwrite
+                    u
+                    (lazy #'* (float 1/6)
+                     (lazy #'+
+                      (lazy-reshape  u (transform i j k to (1+ i) j k) interior)
+                      (lazy-reshape  u (transform i j k to (1- i) j k) interior)
+                      (lazy-reshape  u (transform i j k to i (1+ j) k) interior)
+                      (lazy-reshape  u (transform i j k to i (1- j) k) interior)
+                      (lazy-reshape  u (transform i j k to i j (1+ k)) interior)
+                      (lazy-reshape  u (transform i j k to i j (1- k)) interior)
+                      (lazy-reshape (lazy #'* (* h h) f) interior)))))))
        u))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -236,8 +238,8 @@
 (defun restrict (u)
   (let ((u (lazy-array u)))
     (ecase (lazy-array-rank u)
-      (1 (let* ((selection (lazy-reshape u 1 (peeling-reshaper :strides 2)))
-                (interior (lazy-reshape selection 1 (peeling-reshaper :layers 1))))
+      (1 (let* ((selection (lazy-reshape u 1 (peeler '(0 0 2))))
+                (interior (lazy-reshape selection 1 (peeler 1))))
            (lazy-reshape
             (lazy-overwrite
              (lazy-reshape u selection)
@@ -245,9 +247,9 @@
               (lazy #'* 1/2 (lazy-reshape u interior))
               (lazy #'* 1/4 (lazy-reshape u (transform i to (1+ i)) interior))
               (lazy #'* 1/4 (lazy-reshape u (transform i to (1- i)) interior))))
-            (collapsing-reshaper 1))))
-      (2 (let* ((selection (lazy-reshape u 2 (peeling-reshaper :strides 2)))
-                (interior (lazy-reshape selection 2 (peeling-reshaper :layers 1))))
+            (deflater 1))))
+      (2 (let* ((selection (lazy-reshape u 2 (peeler '(0 0 2) '(0 0 2))))
+                (interior (lazy-reshape selection 2 (peeler 1 1))))
            (lazy-reshape
             (lazy-overwrite
              (lazy-reshape u selection)
@@ -265,9 +267,9 @@
                (lazy-reshape u (transform i j to (1- i) (1+ j)) interior)
                (lazy-reshape u (transform i j to (1+ i) (1- j)) interior)
                (lazy-reshape u (transform i j to (1- i) (1- j)) interior))))
-            (collapsing-reshaper 2))))
-      (3 (let* ((selection (lazy-reshape u 3 (peeling-reshaper :strides 2)))
-                (interior (lazy-reshape selection 3 (peeling-reshaper :layers 1))))
+            (deflater 2))))
+      (3 (let* ((selection (lazy-reshape u 3 (peeler '(0 0 2) '(0 0 2) '(0 0 2))))
+                (interior (lazy-reshape selection 3 (peeler 1 1 1))))
            (lazy-reshape
             (lazy-overwrite
              selection
@@ -303,46 +305,48 @@
                (lazy-reshape u (transform i j k to (1- i) (1+ j) (1- k)) interior)
                (lazy-reshape u (transform i j k to (1- i) (1- j) (1+ k)) interior)
                (lazy-reshape u (transform i j k to (1- i) (1- j) (1- k)) interior))))
-            (collapsing-reshaper 3)))))))
+            (deflater 3)))))))
 
 (defun residual (u b h)
   (let* ((u (lazy-array u))
-         (b (lazy-array b))
-         (interior (lazy-reshape u (peeling-reshaper :layers 1))))
+         (b (lazy-array b)))
     (ecase (lazy-array-rank u)
       (1
-       (lazy-overwrite
-        (lazy-reshape 0d0 (lazy-array-shape u))
-        (lazy #'- (lazy-reshape b interior)
-         (lazy #'* (/ 1 (* h h))
-          (lazy #'-
-           (lazy-reshape (lazy #'* 2 u) interior)
-           (lazy-reshape u (transform i to (1+ i)) interior)
-           (lazy-reshape u (transform i to (1- i)) interior))))))
+       (let ((interior (lazy-reshape u (peeler 1))))
+         (lazy-overwrite
+          (lazy-reshape 0d0 (lazy-array-shape u))
+          (lazy #'- (lazy-reshape b interior)
+           (lazy #'* (/ 1 (* h h))
+            (lazy #'-
+             (lazy-reshape (lazy #'* 2 u) interior)
+             (lazy-reshape u (transform i to (1+ i)) interior)
+             (lazy-reshape u (transform i to (1- i)) interior)))))))
       (2
-       (lazy-overwrite
-        (lazy-reshape 0d0 (lazy-array-shape u))
-        (lazy #'- (lazy-reshape b interior)
-         (lazy #'* (/ 1 (* h h))
-          (lazy #'-
-           (lazy-reshape (lazy #'* 4 u) interior)
-           (lazy-reshape u (transform i j to (1+ i) j) interior)
-           (lazy-reshape u (transform i j to (1- i) j) interior)
-           (lazy-reshape u (transform i j to i (1+ j)) interior)
-           (lazy-reshape u (transform i j to i (1- j)) interior))))))
+       (let ((interior (lazy-reshape u (peeler 1 1))))
+         (lazy-overwrite
+          (lazy-reshape 0d0 (lazy-array-shape u))
+          (lazy #'- (lazy-reshape b interior)
+           (lazy #'* (/ 1 (* h h))
+            (lazy #'-
+             (lazy-reshape (lazy #'* 4 u) interior)
+             (lazy-reshape u (transform i j to (1+ i) j) interior)
+             (lazy-reshape u (transform i j to (1- i) j) interior)
+             (lazy-reshape u (transform i j to i (1+ j)) interior)
+             (lazy-reshape u (transform i j to i (1- j)) interior)))))))
       (3
-       (lazy-overwrite
-        (lazy-reshape 0d0 (lazy-array-shape u))
-        (lazy #'- (lazy-reshape b interior)
-         (lazy #'* (/ 1 (* h h))
-          (lazy #'-
-           (lazy-reshape (lazy #'* 6 u) interior)
-           (lazy-reshape u (transform i j k to (1+ i) j k) interior)
-           (lazy-reshape u (transform i j k to (1- i) j k) interior)
-           (lazy-reshape u (transform i j k to i (1+ j) k) interior)
-           (lazy-reshape u (transform i j k to i (1- j) k) interior)
-           (lazy-reshape u (transform i j k to i j (1+ k)) interior)
-           (lazy-reshape u (transform i j k to i j (1- k)) interior)))))))))
+       (let ((interior (lazy-reshape u (peeler 1 1 1))))
+         (lazy-overwrite
+          (lazy-reshape 0d0 (lazy-array-shape u))
+          (lazy #'- (lazy-reshape b interior)
+           (lazy #'* (/ 1 (* h h))
+            (lazy #'-
+             (lazy-reshape (lazy #'* 6 u) interior)
+             (lazy-reshape u (transform i j k to (1+ i) j k) interior)
+             (lazy-reshape u (transform i j k to (1- i) j k) interior)
+             (lazy-reshape u (transform i j k to i (1+ j) k) interior)
+             (lazy-reshape u (transform i j k to i (1- j) k) interior)
+             (lazy-reshape u (transform i j k to i j (1+ k)) interior)
+             (lazy-reshape u (transform i j k to i j (1- k)) interior))))))))))
 
 (defun v-cycle (u f h v1 v2)
   (let ((u (lazy-array u))

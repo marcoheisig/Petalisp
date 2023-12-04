@@ -32,7 +32,7 @@
       curr)))
 
 (defun simulate-one-step (prev curr dx dt N E S W)
-  (let ((interior (lazy-reshape curr (peeling-reshaper :layers 1))))
+  (let ((interior (lazy-reshape curr (peeler 1 1))))
     (lazy-overwrite
      curr
      (lazy #'+

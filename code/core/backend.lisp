@@ -29,7 +29,7 @@ been deleted."))
 of LAZY-ARRAYS.
 
 This function is invoked by COMPUTE, which guarantees that the supplied
-LAZY-ARRAYS are already collapsed.  The resulting delayed actions replace
+LAZY-ARRAYS are already deflated.  The resulting delayed actions replace
 the delayed actions of the corresponding LAZY-ARRAYS."))
 
 (defgeneric backend-evaluator (backend unknowns lazy-arrays)
@@ -246,12 +246,12 @@ already been computed."))
          (transformations
            (loop for lazy-array in lazy-arrays
                  collect
-                 (collapsing-transformation
+                 (deflating-transformation
                   (lazy-array-shape lazy-array))))
-         (collapsed-lazy-arrays
+         (deflated-lazy-arrays
            (mapcar #'lazy-reshape lazy-arrays transformations))
          (delayed-arrays
-           (backend-compute *backend* collapsed-lazy-arrays)))
+           (backend-compute *backend* deflated-lazy-arrays)))
     ;; Project the results back to the shape of the original lazy arrays,
     ;; and overwrite the original delayed action with that of the projected
     ;; one.  This way we avoid recomputing the same lazy array over and
@@ -259,15 +259,15 @@ already been computed."))
     (bordeaux-threads-2:with-recursive-lock-held (*lazy-array-lock*)
       (loop for lazy-array in lazy-arrays
             for transformation in transformations
-            for collapsed-lazy-array in collapsed-lazy-arrays
+            for deflated-lazy-array in deflated-lazy-arrays
             for delayed-array in delayed-arrays
-            do (setf (lazy-array-delayed-action collapsed-lazy-array)
+            do (setf (lazy-array-delayed-action deflated-lazy-array)
                      delayed-array)
-            do (unless (eq lazy-array collapsed-lazy-array)
+            do (unless (eq lazy-array deflated-lazy-array)
                  (setf (lazy-array-delayed-action lazy-array)
                        (make-delayed-reshape
                         :transformation transformation
-                        :input collapsed-lazy-array)))))
+                        :input deflated-lazy-array)))))
     ;; All arrays are now trivial objects.
     (mapcar #'trivial-object-value arrays)))
 

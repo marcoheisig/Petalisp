@@ -125,7 +125,7 @@
 ;;;  Jacobi's Method
 
 (defun jacobi-2d (grid)
-  (let ((interior (lazy-reshape grid 2 (peeling-reshaper :layers 1))))
+  (let ((interior (lazy-reshape grid 2 (peeler 1 1))))
     (lazy-overwrite
      grid
      (lazy #'* 1/4

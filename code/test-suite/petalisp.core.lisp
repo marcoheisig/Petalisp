@@ -160,7 +160,7 @@
   (compute (lazy-reshape #(1 2 3) (transform i to (- i))) #(3 2 1))
   (compute (lazy-reshape #(1 2 3 4) (~ 1 3)))
   (compute (lazy-reshape #2A((1 2) (3 4)) (transform i j to j i)))
-  (compute (lazy-reshape #(1 2 3 4) (~ 1 3) (collapsing-reshaper 1)))
+  (compute (lazy-reshape #(1 2 3 4) (~ 1 3) (deflater 1)))
   (compute
    (lazy-overwrite
     (lazy-reshape #2A((1 2 3) (4 5 6)) (transform i j to (+ 2 i) (+ 3 j)))

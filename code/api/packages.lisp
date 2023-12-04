@@ -130,7 +130,7 @@
    #:invert-transformation
    #:transformation=
    #:compose-transformations
-   #:collapsing-transformation
+   #:deflating-transformation
    #:enlarge-transformation
    #:map-transformation-outputs
 
@@ -151,9 +151,8 @@
    #:differentiator
 
    ;; Reshapers
-   #:collapsing-reshaper
-   #:peeling-reshaper
-   #:permuting-reshaper
+   #:deflater
+   #:peeler
 
    ;; Harmonization
    #:harmonized-element-type

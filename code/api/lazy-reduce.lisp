@@ -39,9 +39,9 @@
                     (apply #'lazy-multiple-value n-values function
                            (petalisp.utilities:with-collectors ((arguments collect))
                              (dolist (input inputs)
-                               (collect (lazy-reshape input left (collapsing-reshaper 1))))
+                               (collect (lazy-reshape input left (deflater 1))))
                              (dolist (input inputs)
-                               (collect (lazy-reshape input right (collapsing-reshaper 1))))
+                               (collect (lazy-reshape input right (deflater 1))))
                              (arguments))))))
             (lazy-reduce-aux
              function

@@ -4,9 +4,9 @@
 
 (defun lazy-sort (array predicate &key (key 'identity))
   (let* ((x (lazy-array array))
-         (c (petalisp.core:collapsing-transformation (lazy-array-shape x)))
-         (r (invert-transformation c))
-         (x (lazy-reshape x c))
+         (d (funcall (deflater 1) (lazy-array-shape x)))
+         (r (invert-transformation d))
+         (x (lazy-reshape x d))
          (y (lazy key x)))
     (when (zerop (lazy-array-rank x))
       (error "~@<Cannot sort arrays of rank zero.~:@>"))
