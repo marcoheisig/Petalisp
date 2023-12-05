@@ -865,46 +865,76 @@ stack, and the start and step of the resulting lazy array in that axis."
   (compute (lazy-stack (list #2A((1 2) (3 4)) #2A((5 6) (7 8))) :axis 1)))
 
 (document-function lazy-reduce
-  "Returns one or more lazy arrays whose contents are the multiple value
-reduction with the supplied function, when applied pairwise to the elements of
-the first axis of each of the supplied arrays.  If the supplied arrays don't
-agree in shape, they are first broadcast with the function BROADCAST.
+  "Returns the lazy arrays that are reduction of the supplied
+arrays with the supplied function.  For a single supplied array that is a
+vector, this function operates as follows:
 
-The supplied function F must accept 2k arguments and return k values, where k
-is the number of supplied arrays.  All supplied arrays must have the same shape
-S, which is the cartesian product of some ranges, i.e., S = r_1 x ... r_n,
-where each range r_k is a set of integers, e.g., {0, 1, ..., m}.  Returns k
-arrays of shape s = r_2 x ... x r_n, whose elements are a combination of the
-elements along the first axis of each array according to the following rules:
+1. If the vector has zero elements, return the scalar that is the result of
+   invoking the supplied function with zero arguments.  This behavior is
+   analogous with Common Lisp's REDUCE function and allows graceful handling of
+   many built-in functions.
 
-1. If the given arrays are empty, return k empty arrays.
+2. If the vector has an even number of elements, split it into two vectors of
+   half the size of the original one, where the first vector contains all the
+   elements with an even index, and the second vector contains all the elements
+   with an odd index.  Map the supplied function, which must accept two
+   arguments and return one value, over these two vectors to obtain a single
+   vector of results.  Process the resulting vector with step 2 or step 3,
+   depending on whether it has an even or an odd number of elements.
 
-2. If the first axis of each given array contains exactly one element, drop
-   that axis and return arrays with the same content, but with shape s.
+3. If the vector has an odd number of elements distinguish three cases:
 
-3. If the first axis of each given array contains more than one element,
-   partition the indices of this axis into a lower half l and an upper half
-   u.  Then split each given array into a part with shape l x s and a part
-   with shape u x s.  Recursively process the lower and the upper halves of
-   each array independently to obtain 2k new arrays of shape s.  Finally,
-   combine these 2k arrays element-wise with f to obtain k new arrays with
-   all values returned by f.  Return these arrays.
+   a) If there is a leftover element from one of the previous steps, append it
+      at the end of the vector.  The resulting vector has an even number of
+      elements.  Process it with step 2.
 
-The first argument may also be a list of functions, in which case the supplied
-lazy arrays are first reduced with the first of those functions, the results
-are reduced with the second of those functions, and so on."
+   b) Otherwise, if the vector has exactly one element, this element is the
+      result of the reduction.  Return it.
+
+   c) Otherwise, remove the last element of the vector and store it as the
+      leftover element for use in step 3a.  Process the remaining elements with
+      step 2.
+
+In addition to this simple case of reducing a vector into a scalar, this
+function supports three further generalizations:
+
+- If the argument is an array with rank larger than one, the reduction is
+  carried out along the first axis only, and all the remaining axes are handled
+  by carrying out multiple reductions in parallel.  In that case, the result is
+  not a scalar but an array whose rank is one less than before.
+
+- Instead of supplying a function as the first argument, one may also supply a
+  list of functions.  In that case, the supplied arrays are first reduced with
+  the first of those functions, the results thereof are reduced with the second
+  of those functions, and so on.
+
+- Instead of reducing a single array with a function that takes two arguments
+  and returns one value, one may also reduce k arrays with a function that
+  takes 2k arguments and returns k values.  In that case, all the supplied
+  arrays are first broadcast to have the same shape, and these arrays are
+  processed exactly like in the case of reducing a single vector except that
+  values are selected from all k arrays simultaneously, resulting in 2k
+  arguments being passed to the supplied function, and returning k lazy arrays
+  as a result.
+
+A final piece of advice: When reducing a vector that is possibly empty, it is
+advisable to stack a neutral element at the beginning or the end of that vector
+to make it non-empty.
+"
+  (compute (lazy-reduce '+ #()))
   (compute (lazy-reduce '+ #(1 2 3 4)))
   (compute (lazy-reduce '+ #2a((1 2) (3 4))))
   (compute (lazy-reduce '(+ +) #2a((1 2) (3 4))))
-  (let ((a #(5 2 7 1 9)))
+  (let ((a #(5 2 7 1 9 6)))
     (multiple-value-bind (max index)
         (lazy-reduce
          (lambda (lv li rv ri)
            (if (> lv rv)
                (values lv li)
                (values rv ri)))
-         a (lazy-index-components a 0))
-      (compute max index))))
+         a (lazy-index-components a))
+      (compute max index)))
+  (compute (lazy-reduce 'min (lazy-stack (list 0 #())))))
 
 (document-function lazy-rearrange
   "Returns a lazy array with the same contents as the supplied one, but with

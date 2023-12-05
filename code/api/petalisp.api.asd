@@ -17,41 +17,24 @@
 
   :in-order-to ((test-op (test-op "petalisp.test-suite")))
 
+  :serial t
   :components
-  ((:file "broadcast" :depends-on ("packages"))
-   (:file "differentiator" :depends-on ("lazy-overwrite" "lazy" "lazy-reduce"))
-   (:file "lazy-harmonize" :depends-on ("lazy" "lazy-overwrite"))
-   (:file "lazy-index-components" :depends-on ("packages"))
-   (:file "lazy" :depends-on ("broadcast"))
-   (:file "lazy-multiple-value" :depends-on ("broadcast"))
-   (:file "lazy-overwrite" :depends-on ("packages"))
-   (:file "lazy-rearrange" :depends-on ("shape-syntax" "with-lazy-arrays"))
-   (:file "lazy-reduce" :depends-on ("lazy-multiple-value" "lazy-stack"))
-   (:file "lazy-slice" :depends-on ("packages"))
-   (:file "lazy-slices" :depends-on ("packages"))
-   (:file "lazy-sort" :depends-on ("lazy-multiple-value"))
-   (:file "lazy-stack" :depends-on ("lazy-overwrite"))
-   (:file "packages")
+  ((:file "packages")
+   (:file "with-lazy-arrays")
+   (:file "shape-syntax")
+   (:file "transform")
    (:file "reshapers")
-   (:file "shape-syntax" :depends-on ("packages"))
-   (:file "transform" :depends-on ("packages"))
-   (:file "with-lazy-arrays" :depends-on ("packages"))
-   (:file "documentation"
-    :depends-on
-    ("differentiator"
-     "broadcast"
-     "lazy-harmonize"
-     "lazy-index-components"
-     "lazy"
-     "lazy-multiple-value"
-     "lazy-overwrite"
-     "lazy-reduce"
-     "reshapers"
-     "lazy-slice"
-     "lazy-slices"
-     "lazy-sort"
-     "lazy-stack"
-     "packages"
-     "shape-syntax"
-     "transform"
-     "with-lazy-arrays"))))
+   (:file "broadcast")
+   (:file "lazy-index-components")
+   (:file "lazy")
+   (:file "lazy-multiple-value")
+   (:file "lazy-overwrite")
+   (:file "lazy-stack")
+   (:file "lazy-slice")
+   (:file "lazy-slices")
+   (:file "lazy-rearrange")
+   (:file "lazy-harmonize")
+   (:file "lazy-reduce")
+   (:file "lazy-sort")
+   (:file "differentiator")
+   (:file "documentation")))
