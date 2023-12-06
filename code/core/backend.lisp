@@ -281,8 +281,7 @@ already been computed."))
   (values))
 
 (defun completedp (&rest requests)
-  (mapc #'request-completedp requests)
-  (values))
+  (every #'request-completedp requests))
 
 (defun evaluator (unknowns arrays)
   (declare (list unknowns arrays))
