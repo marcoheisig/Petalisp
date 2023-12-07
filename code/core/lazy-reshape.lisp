@@ -143,6 +143,10 @@ of its input is the supplied transformation."
            (declare (lazy-array lazy-array)
                     (shape relevant-shape)
                     (transformation transformation))
+           ;; Optimization: Turn empty references into array immediates.
+           (when (shape-emptyp shape)
+             (return-from ref
+               (empty-lazy-array shape)))
            ;; Optimization: Drop references with no effect.
            (when (and (transformation-identityp transformation)
                       (shape= (lazy-array-shape lazy-array) shape))

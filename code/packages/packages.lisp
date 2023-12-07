@@ -113,7 +113,8 @@
   ;; Reshapers
   (:export
    #:deflater
-   #:peeler)
+   #:peeler
+   #:slicer)
 
   ;; Automatic Differentiation
   (:export
@@ -128,8 +129,8 @@
    #:lazy-slices
    #:lazy-sort
    #:lazy-stack
-   #:lazy-harmonize
-   #:lazy-harmonize-list-of-arrays
+   #:harmonized-element-type
+   #:harmonize
    #:lazy-fuse-and-harmonize
    #:lazy-overwrite-and-harmonize)
 

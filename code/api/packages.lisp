@@ -153,11 +153,11 @@
    ;; Reshapers
    #:deflater
    #:peeler
+   #:slicer
 
    ;; Harmonization
    #:harmonized-element-type
-   #:lazy-harmonize
-   #:lazy-harmonize-list-of-arrays
+   #:harmonize
    #:lazy-fuse-and-harmonize
    #:lazy-overwrite-and-harmonize
 

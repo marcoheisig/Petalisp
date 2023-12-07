@@ -2,8 +2,8 @@
 
 (in-package #:petalisp.api)
 
-(defun harmonized-element-type (&rest arrays)
-  (labels ((harmonize (ntype1 ntype2)
+(defun harmonized-element-type (arrays)
+  (labels ((harmonize-ntypes (ntype1 ntype2)
              (if (and (typo:ntype-subtypep ntype1 (typo:type-specifier-ntype 'number))
                       (typo:ntype-subtypep ntype2 (typo:type-specifier-ntype 'number)))
                  (typo:ntype-contagion ntype1 ntype2)
@@ -11,27 +11,23 @@
     (if (null arrays)
         'nil
         (typo:ntype-type-specifier
-         (reduce #'harmonize arrays
+         (reduce #'harmonize-ntypes arrays
                  :key
                  (alexandria:compose #'petalisp.core:lazy-array-ntype #'lazy-array))))))
 
-(defun lazy-harmonize (&rest arrays)
-  (values-list
-   (lazy-harmonize-list-of-arrays arrays)))
-
-(defun lazy-harmonize-list-of-arrays (arrays)
+(defun harmonize (arrays)
   (let* ((lazy-arrays (mapcar #'lazy-array arrays))
-         (target-element-type (apply #'harmonized-element-type lazy-arrays)))
+         (target-element-type (harmonized-element-type lazy-arrays)))
     (mapcar (lambda (lazy-array)
               (lazy #'coerce lazy-array target-element-type))
             lazy-arrays)))
 
 (defun lazy-fuse-and-harmonize (array &rest more-arrays)
   (apply #'lazy-fuse
-         (lazy-harmonize-list-of-arrays
+         (harmonize
           (list* array more-arrays))))
 
 (defun lazy-overwrite-and-harmonize (array &rest more-arrays)
   (apply #'lazy-overwrite
-         (lazy-harmonize-list-of-arrays
+         (harmonize
           (list* array more-arrays))))

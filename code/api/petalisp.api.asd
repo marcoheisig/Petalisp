@@ -33,7 +33,7 @@
    (:file "lazy-slice")
    (:file "lazy-slices")
    (:file "lazy-rearrange")
-   (:file "lazy-harmonize")
+   (:file "harmonize")
    (:file "lazy-reduce")
    (:file "lazy-sort")
    (:file "differentiator")

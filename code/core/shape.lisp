@@ -203,7 +203,7 @@ supplied shapes aren't disjoint."
     predicted-result))
 
 (defun superimpose-shapes (shapes)
-  "Returns a shape that covers all the supplied shapes."
+  "Returns the smallest possible shape that covers all the supplied shapes."
   (declare (list shapes))
   (let ((vector-of-ranges (map 'vector #'shape-ranges shapes))
         (maxrank (reduce #'max shapes :key #'shape-rank :initial-value 0)))

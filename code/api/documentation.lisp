@@ -849,9 +849,15 @@ that axis."
 
 (document-function lazy-sort
   "Returns a lazy array containing the elements of the supplied array, but sorted
-along the first axis with the supplied predicate."
+along the first axis according to the supplied predicate and key function.  For
+any two elements, the two results of invoking the key function on each may be
+passed to the predicate to determine whether the first element is strictly less
+than the second one.  If the key function is not supplied, it defaults to the
+identity function.  Returns the keys corresponding to each of the sorted
+elements as a second value."
   (compute (lazy-sort #(1 3 7 5 0 6 4 9 8 2) #'<))
   (compute (lazy-sort "Sphinx of black quartz, judge my vow." #'char-lessp))
+  (multiple-value-call #'compute (lazy-sort #(-3 -2 -1 0 1 2 3) #'> :key #'abs))
   (compute (lazy-sort #2a((9 8 7) (6 5 4) (3 2 1)) #'<)))
 
 (document-function lazy-stack
@@ -938,10 +944,9 @@ to make it non-empty.
 
 (document-function lazy-rearrange
   "Returns a lazy array with the same contents as the supplied one, but with
-a different shape.  The shape of the result is derived from the supplied number
-of axes and the supplied shape by replacing the specified number of axes of the
-original shape with all ranges of the supplied shape.  Signals an error if the
-original shape and the resulting one differ in size."
+a different shape.  The shape of the result by replacing the specified number
+of axes of the original shape with all ranges of the supplied shape.  Signals
+an error if the original shape and the resulting shape differ in size."
   (compute (lazy-rearrange (lazy-index-components (~ 1 10)) 1 (~ 3 ~ 3)))
   (compute (lazy-rearrange #2a((1 2) (3 4)) 2 (~ 4)))
   (compute (lazy-rearrange #2a((1 2) (3 4)) 1 (~ 2 ~ 1))))
@@ -964,6 +969,8 @@ one."
   "Returns a function that can be supplied as modifier to LAZY-RESHAPE to
 turn any lazy array shape into modifiers that select certain interior points of
 that shape.  The nature of this function is determined by the supplied amount
+specifiers, one for each axis, each of which can either be an unsigned integer,
+or a list of up to three unsigned integers.  The behavior of each amount
 specifiers, each of which can either be an unsigned integer, or a list of up to
 three unsigned integers.  The behavior of each amount specifier is as such:
 
@@ -992,6 +999,42 @@ is less than the number of supplied amount specifiers."
   (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (peeler '(1 0))))
   (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (peeler '(0 1))))
   (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (peeler () '(2 0)))))
+
+(document-function slicer
+  "Returns a function that can be supplied as a modifier to LAZY-RESHAPE to turn
+any lazy array shape into modifiers that select a particular slice of that
+shape.  The nature of this function is determined by the supplied slice
+specifiers, one for each axis, each of which is one of the following:
+
+- A single unsigned integer N means that the Nth element of the range in that
+  axis is selected, and that this axis is removed from the resulting shape.
+
+- An empty list means that the range in that axis is not modified.
+
+- A list with one unsigned integer N means that the Nth element of the range in
+  that axis is selected, but that this axis is not removed from the resulting
+  shape.
+
+- A list with two unsigned integers B and E means that the elements beginning
+  at index B up to right below E are selected in this axis.
+
+- A list with three unsigned integers B, E, and S means that the elements
+  beginning at index B, with a step size of S, up to right below E, are
+  selected in this axis.
+
+All indices are interpreted as relative coordinates, so in a range with a start
+of five and step size of two, the relative index zero would map to the absolute
+index five, and the relative index one would map to the absolute index seven.
+
+Signals an error unless the integers B and E are valid bounding indices for the
+range being worked one, i.e., B must be less than the size of that range, and E
+must be larger than or equal to B and less than or equal to the size of that
+range."
+  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (slicer 0)))
+  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (slicer 1 1)))
+  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (slicer '(1 2))))
+  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (slicer '(0 3 2))))
+  (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (slicer '() '(0 3 2)))))
 
 (document-function compute
   "The primary interface for evaluating lazy arrays.  It takes any number of
@@ -1097,25 +1140,21 @@ has been completed.")
 operations have been completed.")
 
 (document-function harmonized-element-type
-  "Returns a type to which all elements of all the supplied lazy arrays can
-be coerced safely.  If the element types of all supplied lazy arrays are
-number types, the resulting type is obtained by the standard rules of
-numeric contagion (Common Lisp Hyperspec 12.1.4.1 and 12.1.4.4).  Otherwise, the
-resulting type is one that encompasses the union of the element types of
-all supplied lazy arrays."
-  (harmonized-element-type 5 6f0)
-  (harmonized-element-type 5d0 #C(0 1))
-  (harmonized-element-type 'foo 'bar 'baz 42))
+  "Returns the specifier for a type to which all elements of the supplied list of
+lazy array designators can be coerced safely.  If the element types of all
+supplied lazy arrays are number types, the resulting type is obtained by the
+standard rules of numeric contagion (Common Lisp Hyperspec 12.1.4.1 and
+12.1.4.4).  Otherwise, the resulting type is one that encompasses the union of
+the element types of all supplied lazy arrays."
+  (harmonized-element-type (list 5 6f0))
+  (harmonized-element-type (list 5d0 #C(0 1)))
+  (harmonized-element-type (list 'foo "bar" :baz 42)))
 
-(document-function lazy-harmonize
-  "Lazily coerce each of the supplied arrays to the common harmonized element
-type, and return the resulting lazy arrays as multiple values."
-  (multiple-value-call #'compute (lazy-harmonize 5 6f0)))
-
-(document-function lazy-harmonize-list-of-arrays
+(document-function harmonize
   "Lazily coerce each array in the supplied list of arrays to the common
 harmonized element type, and return a list of the resulting lazy arrays."
-  (apply #'compute (lazy-harmonize-list-of-arrays (list 5 6f0))))
+  (apply #'compute (harmonize (list 5 6f0)))
+  (apply #'compute (harmonize (list #C(5 2) (lazy-stack (list 1.0 2.0 3.0))))))
 
 (document-function lazy-fuse-and-harmonize
   "Returns the result of first harmonizing all the supplied arrays, and then
