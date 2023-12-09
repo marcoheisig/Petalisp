@@ -30,8 +30,6 @@
    (:file "lazy-multiple-value")
    (:file "lazy-overwrite")
    (:file "lazy-stack")
-   (:file "lazy-slice")
-   (:file "lazy-slices")
    (:file "lazy-rearrange")
    (:file "harmonize")
    (:file "lazy-reduce")

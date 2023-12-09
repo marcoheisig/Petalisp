@@ -82,16 +82,18 @@
         ;; Pick a random batch of images and labels.
         (let* ((batch-start (random (- n batch-size)))
                (batch-end (+ batch-start batch-size))
-               (batch (range batch-start batch-end))
                (train-images
                  (compute
-                  (lazy-reshape (lazy-slices *train-images* batch)
+                  (lazy-reshape *train-images*
+                   (slicer (list batch-start batch-end))
                    (~ batch-size ~ (* w h)))))
                (train-labels
                  (compute
                   (floatify
                    (lazy (lambda (i j) (if (= i j) 1.0 0.0))
-                    (lazy-reshape (lazy-slices *train-labels* batch) (transform i to i 0))
+                    (lazy-reshape *train-labels*
+                     (slicer (list batch-start batch-end))
+                     (transform i to i 0))
                     (lazy-index-components (~ 10))))))
                ;; Feed forward
                (a1 (relu (matmul train-images W1)))

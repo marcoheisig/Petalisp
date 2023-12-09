@@ -30,8 +30,6 @@
    #:lazy-reshape
    #:lazy-index-components
    #:lazy-rearrange
-   #:lazy-slice
-   #:lazy-slices
    #:lazy-sort
    #:lazy-stack
    #:transform

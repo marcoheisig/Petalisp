@@ -16,16 +16,14 @@
   (with-lazy-arrays (series)
     (let* ((data (lazy-sort series #'<))
            (range (lazy-array-range data 0))
-           (start (range-start range))
-           (size (range-size range))
-           (step (range-step range)))
+           (size (range-size range)))
       (if (oddp size)
-          (lazy-slice data (+ start (* step (/ (1- size) 2))))
+          (lazy-reshape data (slicer (/ (1- size) 2)))
           (lazy-mean
            (lazy-stack
             (list
-             (lazy-slice data (+ start (* step (1- (/ size 2)))))
-             (lazy-slice data (+ start (* step (/ size 2)))))))))))
+             (lazy-reshape data (slicer (1- (/ size 2))))
+             (lazy-reshape data (slicer (/ size 2))))))))))
 
 (defun lazy-variance (series)
   (with-lazy-arrays (series)

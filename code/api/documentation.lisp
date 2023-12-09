@@ -810,43 +810,6 @@ supplied, it defaults to zero."
   (compute (lazy-index-components (~ 4 ~ 4) 1))
   (compute (lazy-index-components #2a((1 2) (3 4)) 1)))
 
-(document-function lazy-slice
-  "Returns a lazy array whose rank is one less than the rank of the supplied
-array, and that contains all entries of the supplied array whose index
-component is equal to the supplied index in the optionally supplied axis.
-If the axis is not supplied, it defaults to zero."
-  (compute (lazy-slice #(1 2 3 4) 2))
-  (compute (lazy-slice #2A((1 2) (3 4)) 0))
-  (compute (lazy-slice #2A((1 2) (3 4)) 1))
-  (compute (lazy-slice #2A((1 2) (3 4)) 0 1))
-  (compute (lazy-slice #2A((1 2) (3 4)) 1 1)))
-
-(document-function lazy-slices
-  "Returns a lazy array containing all those elements of the supplied array
-whose index components in the optionally supplied axis are contained in the
-supplied range.  If the axis is not supplied, it defaults to zero.  The
-resulting array has the same shape as the supplied array, except that its
-range in the axis being sliced along is the supplied range.  Signals an
-error if the supplied range is not fully contained in the original range of
-that axis."
-  (compute (lazy-slices #(1 2 3 4) (range 0 3 2)))
-  (compute (lazy-slices
-            #2A((1 0 0)
-                (0 1 0)
-                (0 0 1))
-            (range 2)))
-  (compute (lazy-slices
-            #2A((1 0 0)
-                (0 1 0)
-                (0 0 1))
-            (range 0 3 2)))
-  (compute (lazy-slices
-            #2A((1 0 0)
-                (0 1 0)
-                (0 0 1))
-            (range 0 3 2)
-            1)))
-
 (document-function lazy-sort
   "Returns a lazy array containing the elements of the supplied array, but sorted
 along the first axis according to the supplied predicate and key function.  For

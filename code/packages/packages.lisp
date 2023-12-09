@@ -125,8 +125,6 @@
    #:lazy-overwrite
    #:lazy-reduce
    #:lazy-rearrange
-   #:lazy-slice
-   #:lazy-slices
    #:lazy-sort
    #:lazy-stack
    #:harmonized-element-type

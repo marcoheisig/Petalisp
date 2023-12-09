@@ -60,8 +60,24 @@
         (error "~@<Cannot apply a rank ~R slicer to the shape ~S ~
                    that has rank ~R.~:@>"
                min-rank shape (shape-rank shape)))
-      (make-shape
-       (mapcar #'funcall range-slicers (shape-ranges shape))))))
+      (let* ((selection
+               (make-shape
+                (mapcar #'funcall range-slicers (shape-ranges shape))))
+             (transformation
+               (make-transformation
+                :input-mask
+                (loop for drop-p in drop-axis-p
+                      for range in (shape-ranges selection)
+                      collect
+                      (if drop-p
+                          (range-start range)
+                          nil))
+                :output-mask
+                (let ((axis 0))
+                  (loop for drop-p in drop-axis-p unless drop-p
+                        collect axis
+                        do (incf axis))))))
+        (values selection transformation)))))
 
 (defun range-slicer (slice-specifier)
   (multiple-value-bind (start1 end1 step1)
