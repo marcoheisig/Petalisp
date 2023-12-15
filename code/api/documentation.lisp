@@ -8,21 +8,20 @@
 
 (document-function range
   "Returns a new, normalized range from the supplied parameters.
-
-This function can be invoked with one, two or three integers.  If it is
-called with a single argument, the result is a range starting from zero,
-with step size one, up to but excluding the supplied argument.  In other
-words, a single argument is treated just like one of the dimensions of a
-regular array.  If the range constructor is called with two arguments, then
-the result is still a range with a step size of one, but with the first
-argument as the inclusive lower bound, and with the second argument as the
-exclusive upper bound.  The three argument version behaves just like the
-two argument version, except that the additional third argument denotes the
-step size.  The sign of the step size gives the direction of the range: If
-the sign is positive, then the exclusive upper bound must be larger than
-the inclusive lower bound or the resulting range is empty.  If the sign is
-negative, the first argument is used as an inclusive upper bound, and the
-second argument is used as an exclusive lower bound."
+This function can be invoked with one, two or three integers.  If it is called
+with a single argument, the result is a range starting from zero, with step
+size one, up to but excluding the supplied argument.  In other words, a single
+argument is treated just like one of the dimensions of a regular array.  If the
+range constructor is called with two arguments, then the result is still a
+range with a step size of one, but with the first argument as the inclusive
+lower bound, and with the second argument as the exclusive upper bound.  The
+three argument version behaves just like the two argument version, except that
+the additional third argument denotes the step size.  The sign of the step size
+gives the direction of the range: If the sign is positive, then the exclusive
+upper bound must be larger than the inclusive lower bound or the resulting
+range is empty.  If the sign is negative, the first argument is used as an
+inclusive upper bound, and the second argument is used as an exclusive lower
+bound."
   (range 5)
   (range 5 9)
   (range 5 13 2)
@@ -694,7 +693,7 @@ at a time according to the following rules:
    array to obtain a number of new modifiers as multiple values.  Process the
    new modifiers as if they were supplied instead of this function modifier.
 
-3. If the modifier is a shape designator then each axis of the lazy array is
+3. If the modifier is a shape designator, then each axis of the lazy array is
    moved, broadcast, or selected-from to match that shape.  If the lazy array
    has lower rank than the designated shape, it is broadcast to that rank
    first.  If the lazy array has higher rank than the designated shape, the
@@ -713,14 +712,13 @@ at a time according to the following rules:
       those elements of that axis that fall within the target range.
 
 Returns the lazy array obtained after processing all modifiers."
+  (compute (lazy-reshape #(1 2 3 4) (~ 1 2)))
+  (compute (lazy-reshape #(1 2 3 4) (~ 2 ~ 3)))
+  (compute (lazy-reshape #(1 2 3 4) (~ 6 ~ 2)))
   (compute (lazy-reshape #2A((1 2) (3 4)) (transform i j to j i)))
   (compute (lazy-reshape #(1 2 3 4) (transform i to (- i))))
   (compute (lazy-reshape #(1 2 3 4) (transform i to (- i)) (~ -2 0)))
-  (compute (lazy-reshape #(1 2 3 4 5 6) (~ 1 5)))
-  (compute (lazy-reshape #(1 2 3 4 5 6) (~ 1 5)))
-  (compute (lazy-reshape #(1 2 3 4 5 6) (~ 2 ~ 3)))
-  (compute (lazy-reshape #(1 2 3 4 5 6) (~ 6 ~ 2)))
-  (compute (lazy-reshape #(1 2 3 4 5 6) (lambda (s) (~ 1 (1- (shape-size s)))))))
+  (compute (lazy-reshape #(1 2 3 4) (lambda (s) (~ 1 (1- (shape-size s)))))))
 
 (document-function broadcast
   "Returns a list of lazy arrays that all have the same shape, where each lazy array is
@@ -812,15 +810,15 @@ supplied, it defaults to zero."
 
 (document-function lazy-sort
   "Returns a lazy array containing the elements of the supplied array, but sorted
-along the first axis according to the supplied predicate and key function.  For
-any two elements, the two results of invoking the key function on each may be
-passed to the predicate to determine whether the first element is strictly less
-than the second one.  If the key function is not supplied, it defaults to the
-identity function.  Returns the keys corresponding to each of the sorted
-elements as a second value."
+along the first axis according to the supplied predicate and key function.  If
+the key function is not supplied, it defaults to the identity function.  For
+any two elements, the two results of invoking the key function on each element
+may be passed to the predicate to determine whether the first element is
+strictly less than the second one.  Returns the keys corresponding to each of
+the sorted elements as a second value."
   (compute (lazy-sort #(1 3 7 5 0 6 4 9 8 2) #'<))
   (compute (lazy-sort "Sphinx of black quartz, judge my vow." #'char-lessp))
-  (multiple-value-call #'compute (lazy-sort #(-3 -2 -1 0 1 2 3) #'> :key #'abs))
+  (multiple-value-call #'compute (lazy-sort #(-2 -1 0 1 2) #'> :key #'abs))
   (compute (lazy-sort #2a((9 8 7) (6 5 4) (3 2 1)) #'<)))
 
 (document-function lazy-stack
@@ -1048,8 +1046,7 @@ The individual steps it performs are:
 This function is the workhorse of Petalisp.  A lot of effort went into making
 it not only powerful, but also extremely fast.  The overhead of assembling a
 graph of lazy arrays and passing it to COMPUTE instead of invoking an already
-compiled and optimized imperative program is usually on the order of just a few
-microseconds."
+compiled and optimized imperative program is usually just a few microseconds."
   (compute (lazy-array #(1 2 3)))
   (compute #(1 2 3))
   (compute 5)
@@ -1095,11 +1092,11 @@ An error is signaled if any of the K plus N arguments of an evaluator function
 has a different shape or element type as the corresponding result or unknown.")
 
 (document-function wait
-  "Blocks until the requests resulting from some COMPUTE-ASYNCHRONOUSLY operations
+  "Blocks until all the supplied requests of some COMPUTE-ASYNCHRONOUSLY operations
 has been completed.")
 
 (document-function completedp
-  "Returns whether all the requests resulting from some COMPUTE-ASYNCHRONOUSLY
+  "Returns whether all the supplied requests of some COMPUTE-ASYNCHRONOUSLY
 operations have been completed.")
 
 (document-function harmonized-element-type
