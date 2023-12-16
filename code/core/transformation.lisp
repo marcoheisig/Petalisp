@@ -101,8 +101,8 @@
 
 (defgeneric inflate-transformation (transformation n))
 
-(defgeneric transform-index (sequence transformation)
-  (:argument-precedence-order transformation sequence))
+(defgeneric transform-index (index transformation)
+  (:argument-precedence-order transformation index))
 
 (defgeneric transform-shape (shape transformation)
   (:argument-precedence-order transformation shape))
