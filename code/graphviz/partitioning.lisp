@@ -186,6 +186,7 @@
 (defun storage-label (storage domain shape)
   (declare (petalisp.ir:storage storage)
            (petalisp:shape domain shape))
+  (declare (ignore storage domain))
   (let* ((rank (petalisp:shape-rank shape))
          (size (petalisp:shape-size shape))
          (nrows (if (zerop rank)

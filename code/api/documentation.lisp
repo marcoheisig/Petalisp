@@ -912,13 +912,15 @@ an error if the original shape and the resulting shape differ in size."
   (compute (lazy-rearrange #2a((1 2) (3 4)) 2 (~ 4)))
   (compute (lazy-rearrange #2a((1 2) (3 4)) 1 (~ 2 ~ 1))))
 
-(document-function differentiator
-  "Returns a function that, for each node in a network whose roots are the
-supplied OUTPUTS will return the gradient at that node.
+(document-function view
+  "Graphically present the supplied lazy array or list of lazy arrays.")
 
-GRADIENTS must be a sequence of the same length as OUTPUTS, and whose
-elements are either arrays with or symbols that will be used as the name of
-such a parameter.")
+(document-function differentiator
+  "Returns, for the supplied sequence of outputs and the supplied sequence of the
+corresponding gradients at each output, a function that can be applied to any
+lazy array that is a dependency of any of these outputs to obtain the gradient
+at that output.  Lazy arrays and their gradients must always be lazy arrays of
+the same shape.")
 
 (document-function deflater
   "Returns a function that can be supplied as a modifier to LAZY-RESHAPE to

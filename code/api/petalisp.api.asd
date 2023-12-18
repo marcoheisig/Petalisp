@@ -13,7 +13,8 @@
    "petalisp.core"
    "petalisp.ir"
    "petalisp.codegen"
-   "petalisp.native-backend")
+   "petalisp.native-backend"
+   "petalisp.graphviz")
 
   :in-order-to ((test-op (test-op "petalisp.test-suite")))
 

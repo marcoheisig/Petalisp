@@ -8,10 +8,10 @@
    "closer-mop"
    "uiop"
    "trivial-features"
+   "petalisp.packages"
    "petalisp.utilities"
    "petalisp.core"
    "petalisp.ir"
-   "petalisp"
    "cl-dot")
 
   :serial t

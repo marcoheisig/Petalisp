@@ -110,6 +110,10 @@
    #:lazy-reshape
    #:lazy-fuse)
 
+  ;; Introspection
+  (:export
+   #:view)
+
   ;; Reshapers
   (:export
    #:deflater
