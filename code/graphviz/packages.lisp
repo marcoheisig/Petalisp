@@ -6,7 +6,6 @@
   (:use #:common-lisp #:petalisp)
 
   (:export
-   #:*graphviz-default-viewer*
-   #:*graphviz-default-format*
+   #:*viewer*
    #:view))
 

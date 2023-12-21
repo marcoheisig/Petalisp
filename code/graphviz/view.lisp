@@ -2,7 +2,7 @@
 
 (in-package #:petalisp.graphviz)
 
-(defparameter *graphviz-default-viewer*
+(defparameter *viewer*
   #+windows
   "chrome"
   #-windows
@@ -35,18 +35,14 @@
     (unless (file-open-p file)
       (delete-file file))))
 
-(defun view
-    (graph-root
-     &key
-       (viewer *graphviz-default-viewer*)
-       (graph (graphviz-default-graph graph-root)))
-  (when (symbolp graph)
-    (setf graph (make-instance graph)))
-  (let* ((directory *petalisp-view-directory*)
+(defun view (&rest graph-roots)
+  (let* ((graph (make-instance 'data-flow-graph))
+         (directory *petalisp-view-directory*)
          (name (format nil "graph~36,10,'0R.pdf" (random (expt 36 10))))
          (file (uiop:merge-pathnames* name directory))
-         (graph (cl-dot:generate-graph-from-roots graph (alexandria:ensure-list graph-root) '(:margin 0.0))))
+         (graph (cl-dot:generate-graph-from-roots graph graph-roots '(:margin 0.0))))
     (purge-unused-files-in-directory directory)
     (cl-dot:dot-graph graph file :format :pdf)
-    (uiop:run-program (list viewer (uiop:native-namestring file))))
-  graph-root)
+    (uiop:launch-program
+     (list *viewer* (uiop:native-namestring file))))
+  (values-list graph-roots))

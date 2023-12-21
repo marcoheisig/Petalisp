@@ -10,13 +10,12 @@
   (with-lazy-arrays  (series)
     (lazy #'/
      (lazy-reduce '+ series)
-     (range-size (lazy-array-range series 0)))))
+     (lazy-array-dimension series 0))))
 
 (defun lazy-median (series)
   (with-lazy-arrays (series)
     (let* ((data (lazy-sort series #'<))
-           (range (lazy-array-range data 0))
-           (size (range-size range)))
+           (size (lazy-array-dimension data 0)))
       (if (oddp size)
           (lazy-reshape data (slicer (/ (1- size) 2)))
           (lazy-mean

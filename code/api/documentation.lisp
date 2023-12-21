@@ -913,7 +913,10 @@ an error if the original shape and the resulting shape differ in size."
   (compute (lazy-rearrange #2a((1 2) (3 4)) 1 (~ 2 ~ 1))))
 
 (document-function view
-  "Graphically present the supplied lazy array or list of lazy arrays.")
+  "View the supplied lazy arrays as a graph, using some external program.  Each
+graph node corresponds to one lazy array, and is shown with its shape, derived
+element type, and possibly some other attributes.  Each graph edge describes
+one data flow dependency between one lazy array and another.")
 
 (document-function differentiator
   "Returns, for the supplied sequence of outputs and the supplied sequence of the
@@ -1131,9 +1134,8 @@ passing them to LAZY-OVERWRITE.")
 shadowed by the lazy array equivalent of the previous value of that symbol.  An
 alternative notation can be used to avoid shadowing the original array: If any
 array name is not a symbol but a list of a symbol and a form, the symbol is
-bound to the lazy array equivalent of what's produced by that form.
-
-It is good practice to start each function that expects some of its
-arguments to be lazy arrays to start with a suitable use of this macro."
+bound to the lazy array equivalent of what's produced by that form.  It is good
+practice to start each function that expects some of its arguments to be lazy
+arrays to start with a suitable use of this macro."
   (let ((a 5) (b #(1 2 3)))
     (with-lazy-arrays (a (c b)) (values a b c))))
