@@ -501,8 +501,10 @@ supplied transformation is not invertible."
    (transform a b to (+ (* 2 b) 5) (+ (* 3 a) 7)))
   (invert-transformation
    (transform a 0 to a))
-  (invert-transformation
-   (transform a b to a)))
+  (handler-case
+      (invert-transformation
+       (transform a b to a))
+    (error () :error)))
 
 (document-function petalisp.core:map-transformation-inputs
   "For each input of TRANSFORMATION, invoke FUNCTION with the input index
@@ -714,7 +716,7 @@ at a time according to the following rules:
 Returns the lazy array obtained after processing all modifiers."
   (compute (lazy-reshape #(1 2 3 4) (~ 1 2)))
   (compute (lazy-reshape #(1 2 3 4) (~ 2 ~ 3)))
-  (compute (lazy-reshape #(1 2 3 4) (~ 6 ~ 2)))
+  (compute (lazy-reshape #(1 2 3 4) (~ 4 ~ 2)))
   (compute (lazy-reshape #2A((1 2) (3 4)) (transform i j to j i)))
   (compute (lazy-reshape #(1 2 3 4) (transform i to (- i))))
   (compute (lazy-reshape #(1 2 3 4) (transform i to (- i)) (~ -2 0)))

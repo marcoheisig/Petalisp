@@ -29,7 +29,9 @@
                             (multiple-value-list
                              (funcall example-thunk)))
                   (error (e)
-                    (format stream "  >> ~S" (class-name (class-of e))))))))))
+                    (error "Evaluation of the example form ~S signaled a ~S."
+                           example-form
+                           (class-name (class-of e))))))))))
 
 (defmacro expand-documentation (form &rest examples)
   `(build-documentation
