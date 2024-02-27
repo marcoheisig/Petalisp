@@ -20,7 +20,7 @@
 
 (defun file-open-p (file)
   #+windows
-  t
+  t ; Admittedly conservative.
   #-windows
   (plusp
    (length
@@ -35,8 +35,9 @@
     (unless (file-open-p file)
       (delete-file file))))
 
-(defun view (&rest graph-roots)
-  (let* ((graph (make-instance 'data-flow-graph))
+(defun view (graph-roots &key (viewer *viewer*))
+  (let* ((graph-roots (alexandria:ensure-list graph-roots))
+         (graph (make-instance 'data-flow-graph))
          (directory *petalisp-view-directory*)
          (name (format nil "graph~36,10,'0R.pdf" (random (expt 36 10))))
          (file (uiop:merge-pathnames* name directory))
@@ -44,5 +45,5 @@
     (purge-unused-files-in-directory directory)
     (cl-dot:dot-graph graph file :format :pdf)
     (uiop:launch-program
-     (list *viewer* (uiop:native-namestring file))))
+     (list viewer (uiop:native-namestring file))))
   (values-list graph-roots))
