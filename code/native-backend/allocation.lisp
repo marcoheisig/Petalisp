@@ -148,32 +148,36 @@ arrays that were referenced in the schedule."
               (loop for storage across (invocation-sources invocation) do
                 (when (zerop (decf-storage-counter storage))
                   (push-allocation (storage-allocation storage))))))))
-      ;; Create and return the result vectors.
-      (let* ((allocations (make-array ncategories))
-             (nconstants (length reversed-constant-array-list))
-             (constant-arrays (make-array nconstants)))
-        (loop for category below ncategories do
-          (let* ((ncolors (aref allocation-colors category))
-                 (vector (make-array ncolors)))
-            (loop for bucket below nbuckets do
-              (loop for allocation in (aref unboxed-allocation-lists category bucket) do
-                (assert (= (allocation-category allocation) category))
-                (setf (aref vector (allocation-color allocation))
-                      allocation))
-              (loop for allocation in (aref boxed-allocation-lists category bucket) do
-                (assert (= (allocation-category allocation) category))
-                (setf (aref vector (allocation-color allocation))
-                      allocation)))
-            (setf (aref allocations category)
-                  vector)))
-        (loop for index from (1- nconstants) downto 0
-              for constant-array in reversed-constant-array-list
-              do (setf (aref constant-arrays index)
-                       constant-array))
-        (loop for per-category-allocations across allocations do
-          (loop for allocation across per-category-allocations do
-            (assert (allocationp allocation))))
-        (values allocations constant-arrays)))))
+      (values
+       ;; Create the vector of per-category-allocations.
+       (let ((allocations (make-array ncategories)))
+         (loop for category below ncategories do
+           (let* ((ncolors (aref allocation-colors category))
+                  (vector (make-array ncolors)))
+             (loop for bucket below nbuckets do
+               (loop for allocation in (aref unboxed-allocation-lists category bucket) do
+                 (assert (= (allocation-category allocation) category))
+                 (setf (aref vector (allocation-color allocation))
+                       allocation))
+               (loop for allocation in (aref boxed-allocation-lists category bucket) do
+                 (assert (= (allocation-category allocation) category))
+                 (setf (aref vector (allocation-color allocation))
+                       allocation)))
+             (setf (aref allocations category)
+                   vector)))
+         ;; Ensure that each vector of allocations is well formed.
+         (loop for per-category-allocations across allocations do
+           (loop for allocation across per-category-allocations do
+             (assert (allocationp allocation))))
+         allocations)
+       ;; Create the vector of constant arrays.
+       (let* ((nconstants (length reversed-constant-array-list))
+              (constant-arrays (make-array nconstants)))
+         (loop for index from (1- nconstants) downto 0
+               for constant-array in reversed-constant-array-list
+               do (setf (aref constant-arrays index)
+                        constant-array))
+         constant-arrays)))))
 
 (defun buffer-shard-bind (buffer-shard allocation)
   (storage-bind (buffer-shard-storage buffer-shard) allocation))
