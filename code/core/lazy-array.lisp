@@ -288,27 +288,29 @@
 
 (defun lazy-array-from-array (array)
   (declare (array array))
-  (if (= 1 (array-total-size array))
-      (let* ((value (row-major-aref array 0))
-             (scalar (lazy-array-from-scalar value))
-             (rank (array-rank array)))
-        (if (zerop rank)
-            scalar
-            (make-lazy-array
-             :shape (array-shape array)
-             :ntype (lazy-array-ntype scalar)
-             :delayed-action
-             (make-delayed-reshape
-              :input scalar
-              :transformation
-              (make-transformation
-               :input-mask (make-array rank :initial-element 0)
-               :output-rank 0)))))
-      (make-lazy-array
-       :shape (array-shape array)
-       :ntype (typo:array-element-ntype array)
-       :delayed-action
-       (make-delayed-array (simplify-array array)))))
+  (case (array-total-size array)
+    (0 (empty-lazy-array (array-shape array)))
+    (1 (let* ((value (row-major-aref array 0))
+              (scalar (lazy-array-from-scalar value))
+              (rank (array-rank array)))
+         (if (zerop rank)
+             scalar
+             (make-lazy-array
+              :shape (array-shape array)
+              :ntype (lazy-array-ntype scalar)
+              :delayed-action
+              (make-delayed-reshape
+               :input scalar
+               :transformation
+               (make-transformation
+                :input-mask (make-array rank :initial-element 0)
+                :output-rank 0))))))
+    (otherwise
+     (make-lazy-array
+      :shape (array-shape array)
+      :ntype (typo:array-element-ntype array)
+      :delayed-action
+      (make-delayed-array (simplify-array array))))))
 
 (defun simplify-array (array)
   "Returns an array with the same shape and elements as ARRAY, but that is
