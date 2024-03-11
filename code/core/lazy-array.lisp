@@ -112,11 +112,15 @@
 ;;; We also amend the constructor of each delayed action to automatically
 ;;; increment the refcount of each referenced lazy array.
 
-;;; A delayed map action is executed by applying the function specified by
-;;; its fnrecord element-wise to the specified inputs.
 (defstruct (delayed-map
             (:include delayed-action)
             (:constructor %make-delayed-map))
+  "A delayed map describes the element-wise application of a
+single-valued function to some number of lazy arrays of the same shape.
+A delayed map has two slots: The first slot is the fnrecord
+of the function being mapped, i.e., the entry of that function in the database
+of our type inference library Typo.  The second slot is a list of lazy arrays
+that the function is being mapped over."
   (fnrecord (alexandria:required-argument :fnrecord)
    :type typo:fnrecord)
   (inputs (alexandria:required-argument :inputs)
@@ -128,14 +132,20 @@
     (incf (lazy-array-refcount input)))
   (%make-delayed-map :fnrecord fnrecord :inputs inputs))
 
-;;; A delayed multiple value map is the same as a delayed map, but for a
-;;; function that produces multiple values.  Because of the nature of its
-;;; return values, a lazy array whose delayed action is a delayed multiple
-;;; value map must only appear as the input of a delayed nth value action
-;;; and never be visible to the user.
 (defstruct (delayed-multiple-value-map
             (:include delayed-map)
             (:constructor %make-delayed-multiple-value-map))
+  "A delayed multiple value map describes the element-wise application of a
+multiple-valued function to some number of lazy arrays of the same shape.  It
+has the same first two slots as a delayed map, a third slot that is Typo's
+description of the type of the multiple value pack it creates, and a fourth
+slot that is a bit vector that tracks which of the multiple values have been
+referenced so far.  This bit vector is later used to eliminate unused values
+altogether.
+
+Because of the nature of its return values, a lazy array whose delayed action
+is a delayed multiple value map must only appear as the input of a delayed nth
+value action and never be visible to the user."
   (values-ntype (alexandria:required-argument :values-ntype)
    :type typo:values-ntype
    :read-only t)
@@ -156,11 +166,13 @@
    :values-ntype values-ntype
    :refbits refbits))
 
-;;; A delayed nth-value action is executed by referencing the nth value of
-;;; the targeted delayed multiple value map.
 (defstruct (delayed-nth-value
             (:include delayed-action)
             (:constructor %make-delayed-nth-value))
+  "A delayed nth-value describes the process of referencing the nth value of
+some lazy array whose delayed action is a delayed multiple value map.  Its
+first slot is the number of the value being referenced, and its second slot is
+a lazy array defined by a delayed multiple value map."
   (number (alexandria:required-argument :number)
    :type typo:argument-index)
   (input (alexandria:required-argument :input)
@@ -179,12 +191,13 @@
      :number number
      :input input)))
 
-;;; A delayed reshape action is executed by assigning each index the value
-;;; of the specified input lazy array at the position that is obtained by
-;;; applying the specified transformation to the index.
 (defstruct (delayed-reshape
             (:include delayed-action)
             (:constructor %make-delayed-reshape))
+  "A delayed reshape describes the process of assigning each index the value of
+the specified input lazy array at the position that is obtained by applying the
+specified transformation to the index.  It has one slot that stores the
+transformation, and one slot that stores that lazy array being referenced."
   (transformation (alexandria:required-argument :transformation)
    :type transformation)
   (input (alexandria:required-argument :input)
@@ -202,11 +215,12 @@
    :transformation transformation
    :input input))
 
-;;; A delayed fuse action is executed by assigning each index the unique
-;;; value of the same index in on of the specified inputs.
 (defstruct (delayed-fuse
             (:include delayed-action)
             (:constructor %make-delayed-fuse))
+  "A delayed fuse describes the process of assigning each index the value of that
+index in the sole input lazy array that contains that index.  It has one slot that is
+the list of input lazy arrays."
   (inputs (alexandria:required-argument :inputs)
    :type list))
 
@@ -217,16 +231,17 @@
   (%make-delayed-fuse
    :inputs inputs))
 
-;;; A delayed range action is executed by assigning each index a value that
-;;; is that index.
 (defstruct (delayed-range
-            (:include delayed-action)))
+            (:include delayed-action))
+  "A delayed range describes the process of assigning each index, which must be a
+length one tuple, the sole integer contained in that index.")
 
-;;; A delayed array action is executed by accessing the values of the
-;;; underlying storage array.
 (defstruct (delayed-array
             (:include delayed-action)
             (:constructor %make-delayed-array (storage)))
+  "A delayed array describes the process of assigning each index the value of some
+existing Common Lisp array at that index.  It has one slot that is the existing
+array being referenced."
   (storage (alexandria:required-argument :storage)
    :type array))
 
@@ -236,12 +251,16 @@
 ;;; A delayed nop action is inserted as the delayed action of an empty
 ;;; lazy array.
 (defstruct (delayed-nop
-            (:include delayed-action)))
+            (:include delayed-action))
+  "A delayed nop is used as the delayed action of any lazy array with zero
+elements.  It cannot be computed.")
 
 ;;; A delayed unknown cannot be executed.  It is the delayed action of lazy
 ;;; arrays that serve as formal parameters only.
 (defstruct (delayed-unknown
-            (:include delayed-action)))
+            (:include delayed-action))
+  "A delayed unknown is used as the delayed action of any lazy array created by
+the function MAKE-UNKNOWN.  It cannot be computed.")
 
 ;;; A delayed wait is executed by calling WAIT on the request, and then
 ;;; executing the delayed action of it.
@@ -261,6 +280,9 @@
 ;;; in the asynchronous execution after a SCHEDULE operation.
 (defstruct (delayed-failure
             (:include delayed-action))
+  "A delayed failure describes a lazy array that was involved in an asynchronous evaluation
+that signaled an error.  It has one slot that is the condition that should be
+re-signaled whenever this delayed action is part of a synchronous evaluation."
   (condition (alexandria:required-argument :condition)
    :type condition
    :read-only t))

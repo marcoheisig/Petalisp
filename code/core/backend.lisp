@@ -12,50 +12,45 @@
 
 (defgeneric backendp (object)
   (:documentation
-   "Returns whether the supplied OBJECT is a Petalisp backend."))
+   "Returns whether the supplied object is a backend."))
 
 (defgeneric delete-backend (backend)
   (:documentation
-   "Permanently disable the supplied BACKEND and free any resources that might
-be held by it.  No other actions may be performed on a backend once it has
-been deleted."))
+   "Permanently disable the supplied backend and free any resources that might
+be held by it.  Once a backend has been deleted, any further call to an
+evaluation function on that backend results in an error being signaled."))
 
 (defgeneric backend-compute (backend lazy-arrays)
   ;; We change the argument precedence order so that we can add default
   ;; methods for the case where the second argument is null.
   (:argument-precedence-order lazy-arrays backend)
   (:documentation
-   "Returns a list of delayed local arrays, one for each of the supplied list
-of LAZY-ARRAYS.
-
-This function is invoked by COMPUTE, which guarantees that the supplied
-LAZY-ARRAYS are already deflated.  The resulting delayed actions replace
-the delayed actions of the corresponding LAZY-ARRAYS."))
+   "Returns a list of delayed lazy arrays, one for each of the supplied list
+of lazy arrays.  This function is only invoked by COMPUTE, which guarantees
+that the supplied lazy arrays are already deflated."))
 
 (defgeneric backend-evaluator (backend unknowns lazy-arrays)
   ;; We change the argument precedence order so that we can add default
   ;; methods for the case where the second or third argument are null.
   (:argument-precedence-order unknowns lazy-arrays backend)
   (:documentation
-   "For a supplied BACKEND, list of UNKNOWNS of length N, and list of
-LAZY-ARRAYS of length K, returns a function with K+N arguments that
+   "For a supplied backend, list of unknowns of length N, and list of
+lazy arrays of length K, returns a function with K plus N arguments that
 returns, as multiple values, the K array values obtained by computing the
-supplied arrays after substituting the Ith unknown with the supplied
-argument in position K+I.
+supplied arrays after substituting the Ith unknown with the supplied argument
+in position K plus I.
 
-The first N arguments specify which storage to use for the results.  A
-value of NIL indicates that the corresponding result shall be a fresh
-array.  A value that is an array ensures that the result is written to that
-array.
-
-An error is signaled if any of the arguments of an evaluator has a
-different shape or element type as the corresponding result or unknown."))
+The first N arguments specify which storage to use for the results.  A value of
+NIL indicates that the corresponding result shall be a fresh array, whereas a
+value that is an array ensures that the result is written to that array.  An
+error is signaled if any of the arguments of an evaluator has a different shape
+or element type as the corresponding result or unknown."))
 
 (defgeneric backend-compute-asynchronously (backend lazy-arrays)
   (:argument-precedence-order lazy-arrays backend)
   (:documentation
-   "Returns a REQUEST object that can be used to wait until all of the
-supplied LAZY-ARRAYS have been computed."))
+   "Returns a request object that can be used to wait until all of the
+supplied lazy arrays have been computed."))
 
 (defgeneric backend-debug-flag (backend)
   (:documentation
@@ -70,16 +65,16 @@ performance for ease of debugging."))
 
 (defgeneric requestp (object)
   (:documentation
-   "Returns whether the supplied OBJECT is a request."))
+   "Returns whether the supplied object is a request."))
 
 (defgeneric request-wait (request)
   (:documentation
-   "Block until all lazy arrays that are part of the supplied REQUEST have
+   "Block until all lazy arrays that are part of the supplied request have
 been computed."))
 
 (defgeneric request-completedp (request)
   (:documentation
-   "Returns whether all lazy arrays that are part of the supplied REQUEST have
+   "Returns whether all lazy arrays that are part of the supplied request have
 already been computed."))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
