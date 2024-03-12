@@ -16,7 +16,7 @@
     (find-if #'program-in-path-p '("xdg-open" "okular" "evince" "xpdf"))))
 
 (defparameter *petalisp-view-directory*
-  (uiop:xdg-cache-home "petalisp" "view"))
+  (uiop:xdg-cache-home (list "petalisp" "view/")))
 
 (defun file-open-p (file)
   #+windows
@@ -35,15 +35,18 @@
     (unless (file-open-p file)
       (delete-file file))))
 
-(defun view (graph-roots &key (viewer *viewer*))
+(defun view (graph-roots &key (viewer *viewer*) (verbose nil))
   (let* ((graph-roots (alexandria:ensure-list graph-roots))
-         (graph (make-instance 'data-flow-graph))
+         (graph (graphviz-default-graph (first graph-roots)))
          (directory *petalisp-view-directory*)
          (name (format nil "graph~36,10,'0R.pdf" (random (expt 36 10))))
          (file (uiop:merge-pathnames* name directory))
          (graph (cl-dot:generate-graph-from-roots graph graph-roots '(:margin 0.0))))
+    (ensure-directories-exist directory)
+    (when verbose
+      (cl-dot:print-graph graph))
     (purge-unused-files-in-directory directory)
     (cl-dot:dot-graph graph file :format :pdf)
     (uiop:launch-program
-     (list viewer (uiop:native-namestring file))))
-  (values-list graph-roots))
+     (list viewer (uiop:native-namestring file)))
+    (values-list graph-roots)))
