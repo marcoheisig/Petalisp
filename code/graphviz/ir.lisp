@@ -123,7 +123,8 @@
     ("depth" . ,(stringify (petalisp.ir:buffer-depth buffer)))
     ("number" . ,(stringify (petalisp.ir:buffer-number buffer)))
     ("reuse-potential" . ,(stringify (petalisp.ir:buffer-reuse-potential buffer)))
-    ("storage" . ,(stringify (type-of (petalisp.ir:buffer-storage buffer))))))
+    ,@(when (petalisp.ir:buffer-storage buffer)
+        `(("storage" . ,(stringify (type-of (petalisp.ir:buffer-storage buffer))))))))
 
 (defun hide-buffers (references)
   (subst-if :buffer #'petalisp.ir:bufferp references))
