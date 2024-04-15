@@ -22,12 +22,12 @@
 ;;; one, or a lazy array that follows a broadcasting reshape operation, its
 ;;; growth is suspended and we record that this dendrite has reached that
 ;;; lazy array.  The data structure that tracks which dendrites have
-;;; reached a particular lazy array is called a cluster.  Once the growth
-;;; of all dendrites has been suspended or stopped, we pick the cluster
+;;; reached a particular lazy array is called a nucleus.  Once the growth
+;;; of all dendrites has been suspended or stopped, we pick the nucleus
 ;;; whose lazy array has the highest depth from a priority queue.  This
-;;; cluster is now turned into one or more buffers, and each buffer is the
+;;; nucleus is now turned into one or more buffers, and each buffer is the
 ;;; root of a stem with a single dendrite that is grown further.  Once
-;;; there are no further clusters, the IR conversion is complete.
+;;; there are no further nuclei, the IR conversion is complete.
 ;;;
 ;;; A special case occurs when a dendrite reaches a fusion node with
 ;;; multiple inputs that intersect with the dendrite's shape.  In such a
@@ -40,36 +40,50 @@
 ;;; the IR.
 
 (defstruct ir-converter
-  ;; A priority queue of clusters, sorted by the depth of the corresponding
-  ;; lazy arrays.
+  "The ir-converter is a structure that tracks all the global state of one IR
+conversion process.  Each of its slots used to be just a special variable that
+was bound when entering the IR conversion, but that turned out to be unwieldy.
+Now there is just a single special variable that holds an instance of this
+structure.  The individual slots of an IR converter are as follows:
+
+- A priority queue of nuclei, sorted by the depth of the corresponding lazy
+  arrays.
+
+- A hash table, mapping from lazy arrays to their nuclei.
+
+- A hash table, mapping from Common Lisp arrays to buffers.
+
+- A hash table, mapping from Common Lisp scalars to buffers of rank zero
+  containing those scalars.
+
+- A hash table, mapping from unknowns to buffers.
+
+- An association list whose entries are conses of leaf buffers and their
+  corresponding lazy arrays.
+
+- A list of lists of conses that need to be updated by writing the value of the
+  cdr of the first cons to the cdr of each remaining cons.
+
+- The maximum size we allow a kernel to grow during buffer pruning.
+
+- An list of potentially superfluous buffers, i.e., buffer where all dendrites
+  are disjoint and cover the entire buffer.  Nucleus conversion also makes sure
+  that the data slot of each potentially superfluous buffer contains the list
+  of dendrites reaching it.
+
+- A hash table, mapping from potentially superfluous buffers to dendrites."
   (pqueue (priority-queue:make-pqueue #'>))
-  ;; A hash table, mapping from lazy arrays to clusters.
-  (cluster-table (make-hash-table :test #'eq) :type hash-table)
-  ;; A hash table, mapping from Common Lisp arrays to buffers.
+  (nucleus-table (make-hash-table :test #'eq) :type hash-table)
   (array-table (make-hash-table :test #'eq) :type hash-table)
-  ;; A hash table, mapping from Common Lisp scalars to buffers of rank zero
-  ;; containing those scalars.
   (scalar-table (make-hash-table :test #'eql) :type hash-table)
-  ;; A hash table, mapping from unknowns to buffers.
   (unknown-table (make-hash-table :test #'eq) :type hash-table)
-  ;; An alist whose entries are conses of leaf buffers and their
-  ;; corresponding lazy arrays.
   (leaf-alist '() :type list)
-  ;; A list of lists of conses that need to be updated by writing the value
-  ;; of the cdr of the first cons to the cdr of each remaining cons.
   (cons-updates '() :type list)
-  ;; The maximum size we allow a kernel to grow during buffer pruning.
   (kernel-size-threshold nil :type unsigned-byte :read-only t)
-  ;; An list of potentially superfluous buffers, i.e., buffer where all
-  ;; dendrites are disjoint and cover the entire buffer.  Cluster
-  ;; conversion also makes sure that the data slot of each potentially
-  ;; superfluous buffer contains the list of dendrites reaching it.
   (potentially-superfluous-buffers '() :type list)
-  ;; A hash table, mapping from potentially superfluous buffers to
-  ;; dendrites.
   (buffer-dendrites-table (make-hash-table :test #'eq) :type hash-table))
 
-(defun ir-converter-next-cluster (ir-converter)
+(defun ir-converter-next-nucleus (ir-converter)
   (priority-queue:pqueue-pop
    (ir-converter-pqueue ir-converter)))
 
@@ -80,70 +94,104 @@
 (declaim (ir-converter *ir-converter*))
 (defvar *ir-converter*)
 
-(defstruct (cluster
-            (:constructor make-cluster (lazy-array)))
-  ;; The cluster's lazy array.
+(defstruct (nucleus
+            (:constructor make-nucleus (lazy-array)))
+  "A nucleus describes a lazy array that is either the root of a data flow graph,
+or one that was reached by more than one dendrite in the conversion process.  Each
+nucleus has the following slots:
+
+- The lazy array at which the nucleation occurs.  When talking about the shape,
+  depth or type of a nucleus, we refer to the shape, depth or type of the lazy
+  array of that nucleus.
+
+- A list of all the dendrites that have reached this nucleus.  This list is
+  empty when the nucleus is at a root of the data flow graph, and contains two
+  or more dendrites otherwise."
   (lazy-array nil :type lazy-array)
-  ;; A list of dendrites that have reached this cluster.
   (dendrites '() :type list))
 
-(defun ensure-cluster (lazy-array)
+(defun ensure-nucleus (lazy-array)
   (alexandria:ensure-gethash
    lazy-array
-   (ir-converter-cluster-table *ir-converter*)
-   (let ((cluster (make-cluster lazy-array)))
+   (ir-converter-nucleus-table *ir-converter*)
+   (let ((nucleus (make-nucleus lazy-array)))
      (priority-queue:pqueue-push
-      cluster
+      nucleus
       (lazy-array-depth lazy-array)
       (ir-converter-pqueue *ir-converter*))
-     cluster)))
+     nucleus)))
 
-(defun cluster-ntype (cluster)
-  (declare (cluster cluster))
+(defun nucleus-ntype (nucleus)
+  (declare (nucleus nucleus))
   (typo:ntype-primitive-ntype
    (lazy-array-ntype
-    (cluster-lazy-array cluster))))
+    (nucleus-lazy-array nucleus))))
 
-(defun cluster-shape (cluster)
-  (declare (cluster cluster))
-  (lazy-array-shape (cluster-lazy-array cluster)))
+(defun nucleus-shape (nucleus)
+  (declare (nucleus nucleus))
+  (lazy-array-shape (nucleus-lazy-array nucleus)))
 
 (defstruct stem
-  ;; The cluster in which the stem is rooted.
-  (cluster nil :type cluster)
-  ;; The kernel that is grown from that stem.
+  "A stem describes the process of assembling one kernel.  Stems and their kernels
+are always created at the same.  In the beginning, only the iteration space and
+the store instructions of the a stem's kernel are initialized, and all the
+other instructions of the kernel will be produced later by growing some
+dendrites from the stem.  A stem has the following slots:
+
+- A reference to the nucleus from which the stem emanates.
+
+- A reference to the not-yet-fully-initialized kernel that is grow from the
+  stem.  When talking about the iteration space of a stem, we refer to the
+  iteration space of this kernel.
+
+- A list that has --- if the stem's nucleus occurs at a multiple value map ---
+  as many entries as there are values produced by that multiple value map.  If
+  the stem's nucleus occurs at any other kind of lazy array, this list has a
+  single element.  Each element is either a buffer for holding the values
+  produced by the kernel, or NIL if that particular value is never referenced.
+
+- A flag that indicates whether the stem is valid.  It is true initially, but
+  may be set to false in case the stem is partitioned into multiple stems with
+  smaller iteration spaces.  When a stem is invalid, its kernel is discarded
+  and won't be part of resulting intermediate representation."
+  (nucleus nil :type nucleus)
   (kernel nil :type kernel)
-  ;; A list whose entries are the buffers for each value produced by the
-  ;; root instruction of that stem, or NIL if that value is never
-  ;; referenced.
   (buffers nil :type list)
-  ;;A stem is turned invalid when one of its dendrites reaches more than
-  ;; one input of a lazy fuse node.
   (validp t :type boolean))
 
 (defstruct (dendrite
             (:constructor %make-dendrite))
-  ;; The stem from which this dendrite originated.
+  "A dendrite describes a set of lazy array indices and how they map to the
+iteration space of the stem from which the dendrite originates.  It also holds
+a reference to an input of a not-yet-fully-initialized instruction.  The job of
+the dendrite is to initialize this instruction input, and to allow reasoning
+about the values being referenced.  It has the following slots:
+
+- A reference to the stem from which the dendrite originates.
+
+- A shape that describes the indices being referenced.
+
+- A transformation from the dendrite's shape to the iteration space of the
+  dendrite's stem's kernel.
+
+- The depth of the nucleus that was most recently visited by the dendrite.
+
+- The cons cell whose cdr should be set to the next instruction being emitted,
+  and whose car is an integer denoting which of the multiple values of that
+  instruction is being referenced."
   (stem nil :type stem)
-  ;; The shape of the iteration space referenced by the dendrite.
   (shape nil :type shape)
-  ;; A transformation from the dendrite's shape to the iteration space of
-  ;; the dendrite's kernel.
   (transformation nil :type transformation)
-  ;; The depth of the cluster most recently visited by this dendrite.
   (depth nil :type unsigned-byte)
-  ;; The cons cell whose car is to be filled with a cons cell whose cdr is
-  ;; the next instruction, and whose car is an integer denoting which of
-  ;; the multiple values of the cdr is being referenced.
   (cons nil :type cons))
 
 (defun dendrite-kernel (dendrite)
   (declare (dendrite dendrite))
   (stem-kernel (dendrite-stem dendrite)))
 
-(defun dendrite-cluster (dendrite)
+(defun dendrite-nucleus (dendrite)
   (declare (dendrite dendrite))
-  (stem-cluster (dendrite-stem dendrite)))
+  (stem-nucleus (dendrite-stem dendrite)))
 
 (defun dendrite-validp (dendrite)
   (declare (dendrite dendrite))
@@ -152,12 +200,12 @@
 (defun dendrite-value-n (dendrite)
   (car (dendrite-cons dendrite)))
 
-(defun make-dendrite (cluster shape buffers)
-  (declare (cluster cluster) (shape shape) (list buffers))
+(defun make-dendrite (nucleus shape buffers)
+  (declare (nucleus nucleus) (shape shape) (list buffers))
   (let* ((transformation (identity-transformation (shape-rank shape)))
          (kernel (make-kernel :iteration-space shape))
          (stem (make-stem
-                :cluster cluster
+                :nucleus nucleus
                 :kernel kernel
                 :buffers buffers))
          (store-instructions
@@ -170,7 +218,7 @@
                     :stem stem
                     :shape shape
                     :transformation transformation
-                    :depth (lazy-array-depth (cluster-lazy-array cluster))
+                    :depth (lazy-array-depth (nucleus-lazy-array nucleus))
                     :cons (store-instruction-input (first store-instructions)))))
     (unless (null (rest store-instructions))
       (push (mapcar #'store-instruction-input store-instructions)
@@ -189,24 +237,24 @@
         (reversed-root-buffers '()))
     ;; Create and grow one dendrite for each root array.
     (loop for lazy-array in lazy-arrays do
-      (let* ((cluster (make-cluster lazy-array))
+      (let* ((nucleus (make-nucleus lazy-array))
              (shape (lazy-array-shape lazy-array))
              (buffer (make-buffer
                       :shape shape
                       :depth (lazy-array-depth lazy-array)
                       :ntype (typo:ntype-primitive-ntype
                               (lazy-array-ntype lazy-array))))
-             (dendrite (make-dendrite cluster shape (list buffer))))
+             (dendrite (make-dendrite nucleus shape (list buffer))))
         (push buffer reversed-root-buffers)
         (grow-dendrite dendrite lazy-array)))
-    ;; Successively convert all clusters.
+    ;; Successively convert all nuclei.
     (loop until (ir-converter-empty-p *ir-converter*)
-          for cluster = (ir-converter-next-cluster *ir-converter*)
-          for lazy-array = (cluster-lazy-array cluster)
+          for nucleus = (ir-converter-next-nucleus *ir-converter*)
+          for lazy-array = (nucleus-lazy-array nucleus)
           for delayed-action = (lazy-array-delayed-action lazy-array)
-          do (convert-cluster cluster lazy-array delayed-action))
+          do (convert-nucleus nucleus lazy-array delayed-action))
     ;; Update all cons cells whose instruction couldn't be determined
-    ;; immediately at cluster conversion time.
+    ;; immediately at nucleus conversion time.
     (loop for (cons . other-conses) in (ir-converter-cons-updates *ir-converter*) do
       (let ((instruction (cdr cons)))
         ;; The cdr might not contain an instruction if the corresponding
@@ -308,36 +356,36 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Cluster Conversion
+;;; Nucleus Conversion
 
-(defgeneric convert-cluster (cluster lazy-array delayed-action))
+(defgeneric convert-nucleus (nucleus lazy-array delayed-action))
 
 ;;; Under certain circumstances, there is no need to convert the current
-;;; cluster at all.  This around method handles these cases.  It also
-;;; removes all dendrites that have been invalidated from the cluster.
-(defmethod convert-cluster :around
-    ((cluster cluster)
+;;; nucleus at all.  This around method handles these cases.  It also
+;;; removes all dendrites that have been invalidated from the nucleus.
+(defmethod convert-nucleus :around
+    ((nucleus nucleus)
      (lazy-array lazy-array)
      (delayed-action delayed-action))
-  ;; Since clusters are converted in depth-first order, and since all
-  ;; further lazy arrays have a depth less than the current cluster, there
-  ;; is no need to keep the current cluster in the cluster table.  No new
+  ;; Since nuclei are converted in depth-first order, and since all
+  ;; further lazy arrays have a depth less than the current nucleus, there
+  ;; is no need to keep the current nucleus in the nucleus table.  No new
   ;; dendrites will ever reach it.
-  (remhash lazy-array (ir-converter-cluster-table *ir-converter*))
+  (remhash lazy-array (ir-converter-nucleus-table *ir-converter*))
   ;; Remove all dendrites that have become invalid because their stem has
   ;; been abandoned after encountering a lazy-fuse node.
-  (setf (cluster-dendrites cluster)
-        (remove-if-not #'dendrite-validp (cluster-dendrites cluster)))
+  (setf (nucleus-dendrites nucleus)
+        (remove-if-not #'dendrite-validp (nucleus-dendrites nucleus)))
   ;; Don't try anything smart if there is at least one dendrite with a
   ;; non-invertible transformation.
-  (if (find-if-not #'transformation-invertiblep (cluster-dendrites cluster)
+  (if (find-if-not #'transformation-invertiblep (nucleus-dendrites nucleus)
                      :key #'dendrite-transformation)
       (call-next-method)
       ;; If every transformation is invertible, we can try to merge
       ;; dendrites with the same stem, transformation and referenced value
       ;; number.
       (let ((mergeable-dendrites '()))
-        (loop for dendrite in (cluster-dendrites cluster) do
+        (loop for dendrite in (nucleus-dendrites nucleus) do
           (let ((entry (find dendrite mergeable-dendrites
                              :key #'first
                              :test #'mergeable-dendrites-p)))
@@ -356,12 +404,12 @@
                  (lazy-array-depth lazy-array))
            (grow-dendrite dendrite lazy-array))
           ;; If there is more than one list of mergeable dendrites, we have
-          ;; to go through the regular cluster conversion.  However, we can
+          ;; to go through the regular nucleus conversion.  However, we can
           ;; still pull one trick: We can hide all but one dendrite of each
           ;; list of mergeable dendrites, knowing that the others will be
           ;; patched up later.
           (_
-           (setf (cluster-dendrites cluster)
+           (setf (nucleus-dendrites nucleus)
                  (mapcar #'first mergeable-dendrites))
            (call-next-method)))
         ;; Patch up the remaining dendrites.
@@ -390,11 +438,11 @@
         (dendrite-transformation d1)
         (dendrite-transformation d2))))
 
-(defmethod convert-cluster
-    ((cluster cluster)
+(defmethod convert-nucleus
+    ((nucleus nucleus)
      (lazy-array lazy-array)
      (delayed-action delayed-action))
-  (let* ((shape-dendrites-alist (partition-dendrites (cluster-dendrites cluster)))
+  (let* ((shape-dendrites-alist (partition-dendrites (nucleus-dendrites nucleus)))
          (depth (lazy-array-depth lazy-array))
          ;; Create one buffer for each shape-dendrites-alist entry.
          (buffer-dendrites-alist
@@ -404,7 +452,7 @@
                   (make-buffer
                    :shape shape
                    :depth depth
-                   :ntype (cluster-ntype cluster))
+                   :ntype (nucleus-ntype nucleus))
                   dendrites))))
     ;; Emit one load instruction for each dendrite.
     (loop for (buffer . dendrites) in buffer-dendrites-alist do
@@ -429,7 +477,7 @@
              (setf (buffer-dendrites main-buffer) dendrites)
              (push main-buffer (ir-converter-potentially-superfluous-buffers *ir-converter*)))
            ;; Ensure that the elements of the main buffer are being computed.
-           (grow-dendrite (make-dendrite cluster shape (list main-buffer)) lazy-array)
+           (grow-dendrite (make-dendrite nucleus shape (list main-buffer)) lazy-array)
            ;; Emit copy kernels from the main buffer to all the other
            ;; buffers.
            (loop for (other-buffer . nil) in other-entries do
@@ -439,8 +487,8 @@
 ;;; arrays, but the differences have proven to be too large to combine both
 ;;; methods.  The main difference is that we need to allocate buffers for
 ;;; each of the resulting values of the instruction.
-(defmethod convert-cluster
-    ((cluster cluster)
+(defmethod convert-nucleus
+    ((nucleus nucleus)
      (lazy-array lazy-array)
      (delayed-multiple-value-map delayed-multiple-value-map))
   ;; During partitioning, we treat all dendrites as if they'd write into
@@ -449,7 +497,7 @@
   ;; introduce additional fragmentation.  The price is slightly inefficient
   ;; code when some return values of a multiple valued function are used in
   ;; a wildly different way than others.
-  (let* ((shape-dendrites-alist (partition-dendrites (cluster-dendrites cluster)))
+  (let* ((shape-dendrites-alist (partition-dendrites (nucleus-dendrites nucleus)))
          (depth (lazy-array-depth lazy-array))
          (values-ntype (delayed-multiple-value-map-values-ntype delayed-multiple-value-map))
          (refbits (delayed-multiple-value-map-refbits delayed-multiple-value-map))
@@ -494,7 +542,7 @@
                      collect
                      (remove nil (select-masked-elements buffer-dendrites-alist bitmask))))
              (main-buffers (mapcar #'caar list-of-filtered-buffer-dendrites-alists))
-             (dendrite (make-dendrite cluster shape main-buffers)))
+             (dendrite (make-dendrite nucleus shape main-buffers)))
         ;; Check whether the main buffers are potentially superfluous.  If
         ;; so, track them for the later pruning phase.  Also, (ab)use the
         ;; data slot of each main buffer to record all its dendrites.
@@ -581,14 +629,14 @@
               (dendrite-depth dendrite))
            (> (lazy-array-refcount lazy-array) 1))
       ;; We employ a trick here - if the multiply referenced lazy-array is
-      ;; an nth-value reference, we don't create a cluster for it but for
+      ;; an nth-value reference, we don't create a nucleus for it but for
       ;; its parent.
       (if (delayed-nth-value-p delayed-action)
           (with-accessors ((cons dendrite-cons)) dendrite
             (setf (car cons)
                   (delayed-nth-value-number delayed-action))
-            (push dendrite (cluster-dendrites (ensure-cluster (delayed-nth-value-input delayed-action)))))
-          (push dendrite (cluster-dendrites (ensure-cluster lazy-array))))
+            (push dendrite (nucleus-dendrites (ensure-nucleus (delayed-nth-value-input delayed-action)))))
+          (push dendrite (nucleus-dendrites (ensure-nucleus lazy-array))))
       (call-next-method)))
 
 (defmethod grow-dendrite-aux
@@ -619,16 +667,16 @@
          ;; Invalidate the current kernel and its dendrites.
          (setf (stem-validp stem) nil)
          (delete-kernel kernel)
-         ;; Try growing from the cluster again, but with one stem for each
+         ;; Try growing from the nucleus again, but with one stem for each
          ;; reachable fusion input.
-         (let* ((cluster (stem-cluster stem))
-                (lazy-array (cluster-lazy-array cluster)))
+         (let* ((nucleus (stem-nucleus stem))
+                (lazy-array (nucleus-lazy-array nucleus)))
            (loop for input in inputs
                  for intersection in intersections
                  unless (shape-emptyp intersection)
                    do (grow-dendrite
                        (make-dendrite
-                        cluster
+                        nucleus
                         (transform-shape intersection (invert-transformation transformation))
                         (stem-buffers stem))
                        lazy-array))))))))
@@ -889,7 +937,7 @@
 ;;; i.e. buffers that could be removed altogether by substituting all loads
 ;;; to it with copies of one of the kernels storing to it.
 ;;;
-;;; We could perform this optimization during cluster conversion, but then
+;;; We could perform this optimization during nucleus conversion, but then
 ;;; there would be no limit on the size of the generated kernels.  So
 ;;; instead we delay this pruning step until after the entire graph is
 ;;; converted, and we stop pruning before kernels grow too large.  To make

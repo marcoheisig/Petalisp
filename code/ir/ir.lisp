@@ -7,22 +7,32 @@
             (:constructor make-program))
   "A program is the largest organizational unit in the Petalisp intermediate
 representation, and fully describes the semantics of a particular graph of lazy
-arrays."
-  ;; This program's unique task with zero predecessors.
+arrays.  It has the following slots:
+
+- The initial task, which is the unique task in the program that has zero
+  predecessors.
+
+- The final task, which is the unique task in the program that has zero
+  successors.
+
+- An association list where each entry has a key that is a leaf buffer, and a
+  value that is the corresponding lazy array.
+
+- A list of all the root buffers of the program, in the order that they were
+  scheduled for evaluation.
+
+- A simple vector that contains all the tasks in the program, sorted by their
+  task number.
+
+- The number of buffers in the program.
+
+- The number of kernels in the program."
   (initial-task nil)
-  ;; This program's unique task that has zero successors.
   (final-task nil)
-  ;; An list whose entries are conses of leaf buffers and their
-  ;; corresponding lazy arrays.
   (leaf-alist '() :type list)
-  ;; A list of all root buffers of the program, in the order they were
-  ;; supplied.
   (root-buffers '() :type list)
-  ;; A simple vector, mapping from task numbers to tasks.
   (task-vector #() :type simple-vector)
-  ;; The number of buffers in the program.
   (number-of-buffers 0 :type (and unsigned-byte fixnum))
-  ;; The number of kernels in the program.
   (number-of-kernels 0 :type (and unsigned-byte fixnum)))
 
 (declaim (inline program-number-of-tasks))
@@ -59,26 +69,37 @@ The rules for task membership are:
             (:predicate bufferp)
             (:constructor make-buffer))
   "A buffer is a mapping from indices of a particular shape to memory locations of
-the same type."
-  ;; The shape of this buffer.
+the same type.  It has the following slots:
+
+- A shape that describes the number and the virtual layout of the buffer.
+
+- A conservative approximation of the type of each element of the buffer,
+  represented as an ntype of the type inference library Typo.
+
+- The depth of the lazy array corresponding to the buffer.
+
+- The writers of the buffer, encoded as an association list where the key of
+  each entry is a kernel, and where the value is the list of all the store
+  instructions in that kernel that write to the buffer.
+
+- The readers of the buffer, encoded as an association where the key of each
+ entry is a kernel, and where the value is a list of all the load instructions
+ from in that kernel that load from the buffer.
+
+- The task that contains all the kernels that write into this buffer.
+
+- The storage of the buffer, which is an opaque, backend-specific objects.
+
+- A number that is unique among all buffers in this program and less than the
+  total number of buffers in this program."
   (shape nil :type shape)
-  ;; The type code of all elements stored in this buffer.
   (ntype nil :type typo:ntype)
-  ;; The depth of the corresponding lazy array of this buffer.
   (depth nil :type (and unsigned-byte fixnum))
-  ;; An alist whose keys are kernels writing to this buffer, and whose
-  ;; values are all store instructions from that kernel into this buffer.
   (writers '() :type list)
-  ;; An alist whose keys are kernels reading from this buffer, and whose
-  ;; values are all load instructions from that kernel into this buffer.
   (readers '() :type list)
-  ;; The task that defines this buffer.
   (task nil :type (or null task))
-  ;; An opaque object, representing the allocated memory.
-  (storage nil)
-  ;; A number that is unique among all buffers in this program and less
-  ;; than the total number of buffers in this program.
-  (number 0 :type (and unsigned-byte fixnum)))
+  (number 0 :type (and unsigned-byte fixnum))
+  (storage nil))
 
 (declaim (inline leaf-buffer-p))
 (defun leaf-buffer-p (buffer)
@@ -104,31 +125,39 @@ the same type."
 
 (declaim (inline buffer-bits))
 (defun buffer-bits (buffer)
-  (* (typo:ntype-bits (buffer-ntype buffer))
+ (* (typo:ntype-bits (buffer-ntype buffer))
      (shape-size (buffer-shape buffer))))
 
 (defstruct (kernel
             (:predicate kernelp)
             (:constructor make-kernel))
-  "A kernel represents a computation that, for each element in its
-iteration space, reads from some buffers and writes to some buffers."
+  "A kernel represents a computation that executes some instructions once for
+each element in its iteration space. It has the following slots:
+
+- The iteration space, which is encoded as a shape.
+
+- The instruction vector that contains all the instructions of that kernel,
+  sorted by their instruction numbers.
+
+- The sources of that kernel, encoded as an association list where the key of
+  each entry is a buffer, and where the value is a list of stencils of load
+  instructions reading from that buffer.
+
+- The targets of that kernel, encoded as an association list where the key of
+  each entry is a buffer, and where the value is a list of stencils of store
+  instructions writing into that buffer.
+
+- The task that contains this kernel.
+
+- A number that is unique among all the kernels in this program and less than
+  the total number of kernels in this program."
   (iteration-space nil :type shape)
-  ;; An alist whose keys are buffers, and whose values are stencils reading
-  ;; from that buffer.
   (sources '() :type list)
-  ;; An alist whose keys are buffers, and whose values are stencils writing
-  ;; into that buffer.
   (targets '() :type list)
-  ;; A vector of instructions of the kernel, in top-to-bottom order.
   (instruction-vector #() :type simple-vector)
-  ;; The task that contains this kernel.
   (task nil :type (or null task))
-  ;; A slot that can be used by the backend to attach further information
-  ;; to the kernel.
-  (data nil)
-  ;; A number that is unique among all the kernels in this program and less
-  ;; than the total number of kernels in this program.
-  (number 0 :type (and unsigned-byte fixnum)))
+  (number 0 :type (and unsigned-byte fixnum))
+  (data nil))
 
 (declaim (inline kernel-program))
 (defun kernel-program (kernel)
@@ -139,20 +168,24 @@ iteration space, reads from some buffers and writes to some buffers."
             (:predicate instructionp)
             (:copier nil)
             (:constructor nil))
-  "Instructions describe the behavior of a particular kernel.  All the
-instructions within one kernel form a directed acyclic graph whose leaves are
-load instructions or references to the iteration space, and whose roots are
-store instructions.
+  "An instruction describes part of the semantics of the kernel that contains it.
+This abstract base class outlines the behavior that is shared among all
+instructions.  It prescribes two slots:
 
-The instruction number of an instruction is an integer that is unique among all
-instructions of the surrounding kernel.  Instruction numbers are handed out in
-depth first order of instruction dependencies, such that the roots (store
-instructions) have the highest numbers and that the leaf nodes (load and iref
-instructions) have the lowest numbers.
+- The instruction number, which is an integer that is unique among all
+  instructions of the surrounding kernel.  Instruction numbers are handed out
+  in depth first order of instruction dependencies, such that the roots (store
+  instructions) have the highest numbers and that the leaf nodes (load and iref
+  instructions) have the lowest numbers.
 
-Each instruction input is a cons cell, whose cdr is another instruction, and
-whose car is an integer denoting which of the multiple values of the cdr is
-being referenced."
+- A list of inputs, whose elements are cons cells whose cdr is another
+  instruction in the same kernel, and whose car is an integer denoting which of
+  the multiple values returned by the instruction in the cdr is being
+  referenced.
+
+An instruction with zero inputs is called a leaf instruction.  An instruction
+that returns zero values is called a root instruction.
+"
   (inputs '() :type list)
   ;; A number that is unique among all instructions of this kernel.
   (number 0 :type (and unsigned-byte fixnum)))
@@ -212,7 +245,7 @@ index component of that rank one index.  An iref instruction has zero inputs.")
             (:constructor %make-load-instruction
                 (buffer transformation)))
   "A load instruction represents a read from main memory.  Each load instruction
-consists of a buffer that is being read from, and a transformation that maps
+consists of a buffer that is being read from and a transformation that maps
 each index of the iteration space to a position in that buffer.  A load
 instruction has zero inputs, and produces a single output that is the value
 that has been loaded.")
@@ -244,7 +277,13 @@ that is the value to be written.  A store instruction returns zero values.")
 kernel, output mask, and scalings, and whose offsets that are off only by at
 most *STENCIL-MAX-RADIUS* from the center of the stencil (measured in steps of
 the corresponding range of the buffer being loaded from).  The center of a
-stencil is the average of the offsets of all its instructions."
+stencil is the average of the offsets of all its instructions.
+
+Stencils are crucial for reasoning about memory locality.  During buffer
+partitioning, memory that is accessed by exactly one stencil per kernel can be
+split by introducing ghost layers.  For each axis, the maximum distance from
+any offset to the stencil's center determines the necessary number of ghost
+layers."
   ;; The center of a stencil is an array that contains the average of the
   ;; offsets of all its instructions.
   (center nil :type simple-vector)
