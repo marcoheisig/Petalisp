@@ -5,7 +5,9 @@
 (defparameter *viewer*
   #+windows
   "chrome"
-  #-windows
+  #+darwin
+  "open"
+  #-(or windows darwin)
   (flet ((program-in-path-p (program)
            (multiple-value-bind (out err exit-code)
                (uiop:run-program
