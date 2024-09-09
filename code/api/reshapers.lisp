@@ -2,12 +2,29 @@
 
 (in-package #:petalisp.api)
 
-(defun deflater (rank)
-  (unless (typep rank '(integer 0 (#.array-rank-limit)))
-    (error "~@<Invalid array rank: ~D~@:>" rank))
-  (lambda (shape)
-    (petalisp.core:deflating-transformation
-        (petalisp.core:shape-subseq shape 0 (min (shape-rank shape) rank)))))
+(defun deflater (rank-or-bit-vector)
+  (let ((bit-vector
+          (typecase rank-or-bit-vector
+            (unsigned-byte
+             (make-array rank-or-bit-vector :element-type 'bit :initial-element 1))
+            (bit-vector
+             rank-or-bit-vector)
+            (otherwise
+             (error "~@<Not a rank or bit vector: ~A~@:>" rank-or-bit-vector)))))
+    (lambda (shape)
+      (let* ((rank (length bit-vector))
+             (scalings (make-array rank :initial-element 1))
+             (offsets (make-array rank :initial-element 0)))
+        (loop for index below rank for range in (shape-ranges shape) do
+          (unless (zerop (bit bit-vector index))
+            (let ((scaling (/ (range-step range))))
+              (setf (svref scalings index)
+                    scaling)
+              (setf (svref offsets index)
+                    (- (* scaling (range-start range)))))))
+        (make-transformation
+         :scalings scalings
+         :offsets offsets)))))
 
 (defun peeler (&rest amount-specifiers)
   (let ((min-rank (length amount-specifiers))
