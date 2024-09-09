@@ -4,9 +4,12 @@
 !/examples
 !/README.org
 # limit the number of subdirectories
-!/*/
-!/*/*/
-!/*/*/*/
+!/benchmarks/
+!/benchmarks/*/
+!/code/
+!/code/*/
+!/examples/
+!/examples/*/
 # Source Code
 !*.lisp
 !*.asd
