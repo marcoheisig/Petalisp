@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 
-void jacobi(double* dst, double* src, size_t h, size_t w) {
+void jacobi(double* restrict dst, double* restrict src, size_t h, size_t w) {
     #pragma omp parallel for schedule(static)
     for (size_t row = 1; row < h-1; ++row) {
         for (size_t col = 1; col < w-1; ++ col) {

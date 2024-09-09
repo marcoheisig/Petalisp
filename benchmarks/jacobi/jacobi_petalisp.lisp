@@ -32,7 +32,7 @@
               (list x)
               (list (lazy-jacobi x n)))))
          (t0 (get-internal-real-time))
-         (dtmax (* internal-time-units-per-second 3))
+         (dtmax (* internal-time-units-per-second 7))
          (nrep 0))
     (loop until (> (- (get-internal-real-time) t0) dtmax) do
       (funcall evaluator dst src)
