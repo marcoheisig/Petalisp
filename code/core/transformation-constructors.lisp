@@ -61,8 +61,10 @@
                         (scalings-supplied-p (length scalings))
                         (i i)))))
         (two-value-fixpoint #'narrow-input-and-output-rank nil nil))
-    (check-type input-rank rank)
-    (check-type output-rank rank)
+    (unless (typep input-rank 'rank)
+      (error "Unable to infer the input rank of the specified transformation."))
+    (unless (typep output-rank 'rank)
+      (error "Unable to infer the output rank of the specified transformation."))
     ;; Canonicalize all sequence arguments.
     (multiple-value-bind (input-mask identity-inputs-p)
         (canonicalize-inputs input-mask input-mask-supplied-p input-rank)

@@ -49,20 +49,31 @@
 (defstruct (storage
             (:predicate storagep)
             (:constructor make-storage))
-  ;; The index of the first element backed by this storage.
+  "A storage describes how indices of some shape relate to a particular region of
+memory with linear addressing.  At the end of partitioning, each buffer shard
+that is referenced at least once has to be associated with a storage.
+Furthermore, when a buffer shard is associated with a storage, its children
+must have the same storage.  Each storage has the following slots:
+
+- The strides, which is a vector of unsigned integers that describes the
+  mapping from indices that are tuples of integers to a single integer that is
+  the address of an element of this storage.  Its Ith entry denotes the address
+  increment when bumping the Ith element of an index by one.
+
+- The offset, which is an integer that is the address of the index tuple of all
+  zeros.
+
+- The ntype of the elements of the storage.
+
+- The size, i.e., the number of elements contained in the storage.
+
+- The ghost layer alist, which is a list of (shape . storage) pairs that
+  describes where the ghost layers of this storage can be loaded from."
   (offset 0 :type fixnum :read-only t)
-  ;; A vector whose Ith entry is the number of elements to skip when changing
-  ;; the Ith index component of an index by one.
   (strides nil :type (simple-array unsigned-byte (*)) :read-only t)
-  ;; The ntype of the elements of the storage.
   (ntype nil :type typo:ntype :read-only t)
-  ;; The number of elements being stored.
   (size nil :type unsigned-byte :read-only t)
-  ;; An alist of (shape . storage) that describes where the ghost layers of
-  ;; this storage can be loaded from.
   (ghost-layer-alist nil :type list)
-  ;; An opaque object that can be used by the backend that processes the
-  ;; partitioning.
   (allocation nil))
 
 (defun storage-rank (storage)
@@ -74,13 +85,23 @@
 ;;; Kernel and Buffer Shards
 
 (defstruct (kernel-shard (:constructor %make-kernel-shard))
-  ;; The kernel being partitioned by this kernel shard.
+  "A kernel shard describes one portion of kernel to be executed, and the buffer
+shards it reads from and writes to.  Each kernel shard has the following slots:
+
+- The kernel being partitioned by this kernel shard.
+
+- The iteration space of this kernel shard, i.e., a shape that describes the
+  subset of the kernel iteration space that is uniquely assigned to this kernel
+  shard.
+
+- The targets of the kernel shard, which is a list of one buffer shard per
+  target buffer of the kernel being partitioned.
+
+- The sources of the kernel shard, which is a list of one buffer shard per
+  source buffer of the kernel being partitioned."
   (kernel nil :type kernel :read-only t)
-  ;; The part of the kernel iteration space assigned to this shard.
   (iteration-space nil :type shape :read-only t)
-  ;; One buffer shard for each of the kernel's target buffers.
   (targets '() :type list)
-  ;; One buffer shard for each of the kernel's source buffers.
   (sources '() :type list))
 
 (defmethod print-object ((kernel-shard kernel-shard) stream)
@@ -97,25 +118,47 @@
      (shape-size (kernel-shard-iteration-space kernel-shard-2))))
 
 (defstruct buffer-shard
-  ;; The buffer being partitioned by this buffer shard.
+  "A buffer shard describes one portion of a buffer, how it relates to neighboring
+parts of that buffer, and kernel shard operate on it.  It may also contain a
+split that describes how it is subdivided further into smaller buffer shards.
+Each buffer shard has the following slots:
+
+- The buffer being partitioned by this buffer shard.
+
+- The domain, which is that part of the buffer's shape that is exclusively
+  managed by this buffer shard and its children.
+
+- The shape, which is the union of the buffer shard's domain and any auxiliary
+  ghost layers.
+
+- The parent, which is either the buffer shard that was split to create this
+  one, or NIL if this buffer shard buffer shard has no parent.  We call any
+  buffer shard whose parent is NIL a /primogenitor buffer shard/, and ensure
+  that its domain is equal to the shape of its buffer.
+
+- The writers, which is a list of kernel shards that write to this buffer
+  shard.
+
+- The readers, which is a list of kernel shards that read from this buffer
+  shard.
+
+- The split priority cache, which is used to cache the user-supplied cost
+  function for the buffer shard once it is computed for the first time.
+
+- The split operation in case this buffer shard has been split into two child
+  buffer shards, or NIL if it hasn't been split so far.
+
+- The storage assigned to the buffer shard, or NIL if no storage has been
+  assigned so far.
+"
   (buffer nil :type buffer :read-only t)
-  ;; The buffer shard that was split to create this one.
   (parent nil :type (or null buffer-shard) :read-only t)
-  ;; The shard of the buffer-shard's buffer's shape that is exclusively owned by
-  ;; that buffer-shard and its children.
   (domain nil :type shape :read-only t)
-  ;; The buffer-shard's domain, padded with ghost layers.
   (shape nil :type shape :read-only t)
-  ;; A list of kernel shards that read from this buffer shard.
-  (readers '() :type list)
-  ;; A list of kernel shards that write into this buffer shard.
   (writers '() :type list)
-  ;; A cache for the buffer-shard's split priority.
+  (readers '() :type list)
   (split-priority-cache nil :type (or null unsigned-byte))
-  ;; The split operation in case this buffer-shard has been split, or NIL, if it
-  ;; hasn't been split so far.
   (split nil :type (or null structure-object))
-  ;; The storage assigned to the buffer shard.
   (storage nil :type (or null storage)))
 
 (defmethod print-object ((buffer-shard buffer-shard) stream)
@@ -149,13 +192,20 @@ Signals an error if the storage of the supplied buffer is NIL."
   buffer-shard)
 
 (defstruct (split (:predicate splitp))
-  ;; The axis at which the buffer-shard is split.
+  "A split describes how some position of some axis of an existing buffer shard is
+split into two smaller child buffer shards.  Each split has the following slots:
+
+- The axis at which the buffer-shard is split.
+
+- The position of the lowest element of the right child's range in the axis
+  being split.
+
+- The buffer shard that is the left child of the split.
+
+- The buffer shard that is the right child of the split."
   (axis nil :type axis :read-only t)
-  ;; The lowest element of the right child's range in the axis being split.
   (position nil :type integer :read-only t)
-  ;; The left child of the split.
   (left-child nil :type buffer-shard :read-only t)
-  ;; The right child of the split.
   (right-child nil :type buffer-shard :read-only t))
 
 (defmethod print-object ((split split) stream)

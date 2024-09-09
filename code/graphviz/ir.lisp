@@ -109,7 +109,7 @@
 (defmethod graphviz-node-attributes
     ((graph ir-graph)
      (node petalisp.ir:buffer))
-  `(:fillcolor "#ABCEF3"))
+  `(:fillcolor "#ABCEE3"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

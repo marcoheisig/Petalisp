@@ -21,9 +21,9 @@
   (:method (client (bpcall bpcall))
     `(the ,(typo:values-ntype-type-specifier (bpinstruction-values-ntype bpcall))
           ,(apply #'make-call-form
-                    (bpvalue-form client (bpcall-function bpcall))
-                    (map 'list (alexandria:curry #'bpvalue-form client)
-                          (bpcall-arguments bpcall)))))
+                  (bpvalue-form client (bpcall-function bpcall))
+                  (map 'list (alexandria:curry #'bpvalue-form client)
+                       (bpcall-arguments bpcall)))))
   (:method (client (bpload bpload))
     `(the ,(typo:values-ntype-type-specifier (bpinstruction-values-ntype bpload))
           ,(make-call-form
