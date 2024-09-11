@@ -805,10 +805,10 @@ supplied, it defaults to zero."
   "Returns a lazy array containing the elements of the supplied array, but sorted
 along the first axis according to the supplied predicate and key function.  If
 the key function is not supplied, it defaults to the identity function.  For
-any two elements, the two results of invoking the key function on each element
-may be passed to the predicate to determine whether the first element is
-strictly less than the second one.  Returns the keys corresponding to each of
-the sorted elements as a second value."
+any two elements, the results of invoking the key function are passed to the
+predicate to determine whether the first element is strictly less than the
+second one.  As a second value, returns a lazy array of the same shape that
+contains the keys corresponding to each of the sorted elements."
   (compute (lazy-sort #(1 3 7 5 0 6 4 9 8 2) #'<))
   (compute (lazy-sort "Sphinx of black quartz, judge my vow." #'char-lessp))
   (multiple-value-call #'compute (lazy-sort #(-2 -1 0 1 2) #'> :key #'abs))
@@ -878,7 +878,7 @@ function supports three further generalizations:
   arguments being passed to the supplied function, and returning k lazy arrays
   as a result.
 
-A final piece of advice: When reducing a vector that is possibly empty, it is
+A final piece of advice: when reducing a vector that is possibly empty, it is
 advisable to stack a neutral element at the beginning or the end of that vector
 to make it non-empty.
 "
@@ -898,10 +898,11 @@ to make it non-empty.
   (compute (lazy-reduce 'min (lazy-stack (list 0 #())))))
 
 (document-function lazy-rearrange
-  "Returns a lazy array with the same contents as the supplied one, but with
-a different shape.  The shape of the result by replacing the specified number
-of axes of the original shape with all ranges of the supplied shape.  Signals
-an error if the original shape and the resulting shape differ in size."
+  "Returns a lazy array with the same contents as the supplied one, but whose
+first few axes are replaced by those from a different shape. The three
+arguments of this function are the lazy array to be rearranged, the number of
+axes to rearrange, and the shape to use instead.  Signals an error if the
+original shape and the resulting shape differ in size."
   (compute (lazy-rearrange (lazy-index-components (~ 1 10)) 1 (~ 3 ~ 3)))
   (compute (lazy-rearrange #2a((1 2) (3 4)) 2 (~ 4)))
   (compute (lazy-rearrange #2a((1 2) (3 4)) 1 (~ 2 ~ 1))))
@@ -916,8 +917,8 @@ one data flow dependency between one lazy array and another.")
   "Returns, for the supplied sequence of outputs and the supplied sequence of the
 corresponding gradients at each output, a function that can be applied to any
 lazy array that is a dependency of any of these outputs to obtain the gradient
-at that output.  Lazy arrays and their gradients must always be lazy arrays of
-the same shape.")
+at that output.  The gradient of a lazy array is another lazy array with the
+same shape that describes how much each value differs from its expected value.")
 
 (document-function deflater
   "Returns a function that can be supplied as a modifier to LAZY-RESHAPE to
@@ -966,30 +967,28 @@ any lazy array shape into modifiers that select a particular slice of that
 shape.  The nature of this function is determined by the supplied slice
 specifiers, one for each axis, each of which is one of the following:
 
-- A single unsigned integer N means that the Nth element of the range in that
-  axis is selected, and that this axis is removed from the resulting shape.
+- A single unsigned integer N for selecting the element with relative index N
+  and dropping that axis from the resulting shape.
 
-- An empty list means that the range in that axis is not modified.
+- An empty list for keeping the corresponding range as it is.
 
-- A list with one unsigned integer N means that the Nth element of the range in
-  that axis is selected, but that this axis is not removed from the resulting
-  shape.
+- A list with one unsigned integer N for selecting the element with relative
+  index N and keeping that axis in the resulting shape.
 
-- A list with two unsigned integers B and E means that the elements beginning
-  at index B up to right below E are selected in this axis.
+- A list with two unsigned integers B and E for selecting the elements from the
+  relative index B up to right below the relative index E.
 
-- A list with three unsigned integers B, E, and S means that the elements
-  beginning at index B, with a step size of S, up to right below E, are
-  selected in this axis.
+- A list with three unsigned integers B, E, and S for selecting the elements
+  beginning at relative index B, with a relative step size of S, up to right
+  below the relative index E.
 
 All indices are interpreted as relative coordinates, so in a range with a start
-of five and step size of two, the relative index zero would map to the absolute
-index five, and the relative index one would map to the absolute index seven.
-
-Signals an error unless the integers B and E are valid bounding indices for the
-range being worked one, i.e., B must be less than the size of that range, and E
-must be larger than or equal to B and less than or equal to the size of that
-range."
+of five and step size of two a relative index zero would map to the absolute
+index five and a relative index of one would map to the absolute index seven.
+Signals an error unless the integers B and E are valid relative bounding
+indices for the range being worked one, i.e., B must be less than the size of
+that range, and E must be larger than or equal to B and less than or equal to
+the size of that range."
   (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (slicer 0)))
   (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (slicer 1 1)))
   (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (slicer '(1 2))))
