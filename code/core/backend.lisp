@@ -16,17 +16,17 @@
 
 (defgeneric delete-backend (backend)
   (:documentation
-   "Permanently disable the supplied backend and free any resources that might
-be held by it.  Once a backend has been deleted, any further call to an
-evaluation function on that backend results in an error being signaled."))
+   "Permanently disable the supplied backend and free any resources that are
+held by it.  Once a backend has been deleted, any further call to an
+evaluation function on that backend will signal an error."))
 
 (defgeneric backend-compute (backend lazy-arrays)
   ;; We change the argument precedence order so that we can add default
   ;; methods for the case where the second argument is null.
   (:argument-precedence-order lazy-arrays backend)
   (:documentation
-   "Returns a list of delayed lazy arrays, one for each of the supplied list
-of lazy arrays.  This function is only invoked by COMPUTE, which guarantees
+   "Returns a list of delayed array actions, one for each element of the supplied list
+of lazy arrays.  This function should only invoked by COMPUTE, which guarantees
 that the supplied lazy arrays are already deflated."))
 
 (defgeneric backend-evaluator (backend unknowns lazy-arrays)
@@ -40,11 +40,13 @@ returns, as multiple values, the K array values obtained by computing the
 supplied arrays after substituting the Ith unknown with the supplied argument
 in position K plus I.
 
-The first N arguments specify which storage to use for the results.  A value of
-NIL indicates that the corresponding result shall be a fresh array, whereas a
-value that is an array ensures that the result is written to that array.  An
-error is signaled if any of the arguments of an evaluator has a different shape
-or element type as the corresponding result or unknown."))
+The first K arguments of the resulting evaluator function specify which storage
+to use for the results, where a value of NIL indicates that the corresponding
+result is a freshly allocated array, whereas a value that is an array ensures
+that the result is written to that array.  The remaining N arguments specify
+the data that is used as substitute for the corresponding unknown.  Signals an
+error if any of the arguments of an evaluator has a different shape or element
+type as the corresponding result or unknown."))
 
 (defgeneric backend-compute-asynchronously (backend lazy-arrays)
   (:argument-precedence-order lazy-arrays backend)

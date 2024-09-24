@@ -280,15 +280,17 @@ supplied shapes aren't disjoint."
 fragment, and returns a list of disjoint fragments that partition both the old
 fragments and the new fragment. The resulting list consists of three parts:
 
-1. For each old fragment that has an intersection with the new fragment, a
-   fragment whose shape is that intersection, and whose mask is the LOGIOR of
-   the mask of the old fragment and the mask of the new fragment.
+1. One fragment for each old fragment that has an intersection with the new
+   fragment.  Its shape is that intersection, and its mask is the LOGIOR of the
+   mask of the old fragment and the mask of the new fragment.
 
-2. For each old fragment, all elements of the fragment difference list of that
-   fragment with the new fragment.
+2. All elements of the fragment difference list of any old fragment and the new
+   fragment.  Their masks are the same as those of the old fragment they were
+   derived from.
 
-3. Fragments that, together, form the difference from the new fragment minus
-   all the intersections from the first step."
+3. Fragments that, together, cover every part of the new fragment that is not
+   already covered by the intersections from the first step.  Each one has the
+   same mask as the new fragment."
   (let ((intersections
           (loop for old-fragment in old-fragments
                 append (fragment-intersections old-fragment new-fragment))))

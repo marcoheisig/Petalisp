@@ -54,10 +54,17 @@
         ((:border "0") (:cellborder "0") (:cellspacing "0"))
         (:tr () (:td ((:colspan "2") (:align "center")) (:b () ,(stringify (class-name class)))))
         ,@(loop for slot in (closer-mop:class-direct-slots class)
+                for name = (string-downcase (closer-mop:slot-definition-name slot))
+                for type = (closer-mop:slot-definition-type slot)
                 collect
                 `(:tr ()
-                      (:td ((:align "left")) ,(format nil "~A :" (closer-mop:slot-definition-name slot)))
-                      (:td ((:align "left")) ,(stringify (closer-mop:slot-definition-type slot))))))))))
+                      (:td ((:align "left"))
+                           ,(format nil "~A :"
+                                    (if (and (plusp (length name))
+                                             (char= (elt name 0) #\%))
+                                        (subseq name 1)
+                                        name)))
+                      (:td ((:align "left")) ,(stringify type)))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;

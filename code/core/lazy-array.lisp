@@ -115,12 +115,12 @@
 (defstruct (delayed-map
             (:include delayed-action)
             (:constructor %make-delayed-map))
-  "A delayed map describes the element-wise application of a
-single-valued function to some number of lazy arrays of the same shape.
-A delayed map has two slots: The first slot is the fnrecord
-of the function being mapped, i.e., the entry of that function in the database
-of our type inference library Typo.  The second slot is a list of lazy arrays
-that the function is being mapped over."
+  "A delayed map describes the element-wise application of a function to some
+number of lazy arrays.  A delayed map has two slots: The first slot is the
+fnrecord of the function being mapped, i.e., the entry of that function in the
+database of our type inference library Typo.  The second slot is a list of lazy
+arrays that the function is being mapped over.  All lazy arrays that appear as
+an input of a delayed map must have the same shape."
   (fnrecord (alexandria:required-argument :fnrecord)
    :type typo:fnrecord)
   (inputs (alexandria:required-argument :inputs)
@@ -139,9 +139,9 @@ that the function is being mapped over."
 multiple-valued function to some number of lazy arrays of the same shape.  It
 has the same first two slots as a delayed map, a third slot that is Typo's
 description of the type of the multiple value pack it creates, and a fourth
-slot that is a bit vector that tracks which of the multiple values have been
-referenced so far.  This bit vector is later used to eliminate unused values
-altogether.
+slot that is a mutable bit vector that tracks which of the multiple values have
+been referenced so far.  The bit vector is later used to eliminate unused
+values altogether.
 
 Because of the nature of its return values, a lazy array whose delayed action
 is a delayed multiple value map must only appear as the input of a delayed nth
@@ -171,8 +171,8 @@ value action and never be visible to the user."
             (:constructor %make-delayed-nth-value))
   "A delayed nth-value describes the process of referencing the nth value of
 some lazy array whose delayed action is a delayed multiple value map.  Its
-first slot is the number of the value being referenced, and its second slot is
-a lazy array defined by a delayed multiple value map."
+first slot is the position of the value being referenced, and its second slot
+is a lazy array defined by a delayed multiple value map."
   (number (alexandria:required-argument :number)
    :type typo:argument-index)
   (input (alexandria:required-argument :input)
@@ -196,7 +196,7 @@ a lazy array defined by a delayed multiple value map."
             (:constructor %make-delayed-reshape))
   "A delayed reshape describes the process of assigning each index the value of
 the specified input lazy array at the position that is obtained by applying the
-specified transformation to the index.  It has one slot that stores the
+specified transformation to that index.  It has one slot that stores the
 transformation, and one slot that stores that lazy array being referenced."
   (transformation (alexandria:required-argument :transformation)
    :type transformation)
@@ -218,9 +218,9 @@ transformation, and one slot that stores that lazy array being referenced."
 (defstruct (delayed-fuse
             (:include delayed-action)
             (:constructor %make-delayed-fuse))
-  "A delayed fuse describes the process of assigning each index the value of that
-index in the sole input lazy array that contains that index.  It has one slot that is
-the list of input lazy arrays."
+  "A delayed fuse describes the process of assigning each index the corresponding value from
+the sole input lazy array that contains it.  It has one slot that is the list
+of lazy arrays being fused."
   (inputs (alexandria:required-argument :inputs)
    :type list))
 
@@ -233,8 +233,9 @@ the list of input lazy arrays."
 
 (defstruct (delayed-range
             (:include delayed-action))
-  "A delayed range describes the process of assigning each index, which must be a
-length one tuple, the sole integer contained in that index.")
+  "A delayed range describes the process of assigning each index the sole integer
+contained in that index.  This delayed action must only appear in the
+definition of lazy arrays of rank one.")
 
 (defstruct (delayed-array
             (:include delayed-action)
@@ -248,15 +249,11 @@ array being referenced."
 (defun make-delayed-array (object)
   (%make-delayed-array (value-array object)))
 
-;;; A delayed nop action is inserted as the delayed action of an empty
-;;; lazy array.
 (defstruct (delayed-nop
             (:include delayed-action))
-  "A delayed nop is used as the delayed action of any lazy array with zero
+  "A delayed nop is the delayed action of any lazy array with zero
 elements.  It cannot be computed.")
 
-;;; A delayed unknown cannot be executed.  It is the delayed action of lazy
-;;; arrays that serve as formal parameters only.
 (defstruct (delayed-unknown
             (:include delayed-action))
   "A delayed unknown is used as the delayed action of any lazy array created by
