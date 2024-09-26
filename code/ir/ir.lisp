@@ -18,10 +18,10 @@ arrays.  It has the following slots:
 - An association list where each entry has a key that is a leaf buffer, and a
   value that is the corresponding lazy array.
 
-- A list of all the root buffers of the program, in the order that they were
-  scheduled for evaluation.
+- A list of all the root buffers of the program in the order that they were
+  submitted for evaluation.
 
-- A simple vector that contains all the tasks in the program, sorted by their
+- A simple vector that contains all the tasks in the program sorted by their
   task number.
 
 - The number of buffers in the program.
@@ -69,9 +69,9 @@ The rules for task membership are:
             (:predicate bufferp)
             (:constructor make-buffer))
   "A buffer is a mapping from indices of a particular shape to memory locations of
-the same type.  It has the following slots:
+a particular type.  It has the following slots:
 
-- A shape that describes the number and the virtual layout of the buffer.
+- A shape that describes the size and the virtual layout of the buffer.
 
 - A conservative approximation of the type of each element of the buffer,
   represented as an ntype of the type inference library Typo.
@@ -79,19 +79,19 @@ the same type.  It has the following slots:
 - The depth of the lazy array corresponding to the buffer.
 
 - The writers of the buffer, encoded as an association list where the key of
-  each entry is a kernel, and where the value is the list of all the store
+  each entry is a kernel and where the value is the list of all the store
   instructions in that kernel that write to the buffer.
 
 - The readers of the buffer, encoded as an association where the key of each
- entry is a kernel, and where the value is a list of all the load instructions
+ entry is a kernel and where the value is a list of all the load instructions
  from in that kernel that load from the buffer.
 
 - The task that contains all the kernels that write into this buffer.
 
 - The storage of the buffer, which is an opaque, backend-specific objects.
 
-- A number that is unique among all buffers in this program and less than the
-  total number of buffers in this program."
+- A number that is unique among all buffers in the program and less than the
+  total number of buffers in the program."
   (shape nil :type shape)
   (ntype nil :type typo:ntype)
   (depth nil :type (and unsigned-byte fixnum))
@@ -136,21 +136,21 @@ each element in its iteration space. It has the following slots:
 
 - The iteration space, which is encoded as a shape.
 
-- The instruction vector that contains all the instructions of that kernel,
+- The instruction vector that contains all the instructions of that kernel
   sorted by their instruction numbers.
 
 - The sources of that kernel, encoded as an association list where the key of
-  each entry is a buffer, and where the value is a list of stencils of load
+  each entry is a buffer and where the value is a list of stencils of load
   instructions reading from that buffer.
 
 - The targets of that kernel, encoded as an association list where the key of
-  each entry is a buffer, and where the value is a list of stencils of store
+  each entry is a buffer and where the value is a list of stencils of store
   instructions writing into that buffer.
 
 - The task that contains this kernel.
 
-- A number that is unique among all the kernels in this program and less than
-  the total number of kernels in this program."
+- A number that is unique among all the kernels in the program and less than
+  the total number of kernels in the program."
   (iteration-space nil :type shape)
   (sources '() :type list)
   (targets '() :type list)
@@ -179,13 +179,9 @@ instructions.  It prescribes two slots:
   instructions) have the lowest numbers.
 
 - A list of inputs, whose elements are cons cells whose cdr is another
-  instruction in the same kernel, and whose car is an integer denoting which of
+  instruction in the same kernel and whose car is an integer denoting which of
   the multiple values returned by the instruction in the cdr is being
-  referenced.
-
-An instruction with zero inputs is called a leaf instruction.  An instruction
-that returns zero values is called a root instruction.
-"
+  referenced.  An instruction with zero inputs is called a leaf instruction."
   (inputs '() :type list)
   ;; A number that is unique among all instructions of this kernel.
   (number 0 :type (and unsigned-byte fixnum)))
@@ -196,12 +192,12 @@ that returns zero values is called a root instruction.
             (:copier nil)
             (:constructor make-call-instruction (number-of-values fnrecord inputs)))
   "A call instruction represents the application of a function some arguments.
-A call instruction consists of a function description from the type inference
-library Typo called an fnrecord, an integer that specifies the number of values
-produced by the call instruction, and a list of inputs.  The values of a call
-instruction are obtained by applying the fnrecord's function to the values of
-each of the call instruction's inputs.  If the function application produces
-less values than specified, the missing values are set to NIL."
+A call instruction consists of an fnrecord from the type inference library
+Typo, an integer that specifies the number of values produced by the call
+instruction, and a list of inputs.  The values of a call instruction are
+obtained by applying the fnrecord's function to the values of each of the call
+instruction's inputs.  If the function application produces less values than
+specified, the missing values are set to NIL."
   (fnrecord nil :type typo:fnrecord)
   (number-of-values nil :type (integer 0 (#.multiple-values-limit))))
 
@@ -247,7 +243,7 @@ index component of that rank one index.  An iref instruction has zero inputs.")
   "A load instruction represents a read from main memory.  Each load instruction
 consists of a buffer that is being read from and a transformation that maps
 each index of the iteration space to a position in that buffer.  A load
-instruction has zero inputs, and produces a single output that is the value
+instruction has zero inputs and produces a single output that is the value
 that has been loaded.")
 
 (defstruct (store-instruction
@@ -277,13 +273,14 @@ that is the value to be written.  A store instruction returns zero values.")
 kernel, output mask, and scalings, and whose offsets that are off only by at
 most *STENCIL-MAX-RADIUS* from the center of the stencil (measured in steps of
 the corresponding range of the buffer being loaded from).  The center of a
-stencil is the average of the offsets of all its instructions.
+stencil is a vector containing all the averages of the offsets of its
+instructions rounded to the nearest integer.
 
 Stencils are crucial for reasoning about memory locality.  During buffer
 partitioning, memory that is accessed by exactly one stencil per kernel can be
-split by introducing ghost layers.  For each axis, the maximum distance from
-any offset to the stencil's center determines the necessary number of ghost
-layers."
+split by introducing ghost layers.  The maximum distance of any offset from the
+stencil's center determines the number of ghost layers that have to be
+introduced."
   ;; The center of a stencil is an array that contains the average of the
   ;; offsets of all its instructions.
   (center nil :type simple-vector)

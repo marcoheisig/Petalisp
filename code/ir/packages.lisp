@@ -188,15 +188,15 @@
    #:memory-parent-bandwidth
 
    ;; Partitioning
-   #:storage
-   #:storagep
-   #:storage-offset
-   #:storage-strides
-   #:storage-ntype
-   #:storage-size
-   #:storage-rank
-   #:storage-ghost-layer-alist
-   #:storage-allocation
+   #:layout
+   #:layoutp
+   #:layout-offset
+   #:layout-strides
+   #:layout-ntype
+   #:layout-size
+   #:layout-rank
+   #:layout-ghost-layer-alist
+   #:layout-allocation
    #:kernel-shard
    #:kernel-shard-p
    #:kernel-shard-kernel
@@ -214,7 +214,7 @@
    #:buffer-shard-writers
    #:buffer-shard-split
    #:buffer-shard-bits
-   #:buffer-shard-storage
+   #:buffer-shard-layout
    #:buffer-shard-maxdepth
    #:buffer-shard-path
    #:buffer-shard-primogenitor

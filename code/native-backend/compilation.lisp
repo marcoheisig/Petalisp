@@ -6,13 +6,13 @@
     ((backend backend))
   (values
    'svref
-   '(values storage &optional)))
+   '(values layout &optional)))
 
 (defmethod source-function
     ((backend backend))
   (values
    'svref
-   '(values storage &optional)))
+   '(values layout &optional)))
 
 (defmethod unpack-function
     ((backend backend)
@@ -32,12 +32,12 @@
                  'index))
      &optional)))
 
-(defun native-backend-unpack (storage denv)
-  (declare (storage storage) (denv denv))
+(defun native-backend-unpack (layout denv)
+  (declare (layout layout) (denv denv))
   (declare (optimize (speed 3) (safety 0)))
-  (let* ((offset (- (storage-offset storage)))
-         (strides (storage-strides storage))
-         (allocation (storage-allocation storage))
+  (let* ((offset (- (layout-offset layout)))
+         (strides (layout-strides layout))
+         (allocation (layout-allocation layout))
          (category (allocation-category allocation))
          (color  (allocation-color allocation))
          (pointers (denv-pointers denv))

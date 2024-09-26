@@ -133,27 +133,30 @@ nucleus has the following slots:
 
 (defstruct stem
   "A stem describes the process of assembling one kernel.  Stems and their kernels
-are always created at the same.  In the beginning, only the iteration space and
-the store instructions of the a stem's kernel are initialized, and all the
-other instructions of the kernel will be produced later by growing some
-dendrites from the stem.  A stem has the following slots:
+are always created at the same time, but only the iteration space and the store
+instructions of the stem's kernel are defined right away.  All the other
+instructions of the kernel are produced later by growing some dendrites from
+the stem.  A stem has the following slots:
 
 - A reference to the nucleus from which the stem emanates.
 
-- A reference to the not-yet-fully-initialized kernel that is grow from the
+- A reference to the not-yet-fully-initialized kernel that is grown from the
   stem.  When talking about the iteration space of a stem, we refer to the
   iteration space of this kernel.
 
-- A list that has --- if the stem's nucleus occurs at a multiple value map ---
-  as many entries as there are values produced by that multiple value map.  If
-  the stem's nucleus occurs at any other kind of lazy array, this list has a
-  single element.  Each element is either a buffer for holding the values
-  produced by the kernel, or NIL if that particular value is never referenced.
+- A list of buffers that are written to by the stem's kernel.  If the stem's
+  nucleus occurs at a lazy array with a delayed multiple value map action, this
+  list has as many buffers as there are multiple values being returned.  In any
+  other case, this list has a single buffer that will later hold the values of
+  the lazy array corresponding to the stem's nucleus.  Instead of a buffer, an
+  element of this list can also be NIL if that particular value is never
+  referenced.
 
 - A flag that indicates whether the stem is valid.  It is true initially, but
-  may be set to false in case the stem is partitioned into multiple stems with
-  smaller iteration spaces.  When a stem is invalid, its kernel is discarded
-  and won't be part of resulting intermediate representation."
+  may be set to false in case the stem is split into multiple stems with
+  smaller iteration spaces.  When the IR conversion algorithm encounters a stem
+  that is no longer valid, it discards the corresponding kernel and all the
+  dendrites rooted therein."
   (nucleus nil :type nucleus)
   (kernel nil :type kernel)
   (buffers nil :type list)
@@ -161,11 +164,10 @@ dendrites from the stem.  A stem has the following slots:
 
 (defstruct (dendrite
             (:constructor %make-dendrite))
-  "A dendrite describes a set of lazy array indices and how they map to the
-iteration space of the stem from which the dendrite originates.  It also holds
-a reference to an input of a not-yet-fully-initialized instruction.  The job of
-the dendrite is to initialize this instruction input, and to allow reasoning
-about the values being referenced.  It has the following slots:
+  "A dendrite describes a set of indices and their mapping to the
+iteration space of its stem.  It holds a reference to an input of a
+not-yet-fully-initialized instruction and its job is to suitably initialize
+this instruction input.  It has the following slots:
 
 - A reference to the stem from which the dendrite originates.
 

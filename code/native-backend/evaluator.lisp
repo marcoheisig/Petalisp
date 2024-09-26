@@ -341,10 +341,10 @@
      (simulated-memory-write-index simulated-memory index))
    shape))
 
-(defun simulate-storage-reference (storage shape)
-  (let* ((offset (storage-offset storage))
-         (strides (storage-strides storage))
-         (size (storage-size storage)))
+(defun simulate-references (layout shape)
+  (let* ((offset (layout-offset layout))
+         (strides (layout-strides layout))
+         (size (layout-size layout)))
     (assert (= (shape-rank shape) (length strides)))
     (map-shape
      (lambda (index)
@@ -379,16 +379,16 @@
                    (loop for load-instruction in (stencil-instructions stencil) do
                      (let* ((transformation (load-instruction-transformation load-instruction))
                             (shape (transform-shape iteration-space transformation))
-                            (memory (simulated-memory (storage-allocation source))))
-                       (simulate-storage-reference source shape)
+                            (memory (simulated-memory (layout-allocation source))))
+                       (simulate-references source shape)
                        (simulated-memory-read-shape memory shape)))))
                (loop for target across targets for (buffer . stencils) in (kernel-targets kernel) do
                  (loop for stencil in stencils do
                    (loop for store-instruction in (stencil-instructions stencil) do
                      (let* ((transformation (store-instruction-transformation store-instruction))
                             (shape (transform-shape iteration-space transformation))
-                            (memory (simulated-memory (storage-allocation target))))
-                       (simulate-storage-reference target shape)
+                            (memory (simulated-memory (layout-allocation target))))
+                       (simulate-references target shape)
                        (simulated-memory-write-shape memory shape))))))))
         ;; Write all constants.
         (loop for allocation across (aref allocations +constant-allocation-category+) do

@@ -152,7 +152,7 @@
          (shape (petalisp.ir:buffer-shard-shape buffer-shard))
          (domain (petalisp.ir:buffer-shard-domain buffer-shard))
          (buffer (petalisp.ir:buffer-shard-buffer buffer-shard))
-         (storage (petalisp.ir:buffer-shard-storage buffer-shard))
+         (layout (petalisp.ir:buffer-shard-layout buffer-shard))
          (parent (petalisp.ir:buffer-shard-parent buffer-shard)))
     `(:table
       ((:port ,(buffer-shard-port buffer-shard))
@@ -170,23 +170,23 @@
           `((:tr () (:td () (:b () "split-axis:") ,(stringify (petalisp.ir:split-axis split))))
             (:tr () (:td () (:b () "split-position:") ,(stringify (petalisp.ir:split-position split))))
             (:tr () (:td () ,(split-label split)))))
-      ,@(when (and storage
+      ,@(when (and layout
                    (or (not parent)
-                       (not (petalisp.ir:buffer-shard-storage parent))))
-          `((:tr () (:td () (:b () "strides:") ,(stringify (petalisp.ir:storage-strides storage))))
-            (:tr () (:td () (:b () "offset:") ,(stringify (petalisp.ir:storage-offset storage))))
-            (:tr () (:td () (:b () "size:") ,(stringify (petalisp.ir:storage-size storage))))
-            (:tr () (:td () ,(storage-label storage domain shape))))))))
+                       (not (petalisp.ir:buffer-shard-layout parent))))
+          `((:tr () (:td () (:b () "strides:") ,(stringify (petalisp.ir:layout-strides layout))))
+            (:tr () (:td () (:b () "offset:") ,(stringify (petalisp.ir:layout-offset layout))))
+            (:tr () (:td () (:b () "size:") ,(stringify (petalisp.ir:layout-size layout))))
+            (:tr () (:td () ,(layout-label layout domain shape))))))))
 
 (defun buffer-shard-port (buffer-shard)
   (format nil "buffer~Dshard~{~:[R~;L~]~}"
           (petalisp.ir:buffer-number (petalisp.ir:buffer-shard-buffer buffer-shard))
           (petalisp.ir:buffer-shard-path buffer-shard)))
 
-(defun storage-label (storage domain shape)
-  (declare (petalisp.ir:storage storage)
+(defun layout-label (layout domain shape)
+  (declare (petalisp.ir:layout layout)
            (petalisp:shape domain shape))
-  (declare (ignore storage domain))
+  (declare (ignore layout domain))
   (let* ((rank (petalisp:shape-rank shape))
          (size (petalisp:shape-size shape))
          (nrows (if (zerop rank)

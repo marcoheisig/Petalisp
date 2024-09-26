@@ -37,38 +37,38 @@
 ;;; kernel shards have good data locality and qualify for later being scheduled
 ;;; on the same worker.
 ;;;
-;;; The final phase of the partitioning is to assign storage to all buffer
+;;; The final phase of the partitioning is to assign layouts to all buffer
 ;;; shards that are being referenced by at least one kernel shard, such that
 ;;; all buffer shards that have an ancestor that is also being referenced share
-;;; the same storage.
+;;; the same layout.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
-;;; Reasoning about Storage
+;;; Reasoning about Layouts
 
-(defstruct (storage
-            (:predicate storagep)
-            (:constructor make-storage))
-  "A storage describes how indices of some shape relate to a particular region of
+(defstruct (layout
+            (:predicate layoutp)
+            (:constructor make-layout))
+  "A layout describes how indices of some shape relate to a particular region of
 memory with linear addressing.  At the end of partitioning, each buffer shard
-that is referenced at least once has to be associated with a storage.
-Furthermore, when a buffer shard is associated with a storage, its children
-must have the same storage.  Each storage has the following slots:
+that is referenced at least once has to be associated with a layout.
+Furthermore, when a buffer shard is associated with a layout, its children
+must have the same layout.  Each layout has the following slots:
 
 - The strides, which is a vector of unsigned integers that describes the
   mapping from indices that are tuples of integers to a single integer that is
-  the address of an element of this storage.  Its Ith entry denotes the address
+  the address of an element of this layout.  Its Ith entry denotes the address
   increment when bumping the Ith element of an index by one.
 
 - The offset, which is an integer that is the address of the index tuple of all
   zeros.
 
-- The ntype of the elements of the storage.
+- The ntype of the elements of the layout.
 
-- The size, i.e., the number of elements contained in the storage.
+- The size, i.e., the number of elements contained in the layout.
 
-- The ghost layer alist, which is a list of (shape . storage) pairs that
-  describes where the ghost layers of this storage can be loaded from."
+- The ghost layer alist, which is a list of (shape . layout) pairs that
+  describes where the ghost layers of this layout can be loaded from."
   (offset 0 :type fixnum :read-only t)
   (strides nil :type (simple-array unsigned-byte (*)) :read-only t)
   (ntype nil :type typo:ntype :read-only t)
@@ -76,9 +76,9 @@ must have the same storage.  Each storage has the following slots:
   (ghost-layer-alist nil :type list)
   (allocation nil))
 
-(defun storage-rank (storage)
-  (declare (storage storage))
-  (length (storage-strides storage)))
+(defun layout-rank (layout)
+  (declare (layout layout))
+  (length (layout-strides layout)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
@@ -148,7 +148,7 @@ Each buffer shard has the following slots:
 - The split operation in case this buffer shard has been split into two child
   buffer shards, or NIL if it hasn't been split so far.
 
-- The storage assigned to the buffer shard, or NIL if no storage has been
+- The layout assigned to the buffer shard, or NIL if no layout has been
   assigned so far.
 "
   (buffer nil :type buffer :read-only t)
@@ -159,7 +159,7 @@ Each buffer shard has the following slots:
   (readers '() :type list)
   (split-priority-cache nil :type (or null unsigned-byte))
   (split nil :type (or null structure-object))
-  (storage nil :type (or null storage)))
+  (layout nil :type (or null layout)))
 
 (defmethod print-object ((buffer-shard buffer-shard) stream)
   (format stream "~@<#<~;~S ~_~@{~S ~:_~S~^ ~_~}~;>~:>"
@@ -168,10 +168,10 @@ Each buffer shard has the following slots:
           :shape (buffer-shard-shape buffer-shard)
           :buffer (buffer-shard-buffer buffer-shard)
           :split (buffer-shard-split buffer-shard)
-          :storage (buffer-shard-storage buffer-shard)))
+          :layout (buffer-shard-layout buffer-shard)))
 
 (defun buffer-shard-bits (buffer-shard)
-  "Returns the number of bits of storage required for allocating all elements
+  "Returns the number of bits of layout required for allocating all elements
 managed by the supplied buffer shard."
   (declare (buffer-shard buffer-shard))
   (* (shape-size (buffer-shard-shape buffer-shard))
@@ -180,14 +180,14 @@ managed by the supplied buffer shard."
        (buffer-ntype (buffer-shard-buffer buffer-shard))))))
 
 (defun buffer-shard-guardian (buffer-shard)
-  "Returns the buffer shard's oldest ancestor that has the same storage as this
+  "Returns the buffer shard's oldest ancestor that has the same layout as this
 one.  A buffer shard can be its own guardian.
 
-Signals an error if the storage of the supplied buffer is NIL."
+Signals an error if the layout of the supplied buffer is NIL."
   (declare (buffer-shard buffer-shard))
-  (assert (buffer-shard-storage buffer-shard))
+  (assert (buffer-shard-layout buffer-shard))
   (loop for parent = (buffer-shard-parent buffer-shard)
-        while (and parent (buffer-shard-storage parent))
+        while (and parent (buffer-shard-layout parent))
         do (setf buffer-shard parent))
   buffer-shard)
 
@@ -200,9 +200,9 @@ split into two smaller child buffer shards.  Each split has the following slots:
 - The position of the lowest element of the right child's range in the axis
   being split.
 
-- The buffer shard that is the left child of the split.
+- The buffer shard that is the (lower) left child of the split.
 
-- The buffer shard that is the right child of the split."
+- The buffer shard that is the (upper) right child of the split."
   (axis nil :type axis :read-only t)
   (position nil :type integer :read-only t)
   (left-child nil :type buffer-shard :read-only t)
@@ -683,10 +683,10 @@ ghost points to interior points for a split."
       ;; propagate the split as a side-effect.
       (loop until (split-queue-emptyp) do
         (propagate-split (split-queue-pop))))
-    ;; Ensure that each referenced buffer shard has an attached storage.
-    (map nil #'assign-storage *primogenitor-buffer-shard-vector*)
-    ;; Ensure that each storage has its ghost alist set.
-    (map nil #'assign-storage-ghost-layer-alist *primogenitor-buffer-shard-vector*)
+    ;; Ensure that each referenced buffer shard has an attached layout.
+    (map nil #'assign-layout *primogenitor-buffer-shard-vector*)
+    ;; Ensure that each layout has its ghost alist set.
+    (map nil #'assign-layout-ghost-layer-alist *primogenitor-buffer-shard-vector*)
     (when debug (check-shards))
     (values *primogenitor-buffer-shard-vector* *buffer-ghostspec-vector*)))
 
@@ -1055,16 +1055,16 @@ relates to the supplied transformoid."
     (iterating-instruction
      (destructure-transformoid (instruction-transformation transformoid)))))
 
-(defun assign-storage (primogenitor-buffer-shard)
+(defun assign-layout (primogenitor-buffer-shard)
   (declare (buffer-shard primogenitor-buffer-shard))
-  ;; Set the storage slot of each buffer shard that is being referenced or that
+  ;; Set the layout slot of each buffer shard that is being referenced or that
   ;; has an ancestor that is being referenced.
-  (labels ((assign-recursively (buffer-shard existing-storage)
+  (labels ((assign-recursively (buffer-shard existing-layout)
              (declare (buffer-shard buffer-shard)
-                      (type (or null storage) existing-storage))
-             (with-slots (buffer split shape storage) buffer-shard
-               (if existing-storage
-                   (setf storage existing-storage)
+                      (type (or null layout) existing-layout))
+             (with-slots (buffer split shape layout) buffer-shard
+               (if existing-layout
+                   (setf layout existing-layout)
                    (when (or (buffer-shard-readers buffer-shard)
                              (buffer-shard-writers buffer-shard)
                              (not (interior-buffer-p buffer)))
@@ -1078,22 +1078,22 @@ relates to the supplied transformoid."
                                     sum (* stride
                                            (- (range-start range2)
                                               (range-start range1))))))
-                       (setf storage (make-storage
+                       (setf layout (make-layout
                                       :ntype ntype
                                       :strides strides
                                       :offset offset
                                       :size size))
-                       (setf existing-storage storage))))
+                       (setf existing-layout layout))))
                ;; If there is a split, descend into each child.
                (when (splitp split)
-                 (assign-recursively (split-left-child split) existing-storage)
-                 (assign-recursively (split-right-child split) existing-storage)))))
+                 (assign-recursively (split-left-child split) existing-layout)
+                 (assign-recursively (split-right-child split) existing-layout)))))
     (assign-recursively primogenitor-buffer-shard nil)))
 
-(defun assign-storage-ghost-layer-alist (buffer-shard)
+(defun assign-layout-ghost-layer-alist (buffer-shard)
   (declare (buffer-shard buffer-shard))
-  (with-slots (buffer split domain shape storage) buffer-shard
-    (if storage
+  (with-slots (buffer split domain shape layout) buffer-shard
+    (if layout
         (let* ((vicinity (compute-buffer-shard-vicinity buffer-shard))
                (ghostspec (buffer-ghostspec (buffer-shard-buffer buffer-shard)))
                (pattern (ghostspec-pattern ghostspec))
@@ -1103,7 +1103,7 @@ relates to the supplied transformoid."
                    (declare (buffer-shard neighbor))
                    (when (shape-intersectionp shape (buffer-shard-domain neighbor))
                      (let* ((space (shape-intersection shape (buffer-shard-domain neighbor)))
-                            (storage (buffer-shard-storage neighbor))
+                            (layout (buffer-shard-layout neighbor))
                             (subscripts (make-list rank)))
                        (labels
                            ((scan-pattern (shard-ranges neighbor-ranges subscripts-tail axis)
@@ -1116,7 +1116,7 @@ relates to the supplied transformoid."
                                         (1+ axis))))
                                 (cond ((= axis rank)
                                        (when (= 1 (apply #'aref pattern subscripts))
-                                         (push (cons space storage) alist)
+                                         (push (cons space layout) alist)
                                          (return-from maybe-push-ghost-layer)))
                                       ((= 1 (array-dimension pattern axis))
                                        (scan-subscript 0))
@@ -1139,11 +1139,11 @@ relates to the supplied transformoid."
             (loop for axis below rank do
               (mapc #'maybe-push-ghost-layer (vicinity-left-neighbors vicinity axis))
               (mapc #'maybe-push-ghost-layer (vicinity-right-neighbors vicinity axis))))
-          (setf (storage-ghost-layer-alist storage)
+          (setf (layout-ghost-layer-alist layout)
                 alist))
         (when split
-          (assign-storage-ghost-layer-alist (split-left-child split))
-          (assign-storage-ghost-layer-alist (split-right-child split))))))
+          (assign-layout-ghost-layer-alist (split-left-child split))
+          (assign-layout-ghost-layer-alist (split-right-child split))))))
 
 (defun shape-strides (shape)
   (declare (shape shape))

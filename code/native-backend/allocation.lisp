@@ -5,7 +5,7 @@
 (defstruct (allocation
             (:predicate allocationp)
             (:constructor make-allocation))
-  ;; How many bytes of storage must be assigned to the allocation eventually.
+  ;; How many bytes of layout must be assigned to the allocation eventually.
   (size-in-bytes nil :type unsigned-byte :read-only t)
   ;; An unsigned integer with the following meaning:
   ;;
@@ -33,7 +33,7 @@
 (defconstant +worker-allocation-category-offset+ 3)
 
 (defun compute-allocations (schedule primogenitor-buffer-shard-vector unknowns backend)
-  "Returns a vector of vectors of allocations, and ensures that each storage
+  "Returns a vector of vectors of allocations, and ensures that each layout
 being referenced by the supplied schedule has its allocation slot set to one of
 these allocations.  Returns a second value that is a vector of all constant
 arrays that were referenced in the schedule."
@@ -45,11 +45,11 @@ arrays that were referenced in the schedule."
          (unboxed-allocation-lists (make-array (list ncategories nbuckets) :initial-element '()))
          (boxed-allocation-lists (make-array (list ncategories nbuckets) :initial-element '()))
          (allocation-colors (make-array ncategories :initial-element 0))
-         (storage-counter-table (make-hash-table)))
-    (labels ((incf-storage-counter (storage)
-               (incf (gethash storage storage-counter-table 0)))
-             (decf-storage-counter (storage)
-               (decf (gethash storage storage-counter-table)))
+         (layout-counter-table (make-hash-table)))
+    (labels ((incf-layout-counter (layout)
+               (incf (gethash layout layout-counter-table 0)))
+             (decf-layout-counter (layout)
+               (decf (gethash layout layout-counter-table)))
              (buffer-primogenitor-buffer-shard (buffer)
                (aref primogenitor-buffer-shard-vector (buffer-number buffer)))
              (push-allocation (allocation)
@@ -59,10 +59,10 @@ arrays that were referenced in the schedule."
                    (if unboxed
                        (push allocation (aref unboxed-allocation-lists category bucket))
                        (push allocation (aref boxed-allocation-lists category bucket))))))
-             (pop-allocation (category storage)
-               (let* ((size-in-bytes (storage-size-in-bytes storage))
+             (pop-allocation (category layout)
+               (let* ((size-in-bytes (layout-size-in-bytes layout))
                       (bucket (max 0 (1- (integer-length (1- size-in-bytes)))))
-                      (unboxed (ntype-unboxed-p (storage-ntype storage)))
+                      (unboxed (ntype-unboxed-p (layout-ntype layout)))
                       (allocation-lists (if unboxed unboxed-allocation-lists boxed-allocation-lists)))
                  (or (pop (aref allocation-lists category bucket))
                      (prog1 (make-allocation
@@ -109,45 +109,45 @@ arrays that were referenced in the schedule."
           (when entry
             (buffer-shard-bind (buffer-primogenitor-buffer-shard (car entry)) allocation))
           (push-allocation allocation)))
-      ;; Traverse the schedule once, and count how often each piece of storage
+      ;; Traverse the schedule once, and count how often each piece of layout
       ;; is read from.
       (loop for action-vector in schedule do
         (loop for action across action-vector do
           (unless (not action)
             (loop for invocation in (action-copy-invocations action) do
-              (loop for storage across (invocation-sources invocation) do
-                (incf-storage-counter storage)))
+              (loop for layout across (invocation-sources invocation) do
+                (incf-layout-counter layout)))
             (loop for invocation in (action-work-invocations action) do
-              (loop for storage across (invocation-sources invocation) do
-                (incf-storage-counter storage))))))
-      ;; Traverse the schedule again, and assign each storage an allocation.
+              (loop for layout across (invocation-sources invocation) do
+                (incf-layout-counter layout))))))
+      ;; Traverse the schedule again, and assign each layout an allocation.
       (loop for action-vector in schedule do
         ;; Free memory that becomes available after copying the ghost layers.
         (loop for action across action-vector for category from +worker-allocation-category-offset+ do
           (unless (not action)
             (loop for invocation in (action-copy-invocations action) do
-              (loop for storage across (invocation-sources invocation) do
-                (when (zerop (decf-storage-counter storage))
-                  (push-allocation (storage-allocation storage)))))))
+              (loop for layout across (invocation-sources invocation) do
+                (when (zerop (decf-layout-counter layout))
+                  (push-allocation (layout-allocation layout)))))))
         ;; Ensure that each target of each action is allocated.
         (loop for action across action-vector for category from +worker-allocation-category-offset+ do
           (unless (not action)
             (loop for invocation in (action-work-invocations action) do
-              (loop for storage across (invocation-targets invocation) do
-                (unless (storage-allocation storage)
-                  (let ((allocation (pop-allocation category storage)))
-                    (storage-bind storage allocation)
-                    (when (zerop (gethash storage storage-counter-table 0))
-                      #+(or)(break "~A ~A" storage allocation) ;; TODO
+              (loop for layout across (invocation-targets invocation) do
+                (unless (layout-allocation layout)
+                  (let ((allocation (pop-allocation category layout)))
+                    (layout-bind layout allocation)
+                    (when (zerop (gethash layout layout-counter-table 0))
+                      #+(or)(break "~A ~A" layout allocation) ;; TODO
                       (push-allocation allocation))))))))
         ;; Ensure that sources that are no longer used after this action are
         ;; freed.
         (loop for action across action-vector for category from +worker-allocation-category-offset+ do
           (unless (not action)
             (loop for invocation in (action-work-invocations action) do
-              (loop for storage across (invocation-sources invocation) do
-                (when (zerop (decf-storage-counter storage))
-                  (push-allocation (storage-allocation storage))))))))
+              (loop for layout across (invocation-sources invocation) do
+                (when (zerop (decf-layout-counter layout))
+                  (push-allocation (layout-allocation layout))))))))
       (values
        ;; Create the vector of per-category-allocations.
        (let ((allocations (make-array ncategories)))
@@ -180,13 +180,13 @@ arrays that were referenced in the schedule."
          constant-arrays)))))
 
 (defun buffer-shard-bind (buffer-shard allocation)
-  (storage-bind (buffer-shard-storage buffer-shard) allocation))
+  (layout-bind (buffer-shard-layout buffer-shard) allocation))
 
-(defun storage-bind (storage allocation)
-  (assert (not (storage-allocation storage)))
-  (assert (<= (storage-size-in-bytes storage)
+(defun layout-bind (layout allocation)
+  (assert (not (layout-allocation layout)))
+  (assert (<= (layout-size-in-bytes layout)
               (allocation-size-in-bytes allocation)))
-  (setf (storage-allocation storage) allocation))
+  (setf (layout-allocation layout) allocation))
 
 (defun ntype-unboxed-p (ntype)
   (not (typo:ntype=
@@ -211,11 +211,11 @@ arrays that were referenced in the schedule."
       (ntype-bits-per-element
        (lazy-array-ntype lazy-array)))))
 
-(defun storage-size-in-bytes (storage)
+(defun layout-size-in-bytes (layout)
   (bytes-from-bits
-   (* (storage-size storage)
+   (* (layout-size layout)
       (ntype-bits-per-element
-       (storage-ntype storage)))))
+       (layout-ntype layout)))))
 
 (defun bytes-from-bits (bits)
   (values (ceiling bits 8)))
