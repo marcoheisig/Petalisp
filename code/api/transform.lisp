@@ -37,7 +37,7 @@
 (defun expand-transform (forms)
   (let* ((position (position 'to forms))
          (inputs (subseq forms 0 position))
-         (outputs (subseq forms (1+ position))))
+         (outputs (if position (subseq forms (1+ position)) '())))
     (multiple-value-bind (input-variables input-constraints)
         (parse-transform-inputs inputs)
       (multiple-value-bind (output-mask output-variables output-forms)
@@ -77,6 +77,12 @@
     ((type integer)
      (list (gensym) input))
     ((type symbol)
+     (when (keywordp input)
+       (error "~@<Keywords like ~S cannot be used as transformation inputs.~:@>"
+              input))
+     (when (constantp input)
+       (error "~@<Constants like ~S cannot be used as transformation inputs.~:@>"
+              input))
      (list input nil))
     (_
      (error "~@<The expression ~S is not a valid transform input.~:@>" input))))
@@ -114,20 +120,26 @@
   (let* ((output-rank (length output-mask))
          (offsets (make-array output-rank :initial-element 0))
          (scalings (make-array output-rank :initial-element 1)))
-    (loop for function across functions
-          for output-index from 0 do
-            (let* ((y-0 (funcall function 0))
-                   (y-1 (funcall function 1))
-                   (y-2 (funcall function 2))
-                   (b y-0)
-                   (a (- y-1 y-0)))
-              (unless (= (+ (* 2 a) b) y-2)
-                (error "~@<The form ~S is not affine ~
-                           linear~@[ in the variable ~S~].~:@>"
-                       (svref forms output-index)
-                       (svref variables output-index)))
-              (setf (svref scalings output-index) a)
-              (setf (svref offsets output-index) b)))
+    (loop for function across functions and output-index from 0 do
+      (flet ((f (x)
+               (let ((value (funcall function x)))
+                 (unless (rationalp value)
+                   (error "~@<Cannot create a transformation mapping to ~S ~
+                              because it is not a rational number.~:@>"
+                          value))
+                 value)))
+        (let* ((y-0 (f 0))
+               (y-1 (f 1))
+               (y-2 (f 2))
+               (b y-0)
+               (a (- y-1 y-0)))
+          (unless (= (+ (* 2 a) b) y-2)
+            (error "~@<The form ~S is not affine ~
+                       linear~@[ in the variable ~S~].~:@>"
+                   (svref forms output-index)
+                   (svref variables output-index)))
+          (setf (svref scalings output-index) a)
+          (setf (svref offsets output-index) b))))
     (make-transformation
      :input-mask input-mask
      :output-mask output-mask

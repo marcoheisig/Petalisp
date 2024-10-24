@@ -7,7 +7,7 @@
 (in-package #:petalisp.examples.statistics)
 
 (defun lazy-mean (series)
-  (with-lazy-arrays  (series)
+  (with-lazy-arrays (series)
     (lazy #'/
      (lazy-reduce '+ series)
      (lazy-array-dimension series 0))))
@@ -34,11 +34,11 @@
   (with-lazy-arrays (series)
     (lazy #'sqrt (lazy-variance series))))
 
-(defun lazy-rolling-sum (data window-size)
+(defun lazy-rolling-sum (series window-size)
   (declare (type (integer 1) window-size))
-  (with-lazy-arrays (data)
-    (let* ((x (lazy-reshape data (deflater 1)))
-           (n (lazy-array-dimension data 0))
+  (with-lazy-arrays (series)
+    (let* ((x (lazy-reshape series (deflater 1)))
+           (n (lazy-array-dimension series 0))
            (w window-size))
       (cond ((or (<= w 0) (> w n))
              (error "Invalid window size ~D." w))
@@ -69,9 +69,9 @@
                 (lazy-reshape a (transform i to (* 2 i)))
                 (lazy-reshape b (transform i to (1+ (* 2 i)))))))))))
 
-(defun lazy-rolling-average (data window-size)
+(defun lazy-rolling-average (series window-size)
   (declare (type (integer 1) window-size))
-  (with-lazy-arrays (data)
+  (with-lazy-arrays (series)
     (lazy #'/
-     (lazy-rolling-sum data window-size)
+     (lazy-rolling-sum series window-size)
      window-size)))

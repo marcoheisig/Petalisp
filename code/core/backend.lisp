@@ -16,7 +16,7 @@
 
 (defgeneric delete-backend (backend)
   (:documentation
-   "Permanently disable the supplied backend and free any resources that are
+   "Permanently disables the supplied backend and free any resources that are
 held by it.  Once a backend has been deleted, any further call to an
 evaluation function on that backend will signal an error."))
 
@@ -26,7 +26,7 @@ evaluation function on that backend will signal an error."))
   (:argument-precedence-order lazy-arrays backend)
   (:documentation
    "Returns a list of delayed array actions, one for each element of the supplied list
-of lazy arrays.  This function should only invoked by COMPUTE, which guarantees
+of lazy arrays.  This function should be invoked only by COMPUTE, which guarantees
 that the supplied lazy arrays are already deflated."))
 
 (defgeneric backend-evaluator (backend unknowns lazy-arrays)
@@ -34,11 +34,11 @@ that the supplied lazy arrays are already deflated."))
   ;; methods for the case where the second or third argument are null.
   (:argument-precedence-order unknowns lazy-arrays backend)
   (:documentation
-   "For a supplied backend, list of unknowns of length N, and list of
+   "For a supplied backend, a list of unknowns of length N, and a list of
 lazy arrays of length K, returns a function with K plus N arguments that
 returns, as multiple values, the K array values obtained by computing the
-supplied arrays after substituting the Ith unknown with the supplied argument
-in position K plus I.
+supplied arrays after replacing the Ith unknown with the supplied argument in
+position K plus I.
 
 The first K arguments of the resulting evaluator function specify which storage
 to use for the results, where a value of NIL indicates that the corresponding
@@ -71,7 +71,7 @@ performance for ease of debugging."))
 
 (defgeneric request-wait (request)
   (:documentation
-   "Block until all lazy arrays that are part of the supplied request have
+   "Blocks until all lazy arrays that are part of the supplied request have
 been computed."))
 
 (defgeneric request-completedp (request)
@@ -234,19 +234,19 @@ already been computed."))
      (unwind-protect (progn ,@body)
        (delete-backend *backend*))))
 
-(defun compute (&rest arrays)
+(defun compute (&rest lazy-arrays)
   (values-list
-   (compute-list-of-arrays arrays)))
+   (compute-list-of-arrays lazy-arrays)))
 
-(defun compute-list-of-arrays (arrays)
-  (let* ((lazy-arrays (remove-if #'trivial-object-p arrays))
+(defun compute-list-of-arrays (lazy-arrays)
+  (let* ((non-trivial (remove-if #'trivial-object-p lazy-arrays))
          (transformations
-           (loop for lazy-array in lazy-arrays
+           (loop for lazy-array in non-trivial
                  collect
                  (deflating-transformation
                   (lazy-array-shape lazy-array))))
          (deflated-lazy-arrays
-           (mapcar #'lazy-reshape lazy-arrays transformations))
+           (mapcar #'lazy-reshape non-trivial transformations))
          (delayed-arrays
            (backend-compute *backend* deflated-lazy-arrays)))
     ;; Project the results back to the shape of the original lazy arrays,
@@ -254,7 +254,7 @@ already been computed."))
     ;; one.  This way we avoid recomputing the same lazy array over and
     ;; over again.
     (bordeaux-threads-2:with-recursive-lock-held (*lazy-array-lock*)
-      (loop for lazy-array in lazy-arrays
+      (loop for lazy-array in non-trivial
             for transformation in transformations
             for deflated-lazy-array in deflated-lazy-arrays
             for delayed-array in delayed-arrays
@@ -266,12 +266,12 @@ already been computed."))
                         :transformation transformation
                         :input deflated-lazy-array)))))
     ;; All arrays are now trivial objects.
-    (mapcar #'trivial-object-value arrays)))
+    (mapcar #'trivial-object-value lazy-arrays)))
 
-(defun compute-asynchronously (&rest arrays)
+(defun compute-asynchronously (&rest lazy-arrays)
   (backend-compute-asynchronously
    *backend*
-   (remove-if #'trivial-object-p arrays)))
+   (remove-if #'trivial-object-p lazy-arrays)))
 
 (defun wait (&rest requests)
   (mapc #'request-wait requests)
@@ -280,7 +280,10 @@ already been computed."))
 (defun completedp (&rest requests)
   (every #'request-completedp requests))
 
-(defun evaluator (unknowns arrays)
-  (declare (list unknowns arrays))
+(defun evaluator (unknowns lazy-arrays)
+  (declare (list unknowns lazy-arrays))
   (the (values function &optional)
-       (backend-evaluator *backend* unknowns (mapcar #'lazy-array arrays))))
+       (backend-evaluator
+        *backend*
+        unknowns
+        (mapcar #'lazy-array lazy-arrays))))

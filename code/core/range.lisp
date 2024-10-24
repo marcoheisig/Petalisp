@@ -146,7 +146,7 @@ by a fixed stride STEP, to an exclusive upper bound END."
           by (range-step range)
             below (range-end range) do
               (funcall function element)))
-  range)
+  nil)
 
 (declaim (inline range-contains))
 (defun range-contains (range integer)

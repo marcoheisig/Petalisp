@@ -2,8 +2,8 @@
 
 (in-package #:petalisp.api)
 
-(defun broadcast (list-of-arrays)
-  (let* ((lazy-arrays (mapcar #'lazy-array list-of-arrays))
+(defun broadcast (lazy-arrays)
+  (let* ((lazy-arrays (mapcar #'lazy-array lazy-arrays))
          (shapes (remove-duplicates (mapcar #'lazy-array-shape lazy-arrays) :test #'shape=))
          (rank (reduce #'max shapes :key #'shape-rank :initial-value 0))
          (broadcast-shape

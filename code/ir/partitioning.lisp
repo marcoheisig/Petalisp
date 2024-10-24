@@ -51,9 +51,9 @@
             (:constructor make-layout))
   "A layout describes how indices of some shape relate to a particular region of
 memory with linear addressing.  At the end of partitioning, each buffer shard
-that is referenced at least once has to be associated with a layout.
-Furthermore, when a buffer shard is associated with a layout, its children
-must have the same layout.  Each layout has the following slots:
+that is referenced at least once is assigned a layout.  If a buffer shard has a
+layout, its children must have the same layout.  Each layout has the following
+slots:
 
 - The strides, which is a vector of unsigned integers that describes the
   mapping from indices that are tuples of integers to a single integer that is
@@ -85,14 +85,13 @@ must have the same layout.  Each layout has the following slots:
 ;;; Kernel and Buffer Shards
 
 (defstruct (kernel-shard (:constructor %make-kernel-shard))
-  "A kernel shard describes one portion of kernel to be executed, and the buffer
+  "A kernel shard describes one portion of kernel to be executed and the buffer
 shards it reads from and writes to.  Each kernel shard has the following slots:
 
 - The kernel being partitioned by this kernel shard.
 
-- The iteration space of this kernel shard, i.e., a shape that describes the
-  subset of the kernel iteration space that is uniquely assigned to this kernel
-  shard.
+- The iteration space, which is a shape that describes the subset of the kernel
+  iteration space that is uniquely assigned to this kernel shard.
 
 - The targets of the kernel shard, which is a list of one buffer shard per
   target buffer of the kernel being partitioned.
@@ -118,10 +117,10 @@ shards it reads from and writes to.  Each kernel shard has the following slots:
      (shape-size (kernel-shard-iteration-space kernel-shard-2))))
 
 (defstruct buffer-shard
-  "A buffer shard describes one portion of a buffer, how it relates to neighboring
-parts of that buffer, and kernel shard operate on it.  It may also contain a
-split that describes how it is subdivided further into smaller buffer shards.
-Each buffer shard has the following slots:
+  "A buffer shard describes one portion of a buffer and how it relates to neighboring
+parts of that buffer.  It also tracks the kernel shards reading from it and
+writing to it, and it may contain a split that describes how it is subdivided
+further into smaller buffer shards.  Each buffer shard has the following slots:
 
 - The buffer being partitioned by this buffer shard.
 
@@ -133,8 +132,8 @@ Each buffer shard has the following slots:
 
 - The parent, which is either the buffer shard that was split to create this
   one, or NIL if this buffer shard buffer shard has no parent.  We call any
-  buffer shard whose parent is NIL a /primogenitor buffer shard/, and ensure
-  that its domain is equal to the shape of its buffer.
+  buffer shard whose parent is NIL a primogenitor, and ensure that its domain
+  is equal to the shape of its buffer.
 
 - The writers, which is a list of kernel shards that write to this buffer
   shard.
@@ -200,9 +199,9 @@ split into two smaller child buffer shards.  Each split has the following slots:
 - The position of the lowest element of the right child's range in the axis
   being split.
 
-- The buffer shard that is the (lower) left child of the split.
+- The buffer shard that is the left child of the split.
 
-- The buffer shard that is the (upper) right child of the split."
+- The buffer shard that is the right child of the split."
   (axis nil :type axis :read-only t)
   (position nil :type integer :read-only t)
   (left-child nil :type buffer-shard :read-only t)

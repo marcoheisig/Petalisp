@@ -41,7 +41,8 @@
   (declare (shape shape))
   (= 1 (shape-size shape)))
 
-(defun shape-range (shape axis)
+(declaim (inline shape-range))
+(defun shape-range (shape &optional (axis 0))
   (declare (shape shape) (rank axis))
   (unless (<= 0 axis (1- (shape-rank shape)))
     (error "Invalid axis ~D for shape ~S." axis shape))
@@ -125,7 +126,7 @@
                          function))
                   (first ranges)))))
     (rec (reverse (shape-ranges shape)) '() function))
-  shape)
+  nil)
 
 (defun shape-contains (shape index)
   (declare (shape shape)

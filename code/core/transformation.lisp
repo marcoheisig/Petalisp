@@ -78,6 +78,7 @@
   (identity-transformation-p transformation))
 
 (defun transformation-invertiblep (transformation)
+  (declare (transformation transformation))
   (or (transformation-identityp transformation)
       (and (transformation-inverse transformation) t)))
 
@@ -85,9 +86,9 @@
 ;;;
 ;;; Generic Functions
 
-(defgeneric transformation= (transformation-1 transformation-2))
+(defgeneric transformation= (transformation1 transformation2))
 
-(defgeneric transformation-similar (transformation-1 transformation-2 delta))
+(defgeneric transformation-similar (transformation1 transformation2 delta))
 
 (defgeneric compose-two-transformations (g f))
 

@@ -75,7 +75,7 @@
    (lazy-array-shape lazy-array)))
 
 (declaim (inline lazy-array-range))
-(defun lazy-array-range (lazy-array axis)
+(defun lazy-array-range (lazy-array &optional (axis 0))
   (declare (lazy-array lazy-array) (axis axis))
   (shape-range (lazy-array-shape lazy-array) axis))
 
@@ -144,7 +144,7 @@ been referenced so far.  The bit vector is later used to eliminate unused
 values altogether.
 
 Because of the nature of its return values, a lazy array whose delayed action
-is a delayed multiple value map must only appear as the input of a delayed nth
+is a delayed multiple value map must appear only as the input of a delayed nth
 value action and never be visible to the user."
   (values-ntype (alexandria:required-argument :values-ntype)
    :type typo:values-ntype
@@ -234,7 +234,7 @@ of lazy arrays being fused."
 (defstruct (delayed-range
             (:include delayed-action))
   "A delayed range describes the process of assigning each index the sole integer
-contained in that index.  This delayed action must only appear in the
+contained in that index.  This delayed action must appear only in the
 definition of lazy arrays of rank one.")
 
 (defstruct (delayed-array

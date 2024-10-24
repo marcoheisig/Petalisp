@@ -1,9 +1,9 @@
 #+TITLE: Petalisp
 
-Petalisp is an attempt to generate high performance code for parallel
-computers by JIT-compiling array definitions. It is not a full blown
-programming language, but rather a carefully crafted extension of Common
-Lisp that allows for extreme optimization and parallelization.
+Petalisp generates high performance code for parallel computers by
+JIT-compiling array definitions.  It augments the existing general purpose
+programming language Common Lisp (and soon also Python) with parallelism and
+lazy evaluation.
 
 ** Getting Started
 1. Install Lisp and a suitable IDE.  If unsure, pick [[https://portacle.github.io/][Portacle]].

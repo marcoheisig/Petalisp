@@ -11,15 +11,15 @@
 This function can be invoked with one, two or three integers.  If it is called
 with a single argument, the result is a range starting from zero, with step
 size one, up to but excluding the supplied argument.  If the range constructor
-is called with two arguments, the result is still a range with a step size
-of one, but with the first argument as the inclusive lower bound, and with the
-second argument as the exclusive upper bound.  The three argument version
-behaves just like the two argument version, except that the additional third
-argument denotes the step size.  The sign of the step size gives the direction
-of the range: If the sign is positive, then the exclusive upper bound must be
-larger than the inclusive lower bound or the resulting range is empty.  If the
-sign is negative, the first argument is used as an inclusive upper bound, and
-the second argument is used as an exclusive lower bound."
+is called with two arguments, the result is still a range with a step size of
+one, but with the first argument as the inclusive lower bound and the second as
+the exclusive upper bound.  The three-argument version behaves just like the
+two argument version, but with the third argument denoting the step size.  The
+sign of the step size gives the direction of the range: If the sign is
+positive, then the exclusive upper bound must be larger than the inclusive
+lower bound or the resulting range is empty.  If the sign is negative, the
+first argument is used as an inclusive upper bound, and the second argument is
+used as an exclusive lower bound."
   (range 5)
   (range 5 9)
   (range 5 13 2)
@@ -32,7 +32,7 @@ the second argument is used as an exclusive lower bound."
   (rangep (range 1 3 2)))
 
 (document-function range-emptyp
-  "Returns whether a supplied range has zero elements."
+  "Returns whether the supplied range has zero elements."
   (range-emptyp (range 0))
   (range-emptyp (range 1)))
 
@@ -47,24 +47,23 @@ the second argument is used as an exclusive lower bound."
 
 (document-function range-start
   "Returns the lowest integer contained in the supplied range.  Signals an
-error in case the range has zero elements.")
+error when the supplied range is empty.")
 
 (document-function range-step
   "Returns the difference between any two successive integers in the supplied
-range.  Signals an error in case the range has zero elements.")
+range.  Signals an error when the supplied range is empty.")
 
 (document-function range-last
   "Returns the highest integer contained in the supplied range.
-Signals an error in case the range has zero elements.")
+Signals an error when the supplied range is empty.")
 
 (document-function range-end
   "Returns an integer that is larger than any integer in the supplied
-range by at most its step size.  An error is signaled in case the range has
-zero elements.")
+range by at most its step size.  Signals an error when the supplied range is empty.")
 
 (document-function split-range
-  "Splits the supplied range R into a lower and an upper half and returns
-those two halves as multiple values.  In case R has an odd number of elements,
+  "Splits the supplied range R into lower and upper halves and returns
+them as multiple values.  In case R has an odd number of elements,
 the lower half will have one more element than the upper half.  The optional
 POSITION argument is a real number that can be used to prescribe the point at
 which to split the range."
@@ -80,7 +79,7 @@ which to split the range."
 
 (document-function map-range
   "Takes a function and a range and applies the function to all integers of
-that range, in ascending order.  Returns the range being mapped over."
+that range, in ascending order.  Returns NIL."
   (let ((l '()))
     (map-range (lambda (i) (push i l)) (range 1 9 2))
     (nreverse l)))
@@ -191,7 +190,8 @@ contains."
   (shape-rank (~ 0 9 ~ 0 9)))
 
 (document-function shape-range
-  "Returns the range denoted by the supplied SHAPE and AXIS."
+  "Returns the range denoted by the supplied SHAPE and AXIS.  If no axis is
+supplied, it defaults to zero."
   (shape-range (~ 1 ~ 2 ~ 3) 0)
   (shape-range (~ 1 ~ 2 ~ 3) 2))
 
@@ -232,7 +232,7 @@ contains."
   "Returns whether SHAPE1 has less elements than SHAPE2, and if both shapes
 have the same size, whether SHAPE1 has lower rank than SHAPE2, and if both
 shapes have the same rank, whether the range of SHAPE1 is smaller than the
-range of SHAPE2 ranges in the lowest axis where both ranges differ in size.
+range of SHAPE2 in the lowest axis where both ranges differ in size.
 
 The main use case for this function is to sort sequences of shapes to obtain a
 canonical ordering."
@@ -267,7 +267,7 @@ don't have the same rank."
 
 (document-function map-shape
   "Takes a function and a shape and applies the function to all integer
-tuples of that range, in ascending order."
+tuples of that range, in ascending order.  Returns NIL."
   (let ((l '()))
     (map-shape (lambda (i) (push i l)) (~ 1 3 ~ 3 5))
     (nreverse l)))
@@ -303,8 +303,8 @@ range R1 that has been peeled off."
   "Returns a list of cons cells whose CAR is a shape and whose CDR is an
 integer.  Each shape is a proper subshape of one or more of the supplied shapes
 and the fusion of all these shapes covers all the supplied shapes.  The bits of
-each integer, when viewed in two's complement, encode which of the supplied
-shapes are supersets of that particular resulting shape."
+each CDR encode which of the supplied shapes are supersets of that particular
+resulting shape."
   (subdivide-shapes (list (~ 1 10) (~ 2 20)))
   (subdivide-shapes (list (~ 1 3 ~ 1 3) (~ 1 2 ~ 1 2))))
 
@@ -346,13 +346,13 @@ shapes don't have the same rank."
   "Returns the shape of the supplied shape designator.  If the designator
 is already a shape, the result is that shape.  If the designator is a
 regular array or lazy array, the result is the shape of that array.  If the
-result is any other object, the result is a shape with rank zero.")
+designator is any other object, the result is a shape with rank zero.")
 
 (document-function split-shape
-  "Split the supplied SHAPE at AXIS.  The optional POSITION argument can be
-supplied to describe the position at which to split.  If no POSITION
-argument is supplied, split into two halves of roughly equal size.  Returns
-two values, which are two shapes resulting from the split."
+  "Splits the supplied SHAPE at AXIS.  The optional POSITION argument can be
+supplied to describe the position at which to split.  If no POSITION argument
+is supplied, splits into two halves of roughly equal size.  Returns the two
+resulting shapes as multiple values."
   (split-shape (~ 10 ~ 10) 0)
   (split-shape (~ 10 ~ 10) 1)
   (split-shape (~ 10 ~ 10) 0 3)
@@ -365,17 +365,18 @@ two values, which are two shapes resulting from the split."
 
 (document-function transform
   "Returns a transformation from the given inputs to the given outputs.
-Inputs and outputs are separated by the symbol PETALISP:TO.  Each input can
-either be a symbol or an integer.  If the input is a symbol, it is the name
-under which the value of that input can be referenced in one of the outputs.
-If the input is a integer, it denotes an input constraint meaning that it is an
-error to later apply that transformation to an index that differs from that
+Inputs and outputs are separated by the symbol PETALISP:TO.  Each input can be
+either a symbol or an integer.  If the input is a symbol, it is the name under
+which the value of that input can be referenced in one of the outputs.  If the
+input is a integer, it denotes an input constraint meaning that it is an error
+to later apply that transformation to an index that differs from that
 constraint in that position.
 
 Each output is an arbitrary form that may reference up to one of the input
 variables.  This form is then evaluated repeatedly in a context where the
 referenced input variable is bound to a different integer, to determine the
 coefficients for the linear mapping from the referenced input to the output.
+
 Signals an error if any output form references more than one input, returns
 anything other than an integer, or describes a mapping that is not linear."
   (transform i to (+ i 1))
@@ -403,7 +404,7 @@ itself.  An identity transformation is its own inverse.")
   (petalisp.core:identity-transformation-p (transform i j to i j)))
 
 (document-function transformation-identityp
-  "Returns whether a supplied transformation is an identity transformation."
+  "Returns whether the supplied transformation is an identity transformation."
   (transformation-identityp (transform i j to j i))
   (transformation-identityp (transform i j to i j)))
 
@@ -424,12 +425,12 @@ have.")
 (document-function transformation-output-mask
   "Returns a vector with one element per axis of any possible output.  Each
 element of this vector is either an integer that is the corresponding input
-axis that is referenced by this output axis, or NIL, if and only if the
-scaling of that output axis is zero.")
+axis that is referenced by this output axis, or NIL if and only if the scaling
+of that output axis is zero.")
 
 (document-function transformation-scalings
   "Returns a vector with one element per axis of any possible output.  Each
-element of this vector is a rational number that is multiplied with the
+element of this vector is a rational number that is multiplied by the
 input index component indicated by the corresponding output mask entry
 before it is added to the corresponding offset.")
 
@@ -437,10 +438,10 @@ before it is added to the corresponding offset.")
   "Returns a vector with one element per axis of any possible output.  Each
 element of this vector is a rational number that is added to the
 input index component indicated by the corresponding output mask entry
-after it is multiplied with the corresponding scaling.")
+after it is multiplied by the corresponding scaling.")
 
 (document-function transformation-invertiblep
-  "Returns whether the supplied object is an invertible transformation."
+  "Returns whether the supplied transformation is an invertible transformation."
   (transformation-invertiblep (transform i j to j i))
   (transformation-invertiblep (transform i j to i)))
 
@@ -482,9 +483,6 @@ invocations of the supplied transformations in right-to-left order."
    (transform i to (/ i 2))
    (transform i to (+ i 2))
    (transform i to (* i 4)))
-  (compose-transformations
-   (transform i to (* 2 (1+ i)))
-   (transform i to (1- (/ i 2))))
   (compose-transformations
    (transform i j to (+ i 5) (+ j 7))
    (transform i j to (* j 2) (* i 3))))
@@ -548,48 +546,49 @@ arguments.  Valid keyword arguments are:
 - :INPUT-RANK A non-negative integer that is the rank of any permissible index
   or shape supplied to this transformation.  Defaults to the length of the
   supplied input mask, or, if no input mask is supplied, to the value of the
-  output rank.  Signals an error if neither the input rank nor the output rank
-  could be inferred.
+  output rank.  Signals an error if neither input nor output rank could be
+  inferred.
 
 - :OUTPUT-RANK A non-negative integer that is the rank of any possible index or
   shape resulting from this transformation.  Defaults to the length of the
   supplied scalings, offsets, or output mask, or, if none of these are
-  supplied, to the value of the input rank.  Signals an error if neither the
-  input rank nor the output rank could be inferred.
+  supplied, to the value of the input rank.  Signals an error if neither input
+  nor output rank could be inferred.
 
 - :INPUT-MASK A sequence with one element per axis of the transformation's
   input. Each element must either be an integer, in which case only that
-  integer may occur in the corresponding axis of the input, or NIL, in which
-  case any integer may occur in the corresponding axis.
+  integer may appear in the corresponding axis of the input, or NIL, in which
+  case any integer may appear in the corresponding axis.
 
 - :OUTPUT-MASK A sequence with one element per axis of the transformation's
   output.  Each element must either be an integer, in which case this integer
   denotes the axis of the input that is to be scaled, shifted and sent to the
   current position's output, or NIL, in which case only the corresponding
   offset value is sent to the current output.  This way, the output mask can
-  encode both permutations of the input, as well as insertion and removal of
-  axes.  If this keyword argument is not supplied, it defaults to a sequence of
-  consecutive integers from zero to right below the minimum of the input rank
-  and the output rank, followed by entries of NIL in case the output rank
-  exceeds the input rank.
+  encode permutations of the input and also insertion and removal of axes.  If
+  this keyword argument is not supplied, it defaults to a sequence of
+  consecutive integers from zero to right below the minimum of the input and
+  output ranks followed by entries of NIL if the output rank exceeds the input
+  rank.
 
 - :SCALINGS A sequence with one element per axis of the transformation's output
   whose elements are rational numbers.  Each integer of a transformation's
-  output is computed by multiplying the input denoted by the output mask with
-  its corresponding entry in this sequence and adding to the corresponding
-  offset.  If an output mask entry is NIL, the corresponding scaling is ignored
-  and the offset of that output axis is returned as is.  If this keyword
-  argument is not supplied, it defaults to a sequence of ones.
+  output is computed by multiplying the input denoted by the output mask by its
+  corresponding entry in this sequence and adding to the corresponding offset.
+  If an output mask entry is NIL, the corresponding scaling is ignored and the
+  offset of that output axis is returned as is.  If this keyword argument is
+  not supplied, it defaults to a sequence of ones.
 
 - :OFFSETS A sequence with one element per axis of the transformation's output.
   Each element must be a rational number that is added to the corresponding
   output value after scaling has taken place.  If this keyword argument is not
   supplied, it defaults to a sequence of zeros.
 
-Signals an error if some of the sequences supplied as :OUTPUT-MASK, :SCALINGS,
-or :OFFSETS differ in length."
+Signals an error if the supplied sequences and ranks are incompatible with each
+other."
   (make-transformation :input-rank 2)
   (make-transformation :input-rank 2 :output-rank 1)
+  (make-transformation :input-rank 1 :output-rank 2)
   (make-transformation :input-mask '(2 nil 3))
   (make-transformation :output-mask #(1 0 nil))
   (make-transformation :offsets #(1 2 3) :scalings #(4 5 6)))
@@ -612,11 +611,11 @@ actual Common Lisp arrays.")
   "Returns the shape of the supplied lazy array.")
 
 (document-function lazy-array-element-type
-  "Returns the element of the supplied lazy array.
+  "Returns the element type of the supplied lazy array.
 The element type is a conservative upper bound on the types of all the elements
 in that lazy array.  It is derived automatically during lazy array
 construction.  When computing a lazy array, the resulting regular array's
-element type is the upgraded array element type of the lazy arrays element
+element type is the upgraded array element type of the lazy array's element
 type.")
 
 (document-function lazy-array-rank
@@ -624,7 +623,7 @@ type.")
 The rank of a lazy array is the number of ranges that constitute its shape.")
 
 (document-function lazy-array-size
-  "Returns the number of elements of the supplied lazy array.")
+  "Returns the number of elements in the supplied lazy array.")
 
 (document-function lazy-array-dimension
   "Returns the number of elements of the supplied lazy array along a particular
@@ -635,10 +634,11 @@ axis.")
 array along each of its axes.")
 
 (document-function lazy-array-range
-  "Returns the range of the supplied lazy array's shape along a particular axis.")
+  "Returns the range of the supplied lazy array's shape along a particular axis.
+If no axis is supplied, it defaults to zero.")
 
 (document-function lazy-array-ranges
-  "Returns the list of all ranges that constitute the supplied lazy array's
+  "Returns the list of all the ranges that constitute the supplied lazy array's
  shape.")
 
 (document-function lazy-array
@@ -667,16 +667,15 @@ interchangeably in any argument position."
 
 (document-function lazy-reshape
   "Returns the lazy array that is obtained by successively reshaping the
-supplied array with the supplied modifiers in left-to-right order.  There are
-three kinds of modifiers: Transformations that describe a reordering of values,
-functions which are applied to the shape of the lazy array to obtain additional
-modifiers, and shape designators that describe a selection, move, or
-broadcasting of values.
+supplied array with the supplied modifiers in left-to-right order.  Modifiers
+can be transformations that describe a reordering of values; functions which
+are applied to the shape of the lazy array to obtain additional modifiers; or
+shape designators that describe a selection, move, or broadcasting of values.
 
-More precisely, the processing maintains a lazy array that is initialized to
-the result of applying LAZY-ARRAY constructor to the supplied first argument,
-and which is successively updated it with the result of applying one modifier
-at a time according to the following rules:
+More precisely, LAZY-RESHAPE maintains a lazy array that is initialized to the
+result of applying the LAZY-ARRAY constructor to the supplied first argument,
+and which is successively updated with the result of applying one modifier at a
+time according to the following rules:
 
 1. If the modifier is an invertible transformation, reorder the elements of
    that array according to that transformation.  If the lazy array has lower
@@ -698,15 +697,15 @@ at a time according to the following rules:
    the corresponding range of designated shape according to the following
    rules:
 
-   a) If both the source range and the target range have the same size, move
-      the elements of that axis so that they end up on the target range while
-      maintaining the original order.
+   a) If both source and target range have the same size, move the elements of
+      that axis so that they end up in the target range while maintaining the
+      original order.
 
-   b) If the source range has a size of one, broadcast it to the target range
-      of that axis.
+   b) If the source range has a size of one, broadcast its content to the
+      target range.
 
    c) If the target range is a proper subset of the source range, select only
-      those elements of that axis that fall within the target range."
+      those elements that fall within the target range."
   (compute (lazy-reshape #(1 2 3 4) (~ 1 2)))
   (compute (lazy-reshape #(1 2 3 4) (~ 2 ~ 3)))
   (compute (lazy-reshape #(1 2 3 4) (~ 4 ~ 2)))
@@ -727,19 +726,19 @@ to the following rules:
    supplied arrays.
 
 2. Each range of any of the supplied arrays must either have a size of one, in
-   which case it is broadcast to the to the corresponding range of the
-   resulting shape, or it must be equal to the corresponding range of the
-   resulting shape.
+   which case it is broadcast to the corresponding range of the resulting
+   shape, or it must be equal to the corresponding range of the resulting
+   shape.
 
 3. The missing axes of lazy arrays that have a lower rank than the resulting
    shape are broadcast as if they had a range of size one.
 
-4. In any axis in which all supplied arrays have a range with size one, the
+4. In any axis in which all supplied arrays have a range of size one, the
    resulting shape has the range of the leftmost supplied array."
   (broadcast (list #(1 2 3) 5))
   (broadcast (list #2A((1 2 3)) #2A((4) (5))))
   (apply #'compute (broadcast (list #(1 2 3) 5)))
-  (apply #'compute (broadcast (list #2a((1 2) (3 4)) #(7 8)))))
+  (apply #'compute (broadcast (list 1 #2a((2 3) (4 5)) #(6 7)))))
 
 (document-function lazy
   "Returns a lazy array whose contents are the results of applying the
@@ -753,11 +752,11 @@ with the function BROADCAST."
   (compute (lazy #'* #(2 3) #2a((1 2) (3 4)))))
 
 (document-function lazy-multiple-value
-  "Returns as many lazy arrays as indicated by the integer that is the first
-supplied argument, whose contents are the results of applying the function that
-is the second supplied argument element-wise to the contents of the remaining
-argument arrays.  If the arguments don't agree in shape, they are first
-broadcast together."
+  "Returns multiple lazy arrays, the number of which is indicated by the integer
+that is the first supplied argument, whose contents are the results of applying
+the function --- the second supplied argument --- element-wise to the contents
+of the remaining argument arrays.  If the arguments don't agree in shape, they
+are first broadcast together."
   (multiple-value-call #'compute (lazy-multiple-value 0 #'*))
   (multiple-value-call #'compute (lazy-multiple-value 1 #'*))
   (multiple-value-call #'compute (lazy-multiple-value 2 #'*))
@@ -765,10 +764,10 @@ broadcast together."
   (multiple-value-call #'compute (lazy-multiple-value 3 #'values-list #((1 2 3) (4 5 6)))))
 
 (document-function lazy-fuse
-  "Returns a lazy array that is a combination of all the values of all the
-supplied arrays.  Signals an error if any of the supplied arrays overlap,
-don't have the same rank, or if the union of all their shapes cannot be
-represented as a shape."
+  "Returns a lazy array that is a combination of the values of the
+supplied arrays.  Signals an error if any of the supplied arrays overlap, don't
+have the same rank, or if the union of their shapes cannot be represented
+as a shape."
   (compute (lazy-fuse (lazy-reshape 1 (~ 0 2))
                       (lazy-reshape 2 (~ 2 4))))
   (compute (lazy-fuse (lazy-reshape 1 (~ 0 7 2))
@@ -779,12 +778,11 @@ represented as a shape."
                       (lazy-reshape 4 (~ 2 4 ~ 2 4)))))
 
 (document-function lazy-overwrite
-  "Returns a lazy array that is a combination of all the values of all the
+  "Returns a lazy array that is a combination of the values of the
 supplied arrays.  If any of the supplied arrays overlap at some index, the
 value of the result in that index is that of the rightmost array containing
-that index.  Signals an error unless all the supplied arrays have the same
-rank, or if the union of all their shapes cannot be represented as a
-shape."
+that index.  Signals an error unless the supplied arrays have the same rank, or
+if the union of their shapes cannot be represented as a shape."
   (compute (lazy-overwrite (lazy-reshape 1 (~ 0 4))
                            (lazy-reshape 2 (~ 2 4))))
   (compute (lazy-overwrite (lazy-reshape 1 (~ 3 ~ 3))
@@ -793,8 +791,8 @@ shape."
 (document-function lazy-index-components
   "Returns a lazy array containing the index components of the designated
 shape in the supplied axis.  If the first argument is not a shape, the function
-SHAPE-DESIGNATOR-SHAPE is used to convert it a shape.  If no axis is not
-supplied, it defaults to zero."
+SHAPE-DESIGNATOR-SHAPE is used to convert it a shape.  If no axis is supplied,
+it defaults to zero."
   (compute (lazy-index-components (~ 9)))
   (compute (lazy-index-components (~ 10 30 2)))
   (compute (lazy-index-components (~ 4 ~ 4) 0))
@@ -826,13 +824,13 @@ axis."
   (compute (lazy-stack (list #2A((1 2) (3 4)) #2A((5 6) (7 8))) :axis 1)))
 
 (document-function lazy-reduce
-  "Returns the lazy arrays that are reduction of the supplied
-arrays with the supplied function.  For a single supplied array that is a
-vector, this function operates as follows:
+  "Returns the lazy arrays that are reductions of the supplied
+arrays by the supplied function.  For a single supplied array that is a vector,
+this function operates as follows:
 
 1. If the vector has zero elements, return the scalar that is the result of
    invoking the supplied function with zero arguments.  This behavior is
-   analogous with Common Lisp's REDUCE function and allows graceful handling of
+   analogous to Common Lisp's REDUCE function and allows graceful handling of
    many built-in functions.
 
 2. If the vector has an even number of elements, split it into two vectors of
@@ -843,7 +841,7 @@ vector, this function operates as follows:
    vector of results.  Process the resulting vector with step 2 or step 3,
    depending on whether it has an even or an odd number of elements.
 
-3. If the vector has an odd number of elements distinguish three cases:
+3. If the vector has an odd number of elements, distinguish three cases:
 
    a) If there is a leftover element from one of the previous steps, append it
       at the end of the vector.  The resulting vector has an even number of
@@ -860,8 +858,8 @@ In addition to this simple case of reducing a vector into a scalar, this
 function supports three further generalizations:
 
 - If the argument is an array with rank larger than one, the reduction is
-  carried out along the first axis only, and all the remaining axes are handled
-  by carrying out multiple reductions in parallel.  In that case, the result is
+  carried out along the first axis only, and the remaining axes are handled by
+  carrying out multiple reductions in parallel.  In that case, the result is
   not a scalar but an array whose rank is one less than before.
 
 - Instead of supplying a function as the first argument, one may also supply a
@@ -880,8 +878,7 @@ function supports three further generalizations:
 
 A final piece of advice: when reducing a vector that is possibly empty, it is
 advisable to stack a neutral element at the beginning or the end of that vector
-to make it non-empty.
-"
+to make it non-empty."
   (compute (lazy-reduce '+ #()))
   (compute (lazy-reduce '+ #(1 2 3 4)))
   (compute (lazy-reduce '+ #2a((1 2) (3 4))))
@@ -898,19 +895,19 @@ to make it non-empty.
   (compute (lazy-reduce 'min (lazy-stack (list 0 #())))))
 
 (document-function lazy-rearrange
-  "Returns a lazy array with the same contents as the supplied one, but whose
+  "Returns a lazy array with the same contents as the one supplied, but whose
 first few axes are replaced by those from a different shape. The three
 arguments of this function are the lazy array to be rearranged, the number of
 axes to rearrange, and the shape to use instead.  Signals an error if the
-original shape and the resulting shape differ in size."
+original and the resulting shapes differ in size."
   (compute (lazy-rearrange (lazy-index-components (~ 1 10)) 1 (~ 3 ~ 3)))
   (compute (lazy-rearrange #2a((1 2) (3 4)) 2 (~ 4)))
   (compute (lazy-rearrange #2a((1 2) (3 4)) 1 (~ 2 ~ 1))))
 
 (document-function view
   "View the supplied lazy arrays as a graph, using some external program.  Each
-graph node corresponds to one lazy array, and is shown with its shape, derived
-element type, and possibly some other attributes.  Each graph edge describes
+graph node corresponds to a lazy array and is shown with its shape, derived
+element type, and possibly other attributes.  Each graph edge describes
 one data flow dependency between one lazy array and another.")
 
 (document-function differentiator
@@ -923,7 +920,7 @@ same shape that describes how much each value differs from its expected value.")
 (document-function deflater
   "Returns a function that can be supplied as a modifier to LAZY-RESHAPE to
 move each of the designated axes to have a start of zero and a step size of
-one.  The supplied argument must either be a non-negative integer that denotes
+one.  The supplied argument must be either a non-negative integer that denotes
 the number of axes to deflate, or a bit vector with one element per axis that
 is one if the corresponding axis should be deflated and zero otherwise."
   (lazy-reshape 5 (~ 3 33 3) (deflater 1))
@@ -935,11 +932,10 @@ turn any lazy array shape into modifiers that select certain interior points of
 that shape.  The nature of this function is determined by the supplied amount
 specifiers, one for each axis, each of which can either be an unsigned integer,
 or a list of up to three unsigned integers.  The behavior of each amount
-specifiers, each of which can either be an unsigned integer, or a list of up to
-three unsigned integers.  The behavior of each amount specifier is as such:
+specifier is as follows:
 
-- A single unsigned integers designates the number of elements that are to be
-  peeled off both at the low and the high end of the corresponding range.
+- A single unsigned integer designates the number of elements that are to be
+  peeled off both at the low and high ends of the corresponding range.
 
 - An empty list means that the corresponding range is not modified.
 
@@ -949,7 +945,7 @@ three unsigned integers.  The behavior of each amount specifier is as such:
 - If the amount specifier is a list of two unsigned integers, the first integer
   denotes the number of elements that are to be peeled off at the low end of
   the corresponding range, and the second integer denotes the amount that is to
-  be peeled off of the high end of that range.
+  be peeled off at the high end of that range.
 
 - If the amount specifier is a list of three unsigned integers, the fist two
   are interpreted as the low and the high amount as before, and the third
@@ -967,26 +963,27 @@ any lazy array shape into modifiers that select a particular slice of that
 shape.  The nature of this function is determined by the supplied slice
 specifiers, one for each axis, each of which is one of the following:
 
-- A single unsigned integer N for selecting the element with relative index N
+- A single unsigned integer N for selecting the element with relative index N
   and dropping that axis from the resulting shape.
 
-- An empty list for keeping the corresponding range as it is.
+- An empty list for keeping the corresponding range as is.
 
-- A list with one unsigned integer N for selecting the element with relative
+- A list of one unsigned integer N for selecting the element with relative
   index N and keeping that axis in the resulting shape.
 
-- A list with two unsigned integers B and E for selecting the elements from the
+- A list of two unsigned integers B and E for selecting the elements from the
   relative index B up to right below the relative index E.
 
-- A list with three unsigned integers B, E, and S for selecting the elements
+- A list of three unsigned integers B, E, and S for selecting the elements
   beginning at relative index B, with a relative step size of S, up to right
   below the relative index E.
 
 All indices are interpreted as relative coordinates, so in a range with a start
-of five and step size of two a relative index zero would map to the absolute
+of five and a step size of two, a relative index of zero would map to the absolute
 index five and a relative index of one would map to the absolute index seven.
+
 Signals an error unless the integers B and E are valid relative bounding
-indices for the range being worked one, i.e., B must be less than the size of
+indices for the range being worked on, i.e., B must be less than the size of
 that range, and E must be larger than or equal to B and less than or equal to
 the size of that range."
   (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (slicer 0)))
@@ -999,37 +996,37 @@ the size of that range."
   "Takes any number of arguments that must be lazy array designators and
 returns the same number of possibly specialized regular arrays with the
 corresponding computed contents.  Whenever a shape of any of the supplied lazy
-arrays has as step size other than one, or an offset other than zero, that
-array is deflated before being computed, i.e., each axis is shifted to begin
-with zero, and divided by the step size.
+arrays has a step size other than one, or an offset other than zero, that array
+is deflated before being computed, i.e., each axis is shifted to begin with
+zero, and divided by the step size.
 
 As a special case, whenever this function would return an array with rank zero,
 it instead returns the sole element of that array.  The reason for this
 treatment of scalars is that Petalisp treats every object as an array, whereas
 a Common Lisp array of rank zero and the object therein are distinct entities.
 Of those two distinct representations, the non-array one is usually more useful
-for further processing, so this is the one being returned.
+for further processing, so this is the one which is returned.
 
-All the heavy lifting in Petalisp happens within this function.  The exact
-details of how it operates aren't important for an application programmer, but
-it is valuable to understand the rough steps that happen under the hood.  The
-individual steps of computing some lazy arrays are as follows:
+All the heavy lifting in Petalisp happens within COMPUTE.  The exact details of
+how it operates aren't important for an application programmer, but it is
+valuable to understand the rough steps that happen behind the scenes.  The
+steps for computing lazy arrays are as follows:
 
 1. Convert each supplied argument to a lazy array.
 
-2. Reshape each lazy array whose so that it has a step size of one and an
-   offset of zero.
+2. Reshape each lazy array so that it has a step size of one and an offset of
+   zero.
 
 3. Determine the dependency graph whose roots are the deflated lazy arrays,
-   whose interior nodes are calls to lazy map, lazy reshape, or lazy fuse, and
-   whose leaves are wrapped regular arrays or the index components of some
-   shape designator.
+   whose interior nodes are calls to the core operators lazy map, lazy reshape,
+   and lazy fuse, and whose leaves are wrapped regular arrays or the index
+   components of some shape designator.
 
 4. Optimize the dependency graph, discard all unused parts, and plan a schedule
    that is fast and has reasonable memory requirements.
 
 5. Execute the schedule on the available hardware.  Make use of all processing
-   units, accelerators, or even distributed systems where possible. Gather the
+   units, accelerators, and even distributed systems when possible. Gather the
    results in the form of regular arrays.
 
 6. Change the internal representation of all the originally supplied lazy
@@ -1039,12 +1036,10 @@ individual steps of computing some lazy arrays are as follows:
 7. Return the results as multiple values, while replacing any array with rank
    zero with the single element contained in that array.
 
-This function is the workhorse of Petalisp.  A lot of effort went into making
-it not only powerful, but also extremely fast.  The overhead of calling it
-instead of invoking an already compiled and optimized program is usually just a
-few microseconds, so this may be the only evaluation interface that you ever
-need."
-  (compute (lazy-array #(1 2 3)))
+The COMPUTE function is the workhorse of Petalisp.  A lot of effort went into
+making it not only powerful, but also fast.  The overhead of calling it instead
+of invoking an already compiled and optimized program is usually just a few
+microseconds, so this may be the only evaluation interface that you ever need."
   (compute #(1 2 3))
   (compute 5)
   (compute #0a42)
@@ -1108,8 +1103,8 @@ the element types of all supplied lazy arrays."
   (harmonized-element-type (list 'foo "bar" :baz 42)))
 
 (document-function harmonize
-  "Lazily coerce each array in the supplied list of arrays to the common
-harmonized element type, and return a list of the resulting lazy arrays."
+  "Lazily coerces each array in the supplied list of arrays to the common
+harmonized element type, and returns a list of the resulting lazy arrays."
   (apply #'compute (harmonize (list 5 6f0)))
   (apply #'compute (harmonize (list #C(5 2) (lazy-stack (list 1.0 2.0 3.0))))))
 
@@ -1126,8 +1121,8 @@ passing them to LAZY-OVERWRITE.")
 shadowed by the lazy array equivalent of the previous value of that symbol.  An
 alternative notation can be used to avoid shadowing the original array: If any
 array name is not a symbol but a list of a symbol and a form, the symbol is
-bound to the lazy array equivalent of what's produced by that form.  It is good
+bound to the lazy array equivalent of the result of that form.  It is good
 practice to start each function that expects some of its arguments to be lazy
-arrays to start with a suitable use of this macro."
+arrays with an invocation of this macro."
   (let ((a 5) (b #(1 2 3)))
     (with-lazy-arrays (a (c b)) (values a b c))))

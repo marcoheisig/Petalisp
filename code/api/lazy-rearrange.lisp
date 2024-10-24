@@ -2,14 +2,14 @@
 
 (in-package #:petalisp.api)
 
-(defun lazy-rearrange (data n-axes shape)
+(defun lazy-rearrange (lazy-array n-axes shape)
   (declare (unsigned-byte n-axes) (shape shape))
-  (with-lazy-arrays (data)
-    (unless (<= n-axes (lazy-array-rank data))
+  (with-lazy-arrays (lazy-array)
+    (unless (<= n-axes (lazy-array-rank lazy-array))
       (error "~@<Invalid number of axes ~D for an array with rank ~D.~:@>"
              n-axes
-             (lazy-array-rank data)))
-    (let* ((source-shape (lazy-array-shape data))
+             (lazy-array-rank lazy-array)))
+    (let* ((source-shape (lazy-array-shape lazy-array))
            (target-shape (~* (shape-ranges shape)
                              (subseq (shape-ranges source-shape) n-axes))))
       (unless (= (shape-size source-shape)
@@ -23,7 +23,7 @@
             (n2 (petalisp.core:normalizing-transformation target-shape)))
         (lazy-reshape
          (lazy-rearrange/normalized
-          (lazy-reshape data n1)
+          (lazy-reshape lazy-array n1)
           (transform-shape target-shape n2))
          (invert-transformation n2))))))
 
