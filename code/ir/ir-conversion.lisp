@@ -96,17 +96,17 @@ structure.  The individual slots of an IR converter are as follows:
 
 (defstruct (nucleus
             (:constructor make-nucleus (lazy-array)))
-  "A nucleus describes a lazy array that is either the root of a data flow graph,
-or one that was reached by more than one dendrite in the conversion process.  Each
-nucleus has the following slots:
+  "A nucleus describes a lazy array that is either the root of a data flow graph
+or a lazy array that has been reached by more than one dendrite in the
+conversion process.  Each nucleus has the following slots:
 
 - The lazy array at which the nucleation occurs.  When talking about the shape,
-  depth or type of a nucleus, we refer to the shape, depth or type of the lazy
-  array of that nucleus.
+  depth and type of a nucleus, we refer to the shape, depth and type of the
+  lazy array of that nucleus.
 
-- A list of all the dendrites that have reached this nucleus.  This list is
-  empty when the nucleus is at a root of the data flow graph, and contains two
-  or more dendrites otherwise."
+- A list of the dendrites that have reached this nucleus.  This list is empty
+  when the nucleus is at a root of the data flow graph, otherwise it contains
+  two or more dendrites."
   (lazy-array nil :type lazy-array)
   (dendrites '() :type list))
 
@@ -134,9 +134,9 @@ nucleus has the following slots:
 (defstruct stem
   "A stem describes the process of assembling one kernel.  Stems and their kernels
 are always created at the same time, but only the iteration space and the store
-instructions of the stem's kernel are defined right away.  All the other
-instructions of the kernel are produced later by growing some dendrites from
-the stem.  A stem has the following slots:
+instructions of the stem's kernel are defined right away.  All other
+instructions of the kernel are produced later by growing dendrites from the
+stem.  A stem has the following slots:
 
 - A reference to the nucleus from which the stem emanates.
 
@@ -145,18 +145,17 @@ the stem.  A stem has the following slots:
   iteration space of this kernel.
 
 - A list of buffers that are written to by the stem's kernel.  If the stem's
-  nucleus occurs at a lazy array with a delayed multiple value map action, this
-  list has as many buffers as there are multiple values being returned.  In any
-  other case, this list has a single buffer that will later hold the values of
-  the lazy array corresponding to the stem's nucleus.  Instead of a buffer, an
-  element of this list can also be NIL if that particular value is never
-  referenced.
+  nucleus occurs at a lazy array with a delayed multiple-value map action, this
+  list has as many buffers as there are multiple values being returned.
+  Otherwise, this list has a single buffer that will later hold the values of
+  the lazy array corresponding to the stem's nucleus.  An element of this list
+  can be NIL instead of a buffer if that particular value is never referenced.
 
 - A flag that indicates whether the stem is valid.  It is true initially, but
-  may be set to false in case the stem is split into multiple stems with
-  smaller iteration spaces.  When the IR conversion algorithm encounters a stem
-  that is no longer valid, it discards the corresponding kernel and all the
-  dendrites rooted therein."
+  is set to false in case the stem is split into multiple stems with smaller
+  iteration spaces.  When the conversion algorithm encounters a stem that is no
+  longer valid, it discards the corresponding kernel and all dendrites rooted
+  therein."
   (nucleus nil :type nucleus)
   (kernel nil :type kernel)
   (buffers nil :type list)
@@ -165,9 +164,9 @@ the stem.  A stem has the following slots:
 (defstruct (dendrite
             (:constructor %make-dendrite))
   "A dendrite describes a set of indices and their mapping to the
-iteration space of its stem.  It holds a reference to an input of a
-not-yet-fully-initialized instruction and its job is to suitably initialize
-this instruction input.  It has the following slots:
+iteration space of the dendrite's stem.  The dendrite holds a reference to an
+input of a not-yet-fully-initialized instruction and its job is to suitably
+initialize this instruction input.  It has the following slots:
 
 - A reference to the stem from which the dendrite originates.
 
@@ -178,8 +177,8 @@ this instruction input.  It has the following slots:
 
 - The depth of the nucleus that was most recently visited by the dendrite.
 
-- The cons cell whose cdr should be set to the next instruction being emitted,
-  and whose car is an integer denoting which of the multiple values of that
+- The cons cell whose CDR should be set to the next instruction being emitted,
+  and whose CAR is an integer denoting which of the multiple values of that
   instruction is being referenced."
   (stem nil :type stem)
   (shape nil :type shape)

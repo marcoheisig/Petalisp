@@ -49,26 +49,27 @@
 (defstruct (layout
             (:predicate layoutp)
             (:constructor make-layout))
-  "A layout describes how indices of some shape relate to a particular region of
-memory with linear addressing.  At the end of partitioning, each buffer shard
-that is referenced at least once is assigned a layout.  If a buffer shard has a
-layout, its children must have the same layout.  Each layout has the following
+  "A layout describes how the indices of a shape relate to a particular region of
+memory with linear addressing.  After the partitioning, each buffer shard that
+is referenced at least once is assigned a layout.  If a buffer shard has a
+layout, its children must have the same layout.  A layout has the following
 slots:
 
 - The strides, which is a vector of unsigned integers that describes the
   mapping from indices that are tuples of integers to a single integer that is
   the address of an element of this layout.  Its Ith entry denotes the address
-  increment when bumping the Ith element of an index by one.
+  increment when bumping the Ith component of an index by one.
 
-- The offset, which is an integer that is the address of the index tuple of all
-  zeros.
+- The offset, which is an integer that is the linear address corresponding to
+  the index tuple of all zeros.
 
 - The ntype of the elements of the layout.
 
 - The size, i.e., the number of elements contained in the layout.
 
-- The ghost layer alist, which is a list of (shape . layout) pairs that
-  describes where the ghost layers of this layout can be loaded from."
+- The ghost layer alist, which is an association list whose keys are shapes and
+  whose values are layouts.  Its entries describe from where the ghost layers
+  of this layout can be loaded."
   (offset 0 :type fixnum :read-only t)
   (strides nil :type (simple-array unsigned-byte (*)) :read-only t)
   (ntype nil :type typo:ntype :read-only t)
@@ -85,18 +86,18 @@ slots:
 ;;; Kernel and Buffer Shards
 
 (defstruct (kernel-shard (:constructor %make-kernel-shard))
-  "A kernel shard describes one portion of kernel to be executed and the buffer
-shards it reads from and writes to.  Each kernel shard has the following slots:
+  "A kernel shard describes one portion of a kernel to be executed and the buffer
+shards it reads from and writes to.  A kernel shard has the following slots:
 
 - The kernel being partitioned by this kernel shard.
 
 - The iteration space, which is a shape that describes the subset of the kernel
   iteration space that is uniquely assigned to this kernel shard.
 
-- The targets of the kernel shard, which is a list of one buffer shard per
+- The targets of the kernel shard, which is a list of buffer shards, one per
   target buffer of the kernel being partitioned.
 
-- The sources of the kernel shard, which is a list of one buffer shard per
+- The sources of the kernel shard, which is a list of buffer shards, one per
   source buffer of the kernel being partitioned."
   (kernel nil :type kernel :read-only t)
   (iteration-space nil :type shape :read-only t)
@@ -120,20 +121,20 @@ shards it reads from and writes to.  Each kernel shard has the following slots:
   "A buffer shard describes one portion of a buffer and how it relates to neighboring
 parts of that buffer.  It also tracks the kernel shards reading from it and
 writing to it, and it may contain a split that describes how it is subdivided
-further into smaller buffer shards.  Each buffer shard has the following slots:
+into smaller buffer shards.  Each buffer shard has the following slots:
 
 - The buffer being partitioned by this buffer shard.
 
-- The domain, which is that part of the buffer's shape that is exclusively
+- The domain, which is the part of the buffer's shape that is exclusively
   managed by this buffer shard and its children.
 
 - The shape, which is the union of the buffer shard's domain and any auxiliary
   ghost layers.
 
 - The parent, which is either the buffer shard that was split to create this
-  one, or NIL if this buffer shard buffer shard has no parent.  We call any
-  buffer shard whose parent is NIL a primogenitor, and ensure that its domain
-  is equal to the shape of its buffer.
+  one, or NIL if this buffer shard has no parent.  We call any buffer shard
+  whose parent is NIL a primogenitor, and its domain is equal to the shape of
+  its buffer.
 
 - The writers, which is a list of kernel shards that write to this buffer
   shard.
@@ -144,8 +145,8 @@ further into smaller buffer shards.  Each buffer shard has the following slots:
 - The split priority cache, which is used to cache the user-supplied cost
   function for the buffer shard once it is computed for the first time.
 
-- The split operation in case this buffer shard has been split into two child
-  buffer shards, or NIL if it hasn't been split so far.
+- The split operation if this buffer shard has been split into two child buffer
+  shards, or NIL if it hasn't been split so far.
 
 - The layout assigned to the buffer shard, or NIL if no layout has been
   assigned so far.
@@ -191,12 +192,12 @@ Signals an error if the layout of the supplied buffer is NIL."
   buffer-shard)
 
 (defstruct (split (:predicate splitp))
-  "A split describes how some position of some axis of an existing buffer shard is
-split into two smaller child buffer shards.  Each split has the following slots:
+  "A split describes how an axis of an existing buffer shard is split into two
+smaller child buffer shards.  Each split has the following slots:
 
 - The axis at which the buffer-shard is split.
 
-- The position of the lowest element of the right child's range in the axis
+- The position of the smallest element of the right child's range in the axis
   being split.
 
 - The buffer shard that is the left child of the split.

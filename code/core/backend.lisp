@@ -17,7 +17,7 @@
 (defgeneric delete-backend (backend)
   (:documentation
    "Permanently disables the supplied backend and free any resources that are
-held by it.  Once a backend has been deleted, any further call to an
+held by it.  Once a backend has been deleted, further calls to an
 evaluation function on that backend will signal an error."))
 
 (defgeneric backend-compute (backend lazy-arrays)
@@ -26,7 +26,7 @@ evaluation function on that backend will signal an error."))
   (:argument-precedence-order lazy-arrays backend)
   (:documentation
    "Returns a list of delayed array actions, one for each element of the supplied list
-of lazy arrays.  This function should be invoked only by COMPUTE, which guarantees
+of lazy arrays.  This function should be called only by COMPUTE, which guarantees
 that the supplied lazy arrays are already deflated."))
 
 (defgeneric backend-evaluator (backend unknowns lazy-arrays)
@@ -42,11 +42,11 @@ position K plus I.
 
 The first K arguments of the resulting evaluator function specify which storage
 to use for the results, where a value of NIL indicates that the corresponding
-result is a freshly allocated array, whereas a value that is an array ensures
-that the result is written to that array.  The remaining N arguments specify
-the data that is used as substitute for the corresponding unknown.  Signals an
+result is a freshly allocated array, and a value that is an array causes
+the result to be written to that array.  The remaining N arguments specify
+the data that takes the place of the corresponding unknowns.  Signals an
 error if any of the arguments of an evaluator has a different shape or element
-type as the corresponding result or unknown."))
+type from the corresponding result or unknown."))
 
 (defgeneric backend-compute-asynchronously (backend lazy-arrays)
   (:argument-precedence-order lazy-arrays backend)

@@ -229,8 +229,8 @@ supplied, it defaults to zero."
   (shape= (~ 1 42) (~ 2 42)))
 
 (document-function shape<
-  "Returns whether SHAPE1 has less elements than SHAPE2, and if both shapes
-have the same size, whether SHAPE1 has lower rank than SHAPE2, and if both
+  "Returns whether SHAPE1 has fewer elements than SHAPE2, or if both shapes
+have the same size, whether SHAPE1 has lower rank than SHAPE2, or if both
 shapes have the same rank, whether the range of SHAPE1 is smaller than the
 range of SHAPE2 in the lowest axis where both ranges differ in size.
 
@@ -368,7 +368,7 @@ resulting shapes as multiple values."
 Inputs and outputs are separated by the symbol PETALISP:TO.  Each input can be
 either a symbol or an integer.  If the input is a symbol, it is the name under
 which the value of that input can be referenced in one of the outputs.  If the
-input is a integer, it denotes an input constraint meaning that it is an error
+input is a integer, it denotes an input constraint, meaning that it is an error
 to later apply that transformation to an index that differs from that
 constraint in that position.
 
@@ -674,8 +674,8 @@ shape designators that describe a selection, move, or broadcasting of values.
 
 More precisely, LAZY-RESHAPE maintains a lazy array that is initialized to the
 result of applying the LAZY-ARRAY constructor to the supplied first argument,
-and which is successively updated with the result of applying one modifier at a
-time according to the following rules:
+and successively updates it by applying one modifier at a time according to the
+following rules:
 
 1. If the modifier is an invertible transformation, reorder the elements of
    that array according to that transformation.  If the lazy array has lower
@@ -765,9 +765,9 @@ are first broadcast together."
 
 (document-function lazy-fuse
   "Returns a lazy array that is a combination of the values of the
-supplied arrays.  Signals an error if any of the supplied arrays overlap, don't
-have the same rank, or if the union of their shapes cannot be represented
-as a shape."
+supplied arrays.  Signals an error if any of the supplied arrays overlap, have
+a different rank, or if the union of all shapes cannot be represented as a
+shape."
   (compute (lazy-fuse (lazy-reshape 1 (~ 0 2))
                       (lazy-reshape 2 (~ 2 4))))
   (compute (lazy-fuse (lazy-reshape 1 (~ 0 7 2))
@@ -896,10 +896,10 @@ to make it non-empty."
 
 (document-function lazy-rearrange
   "Returns a lazy array with the same contents as the one supplied, but whose
-first few axes are replaced by those from a different shape. The three
-arguments of this function are the lazy array to be rearranged, the number of
-axes to rearrange, and the shape to use instead.  Signals an error if the
-original and the resulting shapes differ in size."
+leading axes are replaced by a different shape.  The three arguments of this
+function are the lazy array to be rearranged, the number of axes to rearrange,
+and the shape to use instead.  Signals an error if the original and the
+resulting shapes differ in size."
   (compute (lazy-rearrange (lazy-index-components (~ 1 10)) 1 (~ 3 ~ 3)))
   (compute (lazy-rearrange #2a((1 2) (3 4)) 2 (~ 4)))
   (compute (lazy-rearrange #2a((1 2) (3 4)) 1 (~ 2 ~ 1))))
@@ -921,18 +921,17 @@ same shape that describes how much each value differs from its expected value.")
   "Returns a function that can be supplied as a modifier to LAZY-RESHAPE to
 move each of the designated axes to have a start of zero and a step size of
 one.  The supplied argument must be either a non-negative integer that denotes
-the number of axes to deflate, or a bit vector with one element per axis that
-is one if the corresponding axis should be deflated and zero otherwise."
+the number of axes to deflate, or a bit vector where an element of one
+indicates that corresponding axis should be deflated."
   (lazy-reshape 5 (~ 3 33 3) (deflater 1))
   (lazy-reshape 5 (~ 1 8 ~ 1 8 ) (deflater #*01)))
 
 (document-function peeler
   "Returns a function that can be supplied as modifier to LAZY-RESHAPE to
-turn any lazy array shape into modifiers that select certain interior points of
-that shape.  The nature of this function is determined by the supplied amount
-specifiers, one for each axis, each of which can either be an unsigned integer,
-or a list of up to three unsigned integers.  The behavior of each amount
-specifier is as follows:
+select certain interior points of a lazy array.  The nature of this function is
+determined by the supplied amount specifiers, one for each axis, each of which
+can either be an unsigned integer, or a list of up to three unsigned integers.
+The behavior of each amount specifier is as follows:
 
 - A single unsigned integer designates the number of elements that are to be
   peeled off both at the low and high ends of the corresponding range.
@@ -958,10 +957,10 @@ is less than the number of supplied amount specifiers."
   (compute (lazy-reshape #2A((1 2 3) (4 5 6) (7 8 9)) (peeler 0 '(0 0 2)))))
 
 (document-function slicer
-  "Returns a function that can be supplied as a modifier to LAZY-RESHAPE to turn
-any lazy array shape into modifiers that select a particular slice of that
-shape.  The nature of this function is determined by the supplied slice
-specifiers, one for each axis, each of which is one of the following:
+  "Returns a function that can be supplied as a modifier to LAZY-RESHAPE to select
+a particular part of that shape.  The nature of this function is determined by
+the supplied slice specifiers, one for each axis, each of which is one of the
+following:
 
 - A single unsigned integer N for selecting the element with relative index N
   and dropping that axis from the resulting shape.
@@ -1009,8 +1008,8 @@ for further processing, so this is the one which is returned.
 
 All the heavy lifting in Petalisp happens within COMPUTE.  The exact details of
 how it operates aren't important for an application programmer, but it is
-valuable to understand the rough steps that happen behind the scenes.  The
-steps for computing lazy arrays are as follows:
+valuable to understand the rough steps that take place the scenes.  The steps
+for computing lazy arrays are as follows:
 
 1. Convert each supplied argument to a lazy array.
 
@@ -1030,8 +1029,8 @@ steps for computing lazy arrays are as follows:
    results in the form of regular arrays.
 
 6. Change the internal representation of all the originally supplied lazy
-   arrays so that future calculations involving them directly use the computed
-   results.
+   arrays so that future calculations involving them use the computed results
+   directly.
 
 7. Return the results as multiple values, while replacing any array with rank
    zero with the single element contained in that array.
@@ -1072,7 +1071,7 @@ construct abstract programs that are meant to be analyzed rather than computed."
   (make-unknown :element-type 'double-float))
 
 (document-function evaluator
-  "For a supplied list of unknowns lazy arrays of length N and list of lazy
+  "For a supplied list of unknowns of length N and list of lazy
 arrays of length K, returns a function with K plus N arguments that returns, as
 multiple values, the K array values obtained by computing the supplied arrays
 after substituting the Ith unknown with the supplied argument in position K
@@ -1085,7 +1084,7 @@ than the corresponding result or unknown.")
 
 (document-function wait
   "Blocks until all the supplied requests of some COMPUTE-ASYNCHRONOUSLY operations
-has been completed.")
+have been completed.")
 
 (document-function completedp
   "Returns whether all the supplied requests of some COMPUTE-ASYNCHRONOUSLY
@@ -1093,7 +1092,7 @@ operations have been completed.")
 
 (document-function harmonized-element-type
   "Returns the specifier for a type to which all elements of the supplied list of
-lazy array designators can be coerced safely.  If the element types of all
+lazy array designators can be safely coerced.  If the element types of all
 supplied lazy arrays are number types, the resulting type is obtained by the
 standard rules of numeric contagion (Common Lisp Hyperspec 12.1.4.1 and
 12.1.4.4).  Otherwise, the resulting type is one that encompasses the union of
@@ -1122,7 +1121,7 @@ shadowed by the lazy array equivalent of the previous value of that symbol.  An
 alternative notation can be used to avoid shadowing the original array: If any
 array name is not a symbol but a list of a symbol and a form, the symbol is
 bound to the lazy array equivalent of the result of that form.  It is good
-practice to start each function that expects some of its arguments to be lazy
-arrays with an invocation of this macro."
+practice for each function that expects some of its arguments to be lazy
+arrays to start with an invocation of this macro."
   (let ((a 5) (b #(1 2 3)))
     (with-lazy-arrays (a (c b)) (values a b c))))

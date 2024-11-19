@@ -118,9 +118,9 @@
   "A delayed map describes the element-wise application of a function to some
 number of lazy arrays.  A delayed map has two slots: The first slot is the
 fnrecord of the function being mapped, i.e., the entry of that function in the
-database of our type inference library Typo.  The second slot is a list of lazy
+database of the type inference library Typo.  The second slot is a list of lazy
 arrays that the function is being mapped over.  All lazy arrays that appear as
-an input of a delayed map must have the same shape."
+an input to a delayed map must have the same shape."
   (fnrecord (alexandria:required-argument :fnrecord)
    :type typo:fnrecord)
   (inputs (alexandria:required-argument :inputs)
@@ -138,10 +138,10 @@ an input of a delayed map must have the same shape."
   "A delayed multiple value map describes the element-wise application of a
 multiple-valued function to some number of lazy arrays of the same shape.  It
 has the same first two slots as a delayed map, a third slot that is Typo's
-description of the type of the multiple value pack it creates, and a fourth
-slot that is a mutable bit vector that tracks which of the multiple values have
-been referenced so far.  The bit vector is later used to eliminate unused
-values altogether.
+description of the type of the multiple values it returns, and a fourth slot
+that is a mutable bit vector that tracks which of the multiple values have been
+referenced so far.  The bit vector is later used to eliminate unused values
+altogether.
 
 Because of the nature of its return values, a lazy array whose delayed action
 is a delayed multiple value map must appear only as the input of a delayed nth
@@ -169,7 +169,7 @@ value action and never be visible to the user."
 (defstruct (delayed-nth-value
             (:include delayed-action)
             (:constructor %make-delayed-nth-value))
-  "A delayed nth-value describes the process of referencing the nth value of
+  "A delayed nth value describes the process of referencing the nth value of
 some lazy array whose delayed action is a delayed multiple value map.  Its
 first slot is the position of the value being referenced, and its second slot
 is a lazy array defined by a delayed multiple value map."
@@ -197,7 +197,7 @@ is a lazy array defined by a delayed multiple value map."
   "A delayed reshape describes the process of assigning each index the value of
 the specified input lazy array at the position that is obtained by applying the
 specified transformation to that index.  It has one slot that stores the
-transformation, and one slot that stores that lazy array being referenced."
+transformation and one slot that stores that lazy array being referenced."
   (transformation (alexandria:required-argument :transformation)
    :type transformation)
   (input (alexandria:required-argument :input)
@@ -219,8 +219,8 @@ transformation, and one slot that stores that lazy array being referenced."
             (:include delayed-action)
             (:constructor %make-delayed-fuse))
   "A delayed fuse describes the process of assigning each index the corresponding value from
-the sole input lazy array that contains it.  It has one slot that is the list
-of lazy arrays being fused."
+the one input lazy array whose shape contains that index.  It has a single slot
+that is the list of lazy arrays being fused."
   (inputs (alexandria:required-argument :inputs)
    :type list))
 
@@ -279,7 +279,7 @@ the function MAKE-UNKNOWN.  It cannot be computed.")
             (:include delayed-action))
   "A delayed failure describes a lazy array that was involved in an asynchronous evaluation
 that signaled an error.  It has one slot that is the condition that should be
-re-signaled whenever this delayed action is part of a synchronous evaluation."
+resignaled whenever this delayed action is part of a synchronous evaluation."
   (condition (alexandria:required-argument :condition)
    :type condition
    :read-only t))

@@ -278,7 +278,7 @@ supplied shapes aren't disjoint."
 
 (defun subdivide-fragments (old-fragments new-fragment)
   "Takes a list of fragments whose shapes are disjoint, and one new
-fragment, and returns a list of disjoint fragments that partition both the old
+fragment, and returns a list of disjoint fragments that partition the old
 fragments and the new fragment. The resulting list consists of three parts:
 
 1. One fragment for each old fragment that has an intersection with the new
