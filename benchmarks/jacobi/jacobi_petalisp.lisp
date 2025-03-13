@@ -4,7 +4,8 @@
   (:use #:common-lisp #:petalisp)
   (:export
    #:lazy-jacobi
-   #:run-benchmark))
+   #:run-benchmark
+   #:run-benchmarks))
 
 (in-package #:petalisp.benchmarks.jacobi)
 
@@ -32,20 +33,25 @@
               (list x)
               (list (lazy-jacobi x n)))))
          (t0 (get-internal-real-time))
-         (dtmax (* internal-time-units-per-second 7))
+         (dtmax (* internal-time-units-per-second 3))
          (nrep 0))
     (loop until (> (- (get-internal-real-time) t0) dtmax) do
       (funcall evaluator dst src)
+      (rotatef dst src)
       (incf nrep))
     (float
      (/ (* n (- w 2) (- h 2) 4 nrep internal-time-units-per-second)
         (- (get-internal-real-time) t0)))))
 
-(defun run-benchmarks (&key (step 20000) (start step) (size 30))
-  (format t "~&| ~4A | ~4A | ~7A |~%" "h" "w" "flops")
-  (format t "~&|------+------+---------|~%")
-  (loop repeat size for n from start by step do
-    (let* ((h (isqrt n))
-           (w (floor n h)))
-      (format t "~&| ~4D | ~4D | ~4,2E |~%"
-              h w (run-benchmark h w 100)))))
+(defun run-benchmarks (&key (step 20000) (start step) (size 30) (nthreads 6))
+  (let ((*backend* (make-native-backend :threads nthreads)))
+    (unwind-protect
+         (progn
+           (format t "~&| ~4A | ~4A | ~7A |~%" "h" "w" "flops")
+           (format t "~&|------+------+---------|~%")
+           (loop repeat size for n from start by step do
+             (let* ((h (isqrt n))
+                    (w (floor n h)))
+               (format t "~&| ~4D | ~4D | ~4,2E |~%"
+                       h w (run-benchmark h w 100)))))
+      (delete-backend *backend*))))
