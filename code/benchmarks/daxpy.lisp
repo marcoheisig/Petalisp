@@ -13,6 +13,14 @@
               (let ((w v))
                 (loop repeat rep do (setf w (lazy-scale 0.5d0 u w)))
                 (list w)))))
+    #+(or)
+    (petalisp.graphviz:view
+     (coerce
+      (petalisp.ir:partition-program
+       (petalisp.ir:program-from-lazy-arrays
+        (list
+         (lazy-scale 0.5d0 u v))))
+      'list))
     (values
      (lambda () (funcall ev y x y))
      (* rep 2 n)

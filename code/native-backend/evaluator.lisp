@@ -266,10 +266,20 @@
                    (aref local-allocations index)
                    (aref local-pointers index)))))))))
 
+(defparameter *io-lock* (bordeaux-threads-2:make-lock :name "IO Lock"))
+
 (defun worker-synchronize-and-invoke (denv invocations)
   (declare (denv denv) (list invocations))
   (barrier)
   (when (null (denv-serious-conditions denv))
+    #+(or)
+    (bordeaux-threads-2:with-lock-held (*io-lock*)
+      (let ((*package* (find-package "PETALISP")))
+        (format *trace-output* "~&worker: ~2D iteration-spaces:~{ ~A~}"
+                (worker-id *worker*)
+                (loop for invocation in invocations
+                      collect (invocation-iteration-space invocation)))
+        (finish-output *trace-output*)))
     (handler-case
         (loop for invocation of-type invocation in invocations do
           ;; TODO
