@@ -11,7 +11,7 @@
          (m (ceiling (expt nwords 1/3)))
          (n (ceiling (sqrt (/ nwords m))))
          (k (ceiling (/ nwords m n))))
-    (assert (< nbytes (* 8 (+ (* m n) (* n k) (* m k)))))
+    (assert (<= nbytes (* 8 (+ (* m n) (* n k) (* m k)))))
     (matmul-bench m n k)))
 
 (defbenchmark dgemm-n=8 (nbytes)
@@ -19,7 +19,15 @@
          (n 8)
          (m (max 1 (- (ceiling (sqrt nwords)) 8)))
          (k (ceiling (/ nwords (+ n m)))))
-    (assert (< nbytes (* 8 (+ (* m n) (* n k) (* m k)))))
+    (assert (<= nbytes (* 8 (+ (* m n) (* n k) (* m k)))))
+    (matmul-bench m n k)))
+
+(defbenchmark dgemv (nbytes)
+  (let* ((nwords (ceiling nbytes 8))
+         (m (max 1 (- (ceiling (sqrt nwords)) 1)))
+         (n (ceiling (/ nwords m)))
+         (k 1))
+    (assert (<= nbytes (* 8 (+ (* m n) (* n k) (* m k)))))
     (matmul-bench m n k)))
 
 (defun matmul-bench (m n k)
