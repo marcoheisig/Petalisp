@@ -1,5 +1,3 @@
-;;;; © 2016-2023 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
-
 (in-package #:petalisp.codegen)
 
 ;;; A blueprint is like an s-expression, but made of ucons cells instead of

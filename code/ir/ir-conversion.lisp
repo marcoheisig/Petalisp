@@ -1,5 +1,3 @@
-;;;; © 2016-2023 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
-
 (in-package #:petalisp.ir)
 
 ;;; The purpose of IR conversion is to turn a data flow graph, whose nodes

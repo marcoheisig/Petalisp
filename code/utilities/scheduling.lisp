@@ -1,5 +1,3 @@
-;;;; © 2016-2023 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
-
 (defpackage #:petalisp.scheduling
   (:use #:common-lisp)
   (:export

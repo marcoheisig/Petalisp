@@ -1,5 +1,3 @@
-;;;; © 2016-2023 Marco Heisig         - license: GNU AGPLv3 -*- coding: utf-8 -*-
-
 (in-package #:petalisp.utilities)
 
 ;;; The functions FLP2 and CLP2 round up or down to the next power of two,
