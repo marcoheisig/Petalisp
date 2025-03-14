@@ -40,8 +40,9 @@
          (stencil black-1) (stencil black-2))))))
 
 (defbenchmark jacobi (nbytes)
-  (let* ((w (ceiling (sqrt (/ nbytes 2))))
-         (h (ceiling (/ (/ nbytes 2) w)))
+  (let* ((nwords (ceiling nbytes 8))
+         (w (ceiling (sqrt (/ nwords 2))))
+         (h (ceiling (/ (/ nwords 2) w)))
          (n 10)
          (src (make-array (list w h) :element-type 'double-float :initial-element 1d0))
          (dst (make-array (list w h) :element-type 'double-float :initial-element 1d0))
@@ -52,6 +53,7 @@
                 (loop repeat n do
                   (setf v (lazy-jacobi-2d v 0 1)))
                 (list v)))))
+    (assert (<= nbytes (* 8 2 w h)))
     (values
      (lambda ()
        (funcall ev dst src)
@@ -60,8 +62,9 @@
      1/4)))
 
 (defbenchmark rbgs (nbytes)
-  (let* ((w (ceiling (sqrt (/ nbytes 2))))
-         (h (ceiling (/ (/ nbytes 2) w)))
+  (let* ((nwords (ceiling nbytes 8))
+         (w (ceiling (sqrt (/ nwords 2))))
+         (h (ceiling (/ (/ nwords 2) w)))
          (n 10)
          (src (make-array (list w h) :element-type 'double-float :initial-element 1d0))
          (dst (make-array (list w h) :element-type 'double-float :initial-element 1d0))
@@ -72,6 +75,7 @@
                 (loop repeat n do
                   (setf v (lazy-rbgs-2d v 0 1)))
                 (list v)))))
+    (assert (<= nbytes (* 8 2 w h)))
     (values
      (lambda ()
        (funcall ev dst src)
@@ -206,7 +210,8 @@
     (lazy-reduce #'max (lazy #'abs x))))
 
 (defbenchmark multigrid-v-cycle (nbytes)
-  (let* ((levels (ceiling (log (sqrt (/ nbytes 2)) 2)))
+  (let* ((nwords (ceiling nbytes 8))
+         (levels (ceiling (log (sqrt (/ nwords 2)) 2)))
          (w (1+ (expt 2 levels)))
          (h (1+ (expt 2 levels)))
          (src (make-array (list w h) :element-type 'double-float :initial-element 1d0))
@@ -216,6 +221,7 @@
               (list u)
               (list
                (lazy-v-cycle-2d u 0 1 2 1)))))
+    (assert (<= nbytes (* 8 2 w h)))
     (values
      (lambda ()
        (funcall ev dst src)
