@@ -232,6 +232,8 @@ initialize this instruction input.  It has the following slots:
 ;;; IR Conversion
 
 (defun ir-from-lazy-arrays (lazy-arrays &key (kernel-size-threshold 32) (debug nil))
+  (when (member :graph *active-inspect-tags*)
+    (funcall *inspect-graph* lazy-arrays))
   (let ((*ir-converter* (make-ir-converter :kernel-size-threshold kernel-size-threshold))
         (reversed-root-buffers '()))
     ;; Create and grow one dendrite for each root array.
@@ -270,6 +272,8 @@ initialize this instruction input.  It has the following slots:
     (let ((root-buffers (nreverse reversed-root-buffers)))
       (when debug (check-ir root-buffers))
       (finalize-ir root-buffers)
+      (when (and (member :ir *active-inspect-tags*))
+        (funcall *inspect-ir* root-buffers))
       root-buffers)))
 
 (defun program-from-lazy-arrays (lazy-arrays &key (kernel-size-threshold 32) (debug nil))

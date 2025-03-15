@@ -233,23 +233,23 @@
         ;; Allocate memory.
         (let ((local-allocations (aref allocations category))
               (local-pointers (aref pointers category)))
-          #+(or) ;; TODO
+          #+(or) ;; activate to print the amount of memory allocated per worker.
           (message "Allocating ~,2E bytes of memory."
                    (loop for allocation across local-allocations
                          sum (allocation-size-in-bytes allocation)))
           (loop for index below (length local-allocations) do
             (setf (aref local-pointers index)
-                  (allocate-memory (aref local-allocations index)))))
-        ;; Execute the schedule.
-        (loop for action-vector of-type simple-vector in schedule do
-          (let ((action (aref action-vector worker-id)))
-            (if (not action)
-                (progn
-                  (worker-synchronize-and-invoke denv '())
-                  (worker-synchronize-and-invoke denv '()))
-                (progn
-                  (worker-synchronize-and-invoke denv (action-copy-invocations action))
-                  (worker-synchronize-and-invoke denv (action-work-invocations action))))))
+                  (allocate-memory (aref local-allocations index))))
+          ;; Execute the schedule.
+          (loop for action-vector of-type simple-vector in schedule do
+            (let ((action (aref action-vector worker-id)))
+              (if (not action)
+                  (progn
+                    (worker-synchronize-and-invoke denv '())
+                    (worker-synchronize-and-invoke denv '()))
+                  (progn
+                    (worker-synchronize-and-invoke denv (action-copy-invocations action))
+                    (worker-synchronize-and-invoke denv (action-work-invocations action)))))))
         ;; Signal completion.
         (barrier)
         (when (zerop worker-id)
@@ -266,20 +266,18 @@
                    (aref local-allocations index)
                    (aref local-pointers index)))))))))
 
-(defparameter *io-lock* (bordeaux-threads-2:make-lock :name "IO Lock"))
-
 (defun worker-synchronize-and-invoke (denv invocations)
   (declare (denv denv) (list invocations))
   (barrier)
   (when (null (denv-serious-conditions denv))
+    ;; show which worker operates on which iteration space
     #+(or)
-    (bordeaux-threads-2:with-lock-held (*io-lock*)
-      (let ((*package* (find-package "PETALISP")))
-        (format *trace-output* "~&worker: ~2D iteration-spaces:~{ ~A~}"
-                (worker-id *worker*)
-                (loop for invocation in invocations
-                      collect (invocation-iteration-space invocation)))
-        (finish-output *trace-output*)))
+    (let ((*package* (find-package "PETALISP")))
+      (message "~&worker: ~2D iteration-spaces:~{ ~A~}"
+               (worker-id *worker*)
+               (loop for invocation in invocations
+                     collect (invocation-iteration-space invocation)))
+      (finish-output *trace-output*))
     (handler-case
         (loop for invocation of-type invocation in invocations do
           ;; TODO

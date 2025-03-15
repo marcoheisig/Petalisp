@@ -8,19 +8,12 @@
          (y (make-array (list n) :element-type 'double-float :initial-element 1d0))
          (u (make-unknown :shape (~ n) :element-type 'double-float))
          (v (make-unknown :shape (~ n) :element-type 'double-float))
-         (ev (evaluator
-              (list u v)
-              (let ((w v))
-                (loop repeat rep do (setf w (lazy-scale 0.5d0 u w)))
-                (list w)))))
-    #+(or)
-    (petalisp.graphviz:view
-     (coerce
-      (petalisp.ir:partition-program
-       (petalisp.ir:program-from-lazy-arrays
-        (list
-         (lazy-scale 0.5d0 u v))))
-      'list))
+         (ev
+           (evaluator
+            (list u v)
+            (let ((w v))
+              (loop repeat rep do (setf w (lazy-scale 0.5d0 u w)))
+              (list w)))))
     (values
      (lambda () (funcall ev y x y))
      (* rep 2 n)

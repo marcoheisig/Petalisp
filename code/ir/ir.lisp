@@ -833,8 +833,11 @@ all the supplied load or store instructions."
 ;;; This function is a very ad-hoc approximation of the cost of executing
 ;;; the kernel.
 (defun kernel-cost (kernel)
-  (max 1 (* (shape-size (kernel-iteration-space kernel))
-            (kernel-highest-instruction-number kernel))))
+  (let ((ncalls 0))
+    (do-kernel-instructions (instruction kernel)
+      (when (call-instruction-p instruction)
+        (incf ncalls)))
+    (max 1 (* (shape-size (kernel-iteration-space kernel)) ncalls))))
 
 (defun make-buffer-like-array (buffer)
   (declare (buffer buffer))

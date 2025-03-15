@@ -226,9 +226,12 @@
      (lambda ()
        (funcall ev dst src)
        (funcall ev src dst))
-     (* 4 ;; flops / iter
+     (* (+ (* 7 3) ;; rbgs, 3 sweeps
+           3 ;; prolongate
+           1 ;; restrict
+           7 ;; residual
+           )
         2 ;; src->dst, dst->src
-        5 ;; 2-1 cycle, multigrid interpolation, prolongation, residual
         1.5 ;; 1 + 0.25 + 0.125 + ...
         (- 2 w) (- 2 h))
      1/4)))

@@ -8,9 +8,10 @@
 
 (defbenchmark dgemm (nbytes)
   (let* ((nwords (ceiling nbytes 8))
-         (m (ceiling (expt nwords 1/3)))
-         (n (ceiling (sqrt (/ nwords m))))
-         (k (ceiling (/ nwords m n))))
+         (m (ceiling (sqrt (/ nwords 3))))
+         (n m)
+         (k (ceiling (/ (- nwords (* m n))
+                        (+ m n)))))
     (assert (<= nbytes (* 8 (+ (* m n) (* n k) (* m k)))))
     (matmul-bench m n k)))
 
@@ -31,6 +32,10 @@
     (matmul-bench m n k)))
 
 (defun matmul-bench (m n k)
+  #+(or)
+  (format t "size: ~4,2E mnk: ~S"
+          (* 8 (+ (* m n) (* n k) (* m k)))
+          (list m n k))
   (let* ((flops (* 2 m n k))
          (bytes (* 8 (+ (* m n) (* n k) (* m k))))
          (a (make-array (list m n) :element-type 'double-float :initial-element 1d0))

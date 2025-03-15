@@ -7,6 +7,8 @@
 (defstruct (invocation
             (:predicate invocationp)
             (:constructor make-invocation))
+  "An invocation represents one run of a kernel on a particular iteration
+space for some given source and target layouts."
   (kfn nil :type function :read-only t)
   (kernel nil :type kernel :read-only t)
   (iteration-space nil :type shape :read-only t)
@@ -57,30 +59,41 @@
 (defstruct (action
             (:predicate actionp)
             (:constructor make-action))
+  "An action consists of two lists of invocations that are processed by a worker:
+
+1. A list of copy invocations that transfer data from the ghost layers of
+   adjacent workers.
+
+2. A list of work invocations that initialize the interior of their targets."
   (copy-invocations '() :type list)
   (work-invocations '() :type list))
 
-;;; A hash table from layout to actions defining the values in the interior of
+;;; A hash table from layouts to actions defining the values in the interior of
 ;;; that layout.
 (defvar *layout-action-table*)
 
-(defun layout-action (layout default)
-  (declare (layout layout) (type (or null action) default))
-  (alexandria:ensure-gethash
-   layout
-   *layout-action-table*
-   (or default (make-action))))
+;;; TODO
+;;;
+;;; Instead of creating exactly one action per layout, create one action per
+;;; group of related buffer shards.  The main challenges in doing so is to find
+;;; a good distribution of ghost layer copy invocations onto those actions, and
+;;; to rewrite the scheduling code to map from layouts to lists of actions.
 
 (defun merge-actions (action1 action2)
   (declare (action action1 action2))
+  ;; Make the action with fewer work invocations obsolete and transfer those
+  ;; work invocations to the other.
   (multiple-value-bind (old new)
       (if (<= (length (action-work-invocations action1))
               (length (action-work-invocations action2)))
           (values action1 action2)
           (values action2 action1))
+    ;; Make each target layout within the old invocation point to the new
+    ;; invocation.
     (loop for invocation in (action-work-invocations old) do
       (loop for target across (invocation-targets invocation) do
         (setf (gethash target *layout-action-table*) new)))
+    ;; Merge all work invocations.
     (setf (action-work-invocations new)
           (append (action-work-invocations old)
                   (action-work-invocations new)))
@@ -88,10 +101,21 @@
 
 (defun ensure-kernel-shard-invocation (kernel-shard backend)
   (declare (kernel-shard kernel-shard))
+  #+(or) ;; quick daxpy hack
+  (let* ((action (setf (gethash (list nil) *layout-action-table*)
+                       (make-action)))
+         (invocation (make-work-invocation kernel-shard backend)))
+    (push invocation
+          (action-work-invocations action))
+    (return-from ensure-kernel-shard-invocation invocation))
   (let ((action nil))
     ;; Ensure that all targets of the worker have the same action.
-    (loop for target in (kernel-shard-targets kernel-shard) do
-      (let ((target-action (layout-action (buffer-shard-layout target) action)))
+    (dolist (target (kernel-shard-targets kernel-shard))
+      (let ((target-action
+              (alexandria:ensure-gethash
+               (buffer-shard-layout target)
+               *layout-action-table*
+               (or action (make-action)))))
         (cond ((not action)
                (setf action target-action))
               ((not (eq action target-action))
@@ -145,8 +169,8 @@
                     (petalisp.scheduling:graph-ensure-node graph source-action)
                     node
                     (shape-size (invocation-iteration-space invocation)))
-                   ;; Add dependencies to all actions that compute the values of
-                   ;; this source's ghost layers.
+                   ;; Add dependencies to all actions that compute the values
+                   ;; of this source's ghost layers.
                    (loop for (shape . layout) in (layout-ghost-layer-alist source) do
                      (multiple-value-bind (other-action presentp)
                          (gethash layout *layout-action-table*)
@@ -175,9 +199,10 @@
                   (loop for (iteration-space . neighbor-layout) in (layout-ghost-layer-alist layout) do
                     (push (make-copy-invocation iteration-space layout neighbor-layout backend)
                           (action-copy-invocations action)))))))))
-      #+(or)
-      (let ((nodes (alexandria:hash-table-values (petalisp.scheduling::graph-object-nodes graph))))
-        (if (< (length nodes) 1000)
-            (petalisp.graphviz:view nodes)
-            (error "Dependency graph too large to be visualized.")))
+      (when (member :dependencies *active-inspect-tags*)
+        ;; view the dependency graph
+        (let ((nodes (alexandria:hash-table-values (petalisp.scheduling::graph-object-nodes graph))))
+          (if (< (length nodes) 1000)
+              (funcall *inspect-dependencies* nodes)
+              (error "Dependency graph too large to be visualized."))))
       schedule)))

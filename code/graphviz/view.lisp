@@ -34,7 +34,9 @@
       (delete-file file))))
 
 (defun view (graph-roots &key (viewer *viewer*) (verbose nil))
-  (let* ((graph-roots (alexandria:ensure-list graph-roots))
+  (let* ((graph-roots (if (vectorp graph-roots)
+                          (coerce graph-roots 'list)
+                          (alexandria:ensure-list graph-roots)))
          (graph (graphviz-default-graph (first graph-roots)))
          (directory *petalisp-view-directory*)
          (name (format nil "graph~36,10,'0R.pdf" (random (expt 36 10))))
@@ -48,3 +50,15 @@
     (uiop:launch-program
      (list viewer (uiop:native-namestring file)))
     (values-list graph-roots)))
+
+(defparameter petalisp.core:*inspect-graph*
+  'view)
+
+(defparameter petalisp.core:*inspect-ir*
+  'view)
+
+(defparameter petalisp.core:*inspect-partitioning*
+  'view)
+
+(defparameter petalisp.core:*inspect-dependencies*
+  'view)

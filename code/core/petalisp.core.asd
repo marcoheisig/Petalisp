@@ -16,6 +16,7 @@
   :serial t
   :components
   ((:file "packages")
+   (:file "inspect")
    (:file "range")
    (:file "shape")
    (:file "transformation")

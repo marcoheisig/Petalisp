@@ -638,7 +638,7 @@ children.  Useful for debugging."
     (program
      &key
        (split-priority 'buffer-shard-bits)
-       (split-min-priority (* 512 1024 8)) ; Aim for 512k chunks
+       (split-min-priority (* 256 1024 8)) ; Aim for 256k chunks
        (split-max-redundancy 0.125)
        (split-max-imbalance 1)
        (debug nil))
@@ -686,6 +686,8 @@ ghost points to interior points for a split."
     ;; Ensure that each layout has its ghost alist set.
     (map nil #'assign-layout-ghost-layer-alist *primogenitor-buffer-shard-vector*)
     (when debug (check-shards))
+    (when (member :partitioning *active-inspect-tags*)
+      (funcall *inspect-partitioning* *primogenitor-buffer-shard-vector*))
     (values *primogenitor-buffer-shard-vector* *buffer-ghostspec-vector*)))
 
 (defun attempt-split (buffer-shard axis position)

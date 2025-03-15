@@ -17,12 +17,14 @@
 (defparameter *cache-size* 9e6
   "The size of the shared outer-level cache in bytes.")
 
-;; likwid-bench -t stream -w S0:6MB
-(defparameter *cache-throughput* 170e9
+;; likwid-bench -t load_avx -w S0:6MB
+;; likwid-bench -t store_avx -w S0:6MB
+(defparameter *cache-throughput* (+ 208e9 137e9)
   "The throughput of the shared outer-level cache in bytes per second.")
 
-;; likwid-bench -t stream -w S0:1GB
-(defparameter *memory-throughput* 19e9
+;; likwid-bench -t load_avx -w S0:1GB
+;; likwid-bench -t store_avx -w S0:1GB
+(defparameter *memory-throughput* (+ 32e9 12e9)
   "The throughput of the main memory in bytes per second.")
 
 ;; likwid-bench -t peakflops_avx -w S0:6MB

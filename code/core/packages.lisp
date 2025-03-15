@@ -225,4 +225,11 @@
    #:requestp
    #:request-wait
    #:request-completedp
+   #:*valid-inspect-tags*
+   #:*active-inspect-tags*
+   #:*inspect-graph*
+   #:*inspect-ir*
+   #:*inspect-partitioning*
+   #:*inspect-dependencies*
+   #:with-inspection
    #:make-reference-backend))
