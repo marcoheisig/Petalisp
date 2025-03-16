@@ -8,16 +8,19 @@
          (y (make-array (list n) :element-type 'double-float :initial-element 1d0))
          (u (make-unknown :shape (~ n) :element-type 'double-float))
          (v (make-unknown :shape (~ n) :element-type 'double-float))
+         (w
+           (let ((w v))
+             (loop repeat rep do (setf w (lazy-scale 0.5d0 u w)))
+             w))
+         (flops (flopcount w))
          (ev
            (evaluator
             (list u v)
-            (let ((w v))
-              (loop repeat rep do (setf w (lazy-scale 0.5d0 u w)))
-              (list w)))))
+            (list w))))
     (values
      (lambda () (funcall ev y x y))
-     (* rep 2 n)
-     1/8)))
+     flops
+     (/ flops (* 2 8 n)))))
 
 (defbenchmark daxpy (nbytes)
   (let* ((nwords (ceiling nbytes 8))

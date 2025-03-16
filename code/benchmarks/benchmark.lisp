@@ -72,3 +72,15 @@
         :name ',name
         :fn (lambda ,lambda-list ,@body)))
      (pushnew ',name *benchmarks*)))
+
+(defun flopcount (&rest lazy-arrays)
+  (let ((flops 0))
+    (maphash
+     (lambda (fn count)
+       (ecase fn
+         ((typo:two-arg-double-float+
+           typo:two-arg-double-float-
+           typo:two-arg-double-float*)
+          (incf flops count))))
+     (apply #'petalisp.core:callcount lazy-arrays))
+    flops))

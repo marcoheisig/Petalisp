@@ -32,18 +32,15 @@
     (matmul-bench m n k)))
 
 (defun matmul-bench (m n k)
-  #+(or)
-  (format t "size: ~4,2E mnk: ~S"
-          (* 8 (+ (* m n) (* n k) (* m k)))
-          (list m n k))
-  (let* ((flops (* 2 m n k))
-         (bytes (* 8 (+ (* m n) (* n k) (* m k))))
+  (let* ((bytes (* 8 (+ (* m n) (* n k) (* m k))))
          (a (make-array (list m n) :element-type 'double-float :initial-element 1d0))
          (b (make-array (list n k) :element-type 'double-float :initial-element 1d0))
          (c (make-array (list m k) :element-type 'double-float :initial-element 0d0))
          (ua (make-unknown :shape (~ m ~ n) :element-type 'double-float))
          (ub (make-unknown :shape (~ n ~ k) :element-type 'double-float))
-         (ev (evaluator (list ua ub) (list (lazy-matmul a b)))))
+         (lc (lazy-matmul a b))
+         (flops (flopcount lc))
+         (ev (evaluator (list ua ub) (list lc))))
     (values
      (lambda () (funcall ev c a b))
      flops

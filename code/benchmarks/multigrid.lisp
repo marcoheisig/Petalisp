@@ -39,28 +39,6 @@
          (lazy-overwrite-and-harmonize u (stencil red-1) (stencil red-2))
          (stencil black-1) (stencil black-2))))))
 
-(defbenchmark jacobi (nbytes)
-  (let* ((nwords (ceiling nbytes 8))
-         (w (ceiling (sqrt (/ nwords 2))))
-         (h (ceiling (/ (/ nwords 2) w)))
-         (n 10)
-         (src (make-array (list w h) :element-type 'double-float :initial-element 1d0))
-         (dst (make-array (list w h) :element-type 'double-float :initial-element 1d0))
-         (x (make-unknown :shape (~ w ~ h) :element-type 'double-float))
-         (ev (evaluator
-              (list x)
-              (let ((v x))
-                (loop repeat n do
-                  (setf v (lazy-jacobi-2d v 0 1)))
-                (list v)))))
-    (assert (<= nbytes (* 8 2 w h)))
-    (values
-     (lambda ()
-       (funcall ev dst src)
-       (funcall ev src dst))
-     (* n 4 2 (- 2 w) (- 2 h))
-     1/4)))
-
 (defbenchmark rbgs (nbytes)
   (let* ((nwords (ceiling nbytes 8))
          (w (ceiling (sqrt (/ nwords 2))))
@@ -69,18 +47,20 @@
          (src (make-array (list w h) :element-type 'double-float :initial-element 1d0))
          (dst (make-array (list w h) :element-type 'double-float :initial-element 1d0))
          (x (make-unknown :shape (~ w ~ h) :element-type 'double-float))
-         (ev (evaluator
-              (list x)
-              (let ((v x))
+         (y (let ((v x))
                 (loop repeat n do
                   (setf v (lazy-rbgs-2d v 0 1)))
-                (list v)))))
+              v))
+         (flops (* 2 (flopcount y)))
+         (ev (evaluator
+              (list x)
+              (list y))))
     (assert (<= nbytes (* 8 2 w h)))
     (values
      (lambda ()
        (funcall ev dst src)
        (funcall ev src dst))
-     (* n 4 2 (- 2 w) (- 2 h))
+     flops
      1/8)))
 
 (defun lazy-prolongate-2d (u)
@@ -217,21 +197,15 @@
          (src (make-array (list w h) :element-type 'double-float :initial-element 1d0))
          (dst (make-array (list w h) :element-type 'double-float :initial-element 1d0))
          (u (make-unknown :shape (~ w ~ h) :element-type 'double-float))
+         (v (lazy-v-cycle-2d u 0 1 2 1))
+         (flops (flopcount v))
          (ev (evaluator
               (list u)
-              (list
-               (lazy-v-cycle-2d u 0 1 2 1)))))
+              (list v))))
     (assert (<= nbytes (* 8 2 w h)))
     (values
      (lambda ()
        (funcall ev dst src)
        (funcall ev src dst))
-     (* (+ (* 7 3) ;; rbgs, 3 sweeps
-           3 ;; prolongate
-           1 ;; restrict
-           7 ;; residual
-           )
-        2 ;; src->dst, dst->src
-        1.5 ;; 1 + 0.25 + 0.125 + ...
-        (- 2 w) (- 2 h))
-     1/4)))
+     (* 2 flops)
+     (/ flops (* 1.5 2 w h)))))

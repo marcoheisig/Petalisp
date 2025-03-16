@@ -13,5 +13,8 @@
   :components
   ((:file "packages")
    (:file "benchmark")
+   (:file "daxpy")
    (:file "dgemm")
-   (:file "multigrid")))
+   (:file "multigrid")
+   (:file "stencils")
+   (:file "sum")))
