@@ -286,3 +286,32 @@ already been computed."))
         unknowns
         (mapcar #'lazy-array lazy-arrays))))
 
+(defun callcount (&rest lazy-arrays)
+  "Returns a hash table mapping from function designators to the number of
+invocations of that function in the data flow graph that defines the supplied
+lazy arrays.
+
+NOTE: When computing the same lazy arrays, the actual number of invoked
+functions may be different from these values.  They can be higher in case a
+backend introduces redundant calculations, or lower in case some calculations
+are eliminated because they don't influence the results."
+  (let ((calls (make-hash-table :test #'eq))
+        (visited (make-hash-table :test #'eq)))
+    (labels ((process (lazy-array)
+               (alexandria:ensure-gethash
+                lazy-array
+                visited
+                (let ((da (lazy-array-delayed-action lazy-array)))
+                  (etypecase da
+                    (delayed-map
+                     (incf (gethash
+                            (typo:fnrecord-function-designator
+                             (delayed-map-fnrecord da))
+                            calls
+                            0)
+                           (shape-size (lazy-array-shape lazy-array)))
+                     (mapc #'process (delayed-map-inputs da)))
+                    (delayed-action
+                     (mapc #'process (delayed-action-inputs da))))))))
+      (mapc #'process lazy-arrays))
+    calls))

@@ -232,4 +232,5 @@
    #:*inspect-partitioning*
    #:*inspect-dependencies*
    #:with-inspection
-   #:make-reference-backend))
+   #:make-reference-backend
+   #:callcount))
