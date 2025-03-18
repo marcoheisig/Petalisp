@@ -66,7 +66,7 @@ execution.
 *** daxpy (vector scaling) on one core
 
 This first benchmark compares the performance of Petalisp and the [[https://hpc.fau.de/research/tools/likwid/][likwid
-benchmark suite]] for a single kernel of the for $y = a x + y$, where $a$ is a
+benchmark suite]] for a single kernel of the form $y = a x + y$, where $a$ is a
 scalar and $x$ and $y$ are vectors.  More precisely, it compares the following
 two invocations
 
@@ -88,6 +88,30 @@ performance of likwid-bench.  This picture changes if multiple runs of daxpy
 are scheduled in succession, because it allows Petalisp the chance to apply
 temporal blocking.  In such cases, Petalisp can outperform high-quality
 single-pass kernels such as those of likwid.
+
+*** dgemm (matrix-matrix multiplication)
+
+Matrix-matrix multiplication is an interesting case for Petalisp because it
+doesn't have a built-in reduction operator.  Instead, Petalisp treats
+reductions naively as repeated summations of all odd and even elements.
+Although there are optimizations in place to optimize such repeated operations,
+right now the multiplication of an $m \times n$ and a $n \times k$ matrix requires $(m \times
+n \times k) / 8$ elements of auxiliary storage.  Consequently, the performance of
+matrix-matrix multiplication of square matrices is much slower than that of,
+say, [[https://github.com/OpenMathLib/OpenBLAS][OpenBLAS]]:
+
+[[file:images/dgemm.svg]]
+
+However, this picture changes for skinny matrices. For the multiplication of
+skinny matrices of the form Nx8 @ 8xK, the single-thread performance of
+Petalisp significantly faster than [[https://github.com/OpenMathLib/OpenBLAS][OpenBLAS]]:
+
+[[file:images/dgemm-skinny.svg]]
+
+OpenBLAS underperforms in this setting because it has no special handling of
+skinny matrices.  Petalisp overperforms in this setting because it can generate
+specialized code and its buffer pruning technique can eliminate all
+intermediate storage because the reduction loop is short enough.
 
 ** Frequently Asked Questions
 
