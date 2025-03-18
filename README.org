@@ -87,6 +87,29 @@ are scheduled in succession, because it allows Petalisp the chance to apply
 temporal blocking.  In such cases, Petalisp can outperform high-quality
 single-pass kernels such as those of likwid.
 
+*** daxpy (multi-threaded)
+
+These daxpy results use an experimental scheduler that is not yet upstream.
+The upstream scheduler doesn't yet parallelize a single daxpy sweep because it
+operates directly on an input array rather than on partitioned data (Stay tuned
+for future updates!).  Using the experimental scheduler and 6 threads, Petalisp
+reaches 32% to 70% of the performance of the daxpy version of likwid-bench.  A
+possible explanation for the remaining performance difference are the multiple
+thread barriers for synchronization that Petalisp doesn't (yet) optimize away.
+
+[[file:images/daxpy-parallel.svg]]
+
+/Benchmark code:/
+
+#+begin_src lisp
+(in-package #:petalisp.benchmarks)
+(with-temporary-backend (make-native-backend :threads 6)
+  (print-benchmark-table daxpy 20))
+#+end_src
+#+begin_src sh
+likwid-bench -t daxpy_avx -w S0:SIZE:6
+#+end_src
+
 *** dgemm (single-threaded)
 
 Matrix-matrix multiplication is an interesting case for Petalisp because it
