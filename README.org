@@ -133,9 +133,11 @@ suboptimal synchronization mechanim.
 
 *** Red-Black Gauss-Seidel Method
 
-For the Red-Black Gauss-Seidel method, the picture is quite similar as that of
-Jacobi's method.  This is a good sign, because the data-flow graph of this
-method is significantly more complicated.
+The Red-Black Gauss-Seidel method differs from Jacobi's method in that it
+touches elements in a chessboard-like pattern, with two sweeps over the domain
+per iteration.  This results in a more complicated data-flow graph.
+Nevertheless, the measured performance is quite similar to that of Jacobi's
+method, apart from the cost of having to traverse the domain twice.
 
 [[file:images/rbgs.svg]]
 
