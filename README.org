@@ -98,7 +98,7 @@ Although there are optimizations in place to optimize such repeated operations,
 right now the multiplication of an $m \times n$ and a $n \times k$ matrix requires $(m \times
 n \times k) / 8$ elements of auxiliary storage.  Consequently, the performance of
 matrix-matrix multiplication of square matrices is much slower than that of,
-say, [[https://github.com/OpenMathLib/OpenBLAS][OpenBLAS]]:
+say, [[https://github.com/OpenMathLib/OpenBLAS][OpenBLAS]] (this issue is being worked on):
 
 [[file:images/dgemm.svg]]
 
@@ -112,6 +112,62 @@ OpenBLAS underperforms in this setting because it has no special handling of
 skinny matrices.  Petalisp overperforms in this setting because it can generate
 specialized code and its buffer pruning technique can eliminate all
 intermediate storage because the reduction loop is short enough.
+
+*** Jacobi's Method
+
+For Jacobi's method in two dimensions, Petalisp achieves between 36% and 89% of
+the single-core performance of auto-vectorized C++ code.  The parallel
+performance is not yet on par with OpenMP parallelized C++ code, mainly because
+Petalisp's automatic parallel scheduler is very recent and contains a
+suboptimal synchronization mechanim.
+
+[[file:images/jacobi.svg]]
+
+/Benchmark code:/
+
+#+begin_src lisp
+(in-package #:petalisp.benchmarks)
+(loop for threads from 1 to 6 do
+  (with-temporary-backend (make-native-backend :threads threads)
+    (print-benchmark-table stencil-jacobi-2d 20)))
+#+end_src
+
+*** Red-Black Gauss-Seidel Method
+
+For the Red-Black Gauss-Seidel method, the picture is quite similar as that of
+Jacobi's method.  This is a good sign, because the data-flow graph of this
+method is significantly more complicated.
+
+[[file:images/rbgs.svg]]
+
+/Benchmark code:/
+
+#+begin_src lisp
+(in-package #:petalisp.benchmarks)
+(loop for threads from 1 to 6 do
+  (with-temporary-backend (make-native-backend :threads threads)
+    (print-benchmark-table rbgs 20)))
+#+end_src
+
+*** Multigrid V-cycle
+
+A [[https://en.wikipedia.org/wiki/Multigrid_method][Multigrid V-Cycle]] combines several numerical primitives to solve partial
+differential equations efficiently.  It contains stencils for smoothing
+high-frequency components of a grid, interpolation and prolongation for
+transferring data between smaller and larger grids, and calculations of the
+residual on each grid level.  Despite these complexities, Petalisp achieves
+decent floating-point performance and even a modest parallel speedup:
+
+[[file:images/multigrid-v-cycle.svg]]
+
+/Benchmark code:/
+
+#+begin_src lisp
+(in-package #:petalisp.benchmarks)
+(loop for threads from 1 to 6 do
+  (with-temporary-backend (make-native-backend :threads threads)
+    (print-benchmark-table multigrid-v-cycle 20)))
+#+end_src
 
 ** Frequently Asked Questions
 
