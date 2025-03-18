@@ -63,7 +63,7 @@ All benchmark results are given double-precision floating-point operations per
 second.  The reported values are averages over four seconds of repeated
 execution.
 
-*** daxpy (vector scaling) on one core
+*** daxpy (single-threaded)
 
 This first benchmark compares the performance of Petalisp and the [[https://hpc.fau.de/research/tools/likwid/][likwid
 benchmark suite]] for a single kernel of the form $y = a x + y$, where $a$ is a
