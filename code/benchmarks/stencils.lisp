@@ -71,10 +71,19 @@ weight-offsets entry should have the form (weight . offsets)."
      flops
      (/ flops (* 2 nreps bytes)))))
 
+(defbenchmark stencil-jacobi-2d (nbytes)
+  (stencil-bench
+   nbytes
+   10
+   '((+0.25d0  0 +1)
+     (+0.25d0  0 -1)
+     (+0.25d0 +1  0)
+     (+0.25d0 -1  0))))
+
 (defbenchmark stencil-five-point-2d (nbytes)
   (stencil-bench
    nbytes
-   2
+   10
    '((+0.4d0  0 +1)
      (+0.4d0  0 -1)
      (-0.6d0  0  0)
@@ -84,24 +93,24 @@ weight-offsets entry should have the form (weight . offsets)."
 (defbenchmark stencil-3x3 (nbytes)
   (stencil-bench
    nbytes
-   2
+   10
    '(
-     (+0.4d0 +1 +1)
-     (+0.4d0  0 +1)
-     (+0.4d0 -1 +1)
+     (+0.1d0 +1 +1)
+     (+0.1d0  0 +1)
+     (+0.1d0 -1 +1)
 
-     (+0.4d0 +1  0)
-     (+0.4d0  0  0)
-     (+0.4d0 -1  0)
+     (+0.1d0 +1  0)
+     (+0.2d0  0  0)
+     (+0.1d0 -1  0)
 
-     (+0.4d0 +1 -1)
-     (+0.4d0  0 -1)
-     (+0.4d0 -1 -1))))
+     (+0.1d0 +1 -1)
+     (+0.1d0  0 -1)
+     (+0.1d0 -1 -1))))
 
 (defbenchmark stencil-nine-point-2d (nbytes)
   (stencil-bench
    nbytes
-   2
+   10
    (let ((a (coerce 1/24 'double-float))
          (b (coerce 2/24 'double-float))
          (c (coerce 1/2 'double-float)))

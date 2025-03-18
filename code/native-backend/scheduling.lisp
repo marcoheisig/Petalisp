@@ -101,7 +101,7 @@ space for some given source and target layouts."
 
 (defun ensure-kernel-shard-invocation (kernel-shard backend)
   (declare (kernel-shard kernel-shard))
-  #+(or) ;; quick daxpy hack
+  #+(or) ;; quick daxpy/dgemm parallel hack
   (let* ((action (setf (gethash (list nil) *layout-action-table*)
                        (make-action)))
          (invocation (make-work-invocation kernel-shard backend)))

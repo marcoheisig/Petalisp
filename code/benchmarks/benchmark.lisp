@@ -35,7 +35,7 @@
   (format t "#+TITLE: ~A"
           (benchmark-name benchmark))
   (format t "~&|     bytes | flops/byte | roofline |     flops |~%")
-  (format t "~&+-----------+------------+----------+-----------+~%")
+  (format t "~&|-----------+------------+----------+-----------|~%")
   (let* ((limit (* 2 *cache-size*))
          (step (ceiling limit rows)))
     (loop for row from 1 to rows do
