@@ -53,11 +53,11 @@ All subsequent benchmarks have been measured on a Intel i7-8750H CPU, with six
 cores running at 2.20 GHz (4.1 GHz turbocore).  It has the following
 characteristics:
 
-- L3 cache :: 9MB L3 cache, shared across all cores
-- L2 cache :: 256kB per core
-- L1 cache :: 32kB per core
-- SIMD :: Support for AVX, AVX2 and FMA, but not AVX512
-- Petalisp version :: commit 9f9cfd6328141ba3d52a5fee1343c825f6a55bcd
+- *L3 cache* 9MB L3 cache, shared across all cores
+- *L2 cache* :: 256kB per core
+- *L1 cache* :: 32kB per core
+- *SIMD* :: Support for AVX, AVX2 and FMA, but not AVX512
+- *Petalisp version* :: commit 9f9cfd6328141ba3d52a5fee1343c825f6a55bcd
 
 All benchmark results are given double-precision floating-point operations per
 second.  The reported values are averages over four seconds of repeated
@@ -81,7 +81,7 @@ two invocations
 likwid-bench -t daxpy_avx -w S0:SIZE:1
 #+end_src
 
-[[file:daxpy.svg]]
+[[file:images/daxpy.svg]]
 
 For a single daxpy run, Petalisp reaches about 45-90% of the single-thread
 performance of likwid-bench.  This picture changes if multiple runs of daxpy
