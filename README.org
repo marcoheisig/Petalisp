@@ -75,7 +75,6 @@ two invocations
 (with-temporary-backend (make-native-backend :threads 1)
   (print-benchmark-table daxpy 20))
 #+end_src
-
 #+begin_src sh
 likwid-bench -t daxpy_avx -w S0:SIZE:1
 #+end_src
@@ -101,11 +100,28 @@ say, [[https://github.com/OpenMathLib/OpenBLAS][OpenBLAS]] (this issue is being 
 
 [[file:images/dgemm.svg]]
 
+/Benchmark code:/
+
+#+begin_src lisp
+(in-package #:petalisp.benchmarks)
+(with-temporary-backend (make-native-backend :threads 1)
+  (print-benchmark-table dgemm 20))
+#+end_src
+
+
 However, this picture changes for skinny matrices. For the multiplication of
 skinny matrices of the form Nx8 @ 8xK, the single-thread performance of
 Petalisp significantly faster than [[https://github.com/OpenMathLib/OpenBLAS][OpenBLAS]]:
 
 [[file:images/dgemm-skinny.svg]]
+
+/Benchmark code:/
+
+#+begin_src lisp
+(in-package #:petalisp.benchmarks)
+(with-temporary-backend (make-native-backend :threads 1)
+  (print-benchmark-table dgemm-n=8 20))
+#+end_src
 
 OpenBLAS underperforms in this setting because it has no special handling of
 skinny matrices.  Petalisp overperforms in this setting because it can generate
