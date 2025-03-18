@@ -79,7 +79,7 @@ two invocations
 likwid-bench -t daxpy_avx -w S0:SIZE:1
 #+end_src
 
-[[file:images/daxpy.svg]]
+[[file:images/daxpy-serial.svg]]
 
 For a single daxpy run, Petalisp reaches about 45-90% of the single-thread
 performance of likwid-bench.  This picture changes if multiple runs of daxpy
@@ -87,7 +87,7 @@ are scheduled in succession, because it allows Petalisp the chance to apply
 temporal blocking.  In such cases, Petalisp can outperform high-quality
 single-pass kernels such as those of likwid.
 
-*** dgemm (matrix-matrix multiplication)
+*** dgemm (single-threaded)
 
 Matrix-matrix multiplication is an interesting case for Petalisp because it
 doesn't have a built-in reduction operator.  Instead, Petalisp treats
