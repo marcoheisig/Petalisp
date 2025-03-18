@@ -4,6 +4,8 @@
 !/examples
 !/README.org
 # limit the number of subdirectories
+!/images/
+!/images/*
 !/benchmarks/
 !/benchmarks/*/
 !/code/
