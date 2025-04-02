@@ -23,4 +23,5 @@
      (:static-file "train-images.npy")
      (:static-file "train-labels.npy")))
    (:file "multigrid")
-   (:file "mnist")))
+   (:file "mnist")
+   (:file "apl")))
