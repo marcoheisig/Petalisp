@@ -5,96 +5,34 @@
 (defpackage #:petalisp.examples.apl
   (:export
    ;; Primitive Functions (https://help.dyalog.com/latest/#Language/Primitive%20Functions/Primitive%20Functions%20Table.htm)
-   #:+
-   #:^
-   #:!
-   #:⌈
-   #:○
-   #:?
-   #:⊥
-   #:L
-   #:×
-   #:÷
-   #:↓
-   #:⊂
-   #:⊤
-   #:=
-   #:~
-   #:⍀
-   #:*
-   #:⍷
-   #:⌊
-   #:⍕
-   #:⍒
-   #:⍋
-   #:≥
-   #:⊢
-   #:⍳
-   #:⌷
-   #:∩
-   #:⍸
-   #:⊣
-   #:≤
-   #:⍟
-   #:\|
-   #:≡
-   #:⌹
-   #:∊
-   #:-
-   #:⍲
-   #:⊆
-   #:⍱
-   #:≠
-   #:≢
-   #:∨
-   #:⊃
-   #:\,
-   #:⍴
-   #:⍪
-   #:↑
-   #:⍉
-   #:∪
-   ;; Functions missing from the Dyalog APL table:
-   #:^
+   #:+ #:^ #:! #:⌈ #:○ #:? #:⊥ #:L #:× #:÷
+   #:↓ #:⊂ #:⊤ #:= #:~ #:⍀ #:* #:⍷ #:⌊ #:⍕
+   #:⍒ #:⍋ #:≥ #:⊢ #:⍳ #:⌷ #:∩ #:⍸ #:⊣ #:≤
+   #:⍟ #:\| #:≡ #:⌹ #:∊ #:- #:⍲ #:⊆ #:⍱ #:≠
+   #:≢ #:∨ #:⊃ #:\, #:⍴ #:⍪ #:↑ #:⍉ #:∪ #:^
    #:⌽
    ;; Primitive Operators (https://help.dyalog.com/latest/#Language/Primitive%20Operators/Primitive%20Operators%20Table.htm)
-   #:[]←
-   #:←
-   #:←
-   #:@
-   #:⍤
-   #:[]
-   #:∘
-   #:⍨
-   #:¨
-   #:⌶
-   #:.
-   #:⌸
-   #:∘.
-   #:⍥
-   #:⍣
-   #:⍤
-   #:⌿
-   #:/
-   #:⍀
-   #:\\
-   #:&
-   #:⌺
-   #:⍠
-   ))
+   #:[]← #:← #:← #:@ #:⍤ #:[] #:∘ #:⍨ #:¨ #:⌶
+   #:. #:⌸ #:∘. #:⍥ #:⍣ #:⍤ #:⌿ #:/ #:⍀ #:\\
+   #:& #:⌺ #:⍠))
 
 (defpackage #:petalisp.examples.apldef
   (:use #:common-lisp #:petalisp)
   (:local-nicknames (#:apl #:petalisp.examples.apl))
-  (:export
-   #:define-apl-function
-   ))
+  (:export #:define-apl-function))
 
 (in-package #:petalisp.examples.apldef)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;
 ;;;  Primitive Functions
+
+(defvar *scalar-dyadic-functions* (make-hash-table :test #'eq)
+  "A hash-table from dyadic function names to the corresponding scalar function.")
+
+(defun scalar-dyadic-function (apl-function-name)
+  (or (gethash apl-function-name *scalar-dyadic-functions*)
+      (error "Not a scalar dyadic function: ~S" apl-function-name)))
 
 (defmacro define-apl-function
     (name &key monadic monadic-non-scalar dyadic dyadic-non-scalar)
@@ -106,19 +44,23 @@
         (dyadic-form
           (cond (dyadic `(lazy ',dyadic x y))
                 (dyadic-non-scalar `(,dyadic-non-scalar x y)))))
-    (cond ((and monadic-form dyadic-form)
-           `(defun ,name (x &optional (y nil y-supplied-p))
-              (if (not y-supplied-p) ,monadic-form ,dyadic-form)))
-          ((and monadic-form (not dyadic-form))
-           `(defun ,name (x) ,monadic-form))
-          ((and (not monadic-form) dyadic-form)
-           `(defun ,name (x y) ,dyadic-form))
-          (t
-           (error "APL function must have a monadic or dyadic variant.")))))
+    `(progn
+       ,(cond ((and monadic-form dyadic-form)
+               `(defun ,name (x &optional (y nil y-supplied-p))
+                  (if (not y-supplied-p) ,monadic-form ,dyadic-form)))
+              ((and monadic-form (not dyadic-form))
+               `(defun ,name (x) ,monadic-form))
+              ((and (not monadic-form) dyadic-form)
+               `(defun ,name (x y) ,dyadic-form))
+              (t
+               (error "APL function must have a monadic or dyadic variant.")))
+       ,@(when dyadic
+           `((setf (gethash ',name *scalar-dyadic-functions*)
+                   ',dyadic))))))
 
 (defun todo (&rest args)
+  (declare (ignore args))
   (error "Not yet implemented."))
-
 
 (define-apl-function apl:+
   ;; https://aplwiki.com/wiki/Identity
@@ -255,7 +197,22 @@
 
 #+(or) (define-apl-function apl:⊢ )
 
-#+(or) (define-apl-function apl:⍳ )
+(define-apl-function apl:⍳
+  ;; https://aplwiki.com/wiki/Index_Generator
+  :monadic-non-scalar apl-iota
+  ;; https://aplwiki.com/wiki/Index_Of
+  :dyadic-non-scalar todo)
+
+(defun apl-iota (n)
+  (with-lazy-arrays (n)
+    (let* ((shape (coerce-array-to-shape n))
+           (rank (shape-rank shape)))
+      (case rank
+        ((0 1)
+         (lazy-index-components shape))
+        (otherwise
+         (apply 'lazy 'vector
+                 (loop for axis below rank collect (lazy-index-components shape axis))))))))
 
 #+(or) (define-apl-function apl:⌷ )
 
@@ -384,3 +341,12 @@ supplied array."
           (lazy-reshape array hi transformation)
           (lazy-reshape array lo transformation))
          :axis axis)))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;
+;;;  Primitive Operators
+
+(defun apl:. (f g)
+  (lambda (x y)
+     (lazy-reduce (scalar-dyadic-function f)
+      (lazy (scalar-dyadic-function g) x y))))
