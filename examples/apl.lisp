@@ -86,14 +86,14 @@
 
 (define-apl-function apl:○
   ;; https://aplwiki.com/wiki/Pi_times
-  :monadic pi-times
+  :monadic apl-pi-times
   ;; https://aplwiki.com/wiki/Circular
-  :dyadic circle)
+  :dyadic apl-circle)
 
-(defun pi-times (x)
+(defun apl-pi-times (x)
   (* x (float pi x)))
 
-(defun circle (x y)
+(defun apl-circle (x y)
   (declare (integer x) (number y))
   (ecase x
     (-12 (exp (* y #C(0 1))))
@@ -126,7 +126,34 @@
   ;; https://aplwiki.com/wiki/Roll
   :monadic random
   ;; https://aplwiki.com/wiki/Deal
-  :dyadic todo)
+  :dyadic-non-scalar apl-deal)
+
+(defun apl-deal (k n)
+  (with-lazy-arrays (k n)
+    (let ((k (compute k)))
+      (unless (integerp k)
+        (error "k must be an integer."))
+      (lazy 'typo:the-integer
+       (lazy 'aref
+        (lazy-rearrange (lazy 'random-k-permutation k n) 0 (~ 1))
+        (lazy-index-components (~ k)))))))
+
+(defun random-k-permutation (k n)
+  "Returns a random k-permutation of integers from 0 to n-1."
+  (cond
+    ((< n k) (error "n must be greater than or equal to k."))
+    ((< k 0) (error "k must be non-negative."))
+    (t
+     (let ((nums (make-array n :initial-contents (loop for i from 0 below n collect i)))
+           (result (make-array k)))
+       ;; Fisher-Yates shuffle, but only for k elements
+       (dotimes (i k)
+         (let* ((j (+ i (random (- n i))))
+                (temp (aref nums i)))
+           (setf (aref nums i) (aref nums j)
+                 (aref nums j) temp
+                 (aref result i) (aref nums i))))
+       result))))
 
 (define-apl-function apl:⊥
   ;; https://aplwiki.com/wiki/Decode
@@ -327,9 +354,10 @@ supplied array."
            (start (range-start range))
            (size (range-size range))
            (step (range-step range))
-           (shift (if (minusp amount)
-                      (* (+ size amount) step)
-                      (* amount step)))
+           (shift (mod (if (minusp amount)
+                          (* (+ size amount) step)
+                          (* amount step))
+                       size))
            (position (+ start shift))
            (offsets (let ((v (make-array rank :initial-element 0)))
                       (setf (aref v axis) (- shift)) v))
