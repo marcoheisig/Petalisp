@@ -69,6 +69,7 @@
     ((unsigned-byte 16) 'u16-memref)
     ((signed-byte 32) 's32-memref)
     ((unsigned-byte 32) 'u32-memref)
+    (fixnum 'fixnum-memref)
     ((signed-byte 64) 's64-memref)
     ((unsigned-byte 64) 'u64-memref)
     (base-char 'base-char-memref)
@@ -116,6 +117,7 @@
                          (setf (ldb (byte ,bits (* ,bits thing-index))
                                     (cffi:mem-aref pointer :uint8 byte-index))
                                value))))))
+  ;; integers without tagging
   (defbitref u1-memref 1)
   (defbitref u2-memref 2)
   (defbitref u4-memref 4)
@@ -129,7 +131,13 @@
   (defmemref s64-memref :int64 (signed-byte 64))
   (defmemref f32-memref :float single-float)
   (defmemref f64-memref :double double-float)
-  ;; Complex numbers.
+  ;; fixnums
+  (defgetter fixnum-memref (pointer offset)
+    (ash (cffi:mem-ref pointer :int64 (* offset 8)) -1))
+  (defsetter fixnum-memref (value pointer offset)
+    (setf (cffi:mem-ref pointer :int64 (* offset 8))
+          (ash value 1)))
+  ;; complex numbers
   (defgetter c64-memref (pointer offset)
     (let ((index (* offset 8)))
       (complex (cffi:mem-ref pointer :float index)
@@ -154,7 +162,7 @@
       (setf (cffi:mem-ref pointer :double (+ index 8))
             (imagpart value))
       value))
-  ;; Base Chars
+  ;; base Chars
   (defgetter base-char-memref (pointer offset)
     (code-char
      (cffi:mem-aref pointer :uint8 offset)))
@@ -162,7 +170,7 @@
     (declare (character value))
     (setf (cffi:mem-aref pointer :uint8 offset)
           (char-code value)))
-  ;; Characters
+  ;; characters
   (defgetter character-memref (pointer offset)
     (code-char
      (cffi:mem-aref pointer :uint32 offset)))
