@@ -84,6 +84,17 @@
          (error "Don't know how to load objects of type ~S."
                 (typo:ntype-type-specifier ntype))))))
 
+(defconstant +n-fixnum-tag-bits+
+  (let ((array (make-array 4 :initial-contents '(1 1 1 1) :element-type 'fixnum)))
+    (petalisp.utilities:with-pinned-objects (array)
+      (let* ((vector (array-storage-vector array))
+             (pointer (static-vectors:static-vector-pointer vector)))
+        (1- (integer-length
+             (max (cffi:mem-ref pointer :int16 0)
+                  (cffi:mem-ref pointer :int16 2)
+                  (cffi:mem-ref pointer :int16 4)
+                  (cffi:mem-ref pointer :int16 6))))))))
+
 (macrolet ((defgetter (name (pointer offset) &body body)
              `(progn (declaim (inline ,name))
                      (defun ,name (,pointer ,offset)
@@ -133,10 +144,16 @@
   (defmemref f64-memref :double double-float)
   ;; fixnums
   (defgetter fixnum-memref (pointer offset)
-    (ash (cffi:mem-ref pointer :int64 (* offset 8)) -1))
+    (the fixnum
+         (ash (#.(if (< most-positive-fixnum (expt 2 31)) 's32-memref 's64-memref)
+                 pointer offset)
+              (- +n-fixnum-tag-bits+))))
   (defsetter fixnum-memref (value pointer offset)
-    (setf (cffi:mem-ref pointer :int64 (* offset 8))
-          (ash value 1)))
+    (declare (fixnum value))
+    (setf (#.(if (< most-positive-fixnum (expt 2 31)) 's32-memref 's64-memref)
+            pointer offset)
+          (ash value +n-fixnum-tag-bits+))
+    value)
   ;; complex numbers
   (defgetter c64-memref (pointer offset)
     (let ((index (* offset 8)))
