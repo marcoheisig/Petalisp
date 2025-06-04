@@ -12,6 +12,7 @@
    "petalisp.utilities"
    "petalisp.core"
    "petalisp.ir"
+   "petalisp.native-backend"
    "cl-dot")
 
   :serial t
