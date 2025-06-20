@@ -135,6 +135,7 @@ arrays that were referenced in the schedule."
                 (unless (layout-allocation layout)
                   (let ((allocation (pop-allocation category layout)))
                     (layout-bind layout allocation)
+                    #+(or)
                     (when (zerop (gethash layout layout-counter-table 0))
                       #+(or)(break "~A ~A" layout allocation) ;; TODO
                       (push-allocation allocation))))))))

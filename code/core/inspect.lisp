@@ -1,7 +1,7 @@
 (in-package #:petalisp.core)
 
 (defparameter *valid-inspect-tags*
-  '(:graph :ir :partitioning :dependencies :execution))
+  '(:graph :ir :partitioning :dependencies :scheduling :memory))
 
 (defparameter *active-inspect-tags* '())
 
@@ -28,7 +28,10 @@
 
 :PARTITIONING - Show the partitioned intermediate representation.
 
-:DEPENDENCIES - Show the dependency graph."
+:DEPENDENCIES - Show the dependency graph.
+
+:SCHEDULING - Print scheduling statistics.
+"
   (dolist (tag tags)
     (unless (member tag *valid-inspect-tags*)
       (error "Invalid inspect tag: ~S" tag)))

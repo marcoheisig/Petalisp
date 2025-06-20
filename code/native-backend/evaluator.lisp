@@ -32,16 +32,43 @@
          (program (program-from-lazy-arrays lazy-arrays :debug debug))
          (primogenitor-buffer-shard-vector (partition-program program :debug debug))
          (schedule (compute-schedule primogenitor-buffer-shard-vector backend)))
-    #+(or)
-    (loop for action-vector in schedule do
-      (loop for action across action-vector when action do
-        (format *trace-output* "~,2E "
-                (loop for invocation in (action-work-invocations action)
-                      sum (loop  for layout across (invocation-sources invocation)
-                                 sum (layout-size-in-bytes layout)))))
-      (terpri *trace-output*))
+    ;; (optional) print scheduling statistics
+    (when (member :scheduling *active-inspect-tags*)
+      (let ((global-potential 0)
+            (global-achieved 0))
+        (loop for action-vector in schedule for step from 1 do
+          (let* ((costs
+                   (loop for action across action-vector when action
+                         collect
+                         (loop for invocation in (action-work-invocations action)
+                               sum (shape-size (invocation-iteration-space invocation)))))
+                 (local-potential (* (length costs) (apply #'max costs)))
+                 (local-achieved (reduce #'+ costs)))
+            (incf global-potential local-potential)
+            (incf global-achieved local-achieved)
+            #+(or)
+            (when (plusp local-potential)
+              (format *trace-output* "~&Predicted parallel efficiency in step ~D: ~,3F~%"
+                      step
+                      (/ local-achieved local-potential)))))
+        (when (plusp global-potential)
+          (format *trace-output* "~&Predicted total parallel efficiency: ~,2F~%"
+                  (/ global-achieved global-potential)))))
     (multiple-value-bind (allocations constant-arrays)
         (compute-allocations schedule primogenitor-buffer-shard-vector unknowns backend)
+      (when (member :memory *active-inspect-tags*)
+        (let* ((bytes-by-category
+                 (loop for vector across allocations
+                       collect
+                       (reduce #'+ vector :key #'allocation-size-in-bytes)))
+               (bytes-by-worker (subseq bytes-by-category +worker-allocation-category-offset+))
+               (total-bytes (reduce #'+ bytes-by-category))
+               (worker-bytes (reduce #'+ bytes-by-worker)))
+          (format *trace-output* "~&Total memory: ~,2E~%Balance: ~{ ~,2F~}~%"
+                  total-bytes
+                  (loop for bytes in bytes-by-worker
+                        collect (* (length bytes-by-worker)
+                                   (/ bytes worker-bytes))))))
       (let ((cenv
               (%make-cenv
                :backend backend
