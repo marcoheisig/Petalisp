@@ -32,6 +32,14 @@
          (program (program-from-lazy-arrays lazy-arrays :debug debug))
          (primogenitor-buffer-shard-vector (partition-program program :debug debug))
          (schedule (compute-schedule primogenitor-buffer-shard-vector backend)))
+    #+(or)
+    (loop for action-vector in schedule do
+      (loop for action across action-vector when action do
+        (format *trace-output* "~,2E "
+                (loop for invocation in (action-work-invocations action)
+                      sum (loop  for layout across (invocation-sources invocation)
+                                 sum (layout-size-in-bytes layout)))))
+      (terpri *trace-output*))
     (multiple-value-bind (allocations constant-arrays)
         (compute-allocations schedule primogenitor-buffer-shard-vector unknowns backend)
       (let ((cenv

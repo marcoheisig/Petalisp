@@ -12,7 +12,7 @@
    :type function
    :read-only t))
 
-(defparameter *seconds-per-benchmark* 4)
+(defparameter *seconds-per-benchmark* 10)
 
 (defparameter *cache-size* 9e6
   "The size of the shared outer-level cache in bytes.")
@@ -41,25 +41,27 @@
     (loop for row from 1 to rows do
       (print-benchmark-row benchmark (* row step)))))
 
+(defun benchmark-thunk (thunk)
+  (let* ((tmax (* internal-time-units-per-second *seconds-per-benchmark*))
+         (tstart (get-internal-real-time))
+         (tnow tstart)
+         (count 0))
+    (loop (funcall thunk)
+          (incf count)
+          (setf tnow (get-internal-real-time))
+          (when (> (- tnow tstart) tmax)
+            (return
+              (float (/ (- tnow tstart) internal-time-units-per-second count)))))))
+
 (defun print-benchmark-row (benchmark nbytes)
   (multiple-value-bind (thunk flops-per-thunk flops-per-byte)
       (funcall (benchmark-fn benchmark) nbytes)
-    (let* ((tmax (* internal-time-units-per-second *seconds-per-benchmark*))
-           (tstart (get-internal-real-time))
-           (tend tstart)
-           (count 0))
-      (loop
-        (funcall thunk)
-        (incf count)
-        (setf tend (get-internal-real-time))
-        (when (> (- tend tstart) tmax)
-          (return)))
-      (let ((time (float (/ (- tend tstart) internal-time-units-per-second))))
-        (format t "~&| ~9,2E | ~9,2F | ~9,2E | ~9,2E |~%"
-                nbytes
-                flops-per-byte
-                (min *max-flops* (* *cache-throughput* flops-per-byte))
-                (/ (* flops-per-thunk count) time))))))
+    (let ((seconds-per-thunk (benchmark-thunk thunk)))
+      (format t "~&| ~9,2E | ~9,2F | ~9,2E | ~9,2E |~%"
+              nbytes
+              flops-per-byte
+              (min *max-flops* (* *cache-throughput* flops-per-byte))
+              (/ flops-per-thunk seconds-per-thunk)))))
 
 (defvar *benchmarks* '()
   "The names of all available benchmarks.")
